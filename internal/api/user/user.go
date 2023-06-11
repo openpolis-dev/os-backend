@@ -12,6 +12,9 @@ import (
 	"github.com/theseed-labs/os-backend/internal/model"
 )
 
+// ------ ------ ------ ------ ------ ------ ------ ------ ------
+// ------ User Auth ------ ------
+
 type LoginReq struct {
 	Wallet    string `json:"wallet" binding:"required"`
 	Timestamp int64  `json:"timestamp" binding:"required"` // time unit: seconds
@@ -80,8 +83,20 @@ func Logout(ctx *gin.Context) {
 }
 
 // ------ ------ ------ ------ ------ ------ ------ ------ ------
-// ------ Query User Info ------ ------
+// ------ Query User ------ ------
 
-func MultiUsers(ctx *gin.Context) {
+// Users `GET /users?wallets=1,2,3`
+// query multiple users by wallet array on batch
+func Users(ctx *gin.Context) {
+	wallets := ctx.QueryArray("wallets")
 
+	_, db, _ := api.ForContext(ctx)
+
+	users, err := model.UserModel.List(db, wallets)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, err)
+		return
+	}
+
+	ctx.JSON(http.StatusOK, api.Success(users))
 }

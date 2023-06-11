@@ -46,6 +46,7 @@ func main() {
 		// user routers
 		userGroup := v1.Group("/user")
 		userGroup.POST("/login", user.Login)
+		userGroup.POST("/users", user.Users)
 
 		// foo routers
 	}
