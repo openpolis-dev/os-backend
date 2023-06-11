@@ -1,0 +1,6 @@
+dataSource:
+  dsn: <placeholder>
+
+jwt:
+  secret: <placeholder>
+  exp: 24 # unit is hour
