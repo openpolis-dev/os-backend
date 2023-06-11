@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/theseed-labs/os-backend/internal/api/project"
 	"github.com/theseed-labs/os-backend/internal/api/user"
 	"github.com/theseed-labs/os-backend/internal/config"
 	"github.com/theseed-labs/os-backend/internal/middleware"
@@ -55,6 +56,18 @@ func main() {
 		// user routers
 		userGroup := authorizedGroup.Group("/user")
 		userGroup.GET("/logout", user.Logout)
+
+		// project routers
+		projGroup := authorizedGroup.Group("/project")
+		projGroup.POST("/projects", project.Create)
+		projGroup.PUT("/projects/:id", project.Update)
+		projGroup.GET("/projects/close", project.Close)
+		projGroup.GET("/projects/:id", project.Detail)
+		projGroup.GET("/projects", project.List)
+		projGroup.POST("/projects/:id/update_sponsors", project.UpdateSponsors)
+		projGroup.POST("/projects/:id/update_members", project.UpdateMembers)
+		projGroup.POST("/projects/:id/update_budget", project.UpdateBudget)
+		projGroup.POST("/projects/:id/add_related_proposal/:proposal_id", project.AddRelatedProposal)
 
 		// foo routers
 	}

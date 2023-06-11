@@ -31,6 +31,8 @@ func InitGormDB(dsn string) {
 	// Migrate the schema
 	err = gormDB.AutoMigrate(
 		&model.User{},
+		&model.Project{},
+		&model.ProjectBudget{},
 	)
 	if err != nil {
 		panic("failed to migrate tables")
