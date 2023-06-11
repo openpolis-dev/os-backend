@@ -5,7 +5,7 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/theseed-labs/os-backend/internal/api"
+	"github.com/theseed-labs/os-backend/internal/api/user"
 	"github.com/theseed-labs/os-backend/internal/config"
 	"github.com/theseed-labs/os-backend/internal/middleware"
 	"github.com/theseed-labs/os-backend/internal/storage"
@@ -43,18 +43,18 @@ func main() {
 	// --> no auth required
 	{
 		// user routers
-		user := v1.Group("/user")
-		user.POST("/login", api.Login)
+		userGroup := v1.Group("/user")
+		userGroup.POST("/login", user.Login)
 
 		// foo routers
 	}
 	// --> auth required
 	{
-		authorized := v1.Group("/", middleware.AuthRequired)
+		authorizedGroup := v1.Group("/", middleware.AuthRequired)
 
 		// user routers
-		user := authorized.Group("/user")
-		user.GET("/logout", api.Logout)
+		userGroup := authorizedGroup.Group("/user")
+		userGroup.GET("/logout", user.Logout)
 
 		// foo routers
 	}

@@ -1,4 +1,4 @@
-package api
+package user
 
 import (
 	"net/http"
@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/middleware"
 	"github.com/theseed-labs/os-backend/internal/model"
@@ -35,20 +36,17 @@ func Login(ctx *gin.Context) {
 	}
 
 	//wallet, db, cfg := ForContext(ctx)
-	_, db, cfg := ForContext(ctx)
+	_, db, cfg := api.ForContext(ctx)
 
 	// query user
-	user, err := model.UserModel.User(db, req.Wallet)
+	user, err := model.UserModel.Detail(db, req.Wallet)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, err)
 		return
 	}
 	if user == nil {
 		user = &model.User{
-			Wallet:   strings.ToLower(req.Wallet),
-			Username: "",
-			Email:    "",
-			Avatar:   "",
+			Wallet: strings.ToLower(req.Wallet),
 		}
 		err = model.UserModel.CreateOrUpdate(db, user)
 		if err != nil {
@@ -70,7 +68,7 @@ func Login(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, Success(LoginReply{
+	ctx.JSON(http.StatusOK, api.Success(LoginReply{
 		Token:    token,
 		TokenExp: tokenExp,
 		User:     user,
@@ -78,5 +76,12 @@ func Login(ctx *gin.Context) {
 }
 
 func Logout(ctx *gin.Context) {
-	ctx.JSON(http.StatusOK, Success(nil))
+	ctx.JSON(http.StatusOK, api.Success(nil))
+}
+
+// ------ ------ ------ ------ ------ ------ ------ ------ ------
+// ------ Query User Info ------ ------
+
+func MultiUsers(ctx *gin.Context) {
+
 }
