@@ -35,7 +35,7 @@ func Create(ctx *gin.Context) {
 	req := CreateReq{}
 	_ = ctx.BindJSON(&req)
 
-	_, db, _ := api.ForContext(ctx)
+	db := api.ForContextOnlyDB(ctx)
 
 	tx := db.Begin()
 	// save project
@@ -86,7 +86,7 @@ func Update(ctx *gin.Context) {
 	req := UpdateReq{}
 	_ = ctx.BindJSON(&req)
 
-	_, db, _ := api.ForContext(ctx)
+	db := api.ForContextOnlyDB(ctx)
 
 	proj, err := model.ProjectModel.Detail(db, uint(id))
 	if err != nil {
@@ -119,7 +119,7 @@ func Detail(ctx *gin.Context) {
 	idParam := ctx.Param("id")
 	id, _ := strconv.Atoi(idParam)
 
-	_, db, _ := api.ForContext(ctx)
+	db := api.ForContextOnlyDB(ctx)
 
 	proj, err := model.ProjectModel.Detail(db, uint(id))
 	if err != nil {
@@ -141,7 +141,7 @@ func Detail(ctx *gin.Context) {
 
 // List `GET /projects?status=open&page=1&size=10&sort_field=created_at&sort_order=desc`
 func List(ctx *gin.Context) {
-	_, db, _ := api.ForContext(ctx)
+	db := api.ForContextOnlyDB(ctx)
 
 	status := ctx.Query("status")
 	page := api.ParseAndConvertPageParam(ctx)
@@ -170,7 +170,7 @@ func UpdateSponsors(ctx *gin.Context) {
 	req := UpdateSponsorsReq{}
 	_ = ctx.BindJSON(&req)
 
-	_, db, _ := api.ForContext(ctx)
+	db := api.ForContextOnlyDB(ctx)
 
 	proj, err := model.ProjectModel.Detail(db, uint(id))
 	if err != nil {
@@ -200,7 +200,7 @@ func UpdateMembers(ctx *gin.Context) {
 	req := UpdateMembersReq{}
 	_ = ctx.BindJSON(&req)
 
-	_, db, _ := api.ForContext(ctx)
+	db := api.ForContextOnlyDB(ctx)
 
 	proj, err := model.ProjectModel.Detail(db, uint(id))
 	if err != nil {
@@ -234,7 +234,7 @@ func UpdateBudget(ctx *gin.Context) {
 	req := UpdateBudgetReq{}
 	_ = ctx.BindJSON(&req)
 
-	_, db, _ := api.ForContext(ctx)
+	db := api.ForContextOnlyDB(ctx)
 
 	budget, err := model.ProjectBudgetModel.Detail(db, req.ID)
 	if err != nil {
@@ -265,7 +265,7 @@ func AddRelatedProposal(ctx *gin.Context) {
 	id, _ := strconv.Atoi(idParam)
 	proposalID := ctx.Param("proposal_id")
 
-	_, db, _ := api.ForContext(ctx)
+	db := api.ForContextOnlyDB(ctx)
 
 	proj, err := model.ProjectModel.Detail(db, uint(id))
 	if err != nil {

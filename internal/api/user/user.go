@@ -90,7 +90,7 @@ func Logout(ctx *gin.Context) {
 func Users(ctx *gin.Context) {
 	wallets := ctx.QueryArray("wallets")
 
-	_, db, _ := api.ForContext(ctx)
+	db := api.ForContextOnlyDB(ctx)
 
 	users, err := model.UserModel.List(db, wallets)
 	if err != nil {

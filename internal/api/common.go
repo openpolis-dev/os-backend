@@ -36,6 +36,13 @@ func ForContext(ctx *gin.Context) (user *middleware.CurUser, db *gorm.DB, cfg *c
 	return
 }
 
+// ForContextOnlyDB read only `DB` from `Context`
+func ForContextOnlyDB(ctx *gin.Context) (db *gorm.DB) {
+	db, _ = ctx.Value(middleware.DBKey).(*gorm.DB)
+
+	return
+}
+
 // ------ ------ ------ ------ ------ ------ ------ ------ ------
 // ------ ------ ------ ------ ------ ------ ------ ------ ------
 
