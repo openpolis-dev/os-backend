@@ -46,7 +46,7 @@ func main() {
 		// user routers
 		userGroup := v1.Group("/user")
 		userGroup.POST("/login", user.Login)
-		userGroup.POST("/users", user.Users)
+		userGroup.GET("/users", user.Users)
 
 		// foo routers
 	}
@@ -56,6 +56,8 @@ func main() {
 
 		// user routers
 		userGroup := authorizedGroup.Group("/user")
+		userGroup.GET("/me", user.Detail)
+		userGroup.PUT("/me", user.Update)
 		userGroup.GET("/logout", user.Logout)
 
 		// project routers
@@ -65,6 +67,7 @@ func main() {
 		projGroup.GET("/projects/close", project.Close)
 		projGroup.GET("/projects/:id", project.Detail)
 		projGroup.GET("/projects", project.List)
+		projGroup.GET("/projects/my", project.MyProjects)
 		projGroup.POST("/projects/:id/update_sponsors", project.UpdateSponsors)
 		projGroup.POST("/projects/:id/update_members", project.UpdateMembers)
 		projGroup.POST("/projects/:id/update_budget", project.UpdateBudget)
