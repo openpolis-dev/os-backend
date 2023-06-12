@@ -1,0 +1,536 @@
+openapi: '3.0.2'
+info:
+  title: Super App API
+  version: '1.0'
+servers:
+  - url: https://api.example.com/v1
+paths:
+  # /proposals:
+  #   get:
+  #     responses:
+  #       '200':
+  #         description: OK
+  #   post:
+  #     responses:
+  #       '201':
+  #         description: Created
+      
+  /projects:
+    get:
+      summary: List all projects match the query params
+      parameters:
+        - name: start
+          in: query
+          required: false
+          schema:
+            type: number
+        - name: end
+          in: query
+          required: false
+          schema:
+            type: number
+        - name: order
+          in: query
+          required: false
+          description: order of returned result, sort by timestamp field
+          schema:
+            type: string
+            enum: [asc, desc]
+      responses:
+        '200':
+          description: OK
+          content:
+            "application/json":
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Project'
+    post:
+      summary: Create project
+      requestBody:
+        content:
+          "application/json":
+            schema:
+              $ref: '#/components/schemas/Project'
+      responses:
+        '201':
+          description: Created
+        '400':
+          description: Created failed
+          content:
+            "application/json":
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /projects/{id}:
+    get:
+      description: Show project detail
+      parameters:
+        - name: id
+          in: path
+          description: id of the project
+          required: true
+          schema:
+            type: string
+
+      responses:
+        '200':
+          description: OK
+          content:
+            "application/json":
+              schema:
+                $ref: '#/components/schemas/Project'
+    put:
+      summary: Update project meta info
+      responses:
+        '200':
+          description: project updated successfully
+
+  /projects/{id}/update_member:
+    post:
+      description: Update member of the project
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          "application/json":
+            schema:
+              type: array
+              items:
+                type: string
+      responses:
+        '200':
+          description: member update  
+
+  /projects/{id}/update_budget:
+    post:
+      description: Update budget of the project
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          "application/json":
+            schema:
+              type: object
+              properties:
+                budget_type:
+                  type: string
+                  description: budget type, can be selected from `credit` and <token name>
+                total_amount:
+                  type: number
+                  description: new total amount
+                  minimum: 0
+      responses:
+        '200':
+          description: budget updated  
+
+  /projects/{id}/new_reward_request:
+    post:
+      description: Create new reward request for specified user
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          "application/json":
+            schema:
+              type: array
+              items:
+                type: object
+                properties:
+                  target_wallet:
+                    type: string
+                    description: target wallet of 
+                  amount:
+                    type: number
+                    description: new total amount
+                    minimum: 0
+                  token_type:
+                    type: string
+                    description: reward type, should be existing type in project budgets
+                  category:
+                    type: string
+                    description: reward category
+                  comment:
+                    type: string
+                    description: comment for this reward
+                  reward_source:
+                    type: string
+                    description: where the reward is coming from
+      responses:
+        '200':
+          description: budget updated  
+
+
+  /applications:
+    get:
+      summary: list all requests
+      description: >
+        The requests contains all type of requests listed above, which contains :
+        * Project related:
+          * Close project
+        * Credit and Token
+          * Credit reward
+          * Token reward
+
+        This API returns requests based on query params
+      responses:
+        '200':
+          description: OK
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/Application"
+
+    post:
+      description: create new application
+      responses:
+        '201':
+          description: Created
+
+  /applications/approve:
+    post: 
+      description: approve multiple requests in one call
+      requestBody:
+        content:
+          "application/json":
+            schema:
+              type: array
+              items:
+                type: string
+                description: request ID
+      responses:
+        '200':
+          description: all requests are marked as approved
+        '500':
+          description: some requests are processing error
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /applications/complete:
+    post: 
+      description: complete multiple requests in one call
+      responses:
+        '200':
+          description: all requests are marked as completed
+        '500':
+          description: some requests are processing error
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /applications/reject:
+    post: 
+      description: reject multiple requests in one call
+      requestBody:
+        content:
+          "application/json":
+            schema:
+              type: array
+              items:
+                type: string
+                description: id for application will be rejected
+
+      responses:
+        '200':
+          description: all requests are marked as rejected
+        '500':
+          description: some requests are processing error
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /applications/{id}:
+    get:
+      description: Show request detail
+      responses:
+        '200':
+          description: OK
+
+  /applications/{id}/approve:
+    post:
+      description: approve the request
+      responses:
+        '200':
+          description: request has been approved
+
+  /applications/{id}/complete:
+    post:
+      description: mark the request to be completed
+      responses:
+        '200':
+          description: request has been marked as completed
+
+  /applications/{id}/reject:
+    post:
+      description: reject the request
+      responses:
+        '200':
+          description: request has been rejected
+
+  /user/{id}:
+    get:
+      description: get self data
+      responses:
+        '200':
+          description: return user info 
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/User"
+    post:
+      description: update user info
+      requestBody:
+        content:
+          "application/json":
+            schema:
+                $ref: "#/components/schemas/User"
+      responses:
+        '200':
+          description: user info updated successfully
+
+  /user/{id}/rewards:
+    get:
+      description: return user's reward list
+      responses:
+        '200':
+          description: OK
+          content:
+            "application/json":
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UserRewardRecord"
+
+
+components:
+  schemas:
+    Proposal:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Proposal ID, prepare to use UUID
+
+    Project:
+      type: object
+      properties:
+        id:
+          type: string
+          description: uniq id for project
+        logo:
+          type: string
+          description: logo of the project, can be base64 image or image url
+        name:
+          type: string
+          description: name of the project
+        status:
+          type: string
+          enum: [open, pending_close, closed]
+          description: status of the project
+        sponsors:
+          description: project holder, may be one or more user address
+          type: array
+          items:
+            type: string
+        members:
+          description: project member, the value is member ID
+          type: array
+          items:
+            type: string
+            description: user ID
+        proposals:
+          description: proposal IDs
+          type: array
+          items:
+            type: string
+            description: proposal ID
+        budgets:
+          description: budget of the project, may contains various type
+          type: array
+          items:
+            $ref: '#/components/schemas/BudgetRecord'
+
+    BudgetRecord:
+      description: Budget record
+      type: object
+      properties:
+        id:
+          type: number
+          description: budget record ID
+        name:
+          type: string
+          description: token name for this budget
+        total_amount:
+          type: integer
+          description: total amount of the budget
+        remain_amount:
+          type: integer
+          description: remain amount of the budget
+        auditLogs:
+          type: array
+          description: audit log for budget
+          items:
+            $ref: '#/components/schemas/BudgetAuditLog'
+
+    BudgetAuditLog:
+      description: budget change log
+      type: object
+      properties:
+        id:
+          type: string
+          description: uniq id for budget audit log
+        budget_id:
+          type: string
+          description: budget ID that this audit log belongs to
+        timestamp:
+          type: number
+          description: opeation timestamp in millionsecond
+        operator:
+          type: string
+          description: user ID for this operation
+        pre_value:
+          type: number
+          description: value before this action
+        post_value:
+          type: number
+          description: value after this action
+
+    Application:
+      description: request record actions that need to be approved
+      type: object
+      properties:
+        id:
+          type: string
+          description: uniq id for the application
+        action:
+          type: string
+          enum: [close_project, new_reward]
+          description: all supported actions currently
+        requester:
+          type: string
+          description: wallet address of application sender
+        state:
+          type: string
+          enum: 
+            - open  # new application which is waiting for reviewing
+            - approved  # application has been approved
+            - rejected  # application has been rejected
+            - processing  # application is under processing, e.g. sending transaction on chain
+            - completed # application has been completed
+        rejected_reason:
+          type: string
+          description: why this application has been rejected
+        created_at:
+          type: number
+          description: creation timestamp of this application
+        updated_at:
+          type: number
+          description: update timestamp of this application
+        detailed_data:
+          type: string
+          description: detailed data for this application, the fields are different based on action
+        logs:
+          type: array
+          items:
+            $ref: "#/components/schemas/ApplicationAuditLog"
+
+    ApplicationAuditLog:
+      description: application audit log, save every actions performed on the application
+      type: object
+      properties:
+        id:
+          type: string
+          description: uniq id for this audit log
+        application_id:
+          type: string
+          description: id for application record
+        timestamp:
+          type: number
+          description: timestamp in millionsecond for this operation
+        operation:
+          type: string
+          enum: [approve, reject, process, complete]
+          description: operation for the application
+        operator:
+          type: string
+          description: who do the operation
+        pre_state:
+          type: string
+          description: application state before this operation
+        post_state:
+          type: string
+          description: application state after this operation
+        extra_data:
+          type: string
+          description: Extra message required or passed with this audition
+        
+
+    User:
+      type: object
+      description: user information
+      properties:
+        id:
+          type: string
+          description: uniq ID for user
+        avatar:
+          type: string
+        discord_url:
+          type: string
+
+    ErrorResponse:
+      type: object
+      properties:
+        code:
+          type: number
+        msg:
+          type: string
+        data:
+          type: object
+          description: detailed data for this error
+
+    UserRewardRecord:
+      type: object
+      description: reward record for user
+      properties:
+        id:
+          type: string
+          description: uniq id for this reward record
+        user_id:
+          type: string
+          description: user id
+        entity_id:
+          type: string
+          description: record that related to this reward
+        state:
+          type: string
+          enum: [pending_review, processing, completed]
+          description: state of this reward
+        reward_type:
+          type: string
+          description: type of this reward, `credit` or <token name>
+        reward_amount:
+          type: number
+          description: amount of this reward
+        created_at:
+          type: number
+          description: timesatmp this reward record created
+        updated_at:
+          type: number
+          description: timesatmp this reward record updated
+
