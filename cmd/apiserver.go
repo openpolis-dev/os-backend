@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/theseed-labs/os-backend/internal/api/application"
 	"github.com/theseed-labs/os-backend/internal/api/project"
 	"github.com/theseed-labs/os-backend/internal/api/user"
 	"github.com/theseed-labs/os-backend/internal/config"
@@ -69,6 +70,20 @@ func main() {
 		projGroup.POST("/projects/:id/update_members", project.UpdateMembers)
 		projGroup.POST("/projects/:id/update_budget", project.UpdateBudget)
 		projGroup.POST("/projects/:id/add_related_proposal/:proposal_id", project.AddRelatedProposal)
+
+		// application routers
+		applicationGroup := authorizedGroup.Group("/applications")
+		applicationGroup.GET("/", application.List)
+		applicationGroup.POST("/", application.Create)
+		applicationGroup.POST("/approve", application.BatchApprove)
+		applicationGroup.POST("/reject", application.BatchReject)
+		applicationGroup.POST("/complete", application.BatchComplete)
+		applicationGroup.POST("/process", application.BatchProcess)
+		applicationGroup.GET("/:id", application.Detail)
+		applicationGroup.POST("/:id/approve", application.Approve)
+		applicationGroup.POST("/:id/reject", application.Reject)
+		applicationGroup.POST("/:id/complete", application.Complete)
+		applicationGroup.POST("/:id/process", application.Process)
 
 		// foo routers
 	}
