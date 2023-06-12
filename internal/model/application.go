@@ -94,11 +94,6 @@ type ApplicationAuditLog struct {
 	// Application state after this operation
 	PostState ApplicationState `json:"post_state"`
 
-	// Entity means
-	EntityType string `json:"entity_type"`
-
-	EntityId string `json:"entity_id"`
-
 	// ExtraData saves some additional data for the operation, e.g. reject reason
 	ExtraData string `json:"extra_data"`
 }
@@ -186,6 +181,6 @@ func AuditApplication(db *gorm.DB, application *Application, action AuditActionT
 
 // BatchAuditApplication audits multiple applications in same transaction.
 // Note: if any error occurred during the transaction the whole transaction will not be performed.
-func BatchAuditApplication(db *gorm.DB, application *[]Application, action AuditActionType) error {
+func BatchAuditApplication(db *gorm.DB, application *[]Application, action AuditActionType, extraMsg string) error {
 	return nil
 }

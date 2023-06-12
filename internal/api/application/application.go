@@ -14,7 +14,7 @@ import (
 
 var err error
 
-type RejectRequestBody struct {
+type AuditRequestBody struct {
 	Message string `json:"message"`
 }
 
@@ -86,20 +86,43 @@ func Create(ctx *gin.Context) {
 
 // Batch operations, the request body are ids
 
-func BatchApprove(ctx *gin.Context) {
-	var idList []int
-	err := ctx.Bind(&idList)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, api.Reply{Code: -1, Msg: "passed in ID error"})
+// Export exports application in approved state, and changes exported applications state to processing
+// If there are existing applications in processing state, the export function returns error.
+// Actually, Export is the batchProcess operation
+func Export(ctx *gin.Context) {
+	db := api.ForContextOnlyDB(ctx)
+	var processingRecordCount int64
+	db.Model(&model.Application{}).Where("state <> ?", model.ApplicationStateProcessing).Count(&processingRecordCount)
+
+	if processingRecordCount > 0 {
+		ctx.JSON(http.StatusBadRequest, &api.Reply{
+			Code: -1,
+			Msg:  "applications in processing state should be processed before exporting new list",
+		})
 	}
 
-	db := api.ForContextOnlyDB(ctx)
 	var applications []model.Application
-	db.Find(&applications, idList)
+	getBatchApplicationsOrReturnError(ctx, &applications)
 
-	err = model.BatchAuditApplication(db, &applications, model.AuditActionApprove)
+	err = model.BatchAuditApplication(db, &applications, model.AuditActionProcess, "")
 	if err != nil {
-		ctx.JSON(http.StatusNotFound, api.Reply{
+		ctx.JSON(http.StatusBadRequest, api.Reply{
+			Code: -1,
+			Msg:  fmt.Sprintf("process applications error: %+v", err),
+		})
+	}
+
+	ctx.JSON(http.StatusOK, api.Success(applications))
+}
+
+func BatchApprove(ctx *gin.Context) {
+	var applications []model.Application
+	getBatchApplicationsOrReturnError(ctx, &applications)
+
+	db := api.ForContextOnlyDB(ctx)
+	err = model.BatchAuditApplication(db, &applications, model.AuditActionApprove, "")
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, api.Reply{
 			Code: -1,
 			Msg:  fmt.Sprintf("approve applications error: %+v", err),
 		})
@@ -109,17 +132,59 @@ func BatchApprove(ctx *gin.Context) {
 }
 
 // BatchReject rejects multiple applications in one API call
-// TODO: Need to confirm whether reject reason should be different for multiple applications
 func BatchReject(ctx *gin.Context) {
+	var applications []model.Application
+	getBatchApplicationsOrReturnError(ctx, &applications)
+
+	db := api.ForContextOnlyDB(ctx)
+	err = model.BatchAuditApplication(db, &applications, model.AuditActionReject, "")
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, api.Reply{
+			Code: -1,
+			Msg:  fmt.Sprintf("reject applications error: %+v", err),
+		})
+	}
+
+	ctx.JSON(http.StatusOK, "")
 }
 
 // BatchComplete completes multiple applications in one API call
+// Only applications in processing state can be completed, so no application ids are required for this API call
+// This api will fetch all applications with processing state in db and apply `complete` action on them
 func BatchComplete(ctx *gin.Context) {
+	db := api.ForContextOnlyDB(ctx)
+	var applications []model.Application
+	db.Model(&model.Application{}).Where("state = ?", model.ApplicationStateProcessing).Find(&applications)
 
+	reqBody := AuditRequestBody{}
+	err := ctx.Bind(&reqBody)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, api.Reply{
+			Code: -1,
+			Msg:  "parse request data error",
+		})
+	}
+
+	err = model.BatchAuditApplication(db, &applications, model.AuditActionComplete, reqBody.Message)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, api.Reply{
+			Code: -1,
+			Msg:  fmt.Sprintf("complete applications error: %+v", err),
+		})
+	}
+
+	ctx.JSON(http.StatusOK, "")
 }
 
-// BatchProcess marks multiple application in processing state in one API call
-func BatchProcess(ctx *gin.Context) {
+func getBatchApplicationsOrReturnError(ctx *gin.Context, applications *[]model.Application) {
+	var idList []int
+	err := ctx.Bind(&idList)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, api.Reply{Code: -1, Msg: "passed in ID list error"})
+	}
+
+	db := api.ForContextOnlyDB(ctx)
+	db.Find(&applications, idList)
 }
 
 // Detail returns single application information with requested ID
