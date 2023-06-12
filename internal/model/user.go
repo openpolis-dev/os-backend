@@ -10,11 +10,13 @@ import (
 type User struct {
 	gorm.Model
 
-	Wallet    string `json:"wallet"`
-	Name      string `json:"name"`
-	Avatar    string `json:"avatar"`
-	DiscordID string `json:"discordID"` // discord_id
-	TwitterID string `json:"twitterID"` // twitter_id
+	Wallet         string `json:"wallet"`
+	Name           string `json:"name"`
+	Avatar         string `json:"avatar"`
+	Email          string `json:"email"`
+	DiscordProfile string `json:"discordProfile"` // discord_profile
+	TwitterProfile string `json:"twitterProfile"` // twitter_profile
+	GoogleProfile  string `json:"GoogleProfile"`  // google_profile
 }
 
 type userModel struct{}

@@ -33,7 +33,12 @@ func (*projectModel) Detail(db *gorm.DB, id uint) (*Project, error) {
 func (*projectModel) List(db *gorm.DB, status string, page *gormfind.Page) ([]*Project, error) {
 	querySeg := db.Table("projects")
 	if status != "" {
-		querySeg.Where("status = )", status)
+		querySeg.Where("status = ?", status)
 	}
+	return gormfind.Rows[Project](querySeg, page)
+}
+
+func (*projectModel) ListBySponsorOrMember(db *gorm.DB, wallet string, page *gormfind.Page) ([]*Project, error) {
+	querySeg := db.Table("projects").Where("? = ANY(sponsors)", wallet).Or("? = ANY(members)", wallet)
 	return gormfind.Rows[Project](querySeg, page)
 }

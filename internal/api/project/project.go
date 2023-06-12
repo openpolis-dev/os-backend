@@ -155,6 +155,21 @@ func List(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, api.Success(projects))
 }
 
+// MyProjects `GET /projects/my?page=1&size=10&sort_field=created_at&sort_order=desc`
+func MyProjects(ctx *gin.Context) {
+	user, db, _ := api.ForContext(ctx)
+
+	page := api.ParseAndConvertPageParam(ctx)
+
+	projects, err := model.ProjectModel.ListBySponsorOrMember(db, user.Wallet, page)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, err)
+		return
+	}
+
+	ctx.JSON(http.StatusOK, api.Success(projects))
+}
+
 // ------ ------ ------ ------ ------ ------ ------ ------ ------
 // ------ Project Sponsors/Members ------ ------
 

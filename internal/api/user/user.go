@@ -13,7 +13,7 @@ import (
 )
 
 // ------ ------ ------ ------ ------ ------ ------ ------ ------
-// ------ User Auth ------ ------
+// ------ Auth ------ ------
 
 type LoginReq struct {
 	Wallet    string `json:"wallet" binding:"required"`
@@ -27,6 +27,7 @@ type LoginReply struct {
 	User     *model.User `json:"user"`
 }
 
+// Login `POST /login`
 func Login(ctx *gin.Context) {
 	req := LoginReq{}
 	_ = ctx.BindJSON(&req)
@@ -38,7 +39,6 @@ func Login(ctx *gin.Context) {
 		return
 	}
 
-	//wallet, db, cfg := ForContext(ctx)
 	_, db, cfg := api.ForContext(ctx)
 
 	// query user
@@ -78,12 +78,63 @@ func Login(ctx *gin.Context) {
 	}))
 }
 
+// Logout `GET /logout`
 func Logout(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, api.Success(nil))
 }
 
 // ------ ------ ------ ------ ------ ------ ------ ------ ------
-// ------ Query User ------ ------
+// ------ User ------ ------
+
+// Detail `GET /me`
+func Detail(ctx *gin.Context) {
+	user, db, _ := api.ForContext(ctx)
+
+	u, err := model.UserModel.Detail(db, user.Wallet)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, err)
+		return
+	}
+
+	ctx.JSON(http.StatusOK, api.Success(u))
+}
+
+type UpdateReq struct {
+	Name           string `json:"name"`
+	Avatar         string `json:"avatar"`
+	Email          string `json:"email"`
+	DiscordProfile string `json:"discordProfile"`
+	TwitterProfile string `json:"twitterProfile"`
+	GoogleProfile  string `json:"GoogleProfile"`
+}
+
+// Update `PUT /me`
+func Update(ctx *gin.Context) {
+	req := UpdateReq{}
+	_ = ctx.BindJSON(&req)
+
+	user, db, _ := api.ForContext(ctx)
+
+	u, err := model.UserModel.Detail(db, user.Wallet)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, err)
+		return
+	}
+	// update user info
+	u.Name = req.Name
+	u.Avatar = req.Avatar
+	u.Email = req.Email
+	u.DiscordProfile = req.DiscordProfile
+	u.TwitterProfile = req.TwitterProfile
+	u.GoogleProfile = req.GoogleProfile
+	err = model.UserModel.CreateOrUpdate(db, u)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, err)
+		return
+	}
+
+	ctx.JSON(http.StatusOK, api.Success(nil))
+}
 
 // Users `GET /users?wallets=1,2,3`
 // query multiple users by wallet array on batch
