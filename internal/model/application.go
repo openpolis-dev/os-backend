@@ -5,6 +5,7 @@ package model
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
@@ -62,12 +63,21 @@ type Application struct {
 	// Saves the reject reason if this application state is rejected
 	RejectReason string `json:"reject_reason"`
 
+	// CompleteMessage saves
+	CompleteMessage string `json:"complete_message"`
+
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 
 	// Detailed data saves application specified data
 	DetailedData string `json:"detailed_data"`
 
+	// Entity means this application's refer, which maybe project or guild.
+	// And the field EntityId is the db record ID for Project or Guild table
+	EntityType string `json:"entity_type"`
+	EntityId   string `json:"entity_id"`
+
+	// logs for auditions
 	AuditLogs []ApplicationAuditLog `json:"audit_logs"`
 }
 
@@ -145,42 +155,86 @@ func (app *Application) nextStateAfterAction(action AuditActionType) Application
 }
 
 // AuditApplication applies audit action on application and create related audit log in transaction
-func AuditApplication(db *gorm.DB, application *Application, action AuditActionType, extraMsg string) error {
+func AuditApplication(db *gorm.DB, operatorWallet string, application *Application, action AuditActionType, extraMsg string) error {
 	if !application.ValidateAuditAction(action) {
 		// TODO: Define the error message as project constant
 		return fmt.Errorf("application state %s is not suite for action %s", application.State, action)
 	}
 
-	// TODO: operator field is not set correctly
+	err := userWalletRecordExisting(db, operatorWallet)
+	if err != nil {
+		return err
+	}
+
 	return db.Transaction(func(tx *gorm.DB) error {
-		nextState := application.nextStateAfterAction(action)
-
-		if err := tx.Create(ApplicationAuditLog{
-			ApplicationID: application.ID,
-			LogTs:         time.Now(),
-			Operation:     action,
-			Operator:      "TBD",
-			PreState:      application.State,
-			PostState:     nextState,
-			ExtraData:     extraMsg,
-		}).Error; err != nil {
-			return err
-		}
-
-		application.State = nextState
-		if action == AuditActionReject {
-			application.RejectReason = extraMsg
-		}
-		if err := tx.Save(&application).Error; err != nil {
-			return err
-		}
-
-		return nil
+		return doAuditApplicationInTransaction(tx, operatorWallet, application, action, extraMsg)
 	})
 }
 
 // BatchAuditApplication audits multiple applications in same transaction.
 // Note: if any error occurred during the transaction the whole transaction will not be performed.
-func BatchAuditApplication(db *gorm.DB, application *[]Application, action AuditActionType, extraMsg string) error {
+func BatchAuditApplication(db *gorm.DB, operatorWallet string, applications *[]Application, action AuditActionType, extraMsg string) error {
+	for _, application := range *applications {
+		if !application.ValidateAuditAction(action) {
+			// TODO: Define the error message as project constant
+			return fmt.Errorf("application state %s is not suite for action %s", application.State, action)
+		}
+	}
+
+	err := userWalletRecordExisting(db, operatorWallet)
+	if err != nil {
+		return err
+	}
+
+	return db.Transaction(func(tx *gorm.DB) error {
+		for _, application := range *applications {
+			err = doAuditApplicationInTransaction(tx, operatorWallet, &application, action, extraMsg)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+func doAuditApplicationInTransaction(tx *gorm.DB, operatorWallet string, application *Application, action AuditActionType, extraMsg string) error {
+	nextState := application.nextStateAfterAction(action)
+
+	// Create audit log for application
+	if err := tx.Create(ApplicationAuditLog{
+		ApplicationID: application.ID,
+		LogTs:         time.Now(),
+		Operation:     action,
+		Operator:      operatorWallet,
+		PreState:      application.State,
+		PostState:     nextState,
+		ExtraData:     extraMsg,
+	}).Error; err != nil {
+		return err
+	}
+
+	// Update application state and additional message
+	application.State = nextState
+	if action == AuditActionReject {
+		application.RejectReason = extraMsg
+	}
+	if err := tx.Save(&application).Error; err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func userWalletRecordExisting(db *gorm.DB, walletAddr string) error {
+	userCnt := int64(0)
+	err := db.Model(&User{}).Where("wallet = ?", strings.ToLower(walletAddr)).Count(&userCnt).Error
+	if err != nil {
+		return err
+	}
+
+	if userCnt != 1 {
+		return fmt.Errorf("wallet record %s is not existing", walletAddr)
+	}
+
 	return nil
 }

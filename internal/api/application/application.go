@@ -4,11 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/model"
+	"github.com/xiaosongfu/gormfind"
 	"gorm.io/gorm"
 )
 
@@ -23,37 +23,16 @@ type AuditRequestBody struct {
 func List(ctx *gin.Context) {
 	db := api.ForContextOnlyDB(ctx)
 
-	// TODO: enable load this field from query params
-	orderBy := "updated_at desc"
+	page := api.ParseAndConvertPageParam(ctx)
 
-	pageSize := api.DefaultPageSize
-	passedInPageSize, found := ctx.GetQuery("size")
-	if found {
-		pageSize, err = strconv.Atoi(passedInPageSize)
-		if err != nil {
-			ctx.JSON(http.StatusBadRequest, api.Reply{
-				Code: -1,
-				Msg:  "Error size",
-			})
-		}
+	querySeg := db.Model(&model.Application{})
+	rcds, err := gormfind.Rows[model.Application](querySeg, page)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, api.Reply{
+			Code: -1,
+			Msg:  "query error",
+		})
 	}
-
-	queryOffset := 0
-	passedInPageCnt, found := ctx.GetQuery("page")
-	if found {
-		pageCnt, err := strconv.Atoi(passedInPageCnt)
-		if err != nil {
-			ctx.JSON(http.StatusBadRequest, api.Reply{
-				Code: -1,
-				Msg:  "Error page",
-			})
-		} else {
-			queryOffset = pageCnt * pageSize
-		}
-	}
-
-	var rcds []model.Application
-	db.Offset(queryOffset).Limit(pageSize).Order(orderBy).Find(&rcds)
 	ctx.JSON(http.StatusOK, api.Success(rcds))
 }
 
@@ -61,7 +40,7 @@ func List(ctx *gin.Context) {
 // An audit log record will be created with application at same time with action open
 // POST /applications
 func Create(ctx *gin.Context) {
-	db := api.ForContextOnlyDB(ctx)
+	user, db, _ := api.ForContext(ctx)
 
 	application := model.Application{}
 	if err := ctx.BindJSON(application); err != nil {
@@ -72,6 +51,9 @@ func Create(ctx *gin.Context) {
 			})
 		}
 	}
+
+	// Update applicant data
+	application.Applicant = user.Wallet
 
 	err = model.NewApplicationRecord(db, &application)
 	if err != nil {
@@ -90,7 +72,7 @@ func Create(ctx *gin.Context) {
 // If there are existing applications in processing state, the export function returns error.
 // Actually, Export is the batchProcess operation
 func Export(ctx *gin.Context) {
-	db := api.ForContextOnlyDB(ctx)
+	user, db, _ := api.ForContext(ctx)
 	var processingRecordCount int64
 	db.Model(&model.Application{}).Where("state <> ?", model.ApplicationStateProcessing).Count(&processingRecordCount)
 
@@ -104,7 +86,7 @@ func Export(ctx *gin.Context) {
 	var applications []model.Application
 	getBatchApplicationsOrReturnError(ctx, &applications)
 
-	err = model.BatchAuditApplication(db, &applications, model.AuditActionProcess, "")
+	err = model.BatchAuditApplication(db, user.Wallet, &applications, model.AuditActionProcess, "")
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, api.Reply{
 			Code: -1,
@@ -119,8 +101,8 @@ func BatchApprove(ctx *gin.Context) {
 	var applications []model.Application
 	getBatchApplicationsOrReturnError(ctx, &applications)
 
-	db := api.ForContextOnlyDB(ctx)
-	err = model.BatchAuditApplication(db, &applications, model.AuditActionApprove, "")
+	user, db, _ := api.ForContext(ctx)
+	err = model.BatchAuditApplication(db, user.Wallet, &applications, model.AuditActionApprove, "")
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, api.Reply{
 			Code: -1,
@@ -136,8 +118,8 @@ func BatchReject(ctx *gin.Context) {
 	var applications []model.Application
 	getBatchApplicationsOrReturnError(ctx, &applications)
 
-	db := api.ForContextOnlyDB(ctx)
-	err = model.BatchAuditApplication(db, &applications, model.AuditActionReject, "")
+	user, db, _ := api.ForContext(ctx)
+	err = model.BatchAuditApplication(db, user.Wallet, &applications, model.AuditActionReject, "")
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, api.Reply{
 			Code: -1,
@@ -152,7 +134,7 @@ func BatchReject(ctx *gin.Context) {
 // Only applications in processing state can be completed, so no application ids are required for this API call
 // This api will fetch all applications with processing state in db and apply `complete` action on them
 func BatchComplete(ctx *gin.Context) {
-	db := api.ForContextOnlyDB(ctx)
+	user, db, _ := api.ForContext(ctx)
 	var applications []model.Application
 	db.Model(&model.Application{}).Where("state = ?", model.ApplicationStateProcessing).Find(&applications)
 
@@ -165,7 +147,7 @@ func BatchComplete(ctx *gin.Context) {
 		})
 	}
 
-	err = model.BatchAuditApplication(db, &applications, model.AuditActionComplete, reqBody.Message)
+	err = model.BatchAuditApplication(db, user.Wallet, &applications, model.AuditActionComplete, reqBody.Message)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, api.Reply{
 			Code: -1,
@@ -222,9 +204,9 @@ func Complete(ctx *gin.Context) {
 func auditApplication(ctx *gin.Context, application *model.Application, auditAction model.AuditActionType, auditMsg string) {
 	getRecordOrReturnNotFound(ctx, application)
 
-	db := api.ForContextOnlyDB(ctx)
+	user, db, _ := api.ForContext(ctx)
 	if application.ValidateAuditAction(auditAction) {
-		err = model.AuditApplication(db, application, auditAction, auditMsg)
+		err = model.AuditApplication(db, user.Wallet, application, auditAction, auditMsg)
 		if err != nil {
 			ctx.JSON(http.StatusBadRequest, api.Reply{
 				Code: -1,
