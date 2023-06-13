@@ -1,13 +1,16 @@
 package project
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/samber/lo"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/model"
+	"gorm.io/gorm"
 )
 
 // ------ ------ ------ ------ ------ ------ ------ ------ ------
@@ -105,8 +108,53 @@ func Update(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, api.Success(nil))
 }
 
+// Close
+// POST /project/:id/close
 func Close(ctx *gin.Context) {
-	// TODO
+	idParam := ctx.Param("id")
+	id, _ := strconv.Atoi(idParam)
+
+	user, db, _ := api.ForContext(ctx)
+
+	project, err := model.ProjectModel.Detail(db, uint(id))
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, err)
+		return
+	}
+
+	if project.Status != model.ProjectStatusOpen {
+		ctx.JSON(http.StatusBadRequest, api.Reply{
+			Code: -1,
+			Msg:  fmt.Sprintf("project %d status is not suit for closing", id),
+		})
+	}
+
+	err = db.Transaction(func(tx *gorm.DB) error {
+		application := model.Application{
+			Type:       model.ApplicationCloseProject,
+			Applicant:  user.Wallet,
+			State:      model.ApplicationStateOpen,
+			CreatedAt:  time.Now(),
+			UpdatedAt:  time.Now(),
+			EntityType: "project",
+			EntityId:   project.ID,
+		}
+		err = model.NewApplicationRecord(tx, &application)
+		if err != nil {
+			return err
+		}
+		project.Status = model.ProjectStatusPendingClose
+		return tx.Save(project).Error
+	})
+
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, api.Reply{
+			Code: -1,
+			Msg:  fmt.Sprintf("update project status error: %s", err.Error()),
+		})
+	}
+
+	ctx.JSON(http.StatusOK, api.Success(nil))
 }
 
 type DetailReply struct {

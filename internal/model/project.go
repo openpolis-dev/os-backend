@@ -5,15 +5,23 @@ import (
 	"gorm.io/gorm"
 )
 
+type ProjectStatus string
+
+const (
+	ProjectStatusOpen         ProjectStatus = "open"
+	ProjectStatusPendingClose               = "pending_close"
+	ProjectStatusClosed                     = "closed"
+)
+
 type Project struct {
 	gorm.Model
 
-	Logo      string   `json:"logo"`
-	Name      string   `json:"name"`
-	Status    string   `json:"status"`
-	Sponsors  []string `json:"sponsors"`
-	Members   []string `json:"members"`
-	Proposals []string `json:"proposals"`
+	Logo      string        `json:"logo"`
+	Name      string        `json:"name"`
+	Status    ProjectStatus `json:"status"` // Status may have those values: open/pending_close/closed
+	Sponsors  []string      `json:"sponsors"`
+	Members   []string      `json:"members"`
+	Proposals []string      `json:"proposals"`
 }
 
 type projectModel struct{}

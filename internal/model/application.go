@@ -75,7 +75,7 @@ type Application struct {
 	// Entity means this application's refer, which maybe project or guild.
 	// And the field EntityId is the db record ID for Project or Guild table
 	EntityType string `json:"entity_type"`
-	EntityId   string `json:"entity_id"`
+	EntityId   uint   `json:"entity_id"`
 
 	// logs for auditions
 	AuditLogs []ApplicationAuditLog `json:"audit_logs"`
@@ -220,6 +220,21 @@ func doAuditApplicationInTransaction(tx *gorm.DB, operatorWallet string, applica
 	}
 	if err := tx.Save(&application).Error; err != nil {
 		return err
+	}
+
+	if nextState == ApplicationStateCompleted {
+		if application.Type == ApplicationCloseProject {
+			// This is a close project application, so the `entity_id` saved indicates a project record
+			project, err := ProjectModel.Detail(tx, application.EntityId)
+			if err != nil {
+				return err
+			}
+			project.Status = ProjectStatusClosed
+			return tx.Save(project).Error
+		} else if application.Type == ApplicationNewReward {
+			// For new reward application, the `entity_type` is required to get related db table
+			// TODO: Not implemented
+		}
 	}
 
 	return nil
