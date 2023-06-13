@@ -4,6 +4,7 @@ package model
 // and new_reward currently.
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -51,6 +52,9 @@ type Application struct {
 	// unique ID for this request
 	ID uint `json:"id"`
 
+	// DisplayGroupId is used to group records should be displayed in one line in frontend page
+	DisplayGroupId string `json:"display_group_id"`
+
 	// application type
 	Type ApplicationType `json:"type"`
 
@@ -70,6 +74,7 @@ type Application struct {
 	UpdatedAt time.Time `json:"updated_at"`
 
 	// Detailed data saves application specified data
+	// For NewReward request, it should contain user_wallet fields
 	DetailedData string `json:"detailed_data"`
 
 	// Entity means this application's refer, which maybe project or guild.
@@ -106,6 +111,15 @@ type ApplicationAuditLog struct {
 
 	// ExtraData saves some additional data for the operation, e.g. reject reason
 	ExtraData string `json:"extra_data"`
+}
+
+type NewRewardDetail struct {
+	// TargetUserWallet saves user wallet address that the reward will be sent to
+	TargetUserWallet string `json:"user_wallet"`
+
+	// AssetName and Amount saves the token related info about this reward application
+	AssetName string `json:"asset_name"`
+	Amount    uint64 `json:"amount"`
 }
 
 // NewApplicationRecord create application and related audit log message with given params
@@ -217,12 +231,59 @@ func doAuditApplicationInTransaction(tx *gorm.DB, operatorWallet string, applica
 	application.State = nextState
 	if action == AuditActionReject {
 		application.RejectReason = extraMsg
+	} else if action == AuditActionComplete {
+		application.CompleteMessage = extraMsg
 	}
+
 	if err := tx.Save(&application).Error; err != nil {
 		return err
 	}
 
-	if nextState == ApplicationStateCompleted {
+	if nextState == ApplicationStateProcessing {
+		if application.Type == ApplicationNewReward {
+			// The NewReward application getting into processing state requires some updates on assets of project and user
+			// * For project/guild, find budget record and extract amount from remainAmount
+			// * For user, update asset record with asset name and processing amount.
+			structDetailedData := NewRewardDetail{}
+			if err := json.Unmarshal([]byte(application.DetailedData), &structDetailedData); err != nil {
+				return err
+			}
+
+			if application.EntityType == "project" {
+				// Update project budget
+				if err := ProjectModel.WithdrawBudget(tx, application.EntityId, structDetailedData.AssetName, structDetailedData.Amount); err != nil {
+					return err
+				}
+
+				// Update user asset record
+				if err := UserAssetRecordModel.CreateOrUpdate(tx, application.Applicant, structDetailedData.AssetName, structDetailedData.Amount, 0); err != nil {
+					return err
+				}
+			} else if application.EntityType == "guild" {
+				// TODO: Guild is not implemented yet
+			} else {
+				return fmt.Errorf("unknown application entity type %s", application.EntityType)
+			}
+		}
+	} else if nextState == ApplicationStateRejected {
+		if application.Type == ApplicationNewReward {
+			// Application has been rejected, if it is new reward request, add budget back to project/guild and remove user processing asset amount
+
+			structDetailedData := NewRewardDetail{}
+			if err := json.Unmarshal([]byte(application.DetailedData), &structDetailedData); err != nil {
+				return err
+			}
+
+			if err := ProjectModel.DepositBudget(tx, application.EntityId, structDetailedData.AssetName, structDetailedData.Amount); err != nil {
+				return err
+			}
+
+			// Update user asset record
+			if err := UserAssetRecordModel.Rollback(tx, application.Applicant, structDetailedData.AssetName, structDetailedData.Amount, 0); err != nil {
+				return err
+			}
+		}
+	} else if nextState == ApplicationStateCompleted {
 		if application.Type == ApplicationCloseProject {
 			// This is a close project application, so the `entity_id` saved indicates a project record
 			project, err := ProjectModel.Detail(tx, application.EntityId)
@@ -233,7 +294,17 @@ func doAuditApplicationInTransaction(tx *gorm.DB, operatorWallet string, applica
 			return tx.Save(project).Error
 		} else if application.Type == ApplicationNewReward {
 			// For new reward application, the `entity_type` is required to get related db table
-			// TODO: Not implemented
+			// The main steps for the post complete operation are:
+			// * Add the amount to target user
+			structDetailedData := NewRewardDetail{}
+			if err := json.Unmarshal([]byte(application.DetailedData), &structDetailedData); err != nil {
+				return err
+			}
+
+			// Update user asset record
+			if err := UserAssetRecordModel.CompleteAssetTransaction(tx, application.Applicant, structDetailedData.AssetName, structDetailedData.Amount); err != nil {
+				return err
+			}
 		}
 	}
 
