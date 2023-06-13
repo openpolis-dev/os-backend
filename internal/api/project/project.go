@@ -175,7 +175,7 @@ func Detail(ctx *gin.Context) {
 		return
 	}
 
-	budgets, err := model.ProjectBudgetModel.List(db, proj.ID)
+	budgets, err := model.ProjectBudgetModel.ListByProjectId(db, proj.ID)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, err)
 		return

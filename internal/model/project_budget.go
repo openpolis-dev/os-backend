@@ -33,7 +33,7 @@ func (*projectBudgetModel) Detail(db *gorm.DB, id uint) (*ProjectBudget, error) 
 	return gormfind.Row[ProjectBudget](querySeg)
 }
 
-func (*projectBudgetModel) List(db *gorm.DB, projID uint) ([]*ProjectBudget, error) {
+func (*projectBudgetModel) ListByProjectId(db *gorm.DB, projID uint) ([]*ProjectBudget, error) {
 	querySeg := db.Where("project_id = ?", projID)
 	return gormfind.Rows[ProjectBudget](querySeg, nil)
 }
