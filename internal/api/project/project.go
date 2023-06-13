@@ -237,7 +237,7 @@ func UpdateMembers(ctx *gin.Context) {
 // ------ Project Budget ------ ------
 
 type UpdateBudgetReq struct {
-	ID          uint   `json:"ID"`
+	ID          uint   `json:"id"`
 	TotalAmount uint64 `json:"totalAmount"`
 }
 
