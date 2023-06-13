@@ -136,7 +136,7 @@ func Update(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, api.Success(nil))
 }
 
-// Users `GET /users?wallets=1,2,3`
+// Users `GET /users?wallets=0x1&wallets=0x2&wallets=0x3`
 // query multiple users by wallet array on batch
 func Users(ctx *gin.Context) {
 	wallets := ctx.QueryArray("wallets")

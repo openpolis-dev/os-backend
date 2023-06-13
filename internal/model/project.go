@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/xiaosongfu/gormfind"
 	"gorm.io/gorm"
@@ -21,9 +22,9 @@ type Project struct {
 	Logo      string        `json:"logo"`
 	Name      string        `json:"name"`
 	Status    ProjectStatus `json:"status"` // Status may have those values: open/pending_close/closed
-	Sponsors  []string      `json:"sponsors"`
-	Members   []string      `json:"members"`
-	Proposals []string      `json:"proposals"`
+	Sponsors  []string      `json:"sponsors" gorm:"serializer:json"`
+	Members   []string      `json:"members" gorm:"serializer:json"`
+	Proposals []string      `json:"proposals" gorm:"serializer:json"`
 }
 
 type projectModel struct{}
@@ -49,7 +50,8 @@ func (*projectModel) List(db *gorm.DB, status string, page *gormfind.Page) ([]*P
 }
 
 func (*projectModel) ListBySponsorOrMember(db *gorm.DB, wallet string, page *gormfind.Page) ([]*Project, error) {
-	querySeg := db.Table("projects").Where("? = ANY(sponsors)", wallet).Or("? = ANY(members)", wallet)
+	w := fmt.Sprintf("%%\"%s\"%%", strings.ToLower(wallet)) // value is: `%"0x123"%`
+	querySeg := db.Table("projects").Where("sponsors LIKE ?", w).Or("members LIKE ?", w)
 	return gormfind.Rows[Project](querySeg, page)
 }
 
