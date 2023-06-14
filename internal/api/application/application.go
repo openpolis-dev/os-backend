@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/theseed-labs/os-backend/internal/api"
@@ -16,6 +17,17 @@ var err error
 
 type AuditRequestBody struct {
 	Message string `json:"message"`
+}
+
+// NewApplicationRequest is used to save new application request data passed from frontend
+// TODO: Verify with frontend side about passed in params
+type NewApplicationRequest struct {
+	Type             string `json:"type"`
+	Entity           string `json:"entity"`
+	EntityId         string `json:"entity_id"`
+	TargetUserWallet string `json:"target_user_wallet"`
+	AssetName        string `json:"asset_name"`
+	Amount           uint64 `json:"amount"`
 }
 
 // List lists all applications based on query params and return in JSON format
@@ -42,14 +54,45 @@ func List(ctx *gin.Context) {
 func Create(ctx *gin.Context) {
 	user, db, _ := api.ForContext(ctx)
 
-	application := model.Application{}
-	if err := ctx.BindJSON(application); err != nil {
+	newApplicationReq := NewApplicationRequest{}
+	if err := ctx.BindJSON(newApplicationReq); err != nil {
 		if err != nil {
 			ctx.JSON(http.StatusBadRequest, api.Reply{
 				Code: -1,
 				Msg:  "Data error",
 			})
 		}
+	}
+
+	if newApplicationReq.Type != "close_project" && newApplicationReq.Type != "new_reward" {
+		ctx.JSON(http.StatusBadRequest, api.Reply{
+			Code: -1,
+			Msg:  fmt.Sprintf("unknown application type %s", newApplicationReq.Type),
+		})
+	}
+
+	if newApplicationReq.Entity != "guild" && newApplicationReq.Entity != "project" {
+		ctx.JSON(http.StatusBadRequest, api.Reply{
+			Code: -1,
+			Msg:  fmt.Sprintf("unknown application entity %s", newApplicationReq.Entity),
+		})
+	}
+
+	application := model.Application{
+		DisplayGroupId: "",
+		Type:           model.ApplicationType(newApplicationReq.Type),
+		Applicant:      user.Wallet,
+		State:          model.ApplicationStateOpen,
+		CreatedAt:      time.Now(),
+		UpdatedAt:      time.Now(),
+		DetailedData: model.ApplicationDetailedData{
+			TargetUserWallet: newApplicationReq.TargetUserWallet,
+			AssetName:        newApplicationReq.AssetName,
+			Amount:           newApplicationReq.Amount,
+		},
+		EntityType: "",
+		EntityId:   0,
+		AuditLogs:  nil,
 	}
 
 	// Update applicant data
@@ -63,7 +106,7 @@ func Create(ctx *gin.Context) {
 		})
 	}
 
-	ctx.JSON(http.StatusCreated, &application)
+	ctx.JSON(http.StatusCreated, api.Success(&application))
 }
 
 // Batch operations, the request body are ids
