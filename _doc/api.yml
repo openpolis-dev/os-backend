@@ -17,6 +17,7 @@ paths:
 
   /user/login:
     post:
+      tags: [ user ]
       summary: user login
       requestBody:
         content:
@@ -38,6 +39,7 @@ paths:
 
   /user/users:
     get:
+      tags: [ user ]
       summary: query multiple users by wallet
       parameters:
         - name: wallets
@@ -71,6 +73,7 @@ paths:
 
   /user/me:
     get:
+      tags: [ user ]
       security:
         - bearerAuth: [ ]
       summary: get self user detail
@@ -82,6 +85,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/User"
     put:
+      tags: [ user ]
       security:
         - bearerAuth: [ ]
       summary: update user detail data
@@ -96,6 +100,7 @@ paths:
 
   /user/logout:
     get:
+      tags: [ user ]
       security:
         - bearerAuth: [ ]
       summary: logout user
@@ -105,6 +110,7 @@ paths:
 
   /projects:
     get:
+      tags: [ project ]
       summary: List all projects match the query params
       parameters:
         - name: start
@@ -134,24 +140,20 @@ paths:
                 items:
                   $ref: '#/components/schemas/Project'
     post:
+      tags: [ project ]
       summary: Create project
       requestBody:
         content:
           "application/json":
             schema:
-              $ref: '#/components/schemas/Project'
+              $ref: '#/components/schemas/NewProjectRequest'
       responses:
         '201':
           description: Created
-        '400':
-          description: Created failed
-          content:
-            "application/json":
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
 
   /projects/{id}:
     get:
+      tags: [ project ]
       description: Show project detail
       parameters:
         - name: id
@@ -160,22 +162,127 @@ paths:
           required: true
           schema:
             type: string
-
       responses:
         '200':
           description: OK
           content:
             "application/json":
               schema:
-                $ref: '#/components/schemas/Project'
+                type: object
+                properties:
+                  code:
+                    type: number
+                  msg:
+                    type: string
+                  data:
+                    type: object
+                    properties:
+                      project:
+                        $ref: '#/components/schemas/Project'
+                      budgets:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/BudgetRecord"
     put:
+      tags: [ project ]
       summary: Update project meta info
+      parameters:
+        - name: id
+          in: path
+          description: id of the project
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          "application/json":
+            schema:
+              type: object
+              properties:
+                logo:
+                  type: string
+                  description: project logo
+                name:
+                  type: string
+                  description: project name
       responses:
         '200':
           description: project updated successfully
 
+  /projects/{id}/close:
+    post:
+      tags: [ project ]
+      description: create a close_project application, note this may be able to merged to application APIs
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: ok
+
+  /projects/my:
+    get:
+      tags: [ project ]
+      description: list my projects
+      parameters:
+        - name: start
+          in: query
+          required: false
+          schema:
+            type: number
+        - name: end
+          in: query
+          required: false
+          schema:
+            type: number
+        - name: order
+          in: query
+          required: false
+          description: order of returned result, sort by timestamp field
+          schema:
+            type: string
+            enum: [ asc, desc ]
+      responses:
+        '200':
+          description: OK
+          content:
+            "application/json":
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Project'
+
+  /projects/{id}/update_sponsors:
+    post:
+      tags: [ project ]
+      description: update sponsors for project
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          "application/json":
+            schema:
+              type: object
+              properties:
+                sponsors:
+                  type: array
+                  items:
+                    type: string
+                    description: sponsor wallet address
+      responses:
+        '200':
+          description: sponsor update
+
   /projects/{id}/update_member:
     post:
+      tags: [ project ]
       description: Update member of the project
       parameters:
         - name: id
@@ -187,15 +294,20 @@ paths:
         content:
           "application/json":
             schema:
-              type: array
-              items:
-                type: string
+              type: object
+              properties:
+                members:
+                  type: array
+                  items:
+                    type: string
+                    description: member wallet address
       responses:
         '200':
           description: member update
 
   /projects/{id}/update_budget:
     post:
+      tags: [ project ]
       description: Update budget of the project
       parameters:
         - name: id
@@ -209,60 +321,84 @@ paths:
             schema:
               type: object
               properties:
-                budget_type:
+                id:
                   type: string
-                  description: budget type, can be selected from `credit` and <token name>
+                  description: budget record ID
+                asset_name:
+                  type: string
+                  description: budget asset name
                 total_amount:
                   type: number
-                  description: new total amount
-                  minimum: 0
+                  description: total amount of the budget
       responses:
         '200':
           description: budget updated
 
-  /projects/{id}/new_reward_request:
+  /projects/{id}/add_related_proposal/{proposal_id}:
     post:
-      description: Create new reward application for specified user
+      tags: [ project ]
+      description: add proposal to project
       parameters:
         - name: id
           in: path
           required: true
           schema:
             type: string
-      requestBody:
-        content:
-          "application/json":
-            schema:
-              type: array
-              items:
-                type: object
-                properties:
-                  target_wallet:
-                    type: string
-                    description: target wallet of
-                  amount:
-                    type: number
-                    description: new total amount
-                    minimum: 0
-                  token_type:
-                    type: string
-                    description: reward type, should be existing type in project budgets
-                  category:
-                    type: string
-                    description: reward category
-                  comment:
-                    type: string
-                    description: comment for this reward
-                  reward_source:
-                    type: string
-                    description: where the reward is coming from
+        - name: proposal_id
+          in: path
+          required: true
+          description: proposal ID that will be added to the project
+          schema:
+            type: string
       responses:
-        '200':
-          description: budget updated
+        200:
+          description: proposal added to project successfully
+
+  #  /projects/{id}/new_reward_request:
+  #    post:
+  #      tags: [ project ]
+  #      description: Create new reward application for specified user
+  #      parameters:
+  #        - name: id
+  #          in: path
+  #          required: true
+  #          schema:
+  #            type: string
+  #      requestBody:
+  #        content:
+  #          "application/json":
+  #            schema:
+  #              type: array
+  #              items:
+  #                type: object
+  #                properties:
+  #                  target_wallet:
+  #                    type: string
+  #                    description: target wallet of
+  #                  amount:
+  #                    type: number
+  #                    description: new total amount
+  #                    minimum: 0
+  #                  token_type:
+  #                    type: string
+  #                    description: reward type, should be existing type in project budgets
+  #                  category:
+  #                    type: string
+  #                    description: reward category
+  #                  comment:
+  #                    type: string
+  #                    description: comment for this reward
+  #                  reward_source:
+  #                    type: string
+  #                    description: where the reward is coming from
+  #      responses:
+  #        '200':
+  #          description: budget updated
 
 
   /applications:
     get:
+      tags: [ applications ]
       security:
         - bearerAuth: [ ]
       summary: list all applications
@@ -316,6 +452,7 @@ paths:
                       $ref: "#/components/schemas/Application"
 
     post:
+      tags: [ applications ]
       security:
         - bearerAuth: [ ]
       description: create new application
@@ -341,6 +478,7 @@ paths:
 
   /applications/approve:
     post:
+      tags: [ applications ]
       security:
         - bearerAuth: [ ]
       description: approve multiple applications
@@ -364,6 +502,7 @@ paths:
 
   /applications/export:
     post:
+      tags: [ applications ]
       security:
         - bearerAuth: [ ]
       description: Export application list that will be processed outside the system
@@ -394,6 +533,7 @@ paths:
 
   /applications/reject:
     post:
+      tags: [ applications ]
       security:
         - bearerAuth: [ ]
       description: reject multiple applications
@@ -418,6 +558,7 @@ paths:
 
   /applications/complete:
     post:
+      tags: [ applications ]
       security:
         - bearerAuth: [ ]
       description: >
@@ -444,6 +585,7 @@ paths:
 
   /applications/{id}:
     get:
+      tags: [ applications ]
       security:
         - bearerAuth: [ ]
       description: Show application detail
@@ -457,6 +599,7 @@ paths:
 
   /applications/{id}/approve:
     post:
+      tags: [ applications ]
       security:
         - bearerAuth: [ ]
       description: approve the application
@@ -466,6 +609,7 @@ paths:
 
   /applications/{id}/complete:
     post:
+      tags: [ applications ]
       security:
         - bearerAuth: [ ]
       description: mark the application to be completed
@@ -475,6 +619,7 @@ paths:
 
   /applications/{id}/reject:
     post:
+      tags: [ applications ]
       security:
         - bearerAuth: [ ]
       description: reject the application
@@ -484,6 +629,7 @@ paths:
 
   /applications/{id}/process:
     post:
+      tags: [ applications ]
       security:
         - bearerAuth: [ ]
       description: process the application
@@ -540,11 +686,6 @@ components:
           items:
             type: string
             description: proposal ID
-        budgets:
-          description: budget of the project, may contains various type
-          type: array
-          items:
-            $ref: '#/components/schemas/BudgetRecord'
 
     BudgetRecord:
       description: Budget record
@@ -553,6 +694,9 @@ components:
         id:
           type: number
           description: budget record ID
+        project_id:
+          type: string
+          description: project ID this budget record is attached on
         name:
           type: string
           description: token name for this budget
@@ -562,11 +706,12 @@ components:
         remain_amount:
           type: integer
           description: remain amount of the budget
-        auditLogs:
-          type: array
-          description: audit log for budget
-          items:
-            $ref: '#/components/schemas/BudgetAuditLog'
+        created_at:
+          type: string
+          description: budget record created at time
+        updated_at:
+          type: string
+          description: budget record last update time
 
     BudgetAuditLog:
       description: budget change log
@@ -753,6 +898,45 @@ components:
           type: string
         GoogleProfile:
           type: string
+
+    NewProjectRequest:
+      type: object
+      properties:
+        logo:
+          type: string
+          description: logo URL or b64 encoded image
+        name:
+          type: string
+          description: project name
+        sponsors:
+          type: array
+          description: sponsors address
+          items:
+            type: string
+            description: user wallet address
+        members:
+          type: array
+          description: members address
+          items:
+            type: string
+            description: user wallet address
+        proposals:
+          type: array
+          description: proposals address
+          items:
+            type: string
+            description: proposal address
+        budgets:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+                description: budget asset name
+              total_amount:
+                type: string
+                description: budget amount
 
     NewApplicationRequest:
       type: object

@@ -63,11 +63,10 @@ func main() {
 
 		// project routers
 		projGroup := authorizedGroup.Group("/projects")
+		projGroup.GET("/", project.List)
 		projGroup.POST("/", project.Create)
 		projGroup.PUT("/:id", project.Update)
-		projGroup.GET("/close", project.Close)
 		projGroup.GET("/:id", project.Detail)
-		projGroup.GET("/", project.List)
 		projGroup.POST("/:id/close", project.Close)
 		projGroup.GET("/my", project.MyProjects)
 		projGroup.POST("/:id/update_sponsors", project.UpdateSponsors)
