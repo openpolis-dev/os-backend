@@ -14,6 +14,7 @@ import (
 type Config struct {
 	Jwt        jwt        `json:"jwt" yaml:"jwt"`
 	DataSource dataSource `json:"dataSource" yaml:"dataSource"`
+	Casbin     casbin     `json:"casbin" yaml:"casbin"`
 }
 
 type (
@@ -23,6 +24,10 @@ type (
 	jwt struct {
 		Secret string `json:"secret" yaml:"secret" env:"JWT_SECRET,overwrite"`
 		Exp    int    `json:"exp" yaml:"exp" env:"JWT_EXP,overwrite"`
+	}
+	casbin struct {
+		DriverName string   `json:"driverName" yaml:"driverName"`
+		SuperUsers []string `json:"superUsers" yaml:"superUsers"`
 	}
 )
 

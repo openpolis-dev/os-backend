@@ -7,6 +7,7 @@ import (
 	gormadapter "github.com/casbin/gorm-adapter/v3"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/samber/lo"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/api/project"
 	"github.com/theseed-labs/os-backend/internal/api/user"
@@ -18,15 +19,16 @@ import (
 func main() {
 	// read config data
 	cfgPath := flag.String("config", "config.yml", "Configuration file path, should be yaml or json format")
+	casbinModelConfPath := flag.String("casbin-model", "rbac_model.conf", "casbin model conf file path, should be conf format")
 	flag.Parse()
 	cfg := config.LoadConfig(*cfgPath)
 
 	// setup permission system
-	adapter, err := gormadapter.NewAdapter("mysql", cfg.DataSource.Dsn, true)
+	adapter, err := gormadapter.NewAdapter(cfg.Casbin.DriverName, cfg.DataSource.Dsn, true)
 	if err != nil {
 		panic(err)
 	}
-	enforcer, err := casbin.NewEnforcer("rbac_model.conf", adapter)
+	enforcer, err := casbin.NewEnforcer(*casbinModelConfPath, adapter)
 	if err != nil {
 		panic(err)
 	}
@@ -42,8 +44,11 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	// add default roles
-	_, err = enforcer.AddGroupingPolicy("0x183f09c3ce99c02118c570e03808476b22d63191", api.RoleHall) // add default hall wallet TODO use hall wallet in config file
+	// add default users
+	groupPolicies := lo.Map[string, []string](cfg.Casbin.SuperUsers, func(user string, _ int) []string {
+		return []string{user, api.RoleHall}
+	})
+	_, err = enforcer.AddGroupingPolicies(groupPolicies) // add default hall wallets
 	if err != nil {
 		panic(err)
 	}

@@ -6,19 +6,19 @@ const (
 	RoleProjAdmin  = "proj_admin"
 	RoleGuildAdmin = "guild_admin"
 
-	RoleProjSponsorPre = "proj_sponsor_"
-	RoleProjMemberPre  = "proj_member_"
+	RoleProjSponsorPrefix = "proj_sponsor_"
+	RoleProjMemberPrefix  = "proj_member_"
 
-	RoleGuildSponsorPre = "guild_sponsor_"
-	RoleGuildMemberPre  = "guild_member_"
+	RoleGuildSponsorPrefix = "guild_sponsor_"
+	RoleGuildMemberPrefix  = "guild_member_"
 )
 
 const (
 	ObjProj  = "proj"
 	ObjGuild = "guild"
 
-	ObjProjPre  = "proj_"
-	ObjGuildPre = "guild_"
+	ObjProjPrefix  = "proj_"
+	ObjGuildPrefix = "guild_"
 )
 
 const (

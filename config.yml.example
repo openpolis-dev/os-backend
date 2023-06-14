@@ -4,3 +4,9 @@ dataSource:
 jwt:
   secret: <placeholder>
   exp: 24 # unit is hour
+
+casbin:
+  driverName: mysql
+  superUsers:
+    - 0x183...3191
+    - 0xc1e...1283
