@@ -46,10 +46,8 @@ var applicationStateMap = map[ApplicationState]map[AuditActionType]ApplicationSt
 }
 
 type Application struct {
-	gorm.Model
-
 	// unique ID for this request
-	ID uint `json:"id"`
+	ID uint `json:"id" gorm:"primaryKey"`
 
 	// DisplayGroupId is used to group records should be displayed in one line in frontend page
 	DisplayGroupId string `json:"display_group_id"`
@@ -96,10 +94,8 @@ type ApplicationDetailedData struct {
 }
 
 type ApplicationAuditLog struct {
-	gorm.Model
-
 	// unique ID of this audit log
-	ID uint `json:"id"`
+	ID uint `json:"id" gorm:"primaryKey"`
 
 	// Which application this audit log belongs to
 	ApplicationID uint `json:"application_id"`

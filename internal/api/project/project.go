@@ -29,7 +29,7 @@ type (
 	}
 	BudgetParam struct {
 		Name        string `json:"name"`
-		TotalAmount uint64 `json:"totalAmount"`
+		TotalAmount uint64 `json:"total_amount"`
 	}
 )
 
@@ -285,8 +285,9 @@ func UpdateMembers(ctx *gin.Context) {
 // ------ Project Budget ------ ------
 
 type UpdateBudgetReq struct {
-	ID          uint   `json:"id"`
-	TotalAmount uint64 `json:"totalAmount"`
+	Id          uint   `json:"id"`
+	AssetName   string `json:"asset_name"`
+	TotalAmount uint64 `json:"total_amount"`
 }
 
 // UpdateBudget `POST /projects/:id/update_budget`
@@ -299,7 +300,7 @@ func UpdateBudget(ctx *gin.Context) {
 
 	db := api.ForContextOnlyDB(ctx)
 
-	budget, err := model.ProjectBudgetModel.Detail(db, req.ID)
+	budget, err := model.ProjectBudgetModel.Detail(db, req.Id)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, err)
 		return

@@ -3,6 +3,7 @@ package model
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/xiaosongfu/gormfind"
 	"gorm.io/gorm"
@@ -17,14 +18,16 @@ const (
 )
 
 type Project struct {
-	gorm.Model
-
+	ID        uint          `json:"id" gorm:"primaryKey"`
 	Logo      string        `json:"logo"`
 	Name      string        `json:"name"`
 	Status    ProjectStatus `json:"status"` // Status may have those values: open/pending_close/closed
 	Sponsors  []string      `json:"sponsors" gorm:"serializer:json"`
 	Members   []string      `json:"members" gorm:"serializer:json"`
 	Proposals []string      `json:"proposals" gorm:"serializer:json"`
+
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 type projectModel struct{}
