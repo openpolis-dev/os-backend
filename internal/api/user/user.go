@@ -39,7 +39,7 @@ func Login(ctx *gin.Context) {
 		return
 	}
 
-	_, db, cfg := api.ForContext(ctx)
+	_, _, db, cfg := api.ForContext(ctx)
 
 	// query user
 	user, err := model.UserModel.Detail(db, req.Wallet)
@@ -88,7 +88,7 @@ func Logout(ctx *gin.Context) {
 
 // Detail `GET /me`
 func Detail(ctx *gin.Context) {
-	user, db, _ := api.ForContext(ctx)
+	user, db := api.ForContextUserAndDB(ctx)
 
 	u, err := model.UserModel.Detail(db, user.Wallet)
 	if err != nil {
@@ -113,7 +113,7 @@ func Update(ctx *gin.Context) {
 	req := UpdateReq{}
 	_ = ctx.BindJSON(&req)
 
-	user, db, _ := api.ForContext(ctx)
+	user, db := api.ForContextUserAndDB(ctx)
 
 	u, err := model.UserModel.Detail(db, user.Wallet)
 	if err != nil {

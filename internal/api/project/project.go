@@ -1,8 +1,10 @@
 package project
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/samber/lo"
@@ -35,7 +37,17 @@ func Create(ctx *gin.Context) {
 	req := CreateReq{}
 	_ = ctx.BindJSON(&req)
 
-	db := api.ForContextOnlyDB(ctx)
+	user, enforcer, db, _ := api.ForContext(ctx)
+	//  check permission
+	ok, err := enforcer.Enforce(user.Wallet, api.ObjProj, api.ActCreate)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, err)
+		return
+	}
+	if !ok {
+		ctx.JSON(http.StatusForbidden, err)
+		return
+	}
 
 	tx := db.Begin()
 	// save project
@@ -47,7 +59,7 @@ func Create(ctx *gin.Context) {
 		Members:   req.Members,
 		Proposals: req.Proposals,
 	}
-	err := model.ProjectModel.CreateOrUpdate(tx, &proj)
+	err = model.ProjectModel.CreateOrUpdate(tx, &proj)
 	if err != nil {
 		tx.Rollback()
 		ctx.JSON(http.StatusInternalServerError, err)
@@ -70,6 +82,39 @@ func Create(ctx *gin.Context) {
 	// commit transaction
 	tx.Commit()
 
+	// add policies
+	policies := [][]string{
+		// p, proj_sponsor_1, proj_1, modify
+		// p, proj_member_1, proj_1, modify
+		{fmt.Sprintf("%s%d", api.RoleProjSponsorPre, proj.ID), fmt.Sprintf("%s%d", api.ObjProjPre, proj.ID), api.ActModify},
+		{fmt.Sprintf("%s%d", api.RoleProjMemberPre, proj.ID), fmt.Sprintf("%s%d", api.ObjProjPre, proj.ID), api.ActModify},
+	}
+	_, err = enforcer.AddPolicies(policies)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, err)
+		return
+	}
+	// add roles
+	sponsorGroupingPolicies := lo.Map(req.Sponsors, func(sponsor string, _ int) []string {
+		// g, 0xc13..1283 proj_sponsor_1
+		return []string{strings.ToLower(sponsor), fmt.Sprintf("%s%d", api.RoleProjSponsorPre, proj.ID)}
+	})
+	memberGroupingPolicies := lo.Map(req.Members, func(member string, _ int) []string {
+		// g, 0xc13..1283 proj_member_1
+		return []string{strings.ToLower(member), fmt.Sprintf("%s%d", api.RoleProjMemberPre, proj.ID)}
+	})
+	groupingPolicies := append(memberGroupingPolicies, sponsorGroupingPolicies...)
+	_, err = enforcer.AddGroupingPolicies(groupingPolicies)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, err)
+		return
+	}
+	err = enforcer.SavePolicy()
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, err)
+		return
+	}
+
 	ctx.JSON(http.StatusOK, api.Success(nil))
 }
 
@@ -86,7 +131,17 @@ func Update(ctx *gin.Context) {
 	req := UpdateReq{}
 	_ = ctx.BindJSON(&req)
 
-	db := api.ForContextOnlyDB(ctx)
+	user, enforcer, db, _ := api.ForContext(ctx)
+	//  check permission
+	ok, err := enforcer.Enforce(user.Wallet, fmt.Sprintf("%s%d", api.ObjProjPre, id), api.ActModify)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, err)
+		return
+	}
+	if !ok {
+		ctx.JSON(http.StatusForbidden, err)
+		return
+	}
 
 	proj, err := model.ProjectModel.Detail(db, uint(id))
 	if err != nil {
@@ -157,7 +212,7 @@ func List(ctx *gin.Context) {
 
 // MyProjects `GET /projects/my?page=1&size=10&sort_field=created_at&sort_order=desc`
 func MyProjects(ctx *gin.Context) {
-	user, db, _ := api.ForContext(ctx)
+	user, db := api.ForContextUserAndDB(ctx)
 
 	page := api.ParseAndConvertPageParam(ctx)
 
@@ -185,7 +240,17 @@ func UpdateSponsors(ctx *gin.Context) {
 	req := UpdateSponsorsReq{}
 	_ = ctx.BindJSON(&req)
 
-	db := api.ForContextOnlyDB(ctx)
+	user, enforcer, db, _ := api.ForContext(ctx)
+	//  check permission
+	ok, err := enforcer.Enforce(user.Wallet, fmt.Sprintf("%s%d", api.ObjProjPre, id), api.ActModify)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, err)
+		return
+	}
+	if !ok {
+		ctx.JSON(http.StatusForbidden, err)
+		return
+	}
 
 	proj, err := model.ProjectModel.Detail(db, uint(id))
 	if err != nil {
@@ -193,8 +258,31 @@ func UpdateSponsors(ctx *gin.Context) {
 		return
 	}
 
+	// remove roles for ole sponsors
+	oldSponsorGroupingPolicies := lo.Map(proj.Sponsors, func(sponsor string, _ int) []string {
+		// g, 0xc13..1283 proj_sponsor_1
+		return []string{sponsor, fmt.Sprintf("%s%d", api.RoleProjSponsorPre, proj.ID)}
+	})
+	_, err = enforcer.RemoveGroupingPolicies(oldSponsorGroupingPolicies)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, err)
+		return
+	}
+
+	// update project sponsors
 	proj.Sponsors = req.Sponsors
 	err = model.ProjectModel.CreateOrUpdate(db, proj)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, err)
+		return
+	}
+
+	// add roles for new sponsors
+	newSponsorGroupingPolicies := lo.Map(req.Sponsors, func(sponsor string, _ int) []string {
+		// g, 0xc13..1283 proj_sponsor_1
+		return []string{strings.ToLower(sponsor), fmt.Sprintf("%s%d", api.RoleProjSponsorPre, proj.ID)}
+	})
+	_, err = enforcer.AddGroupingPolicies(newSponsorGroupingPolicies)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, err)
 		return
@@ -215,7 +303,17 @@ func UpdateMembers(ctx *gin.Context) {
 	req := UpdateMembersReq{}
 	_ = ctx.BindJSON(&req)
 
-	db := api.ForContextOnlyDB(ctx)
+	user, enforcer, db, _ := api.ForContext(ctx)
+	//  check permission
+	ok, err := enforcer.Enforce(user.Wallet, fmt.Sprintf("%s%d", api.ObjProjPre, id), api.ActModify)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, err)
+		return
+	}
+	if !ok {
+		ctx.JSON(http.StatusForbidden, err)
+		return
+	}
 
 	proj, err := model.ProjectModel.Detail(db, uint(id))
 	if err != nil {
@@ -223,8 +321,31 @@ func UpdateMembers(ctx *gin.Context) {
 		return
 	}
 
+	// remove roles for ole members
+	oldMemberGroupingPolicies := lo.Map(proj.Members, func(member string, _ int) []string {
+		// g, 0xc13..1283 proj_member_1
+		return []string{member, fmt.Sprintf("%s%d", api.RoleProjMemberPre, proj.ID)}
+	})
+	_, err = enforcer.RemoveGroupingPolicies(oldMemberGroupingPolicies)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, err)
+		return
+	}
+
+	// update project members
 	proj.Members = req.Members
 	err = model.ProjectModel.CreateOrUpdate(db, proj)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, err)
+		return
+	}
+
+	// add roles for new members
+	newMemberGroupingPolicies := lo.Map(req.Members, func(member string, _ int) []string {
+		// g, 0xc13..1283 proj_member_1
+		return []string{strings.ToLower(member), fmt.Sprintf("%s%d", api.RoleProjMemberPre, proj.ID)}
+	})
+	_, err = enforcer.AddGroupingPolicies(newMemberGroupingPolicies)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, err)
 		return
@@ -243,13 +364,23 @@ type UpdateBudgetReq struct {
 
 // UpdateBudget `POST /projects/:id/update_budget`
 func UpdateBudget(ctx *gin.Context) {
-	//idParam := ctx.Param("id")
-	//id, _ := strconv.Atoi(idParam)
+	idParam := ctx.Param("id")
+	id, _ := strconv.Atoi(idParam)
 
 	req := UpdateBudgetReq{}
 	_ = ctx.BindJSON(&req)
 
-	db := api.ForContextOnlyDB(ctx)
+	user, enforcer, db, _ := api.ForContext(ctx)
+	//  check permission
+	ok, err := enforcer.Enforce(user.Wallet, fmt.Sprintf("%s%d", api.ObjProjPre, id), api.ActModify)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, err)
+		return
+	}
+	if !ok {
+		ctx.JSON(http.StatusForbidden, err)
+		return
+	}
 
 	budget, err := model.ProjectBudgetModel.Detail(db, req.ID)
 	if err != nil {
@@ -280,7 +411,17 @@ func AddRelatedProposal(ctx *gin.Context) {
 	id, _ := strconv.Atoi(idParam)
 	proposalID := ctx.Param("proposal_id")
 
-	db := api.ForContextOnlyDB(ctx)
+	user, enforcer, db, _ := api.ForContext(ctx)
+	//  check permission
+	ok, err := enforcer.Enforce(user.Wallet, fmt.Sprintf("%s%d", api.ObjProjPre, id), api.ActModify)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, err)
+		return
+	}
+	if !ok {
+		ctx.JSON(http.StatusForbidden, err)
+		return
+	}
 
 	proj, err := model.ProjectModel.Detail(db, uint(id))
 	if err != nil {

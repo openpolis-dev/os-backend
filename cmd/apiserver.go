@@ -3,8 +3,11 @@ package main
 import (
 	"flag"
 
+	"github.com/casbin/casbin/v2"
+	gormadapter "github.com/casbin/gorm-adapter/v3"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/api/project"
 	"github.com/theseed-labs/os-backend/internal/api/user"
 	"github.com/theseed-labs/os-backend/internal/config"
@@ -17,6 +20,43 @@ func main() {
 	cfgPath := flag.String("config", "config.yml", "Configuration file path, should be yaml or json format")
 	flag.Parse()
 	cfg := config.LoadConfig(*cfgPath)
+
+	// setup permission system
+	adapter, err := gormadapter.NewAdapter("mysql", cfg.DataSource.Dsn, true)
+	if err != nil {
+		panic(err)
+	}
+	enforcer, err := casbin.NewEnforcer("rbac_model.conf", adapter)
+	if err != nil {
+		panic(err)
+	}
+	// add default policies
+	defaultPolicies := [][]string{
+		{api.RoleHall, "*", "*"},                          // `p, hall, *, *` hall can do anything
+		{api.RoleProjAdmin, api.ObjProj, api.ActCreate},   // `p, proj_admin, proj, create`
+		{api.RoleGuildAdmin, api.ObjGuild, api.ActCreate}, // `p, guild_admin, guild, create`
+		{api.RoleProjAdmin, api.ObjProj, api.ActClose},    // `p, proj_admin, proj, close`
+		{api.RoleGuildAdmin, api.ObjGuild, api.ActClose},  // `p, guild_admin, guild, close`
+	}
+	_, err = enforcer.AddPolicies(defaultPolicies)
+	if err != nil {
+		panic(err)
+	}
+	// add default roles
+	_, err = enforcer.AddGroupingPolicy("0x183f09c3ce99c02118c570e03808476b22d63191", api.RoleHall) // add default hall wallet TODO use hall wallet in config file
+	if err != nil {
+		panic(err)
+	}
+	// save modify to database
+	err = enforcer.SavePolicy()
+	if err != nil {
+		panic(err)
+	}
+	// load policy from database
+	err = enforcer.LoadPolicy()
+	if err != nil {
+		panic(err)
+	}
 
 	// setup database
 	storage.InitGormDB(cfg.DataSource.Dsn)
@@ -33,6 +73,7 @@ func main() {
 	r.Use(func(ctx *gin.Context) {
 		ctx.Set(middleware.DBKey, db)
 		ctx.Set(middleware.CfgKey, cfg)
+		ctx.Set(middleware.EnforcerKey, enforcer)
 
 		// <-- before
 		ctx.Next()
