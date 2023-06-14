@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/xiaosongfu/gormfind"
 	"gorm.io/gorm"
@@ -12,10 +13,13 @@ import (
 type UserAssetRecord struct {
 	gorm.Model
 
-	UserWallet       string `json:"user_wallet"`
-	AssetName        string `json:"asset_name"`        // asset name
-	DealtAmount      uint64 `json:"dealt_amount"`      // amount of asset that already dealt
-	ProcessingAmount uint64 `json:"processing_amount"` // amount of asset that still need confirmation
+	ID               uint      `json:"id"`
+	UserWallet       string    `json:"user_wallet"`
+	AssetName        string    `json:"asset_name"`        // asset name
+	DealtAmount      uint64    `json:"dealt_amount"`      // amount of asset that already dealt
+	ProcessingAmount uint64    `json:"processing_amount"` // amount of asset that still need confirmation
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
 }
 
 type userAssetRecordModel struct{}

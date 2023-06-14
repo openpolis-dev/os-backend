@@ -2,6 +2,7 @@ package model
 
 import (
 	"strings"
+	"time"
 
 	"github.com/xiaosongfu/gormfind"
 	"gorm.io/gorm"
@@ -10,6 +11,7 @@ import (
 type User struct {
 	gorm.Model
 
+	ID             uint   `json:"id"`
 	Wallet         string `json:"wallet"`
 	Name           string `json:"name"`
 	Avatar         string `json:"avatar"`
@@ -17,6 +19,9 @@ type User struct {
 	DiscordProfile string `json:"discordProfile"` // discord_profile
 	TwitterProfile string `json:"twitterProfile"` // twitter_profile
 	GoogleProfile  string `json:"GoogleProfile"`  // google_profile
+
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 type userModel struct{}
