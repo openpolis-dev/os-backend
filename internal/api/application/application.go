@@ -52,7 +52,7 @@ func List(ctx *gin.Context) {
 // An audit log record will be created with application at same time with action open
 // POST /applications
 func Create(ctx *gin.Context) {
-	user, db, _ := api.ForContext(ctx)
+	user, _, db, _ := api.ForContext(ctx)
 
 	newApplicationReq := NewApplicationRequest{}
 	if err := ctx.BindJSON(newApplicationReq); err != nil {
@@ -115,7 +115,7 @@ func Create(ctx *gin.Context) {
 // If there are existing applications in processing state, the export function returns error.
 // Actually, Export is the batchProcess operation
 func Export(ctx *gin.Context) {
-	user, db, _ := api.ForContext(ctx)
+	user, _, db, _ := api.ForContext(ctx)
 	var processingRecordCount int64
 	db.Model(&model.Application{}).Where("state <> ?", model.ApplicationStateProcessing).Count(&processingRecordCount)
 
@@ -144,7 +144,7 @@ func BatchApprove(ctx *gin.Context) {
 	var applications []model.Application
 	getBatchApplicationsOrReturnError(ctx, &applications)
 
-	user, db, _ := api.ForContext(ctx)
+	user, _, db, _ := api.ForContext(ctx)
 	err = model.BatchAuditApplication(db, user.Wallet, &applications, model.AuditActionApprove, "")
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, api.Reply{
@@ -161,7 +161,7 @@ func BatchReject(ctx *gin.Context) {
 	var applications []model.Application
 	getBatchApplicationsOrReturnError(ctx, &applications)
 
-	user, db, _ := api.ForContext(ctx)
+	user, _, db, _ := api.ForContext(ctx)
 	err = model.BatchAuditApplication(db, user.Wallet, &applications, model.AuditActionReject, "")
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, api.Reply{
@@ -177,7 +177,7 @@ func BatchReject(ctx *gin.Context) {
 // Only applications in processing state can be completed, so no application ids are required for this API call
 // This api will fetch all applications with processing state in db and apply `complete` action on them
 func BatchComplete(ctx *gin.Context) {
-	user, db, _ := api.ForContext(ctx)
+	user, _, db, _ := api.ForContext(ctx)
 	var applications []model.Application
 	db.Model(&model.Application{}).Where("state = ?", model.ApplicationStateProcessing).Find(&applications)
 
@@ -247,7 +247,7 @@ func Complete(ctx *gin.Context) {
 func auditApplication(ctx *gin.Context, application *model.Application, auditAction model.AuditActionType, auditMsg string) {
 	getRecordOrReturnNotFound(ctx, application)
 
-	user, db, _ := api.ForContext(ctx)
+	user, _, db, _ := api.ForContext(ctx)
 	if application.ValidateAuditAction(auditAction) {
 		err = model.AuditApplication(db, user.Wallet, application, auditAction, auditMsg)
 		if err != nil {

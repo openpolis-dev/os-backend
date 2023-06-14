@@ -185,7 +185,7 @@ func Close(ctx *gin.Context) {
 	idParam := ctx.Param("id")
 	id, _ := strconv.Atoi(idParam)
 
-	user, db, _ := api.ForContext(ctx)
+	user, _, db, _ := api.ForContext(ctx)
 
 	project, err := model.ProjectModel.Detail(db, uint(id))
 	if err != nil {
