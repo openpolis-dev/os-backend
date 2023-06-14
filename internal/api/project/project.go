@@ -31,6 +31,28 @@ type (
 		Name        string `json:"name"`
 		TotalAmount uint64 `json:"total_amount"`
 	}
+	UpdateReq struct {
+		Logo string `json:"logo"`
+		Name string `json:"name"`
+	}
+	DetailReply struct {
+		model.Project
+		Budgets []*model.ProjectBudget `json:"budgets"`
+	}
+	UpdateSponsorsReq struct {
+		Sponsors []string `json:"sponsors"`
+	}
+	UpdateMembersReq struct {
+		Members []string `json:"members"`
+	}
+	UpdateBudgetReq struct {
+		Id          uint   `json:"id"`
+		AssetName   string `json:"asset_name"`
+		TotalAmount uint64 `json:"total_amount"`
+	}
+	AddProposalReq struct {
+		ProposalID []string `json:"ids"`
+	}
 )
 
 // Create `POST /projects`
@@ -74,11 +96,6 @@ func Create(ctx *gin.Context) {
 	tx.Commit()
 
 	ctx.JSON(http.StatusOK, api.Success(nil))
-}
-
-type UpdateReq struct {
-	Logo string `json:"logo"`
-	Name string `json:"name"`
 }
 
 // Update `PUT /projects/:id`
@@ -157,11 +174,6 @@ func Close(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, api.Success(nil))
 }
 
-type DetailReply struct {
-	model.Project
-	Budgets []*model.ProjectBudget `json:"budgets"`
-}
-
 // Detail `GET /project/:id`
 func Detail(ctx *gin.Context) {
 	idParam := ctx.Param("id")
@@ -221,10 +233,6 @@ func MyProjects(ctx *gin.Context) {
 // ------ ------ ------ ------ ------ ------ ------ ------ ------
 // ------ Project Sponsors/Members ------ ------
 
-type UpdateSponsorsReq struct {
-	Sponsors []string `json:"sponsors"`
-}
-
 // UpdateSponsors `POST /projects/:id/update_sponsors`
 func UpdateSponsors(ctx *gin.Context) {
 	idParam := ctx.Param("id")
@@ -249,10 +257,6 @@ func UpdateSponsors(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, api.Success(nil))
-}
-
-type UpdateMembersReq struct {
-	Members []string `json:"members"`
 }
 
 // UpdateMembers `POST /projects/:id/update_members`
@@ -284,12 +288,6 @@ func UpdateMembers(ctx *gin.Context) {
 // ------ ------ ------ ------ ------ ------ ------ ------ ------
 // ------ Project Budget ------ ------
 
-type UpdateBudgetReq struct {
-	Id          uint   `json:"id"`
-	AssetName   string `json:"asset_name"`
-	TotalAmount uint64 `json:"total_amount"`
-}
-
 // UpdateBudget `POST /projects/:id/update_budget`
 func UpdateBudget(ctx *gin.Context) {
 	//idParam := ctx.Param("id")
@@ -318,10 +316,6 @@ func UpdateBudget(ctx *gin.Context) {
 
 // ------ ------ ------ ------ ------ ------ ------ ------ ------
 // ------ Project Proposals ------ ------
-
-type AddProposalReq struct {
-	ProposalID []string `json:"ids"`
-}
 
 // AddRelatedProposal `POST /projects/:id/add_related_proposal/:proposal_id`
 func AddRelatedProposal(ctx *gin.Context) {
