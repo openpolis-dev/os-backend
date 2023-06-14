@@ -42,7 +42,7 @@ func Login(ctx *gin.Context) {
 	_, db, cfg := api.ForContext(ctx)
 
 	// query user
-	user, err := model.UserModel.Detail(db, req.Wallet)
+	user, err := model.UserModel.Detail(db, strings.ToLower(req.Wallet))
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, err)
 		return
@@ -61,7 +61,7 @@ func Login(ctx *gin.Context) {
 	// generate jwt token
 	token, tokenExp, err := common.GenerateJwtToken[middleware.CurUser](
 		&middleware.CurUser{
-			Wallet: req.Wallet,
+			Wallet: user.Wallet,
 		},
 		time.Duration(cfg.Jwt.Exp)*time.Hour,
 		cfg.Jwt.Secret,
