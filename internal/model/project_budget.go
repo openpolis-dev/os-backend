@@ -8,9 +8,7 @@ import (
 )
 
 type ProjectBudget struct {
-	gorm.Model
-
-	ID           uint      `json:"id"`
+	ID           uint      `json:"id" gorm:"primaryKey"`
 	ProjectID    uint      `json:"project_id"` // project_id
 	Name         string    `json:"name"`
 	TotalAmount  uint64    `json:"total_amount"`  // total_amount

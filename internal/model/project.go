@@ -18,9 +18,7 @@ const (
 )
 
 type Project struct {
-	gorm.Model
-
-	ID        uint          `json:"id"`
+	ID        uint          `json:"id" gorm:"primaryKey"`
 	Logo      string        `json:"logo"`
 	Name      string        `json:"name"`
 	Status    ProjectStatus `json:"status"` // Status may have those values: open/pending_close/closed

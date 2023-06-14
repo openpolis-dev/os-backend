@@ -11,9 +11,7 @@ import (
 // UserAssetRecord saves single asset balance of specified user.
 // For each user and each asset, only one record is allowed in the database
 type UserAssetRecord struct {
-	gorm.Model
-
-	ID               uint      `json:"id"`
+	ID               uint      `json:"id" gorm:"primaryKey"`
 	UserWallet       string    `json:"user_wallet"`
 	AssetName        string    `json:"asset_name"`        // asset name
 	DealtAmount      uint64    `json:"dealt_amount"`      // amount of asset that already dealt

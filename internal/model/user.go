@@ -9,9 +9,7 @@ import (
 )
 
 type User struct {
-	gorm.Model
-
-	ID             uint   `json:"id"`
+	ID             uint   `json:"id" gorm:"primaryKey"`
 	Wallet         string `json:"wallet"`
 	Name           string `json:"name"`
 	Avatar         string `json:"avatar"`
