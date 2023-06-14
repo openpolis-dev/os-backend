@@ -3,6 +3,7 @@ package api
 import (
 	"strconv"
 
+	"github.com/casbin/casbin/v2"
 	"github.com/gin-gonic/gin"
 	"github.com/theseed-labs/os-backend/internal/config"
 	"github.com/theseed-labs/os-backend/internal/middleware"
@@ -28,16 +29,32 @@ func Success(data any) *Reply {
 // ------ ------ ------ ------ ------ ------ ------ ------ ------
 
 // ForContext read `CurUser DB Config` from `Context`
-func ForContext(ctx *gin.Context) (user *middleware.CurUser, db *gorm.DB, cfg *config.Config) {
+func ForContext(ctx *gin.Context) (user *middleware.CurUser, enforcer *casbin.Enforcer, db *gorm.DB, cfg *config.Config) {
 	user, _ = ctx.Value(middleware.CurUserKey).(*middleware.CurUser)
+	enforcer, _ = ctx.Value(middleware.EnforcerKey).(*casbin.Enforcer)
 	db, _ = ctx.Value(middleware.DBKey).(*gorm.DB)
 	cfg, _ = ctx.Value(middleware.CfgKey).(*config.Config)
 
 	return
 }
 
+// ForContextOnlyUser read only `CurUser` from `Context`
+func ForContextOnlyUser(ctx *gin.Context) (user *middleware.CurUser) {
+	user, _ = ctx.Value(middleware.CurUserKey).(*middleware.CurUser)
+
+	return
+}
+
 // ForContextOnlyDB read only `DB` from `Context`
 func ForContextOnlyDB(ctx *gin.Context) (db *gorm.DB) {
+	db, _ = ctx.Value(middleware.DBKey).(*gorm.DB)
+
+	return
+}
+
+// ForContextUserAndDB read  `CurUser DB` from `Context`
+func ForContextUserAndDB(ctx *gin.Context) (user *middleware.CurUser, db *gorm.DB) {
+	user, _ = ctx.Value(middleware.CurUserKey).(*middleware.CurUser)
 	db, _ = ctx.Value(middleware.DBKey).(*gorm.DB)
 
 	return

@@ -1,0 +1,8 @@
+p, hall, *, *
+p, hall, proj, create
+p, proj_admin, proj, create
+p, guild_admin, guild, create
+p, proj_admin, proj, close
+p, guild_admin, guild, close
+
+g, 0x183f09c3ce99c02118c570e03808476b22d63191, hall
