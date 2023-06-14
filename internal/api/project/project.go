@@ -285,7 +285,7 @@ func UpdateMembers(ctx *gin.Context) {
 // ------ Project Budget ------ ------
 
 type UpdateBudgetReq struct {
-	ProjectId   uint   `json:"project_id"`
+	Id          uint   `json:"id"`
 	AssetName   string `json:"asset_name"`
 	TotalAmount uint64 `json:"total_amount"`
 }
@@ -300,7 +300,7 @@ func UpdateBudget(ctx *gin.Context) {
 
 	db := api.ForContextOnlyDB(ctx)
 
-	budget, err := model.ProjectBudgetModel.Detail(db, req.ProjectId)
+	budget, err := model.ProjectBudgetModel.Detail(db, req.Id)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, err)
 		return
