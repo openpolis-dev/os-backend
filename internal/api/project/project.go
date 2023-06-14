@@ -5,11 +5,13 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/samber/lo"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/model"
+	"gorm.io/gorm"
 )
 
 // ------ ------ ------ ------ ------ ------ ------ ------ ------
@@ -28,7 +30,29 @@ type (
 	}
 	BudgetParam struct {
 		Name        string `json:"name"`
-		TotalAmount uint64 `json:"totalAmount"`
+		TotalAmount uint64 `json:"total_amount"`
+	}
+	UpdateReq struct {
+		Logo string `json:"logo"`
+		Name string `json:"name"`
+	}
+	DetailReply struct {
+		model.Project
+		Budgets []*model.ProjectBudget `json:"budgets"`
+	}
+	UpdateSponsorsReq struct {
+		Sponsors []string `json:"sponsors"`
+	}
+	UpdateMembersReq struct {
+		Members []string `json:"members"`
+	}
+	UpdateBudgetReq struct {
+		Id          uint   `json:"id"`
+		AssetName   string `json:"asset_name"`
+		TotalAmount uint64 `json:"total_amount"`
+	}
+	AddProposalReq struct {
+		ProposalID []string `json:"ids"`
 	}
 )
 
@@ -118,11 +142,6 @@ func Create(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, api.Success(nil))
 }
 
-type UpdateReq struct {
-	Logo string `json:"logo"`
-	Name string `json:"name"`
-}
-
 // Update `PUT /projects/:id`
 func Update(ctx *gin.Context) {
 	idParam := ctx.Param("id")
@@ -160,13 +179,53 @@ func Update(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, api.Success(nil))
 }
 
+// Close
+// POST /project/:id/close
 func Close(ctx *gin.Context) {
-	// TODO
-}
+	idParam := ctx.Param("id")
+	id, _ := strconv.Atoi(idParam)
 
-type DetailReply struct {
-	model.Project
-	Budgets []*model.ProjectBudget `json:"budgets"`
+	user, db, _ := api.ForContext(ctx)
+
+	project, err := model.ProjectModel.Detail(db, uint(id))
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, err)
+		return
+	}
+
+	if project.Status != model.ProjectStatusOpen {
+		ctx.JSON(http.StatusBadRequest, api.Reply{
+			Code: -1,
+			Msg:  fmt.Sprintf("project %d status is not suit for closing", id),
+		})
+	}
+
+	err = db.Transaction(func(tx *gorm.DB) error {
+		application := model.Application{
+			Type:       model.ApplicationCloseProject,
+			Applicant:  user.Wallet,
+			State:      model.ApplicationStateOpen,
+			CreatedAt:  time.Now(),
+			UpdatedAt:  time.Now(),
+			EntityType: "project",
+			EntityId:   project.ID,
+		}
+		err = model.NewApplicationRecord(tx, &application)
+		if err != nil {
+			return err
+		}
+		project.Status = model.ProjectStatusPendingClose
+		return tx.Save(project).Error
+	})
+
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, api.Reply{
+			Code: -1,
+			Msg:  fmt.Sprintf("update project status error: %s", err.Error()),
+		})
+	}
+
+	ctx.JSON(http.StatusOK, api.Success(nil))
 }
 
 // Detail `GET /project/:id`
@@ -182,7 +241,7 @@ func Detail(ctx *gin.Context) {
 		return
 	}
 
-	budgets, err := model.ProjectBudgetModel.List(db, proj.ID)
+	budgets, err := model.ProjectBudgetModel.ListByProjectId(db, proj.ID)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, err)
 		return
@@ -227,10 +286,6 @@ func MyProjects(ctx *gin.Context) {
 
 // ------ ------ ------ ------ ------ ------ ------ ------ ------
 // ------ Project Sponsors/Members ------ ------
-
-type UpdateSponsorsReq struct {
-	Sponsors []string `json:"sponsors"`
-}
 
 // UpdateSponsors `POST /projects/:id/update_sponsors`
 func UpdateSponsors(ctx *gin.Context) {
@@ -289,10 +344,6 @@ func UpdateSponsors(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, api.Success(nil))
-}
-
-type UpdateMembersReq struct {
-	Members []string `json:"members"`
 }
 
 // UpdateMembers `POST /projects/:id/update_members`
@@ -357,11 +408,6 @@ func UpdateMembers(ctx *gin.Context) {
 // ------ ------ ------ ------ ------ ------ ------ ------ ------
 // ------ Project Budget ------ ------
 
-type UpdateBudgetReq struct {
-	ID          uint   `json:"id"`
-	TotalAmount uint64 `json:"totalAmount"`
-}
-
 // UpdateBudget `POST /projects/:id/update_budget`
 func UpdateBudget(ctx *gin.Context) {
 	idParam := ctx.Param("id")
@@ -382,7 +428,7 @@ func UpdateBudget(ctx *gin.Context) {
 		return
 	}
 
-	budget, err := model.ProjectBudgetModel.Detail(db, req.ID)
+	budget, err := model.ProjectBudgetModel.Detail(db, req.Id)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, err)
 		return
@@ -400,10 +446,6 @@ func UpdateBudget(ctx *gin.Context) {
 
 // ------ ------ ------ ------ ------ ------ ------ ------ ------
 // ------ Project Proposals ------ ------
-
-type AddProposalReq struct {
-	ProposalID []string `json:"ids"`
-}
 
 // AddRelatedProposal `POST /projects/:id/add_related_proposal/:proposal_id`
 func AddRelatedProposal(ctx *gin.Context) {

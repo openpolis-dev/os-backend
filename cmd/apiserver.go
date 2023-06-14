@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/samber/lo"
 	"github.com/theseed-labs/os-backend/internal/api"
+	"github.com/theseed-labs/os-backend/internal/api/application"
 	"github.com/theseed-labs/os-backend/internal/api/project"
 	"github.com/theseed-labs/os-backend/internal/api/user"
 	"github.com/theseed-labs/os-backend/internal/config"
@@ -104,20 +105,34 @@ func main() {
 		userGroup := authorizedGroup.Group("/user")
 		userGroup.GET("/me", user.Detail)
 		userGroup.PUT("/me", user.Update)
-		userGroup.GET("/logout", user.Logout)
+		userGroup.POST("/logout", user.Logout)
 
 		// project routers
-		projGroup := authorizedGroup.Group("/project")
-		projGroup.POST("/projects", project.Create)
-		projGroup.PUT("/projects/:id", project.Update)
-		projGroup.GET("/projects/close", project.Close)
-		projGroup.GET("/projects/:id", project.Detail)
-		projGroup.GET("/projects", project.List)
-		projGroup.GET("/projects/my", project.MyProjects)
-		projGroup.POST("/projects/:id/update_sponsors", project.UpdateSponsors)
-		projGroup.POST("/projects/:id/update_members", project.UpdateMembers)
-		projGroup.POST("/projects/:id/update_budget", project.UpdateBudget)
-		projGroup.POST("/projects/:id/add_related_proposal/:proposal_id", project.AddRelatedProposal)
+		projGroup := authorizedGroup.Group("/projects")
+		projGroup.GET("/", project.List)
+		projGroup.POST("/", project.Create)
+		projGroup.PUT("/:id", project.Update)
+		projGroup.GET("/:id", project.Detail)
+		projGroup.POST("/:id/close", project.Close)
+		projGroup.GET("/my", project.MyProjects)
+		projGroup.POST("/:id/update_sponsors", project.UpdateSponsors)
+		projGroup.POST("/:id/update_members", project.UpdateMembers)
+		projGroup.POST("/:id/update_budget", project.UpdateBudget)
+		projGroup.POST("/:id/add_related_proposal/:proposal_id", project.AddRelatedProposal)
+
+		// application routers
+		applicationGroup := authorizedGroup.Group("/applications")
+		applicationGroup.GET("/", application.List)
+		applicationGroup.POST("/", application.Create)
+		applicationGroup.POST("/export", application.Export)
+		applicationGroup.POST("/approve", application.BatchApprove)
+		applicationGroup.POST("/reject", application.BatchReject)
+		applicationGroup.POST("/complete", application.BatchComplete)
+		applicationGroup.GET("/:id", application.Detail)
+		applicationGroup.POST("/:id/approve", application.Approve)
+		applicationGroup.POST("/:id/reject", application.Reject)
+		applicationGroup.POST("/:id/complete", application.Complete)
+		applicationGroup.POST("/:id/process", application.Process)
 
 		// foo routers
 	}

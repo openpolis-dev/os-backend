@@ -23,7 +23,7 @@ type LoginReq struct {
 
 type LoginReply struct {
 	Token    string      `json:"token"`
-	TokenExp int64       `json:"tokenExp"` // time unit: seconds
+	TokenExp int64       `json:"token_exp"` // time unit: seconds
 	User     *model.User `json:"user"`
 }
 
@@ -42,7 +42,7 @@ func Login(ctx *gin.Context) {
 	_, _, db, cfg := api.ForContext(ctx)
 
 	// query user
-	user, err := model.UserModel.Detail(db, req.Wallet)
+	user, err := model.UserModel.Detail(db, strings.ToLower(req.Wallet))
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, err)
 		return
@@ -61,7 +61,7 @@ func Login(ctx *gin.Context) {
 	// generate jwt token
 	token, tokenExp, err := common.GenerateJwtToken[middleware.CurUser](
 		&middleware.CurUser{
-			Wallet: req.Wallet,
+			Wallet: user.Wallet,
 		},
 		time.Duration(cfg.Jwt.Exp)*time.Hour,
 		cfg.Jwt.Secret,
@@ -103,9 +103,9 @@ type UpdateReq struct {
 	Name           string `json:"name"`
 	Avatar         string `json:"avatar"`
 	Email          string `json:"email"`
-	DiscordProfile string `json:"discordProfile"`
-	TwitterProfile string `json:"twitterProfile"`
-	GoogleProfile  string `json:"GoogleProfile"`
+	DiscordProfile string `json:"discord_profile"`
+	TwitterProfile string `json:"twitter_profile"`
+	GoogleProfile  string `json:"google_profile"`
 }
 
 // Update `PUT /me`
