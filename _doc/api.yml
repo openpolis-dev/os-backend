@@ -14,7 +14,95 @@ paths:
   #     responses:
   #       '201':
   #         description: Created
-      
+
+  /user/login:
+    post:
+      summary: user login
+      requestBody:
+        content:
+          "application/json":
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        400:
+          description: verify signature error
+        500:
+          description: Find user record by wallet error
+        200:
+          description: user login successfully
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/LoginResp"
+
+
+  /user/users:
+    get:
+      summary: query multiple users by wallet
+      parameters:
+        - name: wallets
+          in: query
+          description: wallet address of users to be queried
+          explode: true
+          schema:
+            type: array
+            items:
+              description: single wallet address
+              type: string
+      responses:
+        500:
+          description: got internal error
+        200:
+          description: return found users
+          content:
+            "application/json":
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: number
+                  msg:
+                    type: string
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/User"
+
+
+  /user/me:
+    get:
+      security:
+        - bearerAuth: [ ]
+      summary: get self user detail
+      responses:
+        200:
+          description: return user detail data
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/User"
+    put:
+      security:
+        - bearerAuth: [ ]
+      summary: update user detail data
+      requestBody:
+        content:
+          "application/json":
+            schema:
+              $ref: "#/components/schemas/UpdateUserRequest"
+      responses:
+        200:
+          description: user profile updated successfully
+
+  /user/logout:
+    get:
+      security:
+        - bearerAuth: [ ]
+      summary: logout user
+      responses:
+        200:
+          description: OK
+
   /projects:
     get:
       summary: List all projects match the query params
@@ -35,7 +123,7 @@ paths:
           description: order of returned result, sort by timestamp field
           schema:
             type: string
-            enum: [asc, desc]
+            enum: [ asc, desc ]
       responses:
         '200':
           description: OK
@@ -104,7 +192,7 @@ paths:
                 type: string
       responses:
         '200':
-          description: member update  
+          description: member update
 
   /projects/{id}/update_budget:
     post:
@@ -130,11 +218,11 @@ paths:
                   minimum: 0
       responses:
         '200':
-          description: budget updated  
+          description: budget updated
 
   /projects/{id}/new_reward_request:
     post:
-      description: Create new reward request for specified user
+      description: Create new reward application for specified user
       parameters:
         - name: id
           in: path
@@ -151,7 +239,7 @@ paths:
                 properties:
                   target_wallet:
                     type: string
-                    description: target wallet of 
+                    description: target wallet of
                   amount:
                     type: number
                     description: new total amount
@@ -170,12 +258,14 @@ paths:
                     description: where the reward is coming from
       responses:
         '200':
-          description: budget updated  
+          description: budget updated
 
 
   /applications:
     get:
-      summary: list all requests
+      security:
+        - bearerAuth: [ ]
+      summary: list all applications
       description: >
         The requests contains all type of requests listed above, which contains :
         * Project related:
@@ -185,23 +275,75 @@ paths:
           * Token reward
 
         This API returns requests based on query params
+      parameters:
+        - name: page
+          in: query
+          description: which page
+          schema:
+            type: number
+          required: false
+        - name: size
+          in: query
+          description: size of each page
+          schema:
+            type: number
+        - name: sort_field
+          in: query
+          schema:
+            type: string
+        - name: sort_order
+          in: query
+          schema:
+            type: string
+            enum: [ asc, desc ]
+
       responses:
         '200':
           description: OK
           content:
             "application/json":
               schema:
-                $ref: "#/components/schemas/Application"
+                type: object
+                properties:
+                  code:
+                    type: number
+                    example: 200
+                  msg:
+                    type: string
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Application"
 
     post:
+      security:
+        - bearerAuth: [ ]
       description: create new application
+      requestBody:
+        content:
+          "application/json":
+            schema:
+              $ref: "#/components/schemas/NewApplicationRequest"
       responses:
         '201':
           description: Created
+          content:
+            "application/json":
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: number
+                  msg:
+                    type: string
+                  data:
+                    $ref: "#/components/schemas/Application"
 
   /applications/approve:
-    post: 
-      description: approve multiple requests in one call
+    post:
+      security:
+        - bearerAuth: [ ]
+      description: approve multiple applications
       requestBody:
         content:
           "application/json":
@@ -209,33 +351,52 @@ paths:
               type: array
               items:
                 type: string
-                description: request ID
+                description: application ID
       responses:
         '200':
-          description: all requests are marked as approved
+          description: all applications are marked as approved
         '500':
-          description: some requests are processing error
+          description: some applications are processing error
           content:
             "application/json":
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
-  /applications/complete:
-    post: 
-      description: complete multiple requests in one call
+  /applications/export:
+    post:
+      security:
+        - bearerAuth: [ ]
+      description: Export application list that will be processed outside the system
+      requestBody:
+        content:
+          "application/json":
+            schema:
+              type: array
+              items:
+                type: string
+                description: application id
       responses:
-        '200':
-          description: all requests are marked as completed
-        '500':
-          description: some requests are processing error
+        200:
+          description: >
+            Chosen applications has been exported successfully. All the exported application will be marked as
+            processing state and no new export application can be issued if there are still records in processing state
           content:
             "application/json":
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                type: object
+                properties:
+                  code:
+                    type: number
+                  msg:
+                    type: string
+                  data:
+                    $ref: "#/components/schemas/Application"
 
   /applications/reject:
-    post: 
-      description: reject multiple requests in one call
+    post:
+      security:
+        - bearerAuth: [ ]
+      description: reject multiple applications
       requestBody:
         content:
           "application/json":
@@ -247,9 +408,35 @@ paths:
 
       responses:
         '200':
-          description: all requests are marked as rejected
+          description: all applications are marked as rejected
         '500':
-          description: some requests are processing error
+          description: some applications are processing error
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /applications/complete:
+    post:
+      security:
+        - bearerAuth: [ ]
+      description: >
+        complete multiple applications. Only application in processing mode can be completed,
+        so this API call does not require application IDs
+      requestBody:
+        content:
+          "application/json":
+            schema:
+              type: object
+              properties:
+                message:
+                  type: string
+                  description: complete message, e.g. transactions ID for the rewards
+      responses:
+        '200':
+          description: all applications are marked as completed
+        '500':
+          description: some applications are processing error
           content:
             "application/json":
               schema:
@@ -257,68 +444,61 @@ paths:
 
   /applications/{id}:
     get:
-      description: Show request detail
+      security:
+        - bearerAuth: [ ]
+      description: Show application detail
       responses:
         '200':
           description: OK
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/Application"
 
   /applications/{id}/approve:
     post:
-      description: approve the request
+      security:
+        - bearerAuth: [ ]
+      description: approve the application
       responses:
         '200':
-          description: request has been approved
+          description: application has been approved
 
   /applications/{id}/complete:
     post:
-      description: mark the request to be completed
+      security:
+        - bearerAuth: [ ]
+      description: mark the application to be completed
       responses:
         '200':
-          description: request has been marked as completed
+          description: application has been marked as completed
 
   /applications/{id}/reject:
     post:
-      description: reject the request
+      security:
+        - bearerAuth: [ ]
+      description: reject the application
       responses:
         '200':
-          description: request has been rejected
+          description: application has been rejected
 
-  /user/{id}:
-    get:
-      description: get self data
-      responses:
-        '200':
-          description: return user info 
-          content:
-            "application/json":
-              schema:
-                $ref: "#/components/schemas/User"
+  /applications/{id}/process:
     post:
-      description: update user info
-      requestBody:
-        content:
-          "application/json":
-            schema:
-                $ref: "#/components/schemas/User"
+      security:
+        - bearerAuth: [ ]
+      description: process the application
       responses:
         '200':
-          description: user info updated successfully
-
-  /user/{id}/rewards:
-    get:
-      description: return user's reward list
-      responses:
-        '200':
-          description: OK
-          content:
-            "application/json":
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/UserRewardRecord"
+          description: application has been rejected
 
 
 components:
+  securitySchemes:
+
+    bearerAuth:
+      type: http
+      scheme: bearer
+
   schemas:
     Proposal:
       type: object
@@ -341,7 +521,7 @@ components:
           description: name of the project
         status:
           type: string
-          enum: [open, pending_close, closed]
+          enum: [ open, pending_close, closed ]
           description: status of the project
         sponsors:
           description: project holder, may be one or more user address
@@ -412,7 +592,7 @@ components:
           description: value after this action
 
     Application:
-      description: request record actions that need to be approved
+      description: application records require approval
       type: object
       properties:
         id:
@@ -420,14 +600,14 @@ components:
           description: uniq id for the application
         action:
           type: string
-          enum: [close_project, new_reward]
+          enum: [ close_project, new_reward ]
           description: all supported actions currently
         requester:
           type: string
           description: wallet address of application sender
         state:
           type: string
-          enum: 
+          enum:
             - open  # new application which is waiting for reviewing
             - approved  # application has been approved
             - rejected  # application has been rejected
@@ -465,7 +645,7 @@ components:
           description: timestamp in millionsecond for this operation
         operation:
           type: string
-          enum: [approve, reject, process, complete]
+          enum: [ approve, reject, process, complete ]
           description: operation for the application
         operator:
           type: string
@@ -479,7 +659,7 @@ components:
         extra_data:
           type: string
           description: Extra message required or passed with this audition
-        
+
 
     User:
       type: object
@@ -519,7 +699,7 @@ components:
           description: record that related to this reward
         state:
           type: string
-          enum: [pending_review, processing, completed]
+          enum: [ pending_review, processing, completed ]
           description: state of this reward
         reward_type:
           type: string
@@ -534,3 +714,65 @@ components:
           type: number
           description: timesatmp this reward record updated
 
+    LoginRequest:
+      type: object
+      properties:
+        wallet:
+          type: string
+          required: true
+        timestamp:
+          type: number
+          required: true
+        sign:
+          type: string
+          required: true
+
+    LoginResp:
+      type: object
+      properties:
+        token:
+          type: string
+        tokenExp:
+          type: number
+          description: expiration timestamp for token
+        user:
+          $ref: "#/components/schemas/User"
+
+    UpdateUserRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        avatar:
+          type: string
+        email:
+          type: string
+        discordProfile:
+          type: string
+        twitterProfile:
+          type: string
+        GoogleProfile:
+          type: string
+
+    NewApplicationRequest:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [ close_project, new_reward ]
+        entity:
+          type: string
+          enum: [ project, guild ]
+          description: which entity this application is used for
+        entity_id:
+          type: string
+          description: entity ID for this application
+        target_user_wallet:
+          type: string
+          description: which account should this reward be sent to
+        asset_name:
+          type: string
+          description: which asset will be sent in this application
+        amount:
+          type: string
+          description: how many asset will be sent
