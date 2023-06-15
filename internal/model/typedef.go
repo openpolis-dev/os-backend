@@ -50,6 +50,6 @@ var applicationStateMap = map[ApplicationState]map[AuditActionType]ApplicationSt
 	ApplicationStateOpen:       {AuditActionApprove: ApplicationStateApproved, AuditActionReject: ApplicationStateRejected},
 	ApplicationStateApproved:   {AuditActionProcess: ApplicationStateProcessing},
 	ApplicationStateRejected:   {},
-	ApplicationStateProcessing: {ApplicationStateCompleted: ApplicationStateCompleted},
+	ApplicationStateProcessing: {AuditActionComplete: ApplicationStateCompleted},
 	ApplicationStateCompleted:  {},
 }

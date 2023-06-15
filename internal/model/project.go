@@ -69,7 +69,7 @@ func (*projectModel) SetBudget(db *gorm.DB, projectId uint, assertName string, t
 			ProjectID:    projectId,
 			Name:         assertName,
 			TotalAmount:  totalAmount,
-			RemainAmount: 0,
+			RemainAmount: totalAmount,
 		}
 	} else {
 		budgetRecord.TotalAmount = totalAmount
