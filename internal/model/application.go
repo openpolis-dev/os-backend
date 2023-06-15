@@ -8,42 +8,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/xiaosongfu/gormfind"
 	"gorm.io/gorm"
 )
-
-type ApplicationType string
-type AuditActionType string
-type ApplicationState string
-
-const (
-	ApplicationCloseProject ApplicationType = "CLOSE_PROJECT"
-	ApplicationNewReward    ApplicationType = "NEW_REWARD"
-)
-
-const (
-	AuditActionNew      AuditActionType = "new"
-	AuditActionApprove                  = "approve"
-	AuditActionReject                   = "reject"
-	AuditActionProcess                  = "process"
-	AuditActionComplete                 = "complete"
-)
-
-const (
-	ApplicationStateOpen       ApplicationState = "open"
-	ApplicationStateApproved                    = "approved"
-	ApplicationStateRejected                    = "rejected"
-	ApplicationStateProcessing                  = "processing"
-	ApplicationStateCompleted                   = "completed"
-)
-
-// This variable saves state transit map for all application states
-var applicationStateMap = map[ApplicationState]map[AuditActionType]ApplicationState{
-	ApplicationStateOpen:       {AuditActionApprove: ApplicationStateApproved, AuditActionReject: ApplicationStateRejected},
-	ApplicationStateApproved:   {AuditActionProcess: ApplicationStateProcessing},
-	ApplicationStateRejected:   {},
-	ApplicationStateProcessing: {ApplicationStateCompleted: ApplicationStateCompleted},
-	ApplicationStateCompleted:  {},
-}
 
 type Application struct {
 	// unique ID for this request
@@ -73,18 +40,17 @@ type Application struct {
 	// Detailed data saves application specified data
 	// Currently the design is using this struct for all types of application, if new fields are required for new type
 	// of application, just add the field in the struct and let code branch choose which fields are required
-	DetailedData ApplicationDetailedData `json:"detailed_data"`
+	DetailedData ApplicationDetailedData `json:"detailed_data,omitempty" gorm:"foreignKey:ApplicationID;references:ID"`
 
 	// Entity means this application's refer, which maybe project or guild.
 	// And the field EntityId is the db record ID for Project or Guild table
 	EntityType string `json:"entity_type"`
 	EntityId   uint   `json:"entity_id"`
-
-	// logs for auditions
-	AuditLogs []ApplicationAuditLog `json:"audit_logs"`
 }
 
 type ApplicationDetailedData struct {
+	ApplicationID uint `json:"application_id"`
+
 	// TargetUserWallet saves user wallet address that the reward will be sent to
 	TargetUserWallet string `json:"user_wallet"`
 
@@ -121,11 +87,28 @@ type ApplicationAuditLog struct {
 // NewApplicationRecord create application and related audit log message with given params
 func NewApplicationRecord(db *gorm.DB, application *Application) error {
 	return db.Transaction(func(tx *gorm.DB) error {
+		if application.EntityType == "project" {
+			project, err := ProjectModel.Detail(db, application.EntityId)
+			if err != nil {
+				return err
+			}
+
+			if project.Status != ProjectStatusOpen {
+				return fmt.Errorf("project related applications can only be applied on project in open state, detail : %+v", application)
+			}
+		} else if application.EntityType == "guild" {
+			if application.Type == ApplicationCloseProject {
+				return fmt.Errorf("close_project action is not allowed to be applied on guild record, detail: %+v", application)
+			}
+		} else {
+			return fmt.Errorf("unknown entity type, detail : %+v", application)
+		}
+
 		if err := tx.Create(application).Error; err != nil {
 			return err
 		}
 
-		if err := tx.Create(ApplicationAuditLog{
+		if err := tx.Create(&ApplicationAuditLog{
 			ApplicationID: application.ID,
 			LogTs:         time.Now(),
 			Operation:     AuditActionNew,
@@ -303,4 +286,9 @@ func userWalletRecordExisting(db *gorm.DB, walletAddr string) error {
 	}
 
 	return nil
+}
+
+func (app *Application) ListAuditLogs(db *gorm.DB) ([]*ApplicationAuditLog, error) {
+	querySeg := db.Model(&ApplicationAuditLog{}).Where("application_id = ?", app.ID)
+	return gormfind.Rows[ApplicationAuditLog](querySeg, nil)
 }

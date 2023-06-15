@@ -92,7 +92,6 @@ func Create(ctx *gin.Context) {
 		},
 		EntityType: "",
 		EntityId:   0,
-		AuditLogs:  nil,
 	}
 
 	// Update applicant data
