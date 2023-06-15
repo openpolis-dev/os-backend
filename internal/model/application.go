@@ -258,18 +258,6 @@ func doAuditApplicationInTransaction(tx *gorm.DB, operatorWallet string, applica
 				return fmt.Errorf("unknown application entity type %s", application.EntityType)
 			}
 		}
-	} else if nextState == ApplicationStateRejected {
-		if application.Type == ApplicationNewReward {
-			// Application has been rejected, if it is new reward request, add budget back to project/guild and remove user processing asset amount
-			if err := ProjectModel.DepositBudget(tx, application.EntityId, application.DetailedData.AssetName, application.DetailedData.Amount); err != nil {
-				return err
-			}
-
-			// Update user asset record
-			if err := UserAssetRecordModel.Rollback(tx, application.Applicant, application.DetailedData.AssetName, application.DetailedData.Amount, 0); err != nil {
-				return err
-			}
-		}
 	} else if nextState == ApplicationStateCompleted {
 		if application.Type == ApplicationCloseProject {
 			// This is a close project application, so the `entity_id` saved indicates a project record

@@ -1,10 +1,9 @@
 package model_test
 
 import (
-	"fmt"
-
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/samber/lo"
 	"github.com/theseed-labs/os-backend/internal/model"
 )
 
@@ -12,15 +11,31 @@ const (
 	aliceWallet = "0x2866e6b2aa58942261f126530b069951e7b271d2"
 	bobWallet   = "0xe6ade4161bb5294a9ec25b6f75d86fa167e800ce"
 	carolWallet = "0x2866e6b2aa58942261f126530b069951e7b871d2"
+	daveWallet  = "0x2866e6b2aa58942261f336530b069951e7b871d2"
+
+	token1Name = "TTT"
+	token2Name = "AAT"
+	token3Name = "42T"
 )
 
 var openProject, pendingCloseProject, closedProject *model.Project
+
+var tables = []any{
+	&model.Application{},
+	&model.Project{},
+	&model.ProjectBudget{},
+	&model.Application{},
+	&model.ApplicationAuditLog{},
+	&model.ApplicationDetailedData{},
+	&model.User{},
+	&model.UserAssetRecord{},
+}
 
 var _ = Describe("Application", func() {
 
 	// Before each `It` execution, create the table and init project data
 	BeforeEach(func() {
-		_ = db.AutoMigrate(&model.Application{}, &model.Project{}, &model.ApplicationAuditLog{}, &model.User{})
+		_ = db.AutoMigrate(tables...)
 		openProject = &model.Project{Name: "Open Project", Status: model.ProjectStatusOpen}
 		pendingCloseProject = &model.Project{Name: "Open Project", Status: model.ProjectStatusPendingClose}
 		closedProject = &model.Project{Name: "Open Project", Status: model.ProjectStatusClosed}
@@ -33,7 +48,7 @@ var _ = Describe("Application", func() {
 
 	// After each `It` execution, drop tables
 	AfterEach(func() {
-		_ = db.Migrator().DropTable(model.ApplicationAuditLog{}, model.Application{}, model.Project{}, model.User{})
+		_ = db.Migrator().DropTable(tables...)
 	})
 
 	Describe("Invoking NewApplicationRecord function", func() {
@@ -42,7 +57,7 @@ var _ = Describe("Application", func() {
 				_ = model.NewApplicationRecord(db, &model.Application{
 					Type:       model.ParseApplicationType("close_project"),
 					Applicant:  aliceWallet,
-					State:      "open",
+					State:      model.ApplicationStateOpen,
 					EntityType: "project",
 					EntityId:   openProject.ID,
 				})
@@ -70,7 +85,7 @@ var _ = Describe("Application", func() {
 				Expect(model.NewApplicationRecord(db, &model.Application{
 					Type:       model.ParseApplicationType("close_project"),
 					Applicant:  aliceWallet,
-					State:      "open",
+					State:      model.ApplicationStateOpen,
 					EntityType: "project",
 					EntityId:   pendingCloseProject.ID,
 				})).ToNot(BeNil())
@@ -78,7 +93,7 @@ var _ = Describe("Application", func() {
 				Expect(model.NewApplicationRecord(db, &model.Application{
 					Type:       model.ParseApplicationType("close_project"),
 					Applicant:  aliceWallet,
-					State:      "open",
+					State:      model.ApplicationStateOpen,
 					EntityType: "project",
 					EntityId:   closedProject.ID,
 				})).ToNot(BeNil())
@@ -87,7 +102,7 @@ var _ = Describe("Application", func() {
 				Expect(model.NewApplicationRecord(db, &model.Application{
 					Type:       model.ParseApplicationType("close_project"),
 					Applicant:  aliceWallet,
-					State:      "open",
+					State:      model.ApplicationStateOpen,
 					EntityType: "guild",
 					EntityId:   42, // A fake ID
 				})).ToNot(BeNil())
@@ -100,7 +115,7 @@ var _ = Describe("Application", func() {
 				_ = model.NewApplicationRecord(db, &model.Application{
 					Type:       model.ParseApplicationType("new_reward"),
 					Applicant:  aliceWallet,
-					State:      "open",
+					State:      model.ApplicationStateOpen,
 					EntityType: "project",
 					EntityId:   openProject.ID,
 				})
@@ -126,14 +141,14 @@ var _ = Describe("Application", func() {
 				Expect(model.NewApplicationRecord(db, &model.Application{
 					Type:       model.ParseApplicationType("new_reward"),
 					Applicant:  aliceWallet,
-					State:      "open",
+					State:      model.ApplicationStateOpen,
 					EntityType: "project",
 					EntityId:   pendingCloseProject.ID,
 				})).NotTo(BeNil())
 				Expect(model.NewApplicationRecord(db, &model.Application{
 					Type:       model.ParseApplicationType("new_reward"),
 					Applicant:  aliceWallet,
-					State:      "open",
+					State:      model.ApplicationStateOpen,
 					EntityType: "project",
 					EntityId:   closedProject.ID,
 				})).NotTo(BeNil())
@@ -149,7 +164,7 @@ var _ = Describe("Application", func() {
 				app = model.Application{
 					Type:       model.ParseApplicationType("close_project"),
 					Applicant:  aliceWallet,
-					State:      "open",
+					State:      model.ApplicationStateOpen,
 					EntityType: "project",
 					EntityId:   openProject.ID,
 				}
@@ -158,19 +173,157 @@ var _ = Describe("Application", func() {
 				_ = model.NewApplicationRecord(db, &app)
 			})
 
-			It("should change project to closed state if project is in pending_close status and create related audit logs", func() {
+			It("should change project to closed state if project is in pending_close status and create completed audit logs", func() {
+				oldAuditLogs, _ := app.ListAuditLogs(db)
 				_ = model.AuditApplication(db, carolWallet, &app, model.AuditActionApprove, "")
 
 				project, _ := model.ProjectModel.Detail(db, openProject.ID)
+				// The project changes to closed state
 				Expect(project.Status).To(BeEquivalentTo(model.ProjectStatusClosed))
 
-				// TODO: Check audit logs
+				newAuditLogs, _ := app.ListAuditLogs(db)
+
+				// A new audit log with correct state change has been inserted
+				Expect(len(newAuditLogs) - len(oldAuditLogs)).To(Equal(1))
+				Expect(newAuditLogs[0].ID).To(Equal(oldAuditLogs[0].ID))
+				Expect(newAuditLogs[1].Operator).To(BeEquivalentTo(carolWallet))
+				Expect(newAuditLogs[1].Operation).To(BeEquivalentTo(model.AuditActionApprove))
+				Expect(newAuditLogs[1].PreState).To(BeEquivalentTo(model.ApplicationStateOpen))
+				Expect(newAuditLogs[1].PostState).To(BeEquivalentTo(model.ApplicationStateCompleted))
+
+				// The application should be changed to completed now
+				Expect(app.State).To(BeEquivalentTo(model.ApplicationStateCompleted))
 			})
 			It("should return error if project is not in pending_close status", func() {
-				db.Model(&openProject).Update("status", "open")
-				p, _ := model.ProjectModel.Detail(db, openProject.ID)
-				fmt.Printf("prj: %+v\n", p)
+				db.Model(&openProject).Update("status", model.ApplicationStateOpen)
 				Expect(model.AuditApplication(db, carolWallet, &app, model.AuditActionApprove, "")).NotTo(BeNil())
+			})
+		})
+		When("to approve new reward application", func() {
+			var app model.Application
+
+			BeforeEach(func() {
+				app = model.Application{
+					Type:       model.ParseApplicationType("new_reward"),
+					Applicant:  aliceWallet,
+					State:      model.ApplicationStateOpen,
+					EntityType: "project",
+					EntityId:   openProject.ID,
+				}
+
+				// Create correct application before testing
+				_ = model.NewApplicationRecord(db, &app)
+
+				// Set budget for project
+				_ = model.ProjectModel.SetBudget(db, openProject.ID, token1Name, 100)
+				_ = model.ProjectModel.SetBudget(db, openProject.ID, token2Name, 200)
+
+				// For new_reward application, detailed data is required for reward detail
+				app.DetailedData = model.ApplicationDetailedData{
+					ApplicationID:    app.ID,
+					TargetUserWallet: daveWallet,
+					AssetName:        token1Name,
+					Amount:           10,
+				}
+				db.Save(&app)
+			})
+			It("should prepare the project and application ready", func() {
+				Expect(app.State).To(BeEquivalentTo(model.ApplicationStateOpen))
+				Expect(openProject.Status).To(BeEquivalentTo(model.ProjectStatusOpen))
+
+				budgetRcds, _ := model.ProjectBudgetModel.ListByProjectId(db, openProject.ID)
+				Expect(len(budgetRcds)).To(BeEquivalentTo(2))
+
+				tokenNameAmountList := lo.Map(budgetRcds, func(r *model.ProjectBudget, _ int) map[string]uint64 {
+					return map[string]uint64{r.Name: r.TotalAmount}
+				})
+				Expect(tokenNameAmountList).To(ConsistOf([]map[string]uint64{{token1Name: 100}, {token2Name: 200}}))
+			})
+			It("should update application status to processing and create new audit log", func() {
+				oldAuditLogs, _ := app.ListAuditLogs(db)
+				_ = model.AuditApplication(db, carolWallet, &app, model.AuditActionApprove, "")
+
+				project, _ := model.ProjectModel.Detail(db, openProject.ID)
+				Expect(project.Status).To(BeEquivalentTo(model.ProjectStatusOpen))
+
+				newAuditLogs, _ := app.ListAuditLogs(db)
+				Expect(app.State).To(BeEquivalentTo(model.ApplicationStateApproved))
+
+				Expect(len(newAuditLogs) - len(oldAuditLogs)).To(Equal(1))
+				Expect(newAuditLogs[0].ID).To(Equal(oldAuditLogs[0].ID))
+				Expect(newAuditLogs[1].Operator).To(BeEquivalentTo(carolWallet))
+				Expect(newAuditLogs[1].Operation).To(BeEquivalentTo(model.AuditActionApprove))
+				Expect(newAuditLogs[1].PreState).To(BeEquivalentTo(model.ApplicationStateOpen))
+				Expect(newAuditLogs[1].PostState).To(BeEquivalentTo(model.ApplicationStateApproved))
+			})
+			It("should return error if project is not in open status", func() {
+				openProject.Status = model.ProjectStatusPendingClose
+				db.Save(&openProject)
+
+				err := model.AuditApplication(db, carolWallet, &app, model.AuditActionApprove, "")
+				Expect(err).NotTo(BeNil())
+			})
+			It("should not change project budget record", func() {
+				_ = model.AuditApplication(db, carolWallet, &app, model.AuditActionApprove, "")
+				budgetRcds, _ := model.ProjectBudgetModel.ListByProjectId(db, openProject.ID)
+				Expect(len(budgetRcds)).To(Equal(2))
+				tokenNameAmountList := lo.Map(budgetRcds, func(r *model.ProjectBudget, _ int) map[string]uint64 {
+					return map[string]uint64{r.Name: r.TotalAmount}
+				})
+				Expect(tokenNameAmountList).To(ConsistOf([]map[string]uint64{{token1Name: 100}, {token2Name: 200}}))
+			})
+		})
+		When("to reject new reward application", func() {
+			var app model.Application
+
+			BeforeEach(func() {
+				app = model.Application{
+					Type:       model.ParseApplicationType("new_reward"),
+					Applicant:  aliceWallet,
+					State:      model.ApplicationStateOpen,
+					EntityType: "project",
+					EntityId:   openProject.ID,
+				}
+
+				// Create correct application before testing
+				_ = model.NewApplicationRecord(db, &app)
+
+				// Set budget for project
+				_ = model.ProjectModel.SetBudget(db, openProject.ID, token1Name, 100)
+				_ = model.ProjectModel.SetBudget(db, openProject.ID, token2Name, 200)
+
+				// For new_reward application, detailed data is required for reward detail
+				app.DetailedData = model.ApplicationDetailedData{
+					ApplicationID:    app.ID,
+					TargetUserWallet: daveWallet,
+					AssetName:        token1Name,
+					Amount:           10,
+				}
+				db.Save(&app)
+			})
+			It("should update application state to rejected", func() {
+				oldAuditLogs, _ := app.ListAuditLogs(db)
+				err := model.AuditApplication(db, carolWallet, &app, model.AuditActionReject, "test reason")
+				Expect(err).To(BeNil())
+
+				project, _ := model.ProjectModel.Detail(db, openProject.ID)
+				Expect(project.Status).To(BeEquivalentTo(model.ProjectStatusOpen))
+
+				newAuditLogs, _ := app.ListAuditLogs(db)
+				Expect(app.State).To(BeEquivalentTo(model.ApplicationStateRejected))
+				Expect(app.RejectReason).To(BeEquivalentTo("test reason"))
+
+				Expect(len(newAuditLogs) - len(oldAuditLogs)).To(Equal(1))
+				Expect(newAuditLogs[0].ID).To(Equal(oldAuditLogs[0].ID))
+				Expect(newAuditLogs[1].Operator).To(BeEquivalentTo(carolWallet))
+				Expect(newAuditLogs[1].Operation).To(BeEquivalentTo(model.AuditActionReject))
+				Expect(newAuditLogs[1].PreState).To(BeEquivalentTo(model.ApplicationStateOpen))
+				Expect(newAuditLogs[1].PostState).To(BeEquivalentTo(model.ApplicationStateRejected))
+			})
+			It("should return error if application state is not open", func() {
+				db.Model(&app).Update("state", model.ApplicationStateApproved)
+				err := model.AuditApplication(db, carolWallet, &app, model.AuditActionReject, "test reason")
+				Expect(err).NotTo(BeNil())
 			})
 		})
 	})
