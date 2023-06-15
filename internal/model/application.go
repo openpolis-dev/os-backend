@@ -301,3 +301,8 @@ func (app *Application) ListAuditLogs(db *gorm.DB) ([]*ApplicationAuditLog, erro
 	querySeg := db.Model(&ApplicationAuditLog{}).Where("application_id = ?", app.ID)
 	return gormfind.Rows[ApplicationAuditLog](querySeg, nil)
 }
+
+func (app *Application) GetLatestAuditLog(db *gorm.DB) (*ApplicationAuditLog, error) {
+	querySeg := db.Model(&ApplicationAuditLog{}).Where("application_id = ?", app.ID).Order("log_ts desc")
+	return gormfind.Row[ApplicationAuditLog](querySeg)
+}

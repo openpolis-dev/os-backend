@@ -174,22 +174,22 @@ var _ = Describe("Application", func() {
 			})
 
 			It("should change project to closed state if project is in pending_close status and create completed audit logs", func() {
-				oldAuditLogs, _ := app.ListAuditLogs(db)
+				preLatestAuditLog, _ := app.GetLatestAuditLog(db)
+				Expect(preLatestAuditLog.PostState).To(BeEquivalentTo(model.ApplicationStateOpen))
+
 				_ = model.AuditApplication(db, carolWallet, &app, model.AuditActionApprove, "")
 
 				project, _ := model.ProjectModel.Detail(db, openProject.ID)
 				// The project changes to closed state
 				Expect(project.Status).To(BeEquivalentTo(model.ProjectStatusClosed))
 
-				newAuditLogs, _ := app.ListAuditLogs(db)
+				postLatestAuditLog, _ := app.GetLatestAuditLog(db)
 
 				// A new audit log with correct state change has been inserted
-				Expect(len(newAuditLogs) - len(oldAuditLogs)).To(Equal(1))
-				Expect(newAuditLogs[0].ID).To(Equal(oldAuditLogs[0].ID))
-				Expect(newAuditLogs[1].Operator).To(BeEquivalentTo(carolWallet))
-				Expect(newAuditLogs[1].Operation).To(BeEquivalentTo(model.AuditActionApprove))
-				Expect(newAuditLogs[1].PreState).To(BeEquivalentTo(model.ApplicationStateOpen))
-				Expect(newAuditLogs[1].PostState).To(BeEquivalentTo(model.ApplicationStateCompleted))
+				Expect(postLatestAuditLog.Operator).To(BeEquivalentTo(carolWallet))
+				Expect(postLatestAuditLog.Operation).To(BeEquivalentTo(model.AuditActionApprove))
+				Expect(postLatestAuditLog.PreState).To(BeEquivalentTo(model.ApplicationStateOpen))
+				Expect(postLatestAuditLog.PostState).To(BeEquivalentTo(model.ApplicationStateCompleted))
 
 				// The application should be changed to completed now
 				Expect(app.State).To(BeEquivalentTo(model.ApplicationStateCompleted))
@@ -239,22 +239,21 @@ var _ = Describe("Application", func() {
 				})
 				Expect(tokenNameAmountList).To(ConsistOf([]map[string]uint64{{token1Name: 100}, {token2Name: 200}}))
 			})
-			It("should update application status to processing and create new audit log", func() {
-				oldAuditLogs, _ := app.ListAuditLogs(db)
+			It("should update application status to approved and create new audit log", func() {
+				preLatestAuditLog, _ := app.GetLatestAuditLog(db)
+				Expect(preLatestAuditLog.PostState).To(BeEquivalentTo(model.ApplicationStateOpen))
 				_ = model.AuditApplication(db, carolWallet, &app, model.AuditActionApprove, "")
 
 				project, _ := model.ProjectModel.Detail(db, openProject.ID)
 				Expect(project.Status).To(BeEquivalentTo(model.ProjectStatusOpen))
 
-				newAuditLogs, _ := app.ListAuditLogs(db)
+				postLatestAuditLog, _ := app.GetLatestAuditLog(db)
 				Expect(app.State).To(BeEquivalentTo(model.ApplicationStateApproved))
 
-				Expect(len(newAuditLogs) - len(oldAuditLogs)).To(Equal(1))
-				Expect(newAuditLogs[0].ID).To(Equal(oldAuditLogs[0].ID))
-				Expect(newAuditLogs[1].Operator).To(BeEquivalentTo(carolWallet))
-				Expect(newAuditLogs[1].Operation).To(BeEquivalentTo(model.AuditActionApprove))
-				Expect(newAuditLogs[1].PreState).To(BeEquivalentTo(model.ApplicationStateOpen))
-				Expect(newAuditLogs[1].PostState).To(BeEquivalentTo(model.ApplicationStateApproved))
+				Expect(postLatestAuditLog.Operator).To(BeEquivalentTo(carolWallet))
+				Expect(postLatestAuditLog.Operation).To(BeEquivalentTo(model.AuditActionApprove))
+				Expect(postLatestAuditLog.PreState).To(BeEquivalentTo(model.ApplicationStateOpen))
+				Expect(postLatestAuditLog.PostState).To(BeEquivalentTo(model.ApplicationStateApproved))
 			})
 			It("should return error if project is not in open status", func() {
 				openProject.Status = model.ProjectStatusPendingClose
@@ -302,28 +301,143 @@ var _ = Describe("Application", func() {
 				db.Save(&app)
 			})
 			It("should update application state to rejected", func() {
-				oldAuditLogs, _ := app.ListAuditLogs(db)
+				preLatestAuditLog, _ := app.GetLatestAuditLog(db)
+				Expect(preLatestAuditLog.PostState).To(BeEquivalentTo(model.ApplicationStateOpen))
 				err := model.AuditApplication(db, carolWallet, &app, model.AuditActionReject, "test reason")
 				Expect(err).To(BeNil())
 
 				project, _ := model.ProjectModel.Detail(db, openProject.ID)
 				Expect(project.Status).To(BeEquivalentTo(model.ProjectStatusOpen))
 
-				newAuditLogs, _ := app.ListAuditLogs(db)
 				Expect(app.State).To(BeEquivalentTo(model.ApplicationStateRejected))
 				Expect(app.RejectReason).To(BeEquivalentTo("test reason"))
 
-				Expect(len(newAuditLogs) - len(oldAuditLogs)).To(Equal(1))
-				Expect(newAuditLogs[0].ID).To(Equal(oldAuditLogs[0].ID))
-				Expect(newAuditLogs[1].Operator).To(BeEquivalentTo(carolWallet))
-				Expect(newAuditLogs[1].Operation).To(BeEquivalentTo(model.AuditActionReject))
-				Expect(newAuditLogs[1].PreState).To(BeEquivalentTo(model.ApplicationStateOpen))
-				Expect(newAuditLogs[1].PostState).To(BeEquivalentTo(model.ApplicationStateRejected))
+				postLatestAuditLog, _ := app.GetLatestAuditLog(db)
+				Expect(postLatestAuditLog.Operator).To(BeEquivalentTo(carolWallet))
+				Expect(postLatestAuditLog.Operation).To(BeEquivalentTo(model.AuditActionReject))
+				Expect(postLatestAuditLog.PreState).To(BeEquivalentTo(model.ApplicationStateOpen))
+				Expect(postLatestAuditLog.PostState).To(BeEquivalentTo(model.ApplicationStateRejected))
 			})
 			It("should return error if application state is not open", func() {
 				db.Model(&app).Update("state", model.ApplicationStateApproved)
 				err := model.AuditApplication(db, carolWallet, &app, model.AuditActionReject, "test reason")
 				Expect(err).NotTo(BeNil())
+			})
+		})
+		When("to process new reward application", func() {
+			var app model.Application
+
+			BeforeEach(func() {
+				app = model.Application{
+					Type:       model.ParseApplicationType("new_reward"),
+					Applicant:  aliceWallet,
+					State:      model.ApplicationStateOpen,
+					EntityType: "project",
+					EntityId:   openProject.ID,
+				}
+
+				// Create correct application before testing
+				_ = model.NewApplicationRecord(db, &app)
+
+				// Set budget for project
+				_ = model.ProjectModel.SetBudget(db, openProject.ID, token1Name, 100)
+				_ = model.ProjectModel.SetBudget(db, openProject.ID, token2Name, 200)
+
+				// For new_reward application, detailed data is required for reward detail
+				app.DetailedData = model.ApplicationDetailedData{
+					ApplicationID:    app.ID,
+					TargetUserWallet: daveWallet,
+					AssetName:        token1Name,
+					Amount:           10,
+				}
+				db.Save(&app)
+
+				_ = model.AuditApplication(db, carolWallet, &app, model.AuditActionApprove, "")
+			})
+			It("should update application status to processing and create new audit log", func() {
+				preLatestAuditLog, _ := app.GetLatestAuditLog(db)
+				Expect(preLatestAuditLog.PostState).To(BeEquivalentTo(model.ApplicationStateApproved))
+
+				err := model.AuditApplication(db, carolWallet, &app, model.AuditActionProcess, "")
+				Expect(err).To(BeNil())
+
+				project, _ := model.ProjectModel.Detail(db, openProject.ID)
+				Expect(project.Status).To(BeEquivalentTo(model.ProjectStatusOpen))
+
+				Expect(app.State).To(BeEquivalentTo(model.ApplicationStateProcessing))
+
+				postLatestAuditLog, _ := app.GetLatestAuditLog(db)
+				Expect(postLatestAuditLog.Operator).To(BeEquivalentTo(carolWallet))
+				Expect(postLatestAuditLog.Operation).To(BeEquivalentTo(model.AuditActionProcess))
+				Expect(postLatestAuditLog.PreState).To(BeEquivalentTo(model.ApplicationStateApproved))
+				Expect(postLatestAuditLog.PostState).To(BeEquivalentTo(model.ApplicationStateProcessing))
+			})
+			It("should update update project budget remain amount", func() {
+				err := model.AuditApplication(db, carolWallet, &app, model.AuditActionProcess, "")
+				Expect(err).To(BeNil())
+
+				budgetRecords, _ := model.ProjectBudgetModel.ListByProjectId(db, openProject.ID)
+				for _, r := range budgetRecords {
+					if r.Name == token1Name {
+						Expect(r.RemainAmount).To(Equal(r.TotalAmount - 10)) // 100-10
+					} else if r.Name == token2Name {
+						Expect(r.RemainAmount).To(Equal(r.TotalAmount))
+					}
+				}
+			})
+			It("should add to processing amount of user asset record", func() {
+				err := model.AuditApplication(db, carolWallet, &app, model.AuditActionProcess, "")
+				Expect(err).To(BeNil())
+
+				userAssetRcd, err := model.UserAssetRecordModel.FindWithUserWalletAndAssetName(db, daveWallet, token1Name)
+				Expect(err).To(BeNil())
+
+				Expect(len(userAssetRcd)).To(Equal(1))
+				Expect(userAssetRcd[0].DealtAmount).To(BeEquivalentTo(0))
+				Expect(userAssetRcd[0].ProcessingAmount).To(BeEquivalentTo(10))
+			})
+		})
+		When("to complete new reward application", func() {
+			var app model.Application
+
+			BeforeEach(func() {
+				app = model.Application{
+					Type:       model.ParseApplicationType("new_reward"),
+					Applicant:  aliceWallet,
+					State:      model.ApplicationStateOpen,
+					EntityType: "project",
+					EntityId:   openProject.ID,
+				}
+
+				// Create correct application before testing
+				_ = model.NewApplicationRecord(db, &app)
+
+				// Set budget for project
+				_ = model.ProjectModel.SetBudget(db, openProject.ID, token1Name, 100)
+				_ = model.ProjectModel.SetBudget(db, openProject.ID, token2Name, 200)
+
+				// For new_reward application, detailed data is required for reward detail
+				app.DetailedData = model.ApplicationDetailedData{
+					ApplicationID:    app.ID,
+					TargetUserWallet: daveWallet,
+					AssetName:        token1Name,
+					Amount:           10,
+				}
+				db.Save(&app)
+
+				_ = model.AuditApplication(db, carolWallet, &app, model.AuditActionApprove, "")
+				_ = model.AuditApplication(db, carolWallet, &app, model.AuditActionProcess, "")
+			})
+			It("should add to processing amount of user asset record", func() {
+				err := model.AuditApplication(db, carolWallet, &app, model.AuditActionComplete, "")
+				Expect(err).To(BeNil())
+
+				userAssetRcd, err := model.UserAssetRecordModel.FindWithUserWalletAndAssetName(db, daveWallet, token1Name)
+				Expect(err).To(BeNil())
+
+				Expect(len(userAssetRcd)).To(Equal(1))
+				Expect(userAssetRcd[0].DealtAmount).To(BeEquivalentTo(10))
+				Expect(userAssetRcd[0].ProcessingAmount).To(BeEquivalentTo(0))
 			})
 		})
 	})
