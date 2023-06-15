@@ -93,35 +93,50 @@ var _ = Describe("Application", func() {
 			// TODO: Test with guild records
 		})
 
-		//Context("new reward application", func() {
-		//	It("should create application record and related audit log if project is open", func() {
-		//		appData := model.Application{
-		//			Type:       model.ParseApplicationType("new_reward"),
-		//			Applicant:  aliceWallet,
-		//			State:      "open",
-		//			EntityType: "project",
-		//			EntityId:   openProject.ID,
-		//		}
-		//
-		//		_ = model.NewApplicationRecord(db, &appData)
-		//
-		//		var applications []*model.Application
-		//		db.Find(&model.Application{}).Find(&applications)
-		//		Expect(len(applications)).To(BeEquivalentTo(1))
-		//		Expect(applications[0].Applicant).To(Equal(aliceWallet))
-		//		Expect(applications[0].Type).To(Equal(model.ApplicationCloseProject))
-		//		Expect(applications[0].State).To(Equal(model.ApplicationStateOpen))
-		//		Expect(applications[0].EntityType).To(Equal("project"))
-		//		Expect(applications[0].EntityId).To(Equal(openProject.ID))
-		//
-		//		auditLogs, _ := applications[0].ListAuditLogs(db)
-		//		Expect(len(auditLogs)).To(BeEquivalentTo(1))
-		//		Expect(auditLogs[0].ApplicationID).To(Equal(applications[0].ID))
-		//		Expect(auditLogs[0].Operator).To(Equal(aliceWallet))
-		//		Expect(auditLogs[0].Operation).To(Equal(model.AuditActionNew))
-		//		Expect(auditLogs[0].PostState).To(Equal(model.ApplicationStateOpen))
-		//	})
-		//})
+		When("to create new reward application", func() {
+			It("should create application record and related audit log if project is in open state", func() {
+				_ = model.NewApplicationRecord(db, &model.Application{
+					Type:       model.ParseApplicationType("new_reward"),
+					Applicant:  aliceWallet,
+					State:      "open",
+					EntityType: "project",
+					EntityId:   openProject.ID,
+				})
+
+				var applications []*model.Application
+				db.Find(&model.Application{Type: model.ApplicationNewReward}).Find(&applications)
+				Expect(len(applications)).To(BeEquivalentTo(1))
+				Expect(applications[0].Applicant).To(Equal(aliceWallet))
+				Expect(applications[0].Type).To(Equal(model.ApplicationNewReward))
+				Expect(applications[0].State).To(Equal(model.ApplicationStateOpen))
+				Expect(applications[0].EntityType).To(Equal("project"))
+				Expect(applications[0].EntityId).To(Equal(openProject.ID))
+
+				auditLogs, _ := applications[0].ListAuditLogs(db)
+				Expect(len(auditLogs)).To(BeEquivalentTo(1))
+				Expect(auditLogs[0].ApplicationID).To(Equal(applications[0].ID))
+				Expect(auditLogs[0].Operator).To(Equal(aliceWallet))
+				Expect(auditLogs[0].Operation).To(Equal(model.AuditActionNew))
+				Expect(auditLogs[0].PostState).To(Equal(model.ApplicationStateOpen))
+			})
+
+			It("should return error if project is not in open state", func() {
+				Expect(model.NewApplicationRecord(db, &model.Application{
+					Type:       model.ParseApplicationType("new_reward"),
+					Applicant:  aliceWallet,
+					State:      "open",
+					EntityType: "project",
+					EntityId:   pendingCloseProject.ID,
+				})).NotTo(BeNil())
+				Expect(model.NewApplicationRecord(db, &model.Application{
+					Type:       model.ParseApplicationType("new_reward"),
+					Applicant:  aliceWallet,
+					State:      "open",
+					EntityType: "project",
+					EntityId:   closedProject.ID,
+				})).NotTo(BeNil())
+			})
+		})
 	})
 
 	Describe("Invoking AuditApplication function", func() {
