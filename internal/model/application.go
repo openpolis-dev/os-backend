@@ -153,9 +153,24 @@ func (app *Application) nextStateAfterAction(action AuditActionType) Application
 
 // AuditApplication applies audit action on application and create related audit log in transaction
 func AuditApplication(db *gorm.DB, operatorWallet string, application *Application, action AuditActionType, extraMsg string) error {
+	// Check application record, verify whether the action can be applied on the application
 	if !application.ValidateAuditAction(action) {
 		// TODO: Define the error message as project constant
 		return fmt.Errorf("application state %s is not suite for action %s", application.State, action)
+	}
+
+	// Check related entity record, verify whether the status of entity is same with application post_state
+	if application.EntityType == "project" {
+		project, err := ProjectModel.Detail(db, application.EntityId)
+		if err != nil {
+			return err
+		}
+		// For close_project application, the project should be in pending_close state
+		// For new_reward application, the project should be in open state
+		if (application.Type == ApplicationCloseProject && project.Status != ProjectStatusPendingClose) ||
+			(application.Type == ApplicationNewReward && project.Status != ProjectStatusOpen) {
+			return fmt.Errorf("can not apply application type %s on project with status %s", application.Type, project.Status)
+		}
 	}
 
 	err := userWalletRecordExisting(db, operatorWallet)
@@ -198,7 +213,7 @@ func doAuditApplicationInTransaction(tx *gorm.DB, operatorWallet string, applica
 	nextState := application.nextStateAfterAction(action)
 
 	// Create audit log for application
-	if err := tx.Create(ApplicationAuditLog{
+	if err := tx.Create(&ApplicationAuditLog{
 		ApplicationID: application.ID,
 		LogTs:         time.Now(),
 		Operation:     action,
@@ -285,8 +300,10 @@ func userWalletRecordExisting(db *gorm.DB, walletAddr string) error {
 		return err
 	}
 
-	if userCnt != 1 {
+	if userCnt == 0 {
 		return fmt.Errorf("wallet record %s is not existing", walletAddr)
+	} else if userCnt > 1 {
+		return fmt.Errorf("wallet %s has more than one record, contract admin to fix this", walletAddr)
 	}
 
 	return nil

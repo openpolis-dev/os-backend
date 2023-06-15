@@ -1,17 +1,17 @@
 package model_test
 
 import (
-	"github.com/glebarez/sqlite"
+	"fmt"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/theseed-labs/os-backend/internal/model"
-	"gorm.io/gorm"
 )
 
 const (
-	aliceWallet = "0x2866E6B2aA58942261F126530b069951e7b271D2"
-	bobWallet   = "0xe6ade4161Bb5294A9Ec25B6F75D86Fa167e800Ce"
-	carolWallet = "0x2866E6B2aA58942261F126530b069951e7b271D2"
+	aliceWallet = "0x2866e6b2aa58942261f126530b069951e7b271d2"
+	bobWallet   = "0xe6ade4161bb5294a9ec25b6f75d86fa167e800ce"
+	carolWallet = "0x2866e6b2aa58942261f126530b069951e7b871d2"
 )
 
 var openProject, pendingCloseProject, closedProject *model.Project
@@ -20,18 +20,20 @@ var _ = Describe("Application", func() {
 
 	// Before each `It` execution, create the table and init project data
 	BeforeEach(func() {
-		_ = db.AutoMigrate(&model.Application{}, &model.Project{}, &model.ApplicationAuditLog{})
+		_ = db.AutoMigrate(&model.Application{}, &model.Project{}, &model.ApplicationAuditLog{}, &model.User{})
 		openProject = &model.Project{Name: "Open Project", Status: model.ProjectStatusOpen}
 		pendingCloseProject = &model.Project{Name: "Open Project", Status: model.ProjectStatusPendingClose}
 		closedProject = &model.Project{Name: "Open Project", Status: model.ProjectStatusClosed}
-		db.Save(openProject)
-		db.Save(pendingCloseProject)
-		db.Save(closedProject)
+		db.Create(&[]*model.Project{openProject, pendingCloseProject, closedProject})
+
+		db.Create(&model.User{Wallet: aliceWallet})
+		db.Create(&model.User{Wallet: bobWallet})
+		db.Create(&model.User{Wallet: carolWallet})
 	})
 
 	// After each `It` execution, drop tables
 	AfterEach(func() {
-		_ = db.Migrator().DropTable(model.ApplicationAuditLog{}, model.Application{}, model.Project{})
+		_ = db.Migrator().DropTable(model.ApplicationAuditLog{}, model.Application{}, model.Project{}, model.User{})
 	})
 
 	Describe("Invoking NewApplicationRecord function", func() {
@@ -140,5 +142,36 @@ var _ = Describe("Application", func() {
 	})
 
 	Describe("Invoking AuditApplication function", func() {
+		When("to approve close project application", func() {
+			var app model.Application
+
+			BeforeEach(func() {
+				app = model.Application{
+					Type:       model.ParseApplicationType("close_project"),
+					Applicant:  aliceWallet,
+					State:      "open",
+					EntityType: "project",
+					EntityId:   openProject.ID,
+				}
+
+				// Create correct application before testing
+				_ = model.NewApplicationRecord(db, &app)
+			})
+
+			It("should change project to closed state if project is in pending_close status and create related audit logs", func() {
+				_ = model.AuditApplication(db, carolWallet, &app, model.AuditActionApprove, "")
+
+				project, _ := model.ProjectModel.Detail(db, openProject.ID)
+				Expect(project.Status).To(BeEquivalentTo(model.ProjectStatusClosed))
+
+				// TODO: Check audit logs
+			})
+			It("should return error if project is not in pending_close status", func() {
+				db.Model(&openProject).Update("status", "open")
+				p, _ := model.ProjectModel.Detail(db, openProject.ID)
+				fmt.Printf("prj: %+v\n", p)
+				Expect(model.AuditApplication(db, carolWallet, &app, model.AuditActionApprove, "")).NotTo(BeNil())
+			})
+		})
 	})
 })
