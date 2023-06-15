@@ -14,13 +14,12 @@ const (
 	carolWallet = "0x2866E6B2aA58942261F126530b069951e7b271D2"
 )
 
-var _ = Describe("Application", func() {
-	var db *gorm.DB
-	var openProject, pendingCloseProject, closedProject *model.Project
+var openProject, pendingCloseProject, closedProject *model.Project
 
-	// TODO: Verify whether BeforeEach is meet the record init requirements
+var _ = Describe("Application", func() {
+
+	// Before each `It` execution, create the table and init project data
 	BeforeEach(func() {
-		db, _ = gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
 		_ = db.AutoMigrate(&model.Application{}, &model.Project{}, &model.ApplicationAuditLog{})
 		openProject = &model.Project{Name: "Open Project", Status: model.ProjectStatusOpen}
 		pendingCloseProject = &model.Project{Name: "Open Project", Status: model.ProjectStatusPendingClose}
@@ -30,9 +29,14 @@ var _ = Describe("Application", func() {
 		db.Save(closedProject)
 	})
 
-	Describe("NewApplicationRecord function", func() {
-		Context("close project application can be created on open project", func() {
-			It("should create application record and related audit log if project is open", func() {
+	// After each `It` execution, drop tables
+	AfterEach(func() {
+		_ = db.Migrator().DropTable(model.ApplicationAuditLog{}, model.Application{}, model.Project{})
+	})
+
+	Describe("Invoking NewApplicationRecord function", func() {
+		When("to create close project application", func() {
+			It("should create application record and related audit log if project is open and change project to pending_close state", func() {
 				_ = model.NewApplicationRecord(db, &model.Application{
 					Type:       model.ParseApplicationType("close_project"),
 					Applicant:  aliceWallet,
