@@ -42,7 +42,7 @@ var _ = Describe("Application", func() {
 				})
 
 				var applications []*model.Application
-				db.Find(&model.Application{}).Find(&applications)
+				db.Find(&model.Application{Type: model.ApplicationCloseProject}).Find(&applications)
 				Expect(len(applications)).To(BeEquivalentTo(1))
 				Expect(applications[0].Applicant).To(Equal(aliceWallet))
 				Expect(applications[0].Type).To(Equal(model.ApplicationCloseProject))
@@ -56,8 +56,10 @@ var _ = Describe("Application", func() {
 				Expect(auditLogs[0].Operator).To(Equal(aliceWallet))
 				Expect(auditLogs[0].Operation).To(Equal(model.AuditActionNew))
 				Expect(auditLogs[0].PostState).To(Equal(model.ApplicationStateOpen))
-			})
 
+				updatedProject, _ := model.ProjectModel.Detail(db, openProject.ID)
+				Expect(updatedProject.Status).To(BeEquivalentTo(model.ProjectStatusPendingClose))
+			})
 			It("should return error if project is not in open state", func() {
 				Expect(model.NewApplicationRecord(db, &model.Application{
 					Type:       model.ParseApplicationType("close_project"),
