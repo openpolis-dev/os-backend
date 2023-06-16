@@ -266,9 +266,18 @@ paths:
           content:
             "application/json":
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Project'
+                type: object
+                properties:
+                  page:
+                    type: number
+                  size:
+                    type: number
+                  total:
+                    type: number
+                  rows:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Project'
 
   /projects/{id}/update_sponsors:
     post:
@@ -465,7 +474,7 @@ paths:
                   rows:
                     type: array
                     items:
-                      $ref: '#/components/schemas/Project'
+                      $ref: '#/components/schemas/Application'
 
     post:
       tags: [ applications ]
