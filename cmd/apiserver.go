@@ -92,6 +92,11 @@ func main() {
 		userGroup.POST("/login", user.Login)
 		userGroup.GET("/users", user.Users)
 
+		// project routers
+		projGroup := v1.Group("/projects")
+		projGroup.GET("/", project.List)
+		projGroup.GET("/:id", project.Detail)
+
 		// foo routers
 	}
 	// --> auth required
@@ -106,10 +111,8 @@ func main() {
 
 		// project routers
 		projGroup := authorizedGroup.Group("/projects")
-		projGroup.GET("/", project.List)
 		projGroup.POST("/", project.Create)
 		projGroup.PUT("/:id", project.Update)
-		projGroup.GET("/:id", project.Detail)
 		projGroup.POST("/:id/close", project.Close)
 		projGroup.GET("/my", project.MyProjects)
 		projGroup.POST("/:id/update_sponsors", project.UpdateSponsors)
