@@ -110,10 +110,12 @@ func Create(ctx *gin.Context) {
 	policies := [][]string{
 		// p, proj_sponsor_1, proj_1, modify
 		// p, proj_sponsor_1, proj_1, create_app
-		// p, proj_sponsor_1, proj_1, u_sponsor
+		// p, proj_sponsor_1, proj_1, u_member
+		// p, proj_sponsor_1, proj_1, u_budget
 		{fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, proj.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, proj.ID), api.ActModify},
 		{fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, proj.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, proj.ID), api.ActCreateApplication},
 		{fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, proj.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, proj.ID), api.ActUpdateMember},
+		{fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, proj.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, proj.ID), api.ActUpdateBudget},
 		//// p, proj_member_1, proj_1, modify
 		//// p, proj_member_1, proj_1, create_app
 		//{fmt.Sprintf("%s%d", api.RoleProjMemberPrefix, proj.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, proj.ID), api.ActModify},
@@ -424,7 +426,7 @@ func UpdateBudget(ctx *gin.Context) {
 
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
-	ok, err := enforcer.Enforce(user.Wallet, fmt.Sprintf("%s%d", api.ObjProjPrefix, id), api.ActModify)
+	ok, err := enforcer.Enforce(user.Wallet, fmt.Sprintf("%s%d", api.ObjProjPrefix, id), api.ActUpdateBudget)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, err)
 		return

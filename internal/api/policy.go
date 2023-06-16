@@ -26,6 +26,7 @@ const (
 	ActModify            = "modify"
 	ActUpdateSponsor     = "u_sponsor"
 	ActUpdateMember      = "u_member"
+	ActUpdateBudget      = "u_budget"
 	ActCreateApplication = "create_app"
 	ActAuditApplication  = "audit_app"
 )
@@ -54,13 +55,15 @@ const (
 hall: can do anything
 	- create project/guild
 	- close all project/guild
-	- modify all project/guild's info
+	- modify all project/guild's info(includes: update name+logo, add related proposal)
 	- update all project/guild's sponsors and members
+	- update all project/guild's budgets
 	- audit all project and guild's application
 project/guild sponsor:
 	- modify this project/guild's info
 	- create application
 	- update this project/guild's member
+	- update this project/guild's budget
 project/guild member: !! project/guild member has no permissions !!
 	- modify this project/guild's info
 	- create application
@@ -75,5 +78,6 @@ project/guild member: !! project/guild member has no permissions !!
 	(0x..., proj_1, modify)
 	(0x..., proj_1, u_sponsor)
 	(0x..., proj_1, u_member)
+	(0x..., proj_1, u_budget)
 	(0x..., proj_1, create_app)
 */
