@@ -69,6 +69,7 @@ func main() {
 	// setup cors refer: https://github.com/gin-contrib/cors
 	corsCfg := cors.DefaultConfig()
 	corsCfg.AllowAllOrigins = true
+	corsCfg.AllowHeaders = []string{"Origin", "Accept", "Content-Type", "Authorization"}
 	r.Use(cors.New(corsCfg))
 
 	// setup basic middleware for database connection and config data
