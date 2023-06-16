@@ -308,13 +308,18 @@ func MyProjects(ctx *gin.Context) {
 
 	page := api.ParseAndConvertPageParam(ctx)
 
-	projects, err := model.ProjectModel.ListBySponsorOrMember(db, user.Wallet, page)
+	projects, total, err := model.ProjectModel.ListBySponsorOrMember(db, user.Wallet, page)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
 
-	ctx.JSON(http.StatusOK, api.Success(projects))
+	ctx.JSON(http.StatusOK, api.Success(api.ListReplyData{
+		Page:  page.Page,
+		Size:  page.Size,
+		Total: total,
+		Rows:  projects,
+	}))
 }
 
 // ------ ------ ------ ------ ------ ------ ------ ------ ------

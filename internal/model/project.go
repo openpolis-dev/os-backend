@@ -62,10 +62,19 @@ func (*projectModel) List(db *gorm.DB, status string, page *gormfind.Page) (data
 	return data, total, nil
 }
 
-func (*projectModel) ListBySponsorOrMember(db *gorm.DB, wallet string, page *gormfind.Page) ([]*Project, error) {
+func (*projectModel) ListBySponsorOrMember(db *gorm.DB, wallet string, page *gormfind.Page) (data []*Project, total int64, err error) {
 	w := fmt.Sprintf("%%\"%s\"%%", wallet) // value is: `%"0x123"%`
 	querySeg := db.Table("projects").Where("sponsors LIKE ?", w).Or("members LIKE ?", w)
-	return gormfind.Rows[Project](querySeg, page)
+
+	total, err = gormfind.Count(querySeg)
+	if err != nil {
+		return
+	}
+	data, err = gormfind.Rows[Project](querySeg, page)
+	if err != nil {
+		return
+	}
+	return data, total, nil
 }
 
 // SetBudget set budget record directly, but only total amount is allowed to set directly
