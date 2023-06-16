@@ -4,10 +4,10 @@ const (
 	RoleHall = "hall"
 
 	RoleProjSponsorPrefix = "proj_sponsor_"
-	RoleProjMemberPrefix  = "proj_member_"
+	//RoleProjMemberPrefix  = "proj_member_"
 
 	RoleGuildSponsorPrefix = "guild_sponsor_"
-	RoleGuildMemberPrefix  = "guild_member_"
+	//RoleGuildMemberPrefix  = "guild_member_"
 )
 
 const (
@@ -61,7 +61,7 @@ project/guild sponsor:
 	- modify this project/guild's info
 	- create application
 	- update this project/guild's member
-project/guild member:
+project/guild member: !! project/guild member has no permissions !!
 	- modify this project/guild's info
 	- create application
 */
