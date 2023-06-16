@@ -84,11 +84,11 @@ func Create(ctx *gin.Context) {
 		Else("")
 	ok, err := enforcer.Enforce(user.Wallet, obj, api.ActCreateApplication)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
 	if !ok {
-		ctx.JSON(http.StatusForbidden, err)
+		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
 
@@ -134,11 +134,11 @@ func Export(ctx *gin.Context) {
 	//  check permission: `(0x..., proj_and_guild, audit_app)`
 	ok, err := enforcer.Enforce(user.Wallet, api.ObjProjAndGuild, api.ActAuditApplication)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
 	if !ok {
-		ctx.JSON(http.StatusForbidden, err)
+		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
 
@@ -175,11 +175,11 @@ func BatchApprove(ctx *gin.Context) {
 	//  check permission: `(0x..., proj_and_guild, audit_app)`
 	ok, err := enforcer.Enforce(user.Wallet, api.ObjProjAndGuild, api.ActAuditApplication)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
 	if !ok {
-		ctx.JSON(http.StatusForbidden, err)
+		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
 
@@ -204,11 +204,11 @@ func BatchReject(ctx *gin.Context) {
 	//  check permission: `(0x..., proj_and_guild, audit_app)`
 	ok, err := enforcer.Enforce(user.Wallet, api.ObjProjAndGuild, api.ActAuditApplication)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
 	if !ok {
-		ctx.JSON(http.StatusForbidden, err)
+		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
 
@@ -232,11 +232,11 @@ func BatchComplete(ctx *gin.Context) {
 	//  check permission: `(0x..., proj_and_guild, audit_app)`
 	ok, err := enforcer.Enforce(user.Wallet, api.ObjProjAndGuild, api.ActAuditApplication)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
 	if !ok {
-		ctx.JSON(http.StatusForbidden, err)
+		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
 
@@ -314,11 +314,11 @@ func auditApplication(ctx *gin.Context, application *model.Application, auditAct
 	//  check permission: `(0x..., proj_and_guild, audit_app)`
 	ok, err := enforcer.Enforce(user.Wallet, api.ObjProjAndGuild, api.ActAuditApplication)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
 	if !ok {
-		ctx.JSON(http.StatusForbidden, err)
+		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
 

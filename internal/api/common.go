@@ -25,6 +25,27 @@ func Success(data any) *Reply {
 	}
 }
 
+func BadRequest(err error) *Reply {
+	return &Reply{
+		Code: -1,
+		Msg:  err.Error(),
+	}
+}
+
+func ServerError(err error) *Reply {
+	return &Reply{
+		Code: -1,
+		Msg:  err.Error(),
+	}
+}
+
+func Forbidden() *Reply {
+	return &Reply{
+		Code: -1,
+		Msg:  "Forbidden",
+	}
+}
+
 // ------ ------ ------ ------ ------ ------ ------ ------ ------
 // ------ ------ ------ ------ ------ ------ ------ ------ ------
 

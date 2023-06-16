@@ -59,17 +59,21 @@ type (
 // Create `POST /projects`
 func Create(ctx *gin.Context) {
 	req := CreateReq{}
-	_ = ctx.BindJSON(&req)
+	err := ctx.BindJSON(&req)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
+		return
+	}
 
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
 	ok, err := enforcer.Enforce(user.Wallet, api.ObjProj, api.ActCreate)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
 	if !ok {
-		ctx.JSON(http.StatusForbidden, err)
+		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
 
@@ -86,7 +90,7 @@ func Create(ctx *gin.Context) {
 	err = model.ProjectModel.CreateOrUpdate(tx, &proj)
 	if err != nil {
 		tx.Rollback()
-		ctx.JSON(http.StatusInternalServerError, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
 	// save project budgets
@@ -100,7 +104,7 @@ func Create(ctx *gin.Context) {
 	err = model.ProjectBudgetModel.Create(tx, budgets)
 	if err != nil {
 		tx.Rollback()
-		ctx.JSON(http.StatusInternalServerError, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
 	// commit transaction
@@ -123,7 +127,7 @@ func Create(ctx *gin.Context) {
 	}
 	_, err = enforcer.AddPolicies(policies)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
 	// add roles
@@ -138,12 +142,12 @@ func Create(ctx *gin.Context) {
 	//groupingPolicies := append(memberGroupingPolicies, sponsorGroupingPolicies...)
 	_, err = enforcer.AddGroupingPolicies(sponsorGroupingPolicies)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
 	err = enforcer.SavePolicy()
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
 
@@ -153,26 +157,34 @@ func Create(ctx *gin.Context) {
 // Update `PUT /projects/:id`
 func Update(ctx *gin.Context) {
 	idParam := ctx.Param("id")
-	id, _ := strconv.Atoi(idParam)
+	id, err := strconv.Atoi(idParam)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
+		return
+	}
 
 	req := UpdateReq{}
-	_ = ctx.BindJSON(&req)
+	err = ctx.BindJSON(&req)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
+		return
+	}
 
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
 	ok, err := enforcer.Enforce(user.Wallet, fmt.Sprintf("%s%d", api.ObjProjPrefix, id), api.ActModify)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
 	if !ok {
-		ctx.JSON(http.StatusForbidden, err)
+		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
 
 	proj, err := model.ProjectModel.Detail(db, uint(id))
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
 	// update logo and name
@@ -180,7 +192,7 @@ func Update(ctx *gin.Context) {
 	proj.Name = req.Name
 	err = model.ProjectModel.CreateOrUpdate(db, proj)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
 
@@ -191,13 +203,17 @@ func Update(ctx *gin.Context) {
 // POST /project/:id/close
 func Close(ctx *gin.Context) {
 	idParam := ctx.Param("id")
-	id, _ := strconv.Atoi(idParam)
+	id, err := strconv.Atoi(idParam)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
+		return
+	}
 
 	user, _, db, _ := api.ForContext(ctx)
 
 	project, err := model.ProjectModel.Detail(db, uint(id))
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
 
@@ -239,19 +255,23 @@ func Close(ctx *gin.Context) {
 // Detail `GET /project/:id`
 func Detail(ctx *gin.Context) {
 	idParam := ctx.Param("id")
-	id, _ := strconv.Atoi(idParam)
+	id, err := strconv.Atoi(idParam)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
+		return
+	}
 
 	db := api.ForContextOnlyDB(ctx)
 
 	proj, err := model.ProjectModel.Detail(db, uint(id))
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
 
 	budgets, err := model.ProjectBudgetModel.ListByProjectId(db, proj.ID)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
 
@@ -270,7 +290,7 @@ func List(ctx *gin.Context) {
 
 	projects, err := model.ProjectModel.List(db, status, page)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
 
@@ -285,7 +305,7 @@ func MyProjects(ctx *gin.Context) {
 
 	projects, err := model.ProjectModel.ListBySponsorOrMember(db, user.Wallet, page)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
 
@@ -298,26 +318,34 @@ func MyProjects(ctx *gin.Context) {
 // UpdateSponsors `POST /projects/:id/update_sponsors`
 func UpdateSponsors(ctx *gin.Context) {
 	idParam := ctx.Param("id")
-	id, _ := strconv.Atoi(idParam)
+	id, err := strconv.Atoi(idParam)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
+		return
+	}
 
 	req := UpdateSponsorsReq{}
-	_ = ctx.BindJSON(&req)
+	err = ctx.BindJSON(&req)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
+		return
+	}
 
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
 	ok, err := enforcer.Enforce(user.Wallet, fmt.Sprintf("%s%d", api.ObjProjPrefix, id), api.ActUpdateSponsor)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
 	if !ok {
-		ctx.JSON(http.StatusForbidden, err)
+		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
 
 	proj, err := model.ProjectModel.Detail(db, uint(id))
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
 
@@ -328,7 +356,7 @@ func UpdateSponsors(ctx *gin.Context) {
 	})
 	_, err = enforcer.RemoveGroupingPolicies(oldSponsorGroupingPolicies)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
 
@@ -336,7 +364,7 @@ func UpdateSponsors(ctx *gin.Context) {
 	proj.Sponsors = req.Sponsors
 	err = model.ProjectModel.CreateOrUpdate(db, proj)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
 
@@ -347,7 +375,7 @@ func UpdateSponsors(ctx *gin.Context) {
 	})
 	_, err = enforcer.AddGroupingPolicies(newSponsorGroupingPolicies)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
 
@@ -357,26 +385,34 @@ func UpdateSponsors(ctx *gin.Context) {
 // UpdateMembers `POST /projects/:id/update_members`
 func UpdateMembers(ctx *gin.Context) {
 	idParam := ctx.Param("id")
-	id, _ := strconv.Atoi(idParam)
+	id, err := strconv.Atoi(idParam)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
+		return
+	}
 
 	req := UpdateMembersReq{}
-	_ = ctx.BindJSON(&req)
+	err = ctx.BindJSON(&req)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
+		return
+	}
 
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
 	ok, err := enforcer.Enforce(user.Wallet, fmt.Sprintf("%s%d", api.ObjProjPrefix, id), api.ActUpdateMember)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
 	if !ok {
-		ctx.JSON(http.StatusForbidden, err)
+		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
 
 	proj, err := model.ProjectModel.Detail(db, uint(id))
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
 
@@ -395,7 +431,7 @@ func UpdateMembers(ctx *gin.Context) {
 	proj.Members = req.Members
 	err = model.ProjectModel.CreateOrUpdate(db, proj)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
 
@@ -419,33 +455,41 @@ func UpdateMembers(ctx *gin.Context) {
 // UpdateBudget `POST /projects/:id/update_budget`
 func UpdateBudget(ctx *gin.Context) {
 	idParam := ctx.Param("id")
-	id, _ := strconv.Atoi(idParam)
+	id, err := strconv.Atoi(idParam)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
+		return
+	}
 
 	req := UpdateBudgetReq{}
-	_ = ctx.BindJSON(&req)
+	err = ctx.BindJSON(&req)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
+		return
+	}
 
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
 	ok, err := enforcer.Enforce(user.Wallet, fmt.Sprintf("%s%d", api.ObjProjPrefix, id), api.ActUpdateBudget)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
 	if !ok {
-		ctx.JSON(http.StatusForbidden, err)
+		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
 
 	budget, err := model.ProjectBudgetModel.Detail(db, req.Id)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
 	// update `TotalAmount`
 	budget.TotalAmount = req.TotalAmount
 	err = model.ProjectBudgetModel.Update(db, budget)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
 
@@ -458,31 +502,35 @@ func UpdateBudget(ctx *gin.Context) {
 // AddRelatedProposal `POST /projects/:id/add_related_proposal/:proposal_id`
 func AddRelatedProposal(ctx *gin.Context) {
 	idParam := ctx.Param("id")
-	id, _ := strconv.Atoi(idParam)
+	id, err := strconv.Atoi(idParam)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
+		return
+	}
 	proposalID := ctx.Param("proposal_id")
 
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
 	ok, err := enforcer.Enforce(user.Wallet, fmt.Sprintf("%s%d", api.ObjProjPrefix, id), api.ActModify)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
 	if !ok {
-		ctx.JSON(http.StatusForbidden, err)
+		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
 
 	proj, err := model.ProjectModel.Detail(db, uint(id))
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
 
 	proj.Proposals = append(proj.Proposals, proposalID)
 	err = model.ProjectModel.CreateOrUpdate(db, proj)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
 

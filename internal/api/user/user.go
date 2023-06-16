@@ -30,12 +30,16 @@ type LoginReply struct {
 // Login `POST /login`
 func Login(ctx *gin.Context) {
 	req := LoginReq{}
-	_ = ctx.BindJSON(&req)
+	err := ctx.BindJSON(&req)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
+		return
+	}
 
 	// verify sign
-	err := common.VerifyWalletSign(req.Wallet, req.Timestamp, req.Sign)
+	err = common.VerifyWalletSign(req.Wallet, req.Timestamp, req.Sign)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, err)
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
 		return
 	}
 
@@ -44,7 +48,7 @@ func Login(ctx *gin.Context) {
 	// query user
 	user, err := model.UserModel.Detail(db, strings.ToLower(req.Wallet))
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
 	if user == nil {
@@ -53,7 +57,7 @@ func Login(ctx *gin.Context) {
 		}
 		err = model.UserModel.CreateOrUpdate(db, user)
 		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 			return
 		}
 	}
@@ -67,7 +71,7 @@ func Login(ctx *gin.Context) {
 		cfg.Jwt.Secret,
 	)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
 
@@ -92,7 +96,7 @@ func Detail(ctx *gin.Context) {
 
 	u, err := model.UserModel.Detail(db, user.Wallet)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
 
@@ -111,13 +115,17 @@ type UpdateReq struct {
 // Update `PUT /me`
 func Update(ctx *gin.Context) {
 	req := UpdateReq{}
-	_ = ctx.BindJSON(&req)
+	err := ctx.BindJSON(&req)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
+		return
+	}
 
 	user, db := api.ForContextUserAndDB(ctx)
 
 	u, err := model.UserModel.Detail(db, user.Wallet)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
 	// update user info
@@ -129,7 +137,7 @@ func Update(ctx *gin.Context) {
 	u.GoogleProfile = req.GoogleProfile
 	err = model.UserModel.CreateOrUpdate(db, u)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
 
@@ -145,7 +153,7 @@ func Users(ctx *gin.Context) {
 
 	users, err := model.UserModel.List(db, wallets)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
 
