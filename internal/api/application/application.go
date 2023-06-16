@@ -37,6 +37,14 @@ func List(ctx *gin.Context) {
 	page := api.ParseAndConvertPageParam(ctx)
 
 	querySeg := db.Model(&model.Application{})
+	total, err := gormfind.Count(querySeg)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, api.Reply{
+			Code: -1,
+			Msg:  "query error",
+		})
+	}
+
 	rcds, err := gormfind.Rows[model.Application](querySeg, page)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.Reply{
@@ -44,7 +52,12 @@ func List(ctx *gin.Context) {
 			Msg:  "query error",
 		})
 	}
-	ctx.JSON(http.StatusOK, api.Success(rcds))
+	ctx.JSON(http.StatusOK, api.Success(api.ListReplyData{
+		Page:  page.Page,
+		Size:  page.Size,
+		Total: total,
+		Rows:  rcds,
+	}))
 }
 
 // Create handles creating application with passed in data
