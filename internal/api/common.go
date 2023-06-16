@@ -17,11 +17,39 @@ type Reply struct {
 	Data any    `json:"data,omitempty"`
 }
 
+type ListReplyData struct {
+	Page  int   `json:"page"`
+	Size  int   `json:"size"`
+	Total int64 `json:"total"`
+	Rows  any   `json:"rows,omitempty"`
+}
+
 func Success(data any) *Reply {
 	return &Reply{
 		Code: 200,
 		Msg:  "OK",
 		Data: data,
+	}
+}
+
+func BadRequest(err error) *Reply {
+	return &Reply{
+		Code: -1,
+		Msg:  err.Error(),
+	}
+}
+
+func ServerError(err error) *Reply {
+	return &Reply{
+		Code: -1,
+		Msg:  err.Error(),
+	}
+}
+
+func Forbidden() *Reply {
+	return &Reply{
+		Code: -1,
+		Msg:  "Forbidden",
 	}
 }
 
