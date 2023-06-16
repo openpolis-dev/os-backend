@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/casbin/casbin/v2"
 	"github.com/gin-gonic/gin"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/common"
@@ -158,4 +159,22 @@ func Users(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, api.Success(users))
+}
+
+// ------ ------ ------ ------ ------ ------ ------ ------ ------
+// ------ Permission ------ ------
+
+// GetFrontendPermission `GET /casbin?casbin_subject=0x1`
+// query frontend permission by user wallet
+func GetFrontendPermission(ctx *gin.Context) {
+	_, enforcer, _, _ := api.ForContext(ctx)
+
+	sub, _ := ctx.GetQuery("casbin_subject")
+	data, err := casbin.CasbinJsGetPermissionForUser(enforcer, strings.ToLower(sub))
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, api.Success(data))
 }

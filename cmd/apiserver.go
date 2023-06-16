@@ -91,6 +91,7 @@ func main() {
 		userGroup := v1.Group("/user")
 		userGroup.POST("/login", user.Login)
 		userGroup.GET("/users", user.Users)
+		userGroup.GET("/casbin", user.GetFrontendPermission)
 
 		// project routers
 		projGroup := v1.Group("/projects")
