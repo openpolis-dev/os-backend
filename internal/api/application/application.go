@@ -7,13 +7,12 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/samber/lo"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/xiaosongfu/gormfind"
 	"gorm.io/gorm"
 )
-
-var err error
 
 type AuditRequestBody struct {
 	Message string `json:"message"`
@@ -24,7 +23,7 @@ type AuditRequestBody struct {
 type NewApplicationRequest struct {
 	Type             string `json:"type"`
 	Entity           string `json:"entity"`
-	EntityId         string `json:"entity_id"`
+	EntityId         uint   `json:"entity_id"`
 	TargetUserWallet string `json:"target_user_wallet"`
 	AssetName        string `json:"asset_name"`
 	Amount           uint64 `json:"amount"`
@@ -52,8 +51,6 @@ func List(ctx *gin.Context) {
 // An audit log record will be created with application at same time with action open
 // POST /applications
 func Create(ctx *gin.Context) {
-	user, _, db, _ := api.ForContext(ctx)
-
 	newApplicationReq := NewApplicationRequest{}
 	if err := ctx.BindJSON(newApplicationReq); err != nil {
 		if err != nil {
@@ -76,6 +73,23 @@ func Create(ctx *gin.Context) {
 			Code: -1,
 			Msg:  fmt.Sprintf("unknown application entity %s", newApplicationReq.Entity),
 		})
+	}
+
+	user, enforcer, db, _ := api.ForContext(ctx)
+
+	//  check permission: `(0x..., proj_1, create_app)` (0x..., guild_1, create_app)
+	obj := lo.
+		If(newApplicationReq.Entity == "project", fmt.Sprintf("%s%d", api.ObjProjPrefix, newApplicationReq.EntityId)).
+		ElseIf(newApplicationReq.Entity == "guild", fmt.Sprintf("%s%d", api.ObjGuildPrefix, newApplicationReq.EntityId)).
+		Else("")
+	ok, err := enforcer.Enforce(user.Wallet, obj, api.ActCreateApplication)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, err)
+		return
+	}
+	if !ok {
+		ctx.JSON(http.StatusForbidden, err)
+		return
 	}
 
 	application := model.Application{
@@ -115,7 +129,19 @@ func Create(ctx *gin.Context) {
 // If there are existing applications in processing state, the export function returns error.
 // Actually, Export is the batchProcess operation
 func Export(ctx *gin.Context) {
-	user, _, db, _ := api.ForContext(ctx)
+	user, enforcer, db, _ := api.ForContext(ctx)
+
+	//  check permission: `(0x..., proj_and_guild, audit_app)`
+	ok, err := enforcer.Enforce(user.Wallet, api.ObjProjAndGuild, api.ActAuditApplication)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, err)
+		return
+	}
+	if !ok {
+		ctx.JSON(http.StatusForbidden, err)
+		return
+	}
+
 	var processingRecordCount int64
 	db.Model(&model.Application{}).Where("state <> ?", model.ApplicationStateProcessing).Count(&processingRecordCount)
 
@@ -144,7 +170,19 @@ func BatchApprove(ctx *gin.Context) {
 	var applications []model.Application
 	getBatchApplicationsOrReturnError(ctx, &applications)
 
-	user, _, db, _ := api.ForContext(ctx)
+	user, enforcer, db, _ := api.ForContext(ctx)
+
+	//  check permission: `(0x..., proj_and_guild, audit_app)`
+	ok, err := enforcer.Enforce(user.Wallet, api.ObjProjAndGuild, api.ActAuditApplication)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, err)
+		return
+	}
+	if !ok {
+		ctx.JSON(http.StatusForbidden, err)
+		return
+	}
+
 	err = model.BatchAuditApplication(db, user.Wallet, &applications, model.AuditActionApprove, "")
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, api.Reply{
@@ -161,7 +199,19 @@ func BatchReject(ctx *gin.Context) {
 	var applications []model.Application
 	getBatchApplicationsOrReturnError(ctx, &applications)
 
-	user, _, db, _ := api.ForContext(ctx)
+	user, enforcer, db, _ := api.ForContext(ctx)
+
+	//  check permission: `(0x..., proj_and_guild, audit_app)`
+	ok, err := enforcer.Enforce(user.Wallet, api.ObjProjAndGuild, api.ActAuditApplication)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, err)
+		return
+	}
+	if !ok {
+		ctx.JSON(http.StatusForbidden, err)
+		return
+	}
+
 	err = model.BatchAuditApplication(db, user.Wallet, &applications, model.AuditActionReject, "")
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, api.Reply{
@@ -177,12 +227,24 @@ func BatchReject(ctx *gin.Context) {
 // Only applications in processing state can be completed, so no application ids are required for this API call
 // This api will fetch all applications with processing state in db and apply `complete` action on them
 func BatchComplete(ctx *gin.Context) {
-	user, _, db, _ := api.ForContext(ctx)
+	user, enforcer, db, _ := api.ForContext(ctx)
+
+	//  check permission: `(0x..., proj_and_guild, audit_app)`
+	ok, err := enforcer.Enforce(user.Wallet, api.ObjProjAndGuild, api.ActAuditApplication)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, err)
+		return
+	}
+	if !ok {
+		ctx.JSON(http.StatusForbidden, err)
+		return
+	}
+
 	var applications []model.Application
 	db.Model(&model.Application{}).Where("state = ?", model.ApplicationStateProcessing).Find(&applications)
 
 	reqBody := AuditRequestBody{}
-	err := ctx.Bind(&reqBody)
+	err = ctx.Bind(&reqBody)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, api.Reply{
 			Code: -1,
@@ -247,7 +309,19 @@ func Complete(ctx *gin.Context) {
 func auditApplication(ctx *gin.Context, application *model.Application, auditAction model.AuditActionType, auditMsg string) {
 	getRecordOrReturnNotFound(ctx, application)
 
-	user, _, db, _ := api.ForContext(ctx)
+	user, enforcer, db, _ := api.ForContext(ctx)
+
+	//  check permission: `(0x..., proj_and_guild, audit_app)`
+	ok, err := enforcer.Enforce(user.Wallet, api.ObjProjAndGuild, api.ActAuditApplication)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, err)
+		return
+	}
+	if !ok {
+		ctx.JSON(http.StatusForbidden, err)
+		return
+	}
+
 	if application.ValidateAuditAction(auditAction) {
 		err = model.AuditApplication(db, user.Wallet, application, auditAction, auditMsg)
 		if err != nil {

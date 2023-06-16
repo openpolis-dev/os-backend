@@ -35,11 +35,7 @@ func main() {
 	}
 	// add default policies
 	defaultPolicies := [][]string{
-		{api.RoleHall, "*", "*"},                          // `p, hall, *, *` hall can do anything
-		{api.RoleProjAdmin, api.ObjProj, api.ActCreate},   // `p, proj_admin, proj, create`
-		{api.RoleGuildAdmin, api.ObjGuild, api.ActCreate}, // `p, guild_admin, guild, create`
-		{api.RoleProjAdmin, api.ObjProj, api.ActClose},    // `p, proj_admin, proj, close`
-		{api.RoleGuildAdmin, api.ObjGuild, api.ActClose},  // `p, guild_admin, guild, close`
+		{api.RoleHall, "*", "*"}, // `p, hall, *, *` hall can do anything
 	}
 	_, err = enforcer.AddPolicies(defaultPolicies)
 	if err != nil {
