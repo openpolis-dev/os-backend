@@ -109,9 +109,17 @@ func Create(ctx *gin.Context) {
 	// add policies
 	policies := [][]string{
 		// p, proj_sponsor_1, proj_1, modify
-		// p, proj_member_1, proj_1, modify
+		// p, proj_sponsor_1, proj_1, create_app
+		// p, proj_sponsor_1, proj_1, u_member
+		// p, proj_sponsor_1, proj_1, u_budget
 		{fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, proj.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, proj.ID), api.ActModify},
-		{fmt.Sprintf("%s%d", api.RoleProjMemberPrefix, proj.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, proj.ID), api.ActModify},
+		{fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, proj.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, proj.ID), api.ActCreateApplication},
+		{fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, proj.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, proj.ID), api.ActUpdateMember},
+		{fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, proj.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, proj.ID), api.ActUpdateBudget},
+		//// p, proj_member_1, proj_1, modify
+		//// p, proj_member_1, proj_1, create_app
+		//{fmt.Sprintf("%s%d", api.RoleProjMemberPrefix, proj.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, proj.ID), api.ActModify},
+		//{fmt.Sprintf("%s%d", api.RoleProjMemberPrefix, proj.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, proj.ID), api.ActCreateApplication},
 	}
 	_, err = enforcer.AddPolicies(policies)
 	if err != nil {
@@ -123,12 +131,12 @@ func Create(ctx *gin.Context) {
 		// g, 0xc13..1283 proj_sponsor_1
 		return []string{strings.ToLower(sponsor), fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, proj.ID)}
 	})
-	memberGroupingPolicies := lo.Map(req.Members, func(member string, _ int) []string {
-		// g, 0xc13..1283 proj_member_1
-		return []string{strings.ToLower(member), fmt.Sprintf("%s%d", api.RoleProjMemberPrefix, proj.ID)}
-	})
-	groupingPolicies := append(memberGroupingPolicies, sponsorGroupingPolicies...)
-	_, err = enforcer.AddGroupingPolicies(groupingPolicies)
+	//memberGroupingPolicies := lo.Map(req.Members, func(member string, _ int) []string {
+	//	// g, 0xc13..1283 proj_member_1
+	//	return []string{strings.ToLower(member), fmt.Sprintf("%s%d", api.RoleProjMemberPrefix, proj.ID)}
+	//})
+	//groupingPolicies := append(memberGroupingPolicies, sponsorGroupingPolicies...)
+	_, err = enforcer.AddGroupingPolicies(sponsorGroupingPolicies)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, err)
 		return
@@ -297,7 +305,7 @@ func UpdateSponsors(ctx *gin.Context) {
 
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
-	ok, err := enforcer.Enforce(user.Wallet, fmt.Sprintf("%s%d", api.ObjProjPrefix, id), api.ActModify)
+	ok, err := enforcer.Enforce(user.Wallet, fmt.Sprintf("%s%d", api.ObjProjPrefix, id), api.ActUpdateSponsor)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, err)
 		return
@@ -356,7 +364,7 @@ func UpdateMembers(ctx *gin.Context) {
 
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
-	ok, err := enforcer.Enforce(user.Wallet, fmt.Sprintf("%s%d", api.ObjProjPrefix, id), api.ActModify)
+	ok, err := enforcer.Enforce(user.Wallet, fmt.Sprintf("%s%d", api.ObjProjPrefix, id), api.ActUpdateMember)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, err)
 		return
@@ -372,16 +380,16 @@ func UpdateMembers(ctx *gin.Context) {
 		return
 	}
 
-	// remove roles for ole members
-	oldMemberGroupingPolicies := lo.Map(proj.Members, func(member string, _ int) []string {
-		// g, 0xc13..1283 proj_member_1
-		return []string{member, fmt.Sprintf("%s%d", api.RoleProjMemberPrefix, proj.ID)}
-	})
-	_, err = enforcer.RemoveGroupingPolicies(oldMemberGroupingPolicies)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, err)
-		return
-	}
+	//// remove roles for ole members
+	//oldMemberGroupingPolicies := lo.Map(proj.Members, func(member string, _ int) []string {
+	//	// g, 0xc13..1283 proj_member_1
+	//	return []string{member, fmt.Sprintf("%s%d", api.RoleProjMemberPrefix, proj.ID)}
+	//})
+	//_, err = enforcer.RemoveGroupingPolicies(oldMemberGroupingPolicies)
+	//if err != nil {
+	//	ctx.JSON(http.StatusInternalServerError, err)
+	//	return
+	//}
 
 	// update project members
 	proj.Members = req.Members
@@ -391,16 +399,16 @@ func UpdateMembers(ctx *gin.Context) {
 		return
 	}
 
-	// add roles for new members
-	newMemberGroupingPolicies := lo.Map(req.Members, func(member string, _ int) []string {
-		// g, 0xc13..1283 proj_member_1
-		return []string{strings.ToLower(member), fmt.Sprintf("%s%d", api.RoleProjMemberPrefix, proj.ID)}
-	})
-	_, err = enforcer.AddGroupingPolicies(newMemberGroupingPolicies)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, err)
-		return
-	}
+	//// add roles for new members
+	//newMemberGroupingPolicies := lo.Map(req.Members, func(member string, _ int) []string {
+	//	// g, 0xc13..1283 proj_member_1
+	//	return []string{strings.ToLower(member), fmt.Sprintf("%s%d", api.RoleProjMemberPrefix, proj.ID)}
+	//})
+	//_, err = enforcer.AddGroupingPolicies(newMemberGroupingPolicies)
+	//if err != nil {
+	//	ctx.JSON(http.StatusInternalServerError, err)
+	//	return
+	//}
 
 	ctx.JSON(http.StatusOK, api.Success(nil))
 }
@@ -418,7 +426,7 @@ func UpdateBudget(ctx *gin.Context) {
 
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
-	ok, err := enforcer.Enforce(user.Wallet, fmt.Sprintf("%s%d", api.ObjProjPrefix, id), api.ActModify)
+	ok, err := enforcer.Enforce(user.Wallet, fmt.Sprintf("%s%d", api.ObjProjPrefix, id), api.ActUpdateBudget)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, err)
 		return

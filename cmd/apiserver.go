@@ -35,11 +35,7 @@ func main() {
 	}
 	// add default policies
 	defaultPolicies := [][]string{
-		{api.RoleHall, "*", "*"},                          // `p, hall, *, *` hall can do anything
-		{api.RoleProjAdmin, api.ObjProj, api.ActCreate},   // `p, proj_admin, proj, create`
-		{api.RoleGuildAdmin, api.ObjGuild, api.ActCreate}, // `p, guild_admin, guild, create`
-		{api.RoleProjAdmin, api.ObjProj, api.ActClose},    // `p, proj_admin, proj, close`
-		{api.RoleGuildAdmin, api.ObjGuild, api.ActClose},  // `p, guild_admin, guild, close`
+		{api.RoleHall, "*", "*"}, // `p, hall, *, *` hall can do anything
 	}
 	_, err = enforcer.AddPolicies(defaultPolicies)
 	if err != nil {
@@ -73,6 +69,7 @@ func main() {
 	// setup cors refer: https://github.com/gin-contrib/cors
 	corsCfg := cors.DefaultConfig()
 	corsCfg.AllowAllOrigins = true
+	corsCfg.AllowHeaders = []string{"Origin", "Accept", "Content-Type", "Authorization"}
 	r.Use(cors.New(corsCfg))
 
 	// setup basic middleware for database connection and config data
@@ -95,6 +92,11 @@ func main() {
 		userGroup.POST("/login", user.Login)
 		userGroup.GET("/users", user.Users)
 
+		// project routers
+		projGroup := v1.Group("/projects")
+		projGroup.GET("/", project.List)
+		projGroup.GET("/:id", project.Detail)
+
 		// foo routers
 	}
 	// --> auth required
@@ -109,10 +111,8 @@ func main() {
 
 		// project routers
 		projGroup := authorizedGroup.Group("/projects")
-		projGroup.GET("/", project.List)
 		projGroup.POST("/", project.Create)
 		projGroup.PUT("/:id", project.Update)
-		projGroup.GET("/:id", project.Detail)
 		projGroup.POST("/:id/close", project.Close)
 		projGroup.GET("/my", project.MyProjects)
 		projGroup.POST("/:id/update_sponsors", project.UpdateSponsors)
