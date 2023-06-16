@@ -80,7 +80,7 @@ func (*userAssetRecordModel) CompleteAssetTransaction(db *gorm.DB, userWallet st
 		return fmt.Errorf("user %s has invalid record for asset %s, please contract admin", userWallet, assetName)
 	}
 
-	assetRecords[0].DealtAmount -= dealtAmount
+	assetRecords[0].DealtAmount += dealtAmount
 	assetRecords[0].ProcessingAmount -= dealtAmount
 
 	return db.Save(assetRecords).Error

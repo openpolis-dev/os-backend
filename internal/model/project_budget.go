@@ -42,6 +42,6 @@ func (*projectBudgetModel) ListByProjectId(db *gorm.DB, projID uint) ([]*Project
 }
 
 func (*projectBudgetModel) QueryByProjectIdAndAssetName(db *gorm.DB, projID uint, assetName string) (*ProjectBudget, error) {
-	querySeg := db.Where("project_id = ?", projID).Where("name = ", assetName)
+	querySeg := db.Where("project_id = ?", projID).Where("name = ?", assetName)
 	return gormfind.Row[ProjectBudget](querySeg)
 }

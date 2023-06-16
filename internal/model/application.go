@@ -8,42 +8,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/xiaosongfu/gormfind"
 	"gorm.io/gorm"
 )
-
-type ApplicationType string
-type AuditActionType string
-type ApplicationState string
-
-const (
-	ApplicationCloseProject ApplicationType = "CLOSE_PROJECT"
-	ApplicationNewReward    ApplicationType = "NEW_REWARD"
-)
-
-const (
-	AuditActionNew      AuditActionType = "new"
-	AuditActionApprove                  = "approve"
-	AuditActionReject                   = "reject"
-	AuditActionProcess                  = "process"
-	AuditActionComplete                 = "complete"
-)
-
-const (
-	ApplicationStateOpen       ApplicationState = "open"
-	ApplicationStateApproved                    = "approved"
-	ApplicationStateRejected                    = "rejected"
-	ApplicationStateProcessing                  = "processing"
-	ApplicationStateCompleted                   = "completed"
-)
-
-// This variable saves state transit map for all application states
-var applicationStateMap = map[ApplicationState]map[AuditActionType]ApplicationState{
-	ApplicationStateOpen:       {AuditActionApprove: ApplicationStateApproved, AuditActionReject: ApplicationStateRejected},
-	ApplicationStateApproved:   {AuditActionProcess: ApplicationStateProcessing},
-	ApplicationStateRejected:   {},
-	ApplicationStateProcessing: {ApplicationStateCompleted: ApplicationStateCompleted},
-	ApplicationStateCompleted:  {},
-}
 
 type Application struct {
 	// unique ID for this request
@@ -73,18 +40,17 @@ type Application struct {
 	// Detailed data saves application specified data
 	// Currently the design is using this struct for all types of application, if new fields are required for new type
 	// of application, just add the field in the struct and let code branch choose which fields are required
-	DetailedData ApplicationDetailedData `json:"detailed_data"`
+	DetailedData ApplicationDetailedData `json:"detailed_data,omitempty" gorm:"foreignKey:ApplicationID;references:ID"`
 
 	// Entity means this application's refer, which maybe project or guild.
 	// And the field EntityId is the db record ID for Project or Guild table
 	EntityType string `json:"entity_type"`
 	EntityId   uint   `json:"entity_id"`
-
-	// logs for auditions
-	AuditLogs []ApplicationAuditLog `json:"audit_logs"`
 }
 
 type ApplicationDetailedData struct {
+	ApplicationID uint `json:"application_id"`
+
 	// TargetUserWallet saves user wallet address that the reward will be sent to
 	TargetUserWallet string `json:"user_wallet"`
 
@@ -121,11 +87,28 @@ type ApplicationAuditLog struct {
 // NewApplicationRecord create application and related audit log message with given params
 func NewApplicationRecord(db *gorm.DB, application *Application) error {
 	return db.Transaction(func(tx *gorm.DB) error {
+		if application.EntityType == "project" {
+			project, err := ProjectModel.Detail(db, application.EntityId)
+			if err != nil {
+				return err
+			}
+
+			if project.Status != ProjectStatusOpen {
+				return fmt.Errorf("project related applications can only be applied on project in open state, detail : %+v", application)
+			}
+		} else if application.EntityType == "guild" {
+			if application.Type == ApplicationCloseProject {
+				return fmt.Errorf("close_project action is not allowed to be applied on guild record, detail: %+v", application)
+			}
+		} else {
+			return fmt.Errorf("unknown entity type, detail : %+v", application)
+		}
+
 		if err := tx.Create(application).Error; err != nil {
 			return err
 		}
 
-		if err := tx.Create(ApplicationAuditLog{
+		if err := tx.Create(&ApplicationAuditLog{
 			ApplicationID: application.ID,
 			LogTs:         time.Now(),
 			Operation:     AuditActionNew,
@@ -134,6 +117,10 @@ func NewApplicationRecord(db *gorm.DB, application *Application) error {
 			PostState:     ApplicationStateOpen,
 		}).Error; err != nil {
 			return err
+		}
+
+		if application.EntityType == "project" && application.Type == ApplicationCloseProject {
+			return tx.Model(&Project{ID: application.EntityId}).Update("status", ProjectStatusPendingClose).Error
 		}
 
 		return nil
@@ -166,9 +153,24 @@ func (app *Application) nextStateAfterAction(action AuditActionType) Application
 
 // AuditApplication applies audit action on application and create related audit log in transaction
 func AuditApplication(db *gorm.DB, operatorWallet string, application *Application, action AuditActionType, extraMsg string) error {
+	// Check application record, verify whether the action can be applied on the application
 	if !application.ValidateAuditAction(action) {
 		// TODO: Define the error message as project constant
 		return fmt.Errorf("application state %s is not suite for action %s", application.State, action)
+	}
+
+	// Check related entity record, verify whether the status of entity is same with application post_state
+	if application.EntityType == "project" {
+		project, err := ProjectModel.Detail(db, application.EntityId)
+		if err != nil {
+			return err
+		}
+		// For close_project application, the project should be in pending_close state
+		// For new_reward application, the project should be in open state
+		if (application.Type == ApplicationCloseProject && project.Status != ProjectStatusPendingClose) ||
+			(application.Type == ApplicationNewReward && project.Status != ProjectStatusOpen) {
+			return fmt.Errorf("can not apply application type %s on project with status %s", application.Type, project.Status)
+		}
 	}
 
 	err := userWalletRecordExisting(db, operatorWallet)
@@ -211,7 +213,7 @@ func doAuditApplicationInTransaction(tx *gorm.DB, operatorWallet string, applica
 	nextState := application.nextStateAfterAction(action)
 
 	// Create audit log for application
-	if err := tx.Create(ApplicationAuditLog{
+	if err := tx.Create(&ApplicationAuditLog{
 		ApplicationID: application.ID,
 		LogTs:         time.Now(),
 		Operation:     action,
@@ -256,18 +258,6 @@ func doAuditApplicationInTransaction(tx *gorm.DB, operatorWallet string, applica
 				return fmt.Errorf("unknown application entity type %s", application.EntityType)
 			}
 		}
-	} else if nextState == ApplicationStateRejected {
-		if application.Type == ApplicationNewReward {
-			// Application has been rejected, if it is new reward request, add budget back to project/guild and remove user processing asset amount
-			if err := ProjectModel.DepositBudget(tx, application.EntityId, application.DetailedData.AssetName, application.DetailedData.Amount); err != nil {
-				return err
-			}
-
-			// Update user asset record
-			if err := UserAssetRecordModel.Rollback(tx, application.Applicant, application.DetailedData.AssetName, application.DetailedData.Amount, 0); err != nil {
-				return err
-			}
-		}
 	} else if nextState == ApplicationStateCompleted {
 		if application.Type == ApplicationCloseProject {
 			// This is a close project application, so the `entity_id` saved indicates a project record
@@ -298,9 +288,21 @@ func userWalletRecordExisting(db *gorm.DB, walletAddr string) error {
 		return err
 	}
 
-	if userCnt != 1 {
+	if userCnt == 0 {
 		return fmt.Errorf("wallet record %s is not existing", walletAddr)
+	} else if userCnt > 1 {
+		return fmt.Errorf("wallet %s has more than one record, contract admin to fix this", walletAddr)
 	}
 
 	return nil
+}
+
+func (app *Application) ListAuditLogs(db *gorm.DB) ([]*ApplicationAuditLog, error) {
+	querySeg := db.Model(&ApplicationAuditLog{}).Where("application_id = ?", app.ID)
+	return gormfind.Rows[ApplicationAuditLog](querySeg, nil)
+}
+
+func (app *Application) GetLatestAuditLog(db *gorm.DB) (*ApplicationAuditLog, error) {
+	querySeg := db.Model(&ApplicationAuditLog{}).Where("application_id = ?", app.ID).Order("log_ts desc")
+	return gormfind.Row[ApplicationAuditLog](querySeg)
 }
