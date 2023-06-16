@@ -113,20 +113,23 @@ paths:
       tags: [ project ]
       summary: List all projects match the query params
       parameters:
-        - name: start
+        - name: page
           in: query
-          required: false
+          description: which page
           schema:
             type: number
-        - name: end
-          in: query
           required: false
+        - name: size
+          in: query
+          description: size of each page
           schema:
             type: number
-        - name: order
+        - name: sort_field
           in: query
-          required: false
-          description: order of returned result, sort by timestamp field
+          schema:
+            type: string
+        - name: sort_order
+          in: query
           schema:
             type: string
             enum: [ asc, desc ]
@@ -136,9 +139,18 @@ paths:
           content:
             "application/json":
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Project'
+                type: object
+                properties:
+                  page:
+                    type: number
+                  size:
+                    type: number
+                  total:
+                    type: number
+                  rows:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Project'
     post:
       tags: [ project ]
       summary: Create project
@@ -228,20 +240,23 @@ paths:
       tags: [ project ]
       description: list my projects
       parameters:
-        - name: start
+        - name: page
           in: query
-          required: false
+          description: which page
           schema:
             type: number
-        - name: end
-          in: query
           required: false
+        - name: size
+          in: query
+          description: size of each page
           schema:
             type: number
-        - name: order
+        - name: sort_field
           in: query
-          required: false
-          description: order of returned result, sort by timestamp field
+          schema:
+            type: string
+        - name: sort_order
+          in: query
           schema:
             type: string
             enum: [ asc, desc ]
@@ -441,15 +456,16 @@ paths:
               schema:
                 type: object
                 properties:
-                  code:
+                  page:
                     type: number
-                    example: 200
-                  msg:
-                    type: string
-                  data:
+                  size:
+                    type: number
+                  total:
+                    type: number
+                  rows:
                     type: array
                     items:
-                      $ref: "#/components/schemas/Application"
+                      $ref: '#/components/schemas/Project'
 
     post:
       tags: [ applications ]
