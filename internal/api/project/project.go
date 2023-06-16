@@ -288,13 +288,18 @@ func List(ctx *gin.Context) {
 	status := ctx.Query("status")
 	page := api.ParseAndConvertPageParam(ctx)
 
-	projects, err := model.ProjectModel.List(db, status, page)
+	projects, total, err := model.ProjectModel.List(db, status, page)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
 
-	ctx.JSON(http.StatusOK, api.Success(projects))
+	ctx.JSON(http.StatusOK, api.Success(api.ListReplyData{
+		Page:  page.Page,
+		Size:  page.Size,
+		Total: total,
+		Rows:  projects,
+	}))
 }
 
 // MyProjects `GET /projects/my?page=1&size=10&sort_field=created_at&sort_order=desc`

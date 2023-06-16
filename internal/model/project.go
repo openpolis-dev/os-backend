@@ -43,12 +43,23 @@ func (*projectModel) Detail(db *gorm.DB, id uint) (*Project, error) {
 	return gormfind.Row[Project](querySeg)
 }
 
-func (*projectModel) List(db *gorm.DB, status string, page *gormfind.Page) ([]*Project, error) {
+func (*projectModel) List(db *gorm.DB, status string, page *gormfind.Page) (data []*Project, total int64, err error) {
 	querySeg := db.Table("projects")
 	if status != "" {
 		querySeg.Where("status = ?", status)
 	}
-	return gormfind.Rows[Project](querySeg, page)
+
+	total, err = gormfind.Count(querySeg)
+	if err != nil {
+		return
+	}
+
+	data, err = gormfind.Rows[Project](querySeg, page)
+	if err != nil {
+		return
+	}
+
+	return data, total, nil
 }
 
 func (*projectModel) ListBySponsorOrMember(db *gorm.DB, wallet string, page *gormfind.Page) ([]*Project, error) {

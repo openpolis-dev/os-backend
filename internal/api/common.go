@@ -17,6 +17,13 @@ type Reply struct {
 	Data any    `json:"data,omitempty"`
 }
 
+type ListReplyData struct {
+	Page  int   `json:"page"`
+	Size  int   `json:"size"`
+	Total int64 `json:"total"`
+	Rows  any   `json:"rows,omitempty"`
+}
+
 func Success(data any) *Reply {
 	return &Reply{
 		Code: 200,
