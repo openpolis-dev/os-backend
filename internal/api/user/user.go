@@ -109,9 +109,11 @@ type UpdateReq struct {
 	Name           string `json:"name"`
 	Avatar         string `json:"avatar"`
 	Email          string `json:"email"`
+	Wechat         string `json:"wechat"`
 	DiscordProfile string `json:"discord_profile"`
 	TwitterProfile string `json:"twitter_profile"`
 	GoogleProfile  string `json:"google_profile"`
+	Mirror         string `json:"mirror"`
 }
 
 // Update `PUT /me`
@@ -134,9 +136,11 @@ func Update(ctx *gin.Context) {
 	u.Name = req.Name
 	u.Avatar = req.Avatar
 	u.Email = req.Email
+	u.Wechat = req.Wechat
 	u.DiscordProfile = req.DiscordProfile
 	u.TwitterProfile = req.TwitterProfile
 	u.GoogleProfile = req.GoogleProfile
+	u.Mirror = req.Mirror
 	err = model.UserModel.CreateOrUpdate(db, u)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))

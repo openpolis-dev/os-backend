@@ -13,9 +13,12 @@ type User struct {
 	Name           string `json:"name"`
 	Avatar         string `json:"avatar"`
 	Email          string `json:"email"`
+	Wechat         string `json:"wechat"`
 	DiscordProfile string `json:"discord_profile"`
 	TwitterProfile string `json:"twitter_profile"`
 	GoogleProfile  string `json:"google_profile"`
+
+	Mirror string `json:"mirror"`
 
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
