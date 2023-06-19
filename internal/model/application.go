@@ -16,9 +16,6 @@ type Application struct {
 	// unique ID for this request
 	ID uint `json:"id" gorm:"primaryKey"`
 
-	// DisplayGroupId is used to group records should be displayed in one line in frontend page
-	DisplayGroupId string `json:"display_group_id"`
-
 	// application type
 	Type ApplicationType `json:"type"`
 
@@ -37,10 +34,10 @@ type Application struct {
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 
-	// Detailed data saves application specified data
-	// Currently the design is using this struct for all types of application, if new fields are required for new type
-	// of application, just add the field in the struct and let code branch choose which fields are required
-	DetailedData ApplicationDetailedData `json:"detailed_data,omitempty" gorm:"foreignKey:ApplicationID;references:ID"`
+	// DetailedData saves application detailed data
+	// Currently the design is using this struct to save serialized detailed data for all applications.
+	// The data will be deserialized to specified struct before using
+	DetailedData []byte `json:"detailed_data,omitempty" gorm:"foreignKey:ApplicationID;references:ID"`
 
 	// Entity means this application's refer, which maybe project or guild.
 	// And the field EntityId is the db record ID for Project or Guild table
@@ -48,15 +45,17 @@ type Application struct {
 	EntityId   uint   `json:"entity_id"`
 }
 
-type ApplicationDetailedData struct {
+type NewRewardApplicationDetailedData struct {
 	ApplicationID uint `json:"application_id"`
 
 	// TargetUserWallet saves user wallet address that the reward will be sent to
 	TargetUserWallet string `json:"user_wallet"`
 
-	// AssetName and Amount saves the token related info about this reward application
-	AssetName string `json:"asset_name"`
-	Amount    uint64 `json:"amount"`
+	// AssetName and Amount saves the token related info about this reward application.
+	// The asset type is same with project budget type, which is used to match budget record in project / guild
+	AssetType BudgetType `json:"asset_type"`
+	AssetName string     `json:"asset_name"`
+	Amount    uint64     `json:"amount"`
 }
 
 type ApplicationAuditLog struct {
@@ -82,6 +81,22 @@ type ApplicationAuditLog struct {
 
 	// ExtraData saves some additional data for the operation, e.g. reject reason
 	ExtraData string `json:"extra_data"`
+}
+
+// FrontendApplicationRecord defines struct for application record that returns to frontend invoker
+type FrontendApplicationRecord struct {
+	EntityName      string    `json:"entity_name"` // name field value from specified entity table
+	CreatedAt       time.Time `json:"created_at"`
+	UserWalletAddr  string    `json:"user_wallet_addr"`
+	TokenAmount     uint64    `json:"token_amount"`
+	CreditAmount    uint64    `json:"credit_amount"`
+	BudgetSource    string    `json:"budget_source"` // the data is from name field of project or guild
+	Status          string    `json:"status"`        // application status
+	SubmitterWallet string    `json:"submitter_wallet"`
+	SubmitterName   string    `json:"submitter_name"`
+	ReviewerWallet  string    `json:"reviewer_wallet"`
+	ReviewerName    string    `json:"reviewer_name"`
+	TransactionIds  string    `json:"transaction_ids"`
 }
 
 // NewApplicationRecord create application and related audit log message with given params
@@ -237,48 +252,59 @@ func doAuditApplicationInTransaction(tx *gorm.DB, operatorWallet string, applica
 		return err
 	}
 
-	if nextState == ApplicationStateProcessing {
-		if application.Type == ApplicationNewReward {
-			// The NewReward application getting into processing state requires some updates on assets of project and user
-			// * For project/guild, find budget record and extract amount from remainAmount
-			// * For user, update asset record with asset name and processing amount.
-			if application.EntityType == "project" {
-				// Update project budget
-				if err := ProjectModel.WithdrawBudget(tx, application.EntityId, application.DetailedData.AssetName, application.DetailedData.Amount); err != nil {
-					return err
-				}
-
-				// Update user asset record
-				if err := UserAssetRecordModel.CreateOrUpdate(tx, application.Applicant, application.DetailedData.AssetName, application.DetailedData.Amount, 0); err != nil {
-					return err
-				}
-			} else if application.EntityType == "guild" {
-				// TODO: Guild is not implemented yet
-			} else {
-				return fmt.Errorf("unknown application entity type %s", application.EntityType)
-			}
-		}
-	} else if nextState == ApplicationStateCompleted {
-		if application.Type == ApplicationCloseProject {
-			// This is a close project application, so the `entity_id` saved indicates a project record
-			project, err := ProjectModel.Detail(tx, application.EntityId)
-			if err != nil {
-				return err
-			}
-			project.Status = ProjectStatusClosed
-			return tx.Save(project).Error
-		} else if application.Type == ApplicationNewReward {
-			// For new reward application, the `entity_type` is required to get related db table
-			// The main steps for the post complete operation are:
-			// * Add the amount to target user
-			// Update user asset record
-			if err := UserAssetRecordModel.CompleteAssetTransaction(tx, application.Applicant, application.DetailedData.AssetName, application.DetailedData.Amount); err != nil {
-				return err
-			}
-		}
-	}
+	// Comment it out for now since the data structure has been updated, will update the logic after pre testing done
+	//if nextState == ApplicationStateProcessing {
+	//	if application.Type == ApplicationNewReward {
+	//		// The NewReward application getting into processing state requires some updates on assets of project and user
+	//		// * For project/guild, find budget record and extract amount from remainAmount
+	//		// * For user, update asset record with asset name and processing amount.
+	//		if application.EntityType == "project" {
+	//			// Update project budget
+	//			if err := ProjectModel.WithdrawBudget(tx, application.EntityId, application.RewardDetailedData.AssetName, application.RewardDetailedData.Amount); err != nil {
+	//				return err
+	//			}
+	//
+	//			// Update user asset record
+	//			if err := UserAssetRecordModel.CreateOrUpdate(tx, application.Applicant, application.RewardDetailedData.AssetName, application.RewardDetailedData.Amount, 0); err != nil {
+	//				return err
+	//			}
+	//		} else if application.EntityType == "guild" {
+	//			// TODO: Guild is not implemented yet
+	//		} else {
+	//			return fmt.Errorf("unknown application entity type %s", application.EntityType)
+	//		}
+	//	}
+	//} else if nextState == ApplicationStateCompleted {
+	//	if application.Type == ApplicationCloseProject {
+	//		// This is a close project application, so the `entity_id` saved indicates a project record
+	//		project, err := ProjectModel.Detail(tx, application.EntityId)
+	//		if err != nil {
+	//			return err
+	//		}
+	//		project.Status = ProjectStatusClosed
+	//		return tx.Save(project).Error
+	//	} else if application.Type == ApplicationNewReward {
+	//		// For new reward application, the `entity_type` is required to get related db table
+	//		// The main steps for the post complete operation are:
+	//		// * Add the amount to target user
+	//		// Update user asset record
+	//		if err := UserAssetRecordModel.CompleteAssetTransaction(tx, application.Applicant, application.RewardDetailedData.AssetName, application.RewardDetailedData.Amount); err != nil {
+	//			return err
+	//		}
+	//	}
+	//}
 
 	return nil
+}
+
+func (app *Application) ListAuditLogs(db *gorm.DB) ([]*ApplicationAuditLog, error) {
+	querySeg := db.Model(&ApplicationAuditLog{}).Where("application_id = ?", app.ID)
+	return gormfind.Rows[ApplicationAuditLog](querySeg, nil)
+}
+
+func (app *Application) GetLatestAuditLog(db *gorm.DB) (*ApplicationAuditLog, error) {
+	querySeg := db.Model(&ApplicationAuditLog{}).Where("application_id = ?", app.ID).Order("log_ts desc")
+	return gormfind.Row[ApplicationAuditLog](querySeg)
 }
 
 func userWalletRecordExisting(db *gorm.DB, walletAddr string) error {
@@ -295,14 +321,4 @@ func userWalletRecordExisting(db *gorm.DB, walletAddr string) error {
 	}
 
 	return nil
-}
-
-func (app *Application) ListAuditLogs(db *gorm.DB) ([]*ApplicationAuditLog, error) {
-	querySeg := db.Model(&ApplicationAuditLog{}).Where("application_id = ?", app.ID)
-	return gormfind.Rows[ApplicationAuditLog](querySeg, nil)
-}
-
-func (app *Application) GetLatestAuditLog(db *gorm.DB) (*ApplicationAuditLog, error) {
-	querySeg := db.Model(&ApplicationAuditLog{}).Where("application_id = ?", app.ID).Order("log_ts desc")
-	return gormfind.Row[ApplicationAuditLog](querySeg)
 }

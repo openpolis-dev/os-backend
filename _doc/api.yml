@@ -456,6 +456,24 @@ paths:
           schema:
             type: string
             enum: [ asc, desc ]
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [ close_project, new_reward ]
+        - name: entity
+          in: query
+          required: true
+          description: project or guild, one query can only get data from one type of entity
+          schema:
+            type: string
+            enum: [ project, guild ]
+        - name: entity_id
+          in: query
+          required: false
+          schema:
+            type: string
+            description: entity ID for the application
 
       responses:
         '200':
@@ -485,7 +503,9 @@ paths:
         content:
           "application/json":
             schema:
-              $ref: "#/components/schemas/NewApplicationRequest"
+              type: array
+              items:
+                $ref: "#/components/schemas/NewApplicationRequest"
       responses:
         '201':
           description: Created
@@ -979,9 +999,16 @@ components:
         target_user_wallet:
           type: string
           description: which account should this reward be sent to
-        asset_name:
+        token_amount:
+          type: number
+          description: how many token will be sent in this reward
+        credit_amount:
+          type: number
+          description: how many SeeDAO credit will be sent in this reward
+        detailed_type:
           type: string
-          description: which asset will be sent in this application
-        amount:
+          description: detailed type of the application, e.g. 酬劳
+        comment:
           type: string
-          description: how many asset will be sent
+          description: other comment of this application
+

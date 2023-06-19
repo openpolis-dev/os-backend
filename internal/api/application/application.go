@@ -1,6 +1,7 @@
 package application
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -10,7 +11,6 @@ import (
 	"github.com/samber/lo"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/model"
-	"github.com/xiaosongfu/gormfind"
 	"gorm.io/gorm"
 )
 
@@ -25,47 +25,48 @@ type NewApplicationRequest struct {
 	Entity           string `json:"entity"`
 	EntityId         uint   `json:"entity_id"`
 	TargetUserWallet string `json:"target_user_wallet"`
-	AssetName        string `json:"asset_name"`
-	Amount           uint64 `json:"amount"`
+	CreditAmount     uint64 `json:"credit_amount"`
+	TokenAmount      uint64 `json:"token_amount"`
+	DetailedType     string `json:"detailed_type"`
+	Comment          string `json:"comment"`
 }
 
 // List lists all applications based on query params and return in JSON format
 // POST /applications
 func List(ctx *gin.Context) {
+	var err error
 	db := api.ForContextOnlyDB(ctx)
 
-	page := api.ParseAndConvertPageParam(ctx)
-
-	querySeg := db.Model(&model.Application{})
-	total, err := gormfind.Count(querySeg)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.Reply{
+	queryParams := model.ListApplicationQueryParams{}
+	if err := ctx.BindQuery(&queryParams); err != nil {
+		ctx.JSON(http.StatusBadRequest, api.Reply{
 			Code: -1,
-			Msg:  "query error",
+			Msg:  fmt.Sprintf("query params error: %+v", err),
 		})
 	}
 
-	rcds, err := gormfind.Rows[model.Application](querySeg, page)
+	rcds, total, err := model.GenerateFrontendApplicationRecords(db, &queryParams)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.Reply{
 			Code: -1,
-			Msg:  "query error",
+			Msg:  fmt.Sprintf("query result error: %+v", err),
 		})
 	}
+
 	ctx.JSON(http.StatusOK, api.Success(api.ListReplyData{
-		Page:  page.Page,
-		Size:  page.Size,
+		Page:  queryParams.Page,
+		Size:  queryParams.Size,
 		Total: total,
 		Rows:  rcds,
 	}))
 }
 
-// Create handles creating application with passed in data
+// Create handles creating one or more application records with passed in data, the passed in data must be an array
 // An audit log record will be created with application at same time with action open
-// POST /applications
+// POST /applications/
 func Create(ctx *gin.Context) {
-	newApplicationReq := NewApplicationRequest{}
-	if err := ctx.BindJSON(newApplicationReq); err != nil {
+	var newApplicationReqs []NewApplicationRequest
+	if err := ctx.BindJSON(newApplicationReqs); err != nil {
 		if err != nil {
 			ctx.JSON(http.StatusBadRequest, api.Reply{
 				Code: -1,
@@ -74,65 +75,82 @@ func Create(ctx *gin.Context) {
 		}
 	}
 
-	if newApplicationReq.Type != "close_project" && newApplicationReq.Type != "new_reward" {
-		ctx.JSON(http.StatusBadRequest, api.Reply{
-			Code: -1,
-			Msg:  fmt.Sprintf("unknown application type %s", newApplicationReq.Type),
-		})
-	}
-
-	if newApplicationReq.Entity != "guild" && newApplicationReq.Entity != "project" {
-		ctx.JSON(http.StatusBadRequest, api.Reply{
-			Code: -1,
-			Msg:  fmt.Sprintf("unknown application entity %s", newApplicationReq.Entity),
-		})
-	}
-
 	user, enforcer, db, _ := api.ForContext(ctx)
 
-	//  check permission: `(0x..., proj_1, create_app)` (0x..., guild_1, create_app)
-	obj := lo.
-		If(newApplicationReq.Entity == "project", fmt.Sprintf("%s%d", api.ObjProjPrefix, newApplicationReq.EntityId)).
-		ElseIf(newApplicationReq.Entity == "guild", fmt.Sprintf("%s%d", api.ObjGuildPrefix, newApplicationReq.EntityId)).
-		Else("")
-	ok, err := enforcer.Enforce(user.Wallet, obj, api.ActCreateApplication)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
-		return
-	}
-	if !ok {
-		ctx.JSON(http.StatusForbidden, api.Forbidden())
-		return
-	}
+	err := db.Transaction(func(tx *gorm.DB) error {
+		for _, req := range newApplicationReqs {
+			// TODO: Verify user wallet and project/guild existing
 
-	application := model.Application{
-		DisplayGroupId: "",
-		Type:           model.ApplicationType(newApplicationReq.Type),
-		Applicant:      user.Wallet,
-		State:          model.ApplicationStateOpen,
-		CreatedAt:      time.Now(),
-		UpdatedAt:      time.Now(),
-		DetailedData: model.ApplicationDetailedData{
-			TargetUserWallet: newApplicationReq.TargetUserWallet,
-			AssetName:        newApplicationReq.AssetName,
-			Amount:           newApplicationReq.Amount,
-		},
-		EntityType: "",
-		EntityId:   0,
-	}
+			// Parse application type
+			appType, err := model.ParseApplicationType(req.Type)
+			if err != nil {
+				return fmt.Errorf("unknown application type %s", req.Entity)
+			}
 
-	// Update applicant data
-	application.Applicant = user.Wallet
+			if req.Entity != "guild" && req.Entity != "project" {
+				return fmt.Errorf("unknown application entity %s", req.Entity)
+			}
 
-	err = model.NewApplicationRecord(db, &application)
+			//  check permission: `(0x..., proj_1, create_app)` (0x..., guild_1, create_app)
+			obj := lo.
+				If(req.Entity == "project", fmt.Sprintf("%s%d", api.ObjProjPrefix, req.EntityId)).
+				ElseIf(req.Entity == "guild", fmt.Sprintf("%s%d", api.ObjGuildPrefix, req.EntityId)).
+				Else("")
+			ok, err := enforcer.Enforce(user.Wallet, obj, api.ActCreateApplication)
+			if err != nil {
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+				return err
+			}
+			if !ok {
+				ctx.JSON(http.StatusForbidden, api.Forbidden())
+				return err
+			}
+
+			app := &model.Application{
+				Type:       appType,
+				Applicant:  user.Wallet,
+				State:      model.ApplicationStateOpen,
+				EntityType: req.Entity,
+				EntityId:   req.EntityId,
+				CreatedAt:  time.Now(),
+				UpdatedAt:  time.Now(),
+			}
+
+			if appType == model.ApplicationNewReward {
+				rewardDetailedData := map[model.BudgetType]model.NewRewardApplicationDetailedData{
+					model.BudgetTypeCredit: {
+						TargetUserWallet: req.TargetUserWallet,
+						AssetType:        model.BudgetTypeCredit,
+						Amount:           req.CreditAmount,
+					},
+					model.BudgetTypeToken: {
+						TargetUserWallet: req.TargetUserWallet,
+						AssetType:        model.BudgetTypeToken,
+						Amount:           req.TokenAmount,
+					},
+				}
+
+				detailedDataBytes, err := json.Marshal(rewardDetailedData)
+				if err != nil {
+					return err
+				}
+
+				app.DetailedData = detailedDataBytes
+			}
+
+			err = model.NewApplicationRecord(db, app)
+		}
+		return nil
+	})
+
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.Reply{
 			Code: -1,
-			Msg:  fmt.Sprintf("creation application object error, %+v", err),
+			Msg:  fmt.Sprintf("creation application records error, %+v", err),
 		})
 	}
 
-	ctx.JSON(http.StatusCreated, api.Success(&application))
+	ctx.JSON(http.StatusCreated, api.Success(nil))
 }
 
 // Batch operations, the request body are ids

@@ -9,15 +9,22 @@ type ApplicationType string
 type AuditActionType string
 type ApplicationState string
 
-func ParseApplicationType(typeStr string) ApplicationType {
+func ParseApplicationType(typeStr string) (ApplicationType, error) {
 	switch strings.ToUpper(typeStr) {
 	case "CLOSE_PROJECT":
-		return ApplicationCloseProject
+		return ApplicationCloseProject, nil
 	case "NEW_REWARD":
-		return ApplicationNewReward
+		return ApplicationNewReward, nil
 	default:
-		panic(fmt.Errorf("unknown application type %s", typeStr))
+		return "", fmt.Errorf("unknown application type %s", typeStr)
 	}
+}
+func MustParseApplicationType(typeStr string) ApplicationType {
+	applicationType, err := ParseApplicationType(typeStr)
+	if err != nil {
+		panic(err)
+	}
+	return applicationType
 }
 
 func (t ApplicationType) ToString() string {
@@ -52,4 +59,14 @@ var applicationStateMap = map[ApplicationState]map[AuditActionType]ApplicationSt
 	ApplicationStateRejected:   {},
 	ApplicationStateProcessing: {AuditActionComplete: ApplicationStateCompleted},
 	ApplicationStateCompleted:  {},
+}
+
+type ListApplicationQueryParams struct {
+	Page      int    `json:"page"`
+	Size      int    `json:"size"`
+	SortField string `json:"sort_field"`
+	SortOrder string `json:"sort_order"`
+	Type      string `json:"type"`
+	Entity    string `json:"entity"`
+	EntityId  string `json:"entity_id"`
 }
