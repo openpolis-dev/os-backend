@@ -392,7 +392,7 @@ func getRecordOrReturnNotFound(ctx *gin.Context, application *model.Application)
 	if errors.Is(tx.Error, gorm.ErrRecordNotFound) {
 		ctx.JSON(http.StatusNotFound, api.Reply{
 			Code: -1,
-			Msg:  fmt.Sprintf("application with id %d not found", id),
+			Msg:  fmt.Sprintf("application with id %s not found", id),
 		})
 		return
 	}
