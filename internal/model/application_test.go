@@ -2,7 +2,6 @@ package model_test
 
 import (
 	"encoding/json"
-	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -47,13 +46,11 @@ var _ = Describe("Application", func() {
 		db.Create(&model.User{Wallet: aliceWallet})
 		db.Create(&model.User{Wallet: bobWallet})
 		db.Create(&model.User{Wallet: carolWallet})
-		time.Sleep(time.Second)
 	})
 
 	// After each `It` execution, drop tables
 	AfterEach(func() {
 		_ = db.Migrator().DropTable(tables...)
-		time.Sleep(time.Second)
 	})
 
 	Describe("Invoking NewApplicationRecord function", func() {
@@ -184,7 +181,6 @@ var _ = Describe("Application", func() {
 
 				err := model.AuditApplication(db, carolWallet, &app, model.AuditActionApprove, "")
 				Expect(err).To(BeNil())
-				time.Sleep(time.Second)
 
 				project, _ := model.ProjectModel.Detail(db, openProject.ID)
 				// The project changes to closed state
@@ -228,7 +224,7 @@ var _ = Describe("Application", func() {
 
 				// For new_reward application, detailed data is required for reward detail
 				detailedData := model.NewRewardApplicationDetailedData{
-					model.BudgetTypeToken: {
+					token1Type: {
 						ApplicationID:    app.ID,
 						TargetUserWallet: daveWallet,
 						AssetType:        token1Type,
@@ -306,7 +302,7 @@ var _ = Describe("Application", func() {
 
 				// For new_reward application, detailed data is required for reward detail
 				detailedData := model.NewRewardApplicationDetailedData{
-					model.BudgetTypeToken: {
+					token1Type: {
 						ApplicationID:    app.ID,
 						TargetUserWallet: daveWallet,
 						AssetType:        token1Type,
@@ -323,7 +319,6 @@ var _ = Describe("Application", func() {
 				Expect(preLatestAuditLog.PostState).To(BeEquivalentTo(model.ApplicationStateOpen))
 				err := model.AuditApplication(db, carolWallet, &app, model.AuditActionReject, "test reason")
 				Expect(err).To(BeNil())
-				time.Sleep(time.Second)
 
 				project, _ := model.ProjectModel.Detail(db, openProject.ID)
 				Expect(project.Status).To(BeEquivalentTo(model.ProjectStatusOpen))
@@ -364,7 +359,7 @@ var _ = Describe("Application", func() {
 
 				// For new_reward application, detailed data is required for reward detail
 				detailedData := model.NewRewardApplicationDetailedData{
-					model.BudgetTypeToken: {
+					token1Type: {
 						ApplicationID:    app.ID,
 						TargetUserWallet: daveWallet,
 						AssetType:        token1Type,
@@ -385,7 +380,6 @@ var _ = Describe("Application", func() {
 
 				err := model.AuditApplication(db, carolWallet, &app, model.AuditActionProcess, "")
 				Expect(err).To(BeNil())
-				time.Sleep(time.Second)
 
 				project, _ := model.ProjectModel.Detail(db, openProject.ID)
 				Expect(project.Status).To(BeEquivalentTo(model.ProjectStatusOpen))
@@ -401,13 +395,12 @@ var _ = Describe("Application", func() {
 			It("should update project budget remain amount", func() {
 				err := model.AuditApplication(db, carolWallet, &app, model.AuditActionProcess, "")
 				Expect(err).To(BeNil())
-				time.Sleep(time.Second)
 
 				budgetRecords, _ := model.ProjectBudgetModel.ListByProjectId(db, openProject.ID)
 				for _, r := range budgetRecords {
-					if r.Name == token1Name {
+					if r.Type == token1Type {
 						Expect(r.RemainAmount).To(Equal(r.TotalAmount - 10)) // 100-10
-					} else if r.Name == token2Name {
+					} else if r.Type == token2Type {
 						Expect(r.RemainAmount).To(Equal(r.TotalAmount))
 					}
 				}
@@ -445,7 +438,7 @@ var _ = Describe("Application", func() {
 
 				// For new_reward application, detailed data is required for reward detail
 				detailedData := model.NewRewardApplicationDetailedData{
-					model.BudgetTypeToken: {
+					token1Type: {
 						ApplicationID:    app.ID,
 						TargetUserWallet: daveWallet,
 						AssetType:        token1Type,
