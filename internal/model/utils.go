@@ -74,7 +74,7 @@ func GenerateFrontendApplicationRecords(db *gorm.DB, queryParams *ListApplicatio
 	}
 
 	appType := MustParseApplicationType(queryParams.Type)
-	querySeg := db.Model(&Application{Type: appType, EntityType: clearEntity})
+	querySeg := db.Model(&Application{}).Where(&Application{Type: appType, EntityType: clearEntity})
 
 	switch clearEntity {
 	case "project":
@@ -84,11 +84,17 @@ func GenerateFrontendApplicationRecords(db *gorm.DB, queryParams *ListApplicatio
 	}
 
 	if len(strings.TrimSpace(queryParams.EntityId)) != 0 {
-		entityId, err := strconv.Atoi(queryParams.EntityId)
+		entityId, err := strconv.ParseUint(queryParams.EntityId, 10, 64)
 		if err != nil {
 			return nil, 0, err
 		}
-		querySeg = querySeg.Where(fmt.Sprintf("`%s.id = ?`", queryParams.Entity), entityId)
+		switch queryParams.Entity {
+		case "project":
+			querySeg = querySeg.Where(&Project{ID: uint(entityId)})
+		case "guild":
+			// TODO: Not implemented yet, use project for example
+			querySeg = querySeg.Where(&Project{ID: uint(entityId)})
+		}
 	}
 
 	if queryParams.SortField == "" {
