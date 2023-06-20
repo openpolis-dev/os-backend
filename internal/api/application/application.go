@@ -38,7 +38,7 @@ func List(ctx *gin.Context) {
 	db := api.ForContextOnlyDB(ctx)
 
 	queryParams := model.ListApplicationQueryParams{}
-	if err := ctx.BindQuery(&queryParams); err != nil {
+	if err := ctx.Bind(&queryParams); err != nil {
 		ctx.JSON(http.StatusBadRequest, api.Reply{
 			Code: -1,
 			Msg:  fmt.Sprintf("query params error: %+v", err),
@@ -68,7 +68,7 @@ func List(ctx *gin.Context) {
 // POST /applications/
 func Create(ctx *gin.Context) {
 	var newApplicationReqs []NewApplicationRequest
-	if err := ctx.BindJSON(newApplicationReqs); err != nil {
+	if err := ctx.BindJSON(&newApplicationReqs); err != nil {
 		if err != nil {
 			ctx.JSON(http.StatusBadRequest, api.Reply{
 				Code: -1,
