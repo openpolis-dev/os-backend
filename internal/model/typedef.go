@@ -121,6 +121,40 @@ type FrontendApplicationRecord struct {
 	TransactionIds   string    `json:"transaction_ids"`
 }
 
+var FrontendApplicationRecordCsvHeader = []string{
+	"application_id",
+	"entity_name",
+	"created_at",
+	"target_user_wallet",
+	"token_amount",
+	"credit_amount",
+	"budget_source",
+	"status",
+	"submitter_wallet",
+	"submitter_name",
+	"reviewer_wallet",
+	"reviewer_name",
+	"transaction_ids",
+}
+
+func (r *FrontendApplicationRecord) ToCSV() *[]string {
+	return &[]string{
+		fmt.Sprintf("%d", r.ApplicationID),
+		r.EntityName,
+		r.CreatedAt.Format(time.RFC3339),
+		r.TargetUserWallet,
+		fmt.Sprintf("%d", r.TokenAmount),
+		fmt.Sprintf("%d", r.CreditAmount),
+		r.BudgetSource,
+		r.Status,
+		r.SubmitterWallet,
+		r.SubmitterName,
+		r.ReviewerWallet,
+		r.ReviewerName,
+		r.TransactionIds,
+	}
+}
+
 // jointAppProjectFields saves query fields of join query of application and project
 const jointAppProjectFields = `applications.id,
 applications.type,

@@ -520,8 +520,6 @@ paths:
                     type: number
                   msg:
                     type: string
-                  data:
-                    $ref: "#/components/schemas/ApplicationJointRecord"
 
   /applications/approve:
     post:
@@ -546,6 +544,24 @@ paths:
             "application/json":
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+
+  /applications/download:
+    post:
+      tags: [ applications ]
+      security:
+        - bearerAuth: [ ]
+      description: generate file with requested applications and send to invoker
+      requestBody:
+        content:
+          "application/json":
+            schema:
+              type: array
+              items:
+                type: number
+                description: application id
+      responses:
+        200:
+          description: ok
 
   /applications/export:
     post:

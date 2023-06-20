@@ -125,6 +125,7 @@ func main() {
 		applicationGroup := authorizedGroup.Group("/applications")
 		applicationGroup.GET("/", application.List)
 		applicationGroup.POST("/", application.Create)
+		applicationGroup.POST("/download", application.Download)
 		applicationGroup.POST("/export", application.Export)
 		applicationGroup.POST("/approve", application.BatchApprove)
 		applicationGroup.POST("/reject", application.BatchReject)

@@ -56,6 +56,12 @@ func NewApplicationRecord(db *gorm.DB, application *Application) error {
 	})
 }
 
+func GenerateFrontendApplicationRecordsByIds(db *gorm.DB, ids []uint64) ([]*FrontendApplicationRecord, error) {
+	rslt := make([]*FrontendApplicationRecord, len(ids))
+
+	return rslt, nil
+}
+
 func GenerateFrontendApplicationRecords(db *gorm.DB, queryParams *ListApplicationQueryParams) ([]*FrontendApplicationRecord, int64, error) {
 	clearAppType := strings.ToLower(strings.TrimSpace(queryParams.Type))
 	clearEntity := strings.ToLower(strings.TrimSpace(queryParams.Entity))

@@ -1,10 +1,13 @@
 package application
 
 import (
+	"bytes"
+	"encoding/csv"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -161,6 +164,59 @@ func Create(ctx *gin.Context) {
 }
 
 // Batch operations, the request body are ids
+
+// Download get lists from passed in IDs and generate file and send to invoker
+func Download(ctx *gin.Context) {
+	fileFormat := "csv"
+	fileFormat = strings.ToLower(ctx.Query("format"))
+
+	user, enforcer, db, _ := api.ForContext(ctx)
+	ok, err := enforcer.Enforce(user.Wallet, api.ObjProjAndGuild, api.ActModify)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		return
+	}
+	if !ok {
+		ctx.JSON(http.StatusForbidden, api.Forbidden())
+		return
+	}
+
+	var ids []uint64
+	err = ctx.Bind(&ids)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, api.ServerError(err))
+	}
+
+	rcds, err := model.GenerateFrontendApplicationRecordsByIds(db, ids)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+	}
+
+	if fileFormat == "csv" {
+		b := new(bytes.Buffer)
+		w := csv.NewWriter(b)
+		err = w.Write(model.FrontendApplicationRecordCsvHeader)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		}
+		for _, r := range rcds {
+			err = w.Write(*r.ToCSV())
+			if err != nil {
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+			}
+		}
+
+		_, _ = ctx.Writer.Write(b.Bytes())
+	} else if fileFormat == "json" {
+		jsonBytes, err := json.Marshal(rcds)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		}
+		_, _ = ctx.Writer.Write(jsonBytes)
+	} else {
+		_, _ = ctx.Writer.Write([]byte(""))
+	}
+}
 
 // Export exports application in approved state, and changes exported applications state to processing
 // If there are existing applications in processing state, the export function returns error.
