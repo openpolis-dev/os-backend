@@ -170,19 +170,10 @@ func Download(ctx *gin.Context) {
 	fileFormat := "csv"
 	fileFormat = strings.ToLower(ctx.Query("format"))
 
-	user, enforcer, db, _ := api.ForContext(ctx)
-	ok, err := enforcer.Enforce(user.Wallet, api.ObjProjAndGuild, api.ActModify)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
-		return
-	}
-	if !ok {
-		ctx.JSON(http.StatusForbidden, api.Forbidden())
-		return
-	}
+	db := api.ForContextOnlyDB(ctx)
 
 	var ids []uint64
-	err = ctx.Bind(&ids)
+	err := ctx.Bind(&ids)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, api.ServerError(err))
 	}
