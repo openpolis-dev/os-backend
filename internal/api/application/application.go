@@ -35,7 +35,7 @@ type NewApplicationRequest struct {
 }
 
 // List lists all applications based on query params and return in JSON format
-// POST /applications
+// GET /applications
 func List(ctx *gin.Context) {
 	var err error
 	db := api.ForContextOnlyDB(ctx)

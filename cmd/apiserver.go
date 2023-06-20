@@ -98,6 +98,12 @@ func main() {
 		projGroup.GET("/", project.List)
 		projGroup.GET("/:id", project.Detail)
 
+		// application routers
+		applicationGroup := v1.Group("/applications")
+		applicationGroup.GET("/:id", application.Detail)
+		applicationGroup.GET("/", application.List)
+		applicationGroup.POST("/download", application.Download)
+
 		// foo routers
 	}
 	// --> auth required
@@ -123,14 +129,11 @@ func main() {
 
 		// application routers
 		applicationGroup := authorizedGroup.Group("/applications")
-		applicationGroup.GET("/", application.List)
 		applicationGroup.POST("/", application.Create)
-		applicationGroup.POST("/download", application.Download)
 		applicationGroup.POST("/export", application.Export)
 		applicationGroup.POST("/approve", application.BatchApprove)
 		applicationGroup.POST("/reject", application.BatchReject)
 		applicationGroup.POST("/complete", application.BatchComplete)
-		applicationGroup.GET("/:id", application.Detail)
 		applicationGroup.POST("/:id/approve", application.Approve)
 		applicationGroup.POST("/:id/reject", application.Reject)
 		applicationGroup.POST("/:id/complete", application.Complete)
