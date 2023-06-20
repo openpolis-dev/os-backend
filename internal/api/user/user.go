@@ -1,11 +1,12 @@
 package user
 
 import (
+	"bytes"
+	"encoding/json"
 	"net/http"
 	"strings"
 	"time"
 
-	"github.com/casbin/casbin/v2"
 	"github.com/gin-gonic/gin"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/common"
@@ -108,9 +109,11 @@ type UpdateReq struct {
 	Name           string `json:"name"`
 	Avatar         string `json:"avatar"`
 	Email          string `json:"email"`
+	Wechat         string `json:"wechat"`
 	DiscordProfile string `json:"discord_profile"`
 	TwitterProfile string `json:"twitter_profile"`
 	GoogleProfile  string `json:"google_profile"`
+	Mirror         string `json:"mirror"`
 }
 
 // Update `PUT /me`
@@ -133,9 +136,11 @@ func Update(ctx *gin.Context) {
 	u.Name = req.Name
 	u.Avatar = req.Avatar
 	u.Email = req.Email
+	u.Wechat = req.Wechat
 	u.DiscordProfile = req.DiscordProfile
 	u.TwitterProfile = req.TwitterProfile
 	u.GoogleProfile = req.GoogleProfile
+	u.Mirror = req.Mirror
 	err = model.UserModel.CreateOrUpdate(db, u)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
@@ -169,12 +174,34 @@ func Users(ctx *gin.Context) {
 func GetFrontendPermission(ctx *gin.Context) {
 	_, enforcer, _, _ := api.ForContext(ctx)
 
-	sub, _ := ctx.GetQuery("casbin_subject")
-	data, err := casbin.CasbinJsGetPermissionForUser(enforcer, strings.ToLower(sub))
+	//sub, _ := ctx.GetQuery("casbin_subject")
+	//data, err := casbin.CasbinJsGetPermissionForUser(enforcer, strings.ToLower(sub))
+	// --> casbin.CasbinJsGetPermissionForUser()'s logic is not correct, should use the following logic instead:
+	eModel := enforcer.GetModel()
+	m := map[string]interface{}{}
+	m["m"] = eModel.ToText()
+	policies := make([][]string, 0)
+	for ptype := range eModel["p"] {
+		policy := eModel.GetPolicy("p", ptype)
+		for i := range policy {
+			policies = append(policies, append([]string{ptype}, policy[i]...))
+		}
+	}
+	for ptype := range eModel["g"] {
+		role := eModel.GetPolicy("g", ptype)
+		for i := range role {
+			policies = append(policies, append([]string{ptype}, role[i]...))
+		}
+	}
+	m["p"] = policies
+	result := bytes.NewBuffer([]byte{})
+	encoder := json.NewEncoder(result)
+	encoder.SetEscapeHTML(false)
+	err := encoder.Encode(m)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
 
-	ctx.JSON(http.StatusOK, api.Success(data))
+	ctx.JSON(http.StatusOK, api.Success(result.String()))
 }
