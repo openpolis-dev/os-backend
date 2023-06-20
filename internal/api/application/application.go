@@ -120,7 +120,7 @@ func Create(ctx *gin.Context) {
 			}
 
 			if appType == model.ApplicationNewReward {
-				rewardDetailedData := map[model.BudgetType]model.NewRewardApplicationDetailedData{
+				rewardDetailedData := model.NewRewardApplicationDetailedData{
 					model.BudgetTypeCredit: {
 						TargetUserWallet: req.TargetUserWallet,
 						AssetType:        model.BudgetTypeCredit,

@@ -34,28 +34,18 @@ type Application struct {
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 
+	// DetailedType means a sub category of this application
+	DetailedType string `json:"detailed_type"`
+
 	// DetailedData saves application detailed data
 	// Currently the design is using this struct to save serialized detailed data for all applications.
 	// The data will be deserialized to specified struct before using
-	DetailedData []byte `json:"detailed_data,omitempty" gorm:"foreignKey:ApplicationID;references:ID"`
+	DetailedData []byte `json:"detailed_data,omitempty"`
 
 	// Entity means this application's refer, which maybe project or guild.
 	// And the field EntityId is the db record ID for Project or Guild table
 	EntityType string `json:"entity_type"`
 	EntityId   uint   `json:"entity_id"`
-}
-
-type NewRewardApplicationDetailedData struct {
-	ApplicationID uint `json:"application_id"`
-
-	// TargetUserWallet saves user wallet address that the reward will be sent to
-	TargetUserWallet string `json:"user_wallet"`
-
-	// AssetName and Amount saves the token related info about this reward application.
-	// The asset type is same with project budget type, which is used to match budget record in project / guild
-	AssetType BudgetType `json:"asset_type"`
-	AssetName string     `json:"asset_name"`
-	Amount    uint64     `json:"amount"`
 }
 
 type ApplicationAuditLog struct {
@@ -81,65 +71,6 @@ type ApplicationAuditLog struct {
 
 	// ExtraData saves some additional data for the operation, e.g. reject reason
 	ExtraData string `json:"extra_data"`
-}
-
-// FrontendApplicationRecord defines struct for application record that returns to frontend invoker
-type FrontendApplicationRecord struct {
-	EntityName      string    `json:"entity_name"` // name field value from specified entity table
-	CreatedAt       time.Time `json:"created_at"`
-	UserWalletAddr  string    `json:"user_wallet_addr"`
-	TokenAmount     uint64    `json:"token_amount"`
-	CreditAmount    uint64    `json:"credit_amount"`
-	BudgetSource    string    `json:"budget_source"` // the data is from name field of project or guild
-	Status          string    `json:"status"`        // application status
-	SubmitterWallet string    `json:"submitter_wallet"`
-	SubmitterName   string    `json:"submitter_name"`
-	ReviewerWallet  string    `json:"reviewer_wallet"`
-	ReviewerName    string    `json:"reviewer_name"`
-	TransactionIds  string    `json:"transaction_ids"`
-}
-
-// NewApplicationRecord create application and related audit log message with given params
-func NewApplicationRecord(db *gorm.DB, application *Application) error {
-	return db.Transaction(func(tx *gorm.DB) error {
-		if application.EntityType == "project" {
-			project, err := ProjectModel.Detail(db, application.EntityId)
-			if err != nil {
-				return err
-			}
-
-			if project.Status != ProjectStatusOpen {
-				return fmt.Errorf("project related applications can only be applied on project in open state, detail : %+v", application)
-			}
-		} else if application.EntityType == "guild" {
-			if application.Type == ApplicationCloseProject {
-				return fmt.Errorf("close_project action is not allowed to be applied on guild record, detail: %+v", application)
-			}
-		} else {
-			return fmt.Errorf("unknown entity type, detail : %+v", application)
-		}
-
-		if err := tx.Create(application).Error; err != nil {
-			return err
-		}
-
-		if err := tx.Create(&ApplicationAuditLog{
-			ApplicationID: application.ID,
-			LogTs:         time.Now(),
-			Operation:     AuditActionNew,
-			Operator:      application.Applicant,
-			PreState:      "",
-			PostState:     ApplicationStateOpen,
-		}).Error; err != nil {
-			return err
-		}
-
-		if application.EntityType == "project" && application.Type == ApplicationCloseProject {
-			return tx.Model(&Project{ID: application.EntityId}).Update("status", ProjectStatusPendingClose).Error
-		}
-
-		return nil
-	})
 }
 
 // ValidateAuditAction validates whether the action required is suit for current application state.

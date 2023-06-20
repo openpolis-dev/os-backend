@@ -3,6 +3,7 @@ package model
 import (
 	"fmt"
 	"strings"
+	"time"
 )
 
 type ApplicationType string
@@ -62,11 +63,81 @@ var applicationStateMap = map[ApplicationState]map[AuditActionType]ApplicationSt
 }
 
 type ListApplicationQueryParams struct {
-	Page      int    `json:"page"`
-	Size      int    `json:"size"`
-	SortField string `json:"sort_field"`
-	SortOrder string `json:"sort_order"`
-	Type      string `json:"type"`
-	Entity    string `json:"entity"`
-	EntityId  string `json:"entity_id"`
+	Page      int    `form:"page"`
+	Size      int    `form:"size"`
+	SortField string `form:"sort_field"`
+	SortOrder string `form:"sort_order"`
+	Type      string `form:"type"`
+	Entity    string `form:"entity"`
+	EntityId  string `form:"entity_id"`
+}
+
+// rewardDetail saves detail of reward application for single budget type
+type rewardDetail struct {
+	ApplicationID uint `json:"application_id"`
+
+	// TargetUserWallet saves user wallet address that the reward will be sent to
+	TargetUserWallet string `json:"user_wallet"`
+
+	// AssetName and Amount saves the token related info about this reward application.
+	// The asset type is same with project budget type, which is used to match budget record in project / guild
+	AssetType BudgetType `json:"asset_type"`
+	AssetName string     `json:"asset_name"`
+	Amount    uint64     `json:"amount"`
+}
+
+// NewRewardApplicationDetailedData saves detailed data for new reward applications
+// Note: this struct has no DB table associated
+type NewRewardApplicationDetailedData map[BudgetType]rewardDetail
+
+func (detailedData *NewRewardApplicationDetailedData) AmountOfBudgetType(budgetType BudgetType) (uint64, bool) {
+	if r, found := (*detailedData)[budgetType]; found {
+		return r.Amount, true
+	} else {
+		return 0, false
+	}
+}
+func (detailedData *NewRewardApplicationDetailedData) GetTargetUserWallet() string {
+	for _, rcd := range *detailedData {
+		return rcd.TargetUserWallet
+	}
+	return ""
+}
+
+// FrontendApplicationRecord defines struct for application record that returns to frontend invoker
+type FrontendApplicationRecord struct {
+	ApplicationID    uint      `json:"application_id"`
+	EntityName       string    `json:"entity_name"` // name field value from specified entity table
+	CreatedAt        time.Time `json:"created_at"`
+	TargetUserWallet string    `json:"target_user_wallet"`
+	TokenAmount      uint64    `json:"token_amount"`
+	CreditAmount     uint64    `json:"credit_amount"`
+	BudgetSource     string    `json:"budget_source"` // the data is from name field of project or guild
+	Status           string    `json:"status"`        // application status
+	SubmitterWallet  string    `json:"submitter_wallet"`
+	SubmitterName    string    `json:"submitter_name"`
+	ReviewerWallet   string    `json:"reviewer_wallet"`
+	ReviewerName     string    `json:"reviewer_name"`
+	TransactionIds   string    `json:"transaction_ids"`
+}
+
+// jointAppProjectFields saves query fields of join query of application and project
+const jointAppProjectFields = `applications.id,
+applications.type,
+applications.applicant,
+applications.state,
+applications.reject_reason,
+applications.complete_message,
+applications.created_at,
+applications.updated_at,
+applications.entity_type,
+applications.entity_id,
+applications.detailed_data,
+projects.name as prj_name,
+projects.id as prj_id`
+
+// jointAppProjectRslt saves results returned by application and project join query
+type jointAppProjectRslt struct {
+	Project     *Project     `gorm:"embedded;embeddedPrefix:prj_"`
+	Application *Application `gorm:"embedded"`
 }
