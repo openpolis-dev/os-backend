@@ -43,6 +43,7 @@ func List(ctx *gin.Context) {
 			Code: -1,
 			Msg:  fmt.Sprintf("query params error: %+v", err),
 		})
+		return
 	}
 
 	rcds, total, err := model.GenerateFrontendApplicationRecords(db, &queryParams)
@@ -51,6 +52,7 @@ func List(ctx *gin.Context) {
 			Code: -1,
 			Msg:  fmt.Sprintf("query result error: %+v", err),
 		})
+		return
 	}
 
 	ctx.JSON(http.StatusOK, api.Success(api.ListReplyData{
@@ -70,9 +72,10 @@ func Create(ctx *gin.Context) {
 		if err != nil {
 			ctx.JSON(http.StatusBadRequest, api.Reply{
 				Code: -1,
-				Msg:  "Data error",
+				Msg:  fmt.Sprintf("passed in data error: %+v", err),
 			})
 		}
+		return
 	}
 
 	user, enforcer, db, _ := api.ForContext(ctx)
@@ -84,7 +87,7 @@ func Create(ctx *gin.Context) {
 			// Parse application type
 			appType, err := model.ParseApplicationType(req.Type)
 			if err != nil {
-				return fmt.Errorf("unknown application type %s", req.Entity)
+				return fmt.Errorf("unknown application entity %s", req.Entity)
 			}
 
 			if req.Entity != "guild" && req.Entity != "project" {
@@ -139,6 +142,9 @@ func Create(ctx *gin.Context) {
 			}
 
 			err = model.NewApplicationRecord(db, app)
+			if err != nil {
+				return err
+			}
 		}
 		return nil
 	})
@@ -148,6 +154,7 @@ func Create(ctx *gin.Context) {
 			Code: -1,
 			Msg:  fmt.Sprintf("creation application records error, %+v", err),
 		})
+		return
 	}
 
 	ctx.JSON(http.StatusCreated, api.Success(nil))
@@ -180,6 +187,7 @@ func Export(ctx *gin.Context) {
 			Code: -1,
 			Msg:  "applications in processing state should be processed before exporting new list",
 		})
+		return
 	}
 
 	var applications []model.Application
@@ -191,6 +199,7 @@ func Export(ctx *gin.Context) {
 			Code: -1,
 			Msg:  fmt.Sprintf("process applications error: %+v", err),
 		})
+		return
 	}
 
 	ctx.JSON(http.StatusOK, api.Success(applications))
@@ -219,6 +228,7 @@ func BatchApprove(ctx *gin.Context) {
 			Code: -1,
 			Msg:  fmt.Sprintf("approve applications error: %+v", err),
 		})
+		return
 	}
 
 	ctx.JSON(http.StatusOK, "")
@@ -248,6 +258,7 @@ func BatchReject(ctx *gin.Context) {
 			Code: -1,
 			Msg:  fmt.Sprintf("reject applications error: %+v", err),
 		})
+		return
 	}
 
 	ctx.JSON(http.StatusOK, "")
@@ -280,6 +291,7 @@ func BatchComplete(ctx *gin.Context) {
 			Code: -1,
 			Msg:  "parse request data error",
 		})
+		return
 	}
 
 	err = model.BatchAuditApplication(db, user.Wallet, &applications, model.AuditActionComplete, reqBody.Message)
@@ -288,6 +300,7 @@ func BatchComplete(ctx *gin.Context) {
 			Code: -1,
 			Msg:  fmt.Sprintf("complete applications error: %+v", err),
 		})
+		return
 	}
 
 	ctx.JSON(http.StatusOK, "")
@@ -298,6 +311,7 @@ func getBatchApplicationsOrReturnError(ctx *gin.Context, applications *[]model.A
 	err := ctx.Bind(&idList)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, api.Reply{Code: -1, Msg: "passed in ID list error"})
+		return
 	}
 
 	db := api.ForContextOnlyDB(ctx)
@@ -359,12 +373,14 @@ func auditApplication(ctx *gin.Context, application *model.Application, auditAct
 				Code: -1,
 				Msg:  fmt.Sprintf("approve application failed, error: %s, please check and resubmit request", err.Error()),
 			})
+			return
 		}
 	} else {
 		ctx.JSON(http.StatusBadRequest, api.Reply{
 			Code: -1,
 			Msg:  fmt.Sprintf("application currently is at state %s, which is not suit for approve", application.State),
 		})
+		return
 	}
 }
 
@@ -378,5 +394,6 @@ func getRecordOrReturnNotFound(ctx *gin.Context, application *model.Application)
 			Code: -1,
 			Msg:  fmt.Sprintf("application with id %d not found", id),
 		})
+		return
 	}
 }
