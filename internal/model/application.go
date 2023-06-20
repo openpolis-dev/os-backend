@@ -4,6 +4,7 @@ package model
 // and new_reward currently.
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -183,47 +184,64 @@ func doAuditApplicationInTransaction(tx *gorm.DB, operatorWallet string, applica
 		return err
 	}
 
-	// Comment it out for now since the data structure has been updated, will update the logic after pre testing done
-	//if nextState == ApplicationStateProcessing {
-	//	if application.Type == ApplicationNewReward {
-	//		// The NewReward application getting into processing state requires some updates on assets of project and user
-	//		// * For project/guild, find budget record and extract amount from remainAmount
-	//		// * For user, update asset record with asset name and processing amount.
-	//		if application.EntityType == "project" {
-	//			// Update project budget
-	//			if err := ProjectModel.WithdrawBudget(tx, application.EntityId, application.RewardDetailedData.AssetName, application.RewardDetailedData.Amount); err != nil {
-	//				return err
-	//			}
-	//
-	//			// Update user asset record
-	//			if err := UserAssetRecordModel.CreateOrUpdate(tx, application.Applicant, application.RewardDetailedData.AssetName, application.RewardDetailedData.Amount, 0); err != nil {
-	//				return err
-	//			}
-	//		} else if application.EntityType == "guild" {
-	//			// TODO: Guild is not implemented yet
-	//		} else {
-	//			return fmt.Errorf("unknown application entity type %s", application.EntityType)
-	//		}
-	//	}
-	//} else if nextState == ApplicationStateCompleted {
-	//	if application.Type == ApplicationCloseProject {
-	//		// This is a close project application, so the `entity_id` saved indicates a project record
-	//		project, err := ProjectModel.Detail(tx, application.EntityId)
-	//		if err != nil {
-	//			return err
-	//		}
-	//		project.Status = ProjectStatusClosed
-	//		return tx.Save(project).Error
-	//	} else if application.Type == ApplicationNewReward {
-	//		// For new reward application, the `entity_type` is required to get related db table
-	//		// The main steps for the post complete operation are:
-	//		// * Add the amount to target user
-	//		// Update user asset record
-	//		if err := UserAssetRecordModel.CompleteAssetTransaction(tx, application.Applicant, application.RewardDetailedData.AssetName, application.RewardDetailedData.Amount); err != nil {
-	//			return err
-	//		}
-	//	}
-	//}
+	if nextState == ApplicationStateProcessing {
+		if application.Type == ApplicationNewReward {
+			// The NewReward application getting into processing state requires some updates on assets of project and user
+			// * For project/guild, find budget record and extract amount from remainAmount
+			// * For user, update asset record with asset name and processing amount.
+			if application.EntityType == "project" {
+				detailedData := NewRewardApplicationDetailedData{}
+				err := json.Unmarshal(application.DetailedData, &detailedData)
+				if err != nil {
+					return err
+				}
+
+				for budgetType, detail := range detailedData {
+					// Update project budget
+					if err := ProjectModel.WithdrawBudget(tx, application.EntityId, budgetType, detail.AssetName, detail.Amount); err != nil {
+						return err
+					}
+
+					// Update user asset record
+					if err := UserAssetRecordModel.CreateOrUpdate(tx, application.Applicant, budgetType, detail.Amount, 0); err != nil {
+						return err
+					}
+				}
+
+			} else if application.EntityType == "guild" {
+				// TODO: Guild is not implemented yet
+			} else {
+				return fmt.Errorf("unknown application entity type %s", application.EntityType)
+			}
+		}
+	} else if nextState == ApplicationStateCompleted {
+		if application.Type == ApplicationCloseProject {
+			// This is a close project application, so the `entity_id` saved indicates a project record
+			project, err := ProjectModel.Detail(tx, application.EntityId)
+			if err != nil {
+				return err
+			}
+			project.Status = ProjectStatusClosed
+			return tx.Save(project).Error
+		} else if application.Type == ApplicationNewReward {
+			// For new reward application, the `entity_type` is required to get related db table
+			// The main steps for the post complete operation are:
+			// * Add the amount to target user
+
+			detailedData := NewRewardApplicationDetailedData{}
+			err := json.Unmarshal(application.DetailedData, &detailedData)
+			if err != nil {
+				return err
+			}
+
+			for budgetType, detail := range detailedData {
+				// Update user asset record
+				if err := UserAssetRecordModel.CompleteAssetTransaction(tx, application.Applicant, budgetType, detail.Amount); err != nil {
+					return err
+				}
+			}
+		}
+	}
 
 	return nil
 }

@@ -78,60 +78,68 @@ func (*projectModel) ListBySponsorOrMember(db *gorm.DB, wallet string, page *gor
 }
 
 // SetBudget set budget record directly, but only total amount is allowed to set directly
-func (*projectModel) SetBudget(db *gorm.DB, projectId uint, assertName string, totalAmount uint64) error {
-	budgetRecord, err := ProjectBudgetModel.QueryByProjectIdAndAssetName(db, projectId, assertName)
-	if err != nil {
-		return err
-	}
-
-	if budgetRecord == nil {
-		budgetRecord = &ProjectBudget{
-			ProjectID:    projectId,
-			Name:         assertName,
-			TotalAmount:  totalAmount,
-			RemainAmount: totalAmount,
+func (*projectModel) SetBudget(db *gorm.DB, projectId uint, budgetType BudgetType, assertName string, totalAmount uint64) error {
+	return db.Transaction(func(tx *gorm.DB) error {
+		budgetRecord, err := ProjectBudgetModel.QueryByProjectIdAndBudgetType(tx, projectId, budgetType)
+		if err != nil {
+			return err
 		}
-	} else {
-		budgetRecord.TotalAmount = totalAmount
-	}
 
-	return ProjectBudgetModel.Update(db, budgetRecord)
+		if budgetRecord == nil {
+			budgetRecord = &ProjectBudget{
+				ProjectID:    projectId,
+				Name:         assertName,
+				Type:         budgetType,
+				TotalAmount:  totalAmount,
+				RemainAmount: totalAmount,
+			}
+		} else {
+			budgetRecord.TotalAmount = totalAmount
+		}
+
+		return ProjectBudgetModel.Update(tx, budgetRecord)
+	})
 }
 
-func (*projectModel) WithdrawBudget(db *gorm.DB, projectId uint, tokenName string, tokenAmount uint64) error {
-	budgetRcd, err := ProjectBudgetModel.QueryByProjectIdAndAssetName(db, projectId, tokenName)
-	if err != nil {
-		return err
-	}
+func (*projectModel) WithdrawBudget(db *gorm.DB, projectId uint, budgetType BudgetType, tokenName string, tokenAmount uint64) error {
+	return db.Transaction(func(tx *gorm.DB) error {
+		budgetRcd, err := ProjectBudgetModel.QueryByProjectIdAndBudgetType(tx, projectId, budgetType)
+		if err != nil {
+			return err
+		}
 
-	if budgetRcd == nil {
-		return fmt.Errorf("project %d has no budget record with asset %s", projectId, tokenName)
-	}
+		if budgetRcd == nil {
+			return fmt.Errorf("project %d has no budget record with asset %s", projectId, tokenName)
+		}
 
-	if budgetRcd.RemainAmount < tokenAmount {
-		return fmt.Errorf("project %d has insufficient budget record with asset %s", projectId, tokenName)
-	}
+		if budgetRcd.RemainAmount < tokenAmount {
+			return fmt.Errorf("project %d has insufficient budget record with asset %s", projectId, tokenName)
+		}
 
-	budgetRcd.RemainAmount -= tokenAmount
-	return db.Save(budgetRcd).Error
+		budgetRcd.RemainAmount -= tokenAmount
+		return tx.Save(budgetRcd).Error
+	})
 }
 
 // DepositBudget deposits budget back to project, e.g. application for reward has been rejected
-func (*projectModel) DepositBudget(db *gorm.DB, projectId uint, tokenName string, tokenAmount uint64) error {
-	budgetRcd, err := ProjectBudgetModel.QueryByProjectIdAndAssetName(db, projectId, tokenName)
-	if err != nil {
-		return err
-	}
+func (*projectModel) DepositBudget(db *gorm.DB, projectId uint, budgetType BudgetType, tokenName string, tokenAmount uint64) error {
+	return db.Transaction(func(tx *gorm.DB) error {
+		budgetRcd, err := ProjectBudgetModel.QueryByProjectIdAndBudgetType(tx, projectId, budgetType)
+		if err != nil {
+			return err
+		}
 
-	if budgetRcd == nil {
-		return db.Save(&ProjectBudget{
-			ProjectID:    projectId,
-			Name:         tokenName,
-			TotalAmount:  tokenAmount,
-			RemainAmount: tokenAmount,
-		}).Error
-	} else {
-		budgetRcd.RemainAmount += tokenAmount
-		return db.Save(budgetRcd).Error
-	}
+		if budgetRcd == nil {
+			return tx.Save(&ProjectBudget{
+				ProjectID:    projectId,
+				Name:         tokenName,
+				Type:         budgetType,
+				TotalAmount:  tokenAmount,
+				RemainAmount: tokenAmount,
+			}).Error
+		} else {
+			budgetRcd.RemainAmount += tokenAmount
+			return tx.Save(budgetRcd).Error
+		}
+	})
 }
