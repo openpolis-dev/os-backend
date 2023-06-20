@@ -176,6 +176,14 @@ func doAuditApplicationInTransaction(tx *gorm.DB, operatorWallet string, applica
 	application.State = nextState
 	if action == AuditActionReject {
 		application.RejectReason = extraMsg
+		if application.Type == ApplicationCloseProject {
+			project, err := ProjectModel.Detail(tx, application.EntityId)
+			if err != nil {
+				return err
+			}
+			project.Status = ProjectStatusOpen
+			return tx.Save(project).Error
+		}
 	} else if action == AuditActionComplete {
 		application.CompleteMessage = extraMsg
 	}
