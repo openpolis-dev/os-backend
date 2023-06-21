@@ -142,5 +142,8 @@ func main() {
 		// foo routers
 	}
 
+	r.StaticFile("/_doc/apispec", "./_doc/api.html")
+	r.StaticFile("/_doc/api.yml", "./_doc/api.yml")
+
 	_ = r.Run()
 }
