@@ -249,7 +249,7 @@ func Export(ctx *gin.Context) {
 	}
 
 	var processingRecordCount int64
-	db.Model(&model.Application{}).Where("state <> ?", model.ApplicationStateProcessing).Count(&processingRecordCount)
+	db.Model(&model.Application{}).Where("state = ?", model.ApplicationStateProcessing).Count(&processingRecordCount)
 
 	if processingRecordCount > 0 {
 		ctx.JSON(http.StatusBadRequest, &api.Reply{

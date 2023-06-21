@@ -241,7 +241,7 @@ func (r *jointAppProjectRslt) ToFrontedApplicationRecord(db *gorm.DB) *FrontendA
 	}
 }
 
-// Guild are placeholder
+// Guild related code are placeholder currently
 const jointAppGuildFields = `applications.id,
 applications.type,
 applications.applicant,
