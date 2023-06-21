@@ -219,8 +219,9 @@ func (r *jointAppProjectRslt) ToFrontedApplicationRecord(db *gorm.DB) *FrontendA
 	}
 
 	auditlog := ApplicationAuditLog{}
-	err = db.Model(&ApplicationAuditLog{ApplicationID: r.Application.ID}).
-		Where("operation = ?", AuditActionApprove).Or("operation = ?", AuditActionReject).First(&auditlog).Error
+	err = db.Model(&ApplicationAuditLog{}).
+		Where(&ApplicationAuditLog{ApplicationID: r.Application.ID}).
+		Where("operation IN ?", []string{AuditActionApprove, AuditActionReject}).First(&auditlog).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			// No record found, skip
