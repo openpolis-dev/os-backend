@@ -229,7 +229,7 @@ func Download(ctx *gin.Context) {
 		w.Flush()
 
 		ctx.FileAttachment(tmpFile.Name(), fileBaseName)
-		ctx.Writer.Header().Set("attachment", fmt.Sprintf("filename=%s", fileBaseName))
+		ctx.Writer.Header().Set("Content-Disposition", `attachment; filename="`+fileBaseName+`"`)
 	} else if fileFormat == "json" {
 		tmpFile, err := os.CreateTemp(os.TempDir(), "application-list-*.json")
 		defer os.Remove(tmpFile.Name())
@@ -247,7 +247,7 @@ func Download(ctx *gin.Context) {
 		}
 
 		ctx.FileAttachment(tmpFile.Name(), fileBaseName)
-		ctx.Writer.Header().Set("attachment", fmt.Sprintf("filename=%s", fileBaseName))
+		ctx.Writer.Header().Set("Content-Disposition", `attachment; filename="`+fileBaseName+`"`)
 	} else {
 		_, _ = ctx.Writer.Write([]byte(""))
 	}
