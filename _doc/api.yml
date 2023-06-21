@@ -476,6 +476,30 @@ paths:
           schema:
             type: string
             description: entity ID for the application
+        - name: start_date
+          in: query
+          required: false
+          schema:
+            type: string
+            description: start date of applications, must be used with end_date
+        - name: end_date
+          in: query
+          required: false
+          schema:
+            type: string
+            description: end date of applications, must be used with start_date
+        - name: applicant
+          in: query
+          required: false
+          schema:
+            type: string
+            description: applicant wallet address
+        - name: user_wallet
+          in: query
+          required: false
+          schema:
+            type: string
+            description: target user wallet address
 
       responses:
         '200':
@@ -520,6 +544,27 @@ paths:
                     type: number
                   msg:
                     type: string
+
+  /applications/applicants:
+    get:
+      tags: [ applications ]
+      description: get applicants of all applications
+      responses:
+        200:
+          description: applicant wallet and username (if have)
+          content:
+            "application/json":
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    wallet:
+                      type: string
+                      description: wallet of applicant user
+                    name:
+                      type: string
+                      description: name of applicant user, and will return "" if not set
 
   /applications/approve:
     post:

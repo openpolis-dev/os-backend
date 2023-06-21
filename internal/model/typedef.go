@@ -66,13 +66,17 @@ var applicationStateMap = map[ApplicationState]map[AuditActionType]ApplicationSt
 }
 
 type ListApplicationQueryParams struct {
-	Page      int    `form:"page"`
-	Size      int    `form:"size"`
-	SortField string `form:"sort_field"`
-	SortOrder string `form:"sort_order"`
-	Type      string `form:"type"`
-	Entity    string `form:"entity"`
-	EntityId  string `form:"entity_id"`
+	Page       int    `form:"page"`
+	Size       int    `form:"size"`
+	SortField  string `form:"sort_field"`
+	SortOrder  string `form:"sort_order"`
+	Type       string `form:"type"`
+	Entity     string `form:"entity"`
+	EntityId   string `form:"entity_id"`
+	StartDate  string `form:"start_date"`
+	EndDate    string `form:"end_date"`
+	Applicant  string `form:"applicant"`
+	UserWallet string `form:"user_wallet"`
 }
 
 // rewardDetail saves detail of reward application for single budget type
@@ -117,6 +121,8 @@ type FrontendApplicationRecord struct {
 	CreditAmount     uint64    `json:"credit_amount"`
 	BudgetSource     string    `json:"budget_source"` // the data is from name field of project or guild
 	Status           string    `json:"status"`        // application status
+	DetailedType     string    `json:"detailed_type"`
+	Comment          string    `json:"comment"`
 	SubmitterWallet  string    `json:"submitter_wallet"`
 	SubmitterName    string    `json:"submitter_name"`
 	ReviewerWallet   string    `json:"reviewer_wallet"`
@@ -133,6 +139,8 @@ var FrontendApplicationRecordCsvHeader = []string{
 	"credit_amount",
 	"budget_source",
 	"status",
+	"detailed_type",
+	"comment",
 	"submitter_wallet",
 	"submitter_name",
 	"reviewer_wallet",
@@ -150,6 +158,8 @@ func (r *FrontendApplicationRecord) ToCSV() []string {
 		fmt.Sprintf("%d", r.CreditAmount),
 		r.BudgetSource,
 		r.Status,
+		r.DetailedType,
+		r.Comment,
 		r.SubmitterWallet,
 		r.SubmitterName,
 		r.ReviewerWallet,
@@ -170,6 +180,8 @@ applications.updated_at,
 applications.entity_type,
 applications.entity_id,
 applications.detailed_data,
+applications.detailed_type,
+applications.comment,
 projects.name as prj_name,
 projects.id as prj_id`
 
@@ -208,8 +220,9 @@ func (r *jointAppProjectRslt) ToFrontedApplicationRecord(db *gorm.DB) *FrontendA
 	}
 
 	auditlog := ApplicationAuditLog{}
-	err = db.Model(&ApplicationAuditLog{ApplicationID: r.Application.ID}).
-		Where("operation = ?", AuditActionApprove).Or("operation = ?", AuditActionReject).First(&auditlog).Error
+	err = db.Model(&ApplicationAuditLog{}).
+		Where(&ApplicationAuditLog{ApplicationID: r.Application.ID}).
+		Where("operation IN ?", []string{AuditActionApprove, AuditActionReject}).First(&auditlog).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			// No record found, skip
@@ -233,6 +246,8 @@ func (r *jointAppProjectRslt) ToFrontedApplicationRecord(db *gorm.DB) *FrontendA
 		CreditAmount:     creditAmount,
 		BudgetSource:     r.Project.Name,
 		Status:           string(r.Application.State),
+		DetailedType:     r.Application.DetailedType,
+		Comment:          r.Application.Comment,
 		SubmitterWallet:  submitterWallet,
 		SubmitterName:    submitterUsername,
 		ReviewerWallet:   reviewerWallet,
@@ -253,6 +268,8 @@ applications.updated_at,
 applications.entity_type,
 applications.entity_id,
 applications.detailed_data,
+applications.detailed_type,
+applications.comment,
 guilds.name as guild_name,
 guilds.id as guild_id`
 

@@ -38,6 +38,9 @@ type Application struct {
 	// DetailedType means a sub category of this application
 	DetailedType string `json:"detailed_type"`
 
+	// Comment saves some user entered data
+	Comment string `json:"comment"`
+
 	// DetailedData saves application detailed data
 	// Currently the design is using this struct to save serialized detailed data for all applications.
 	// The data will be deserialized to specified struct before using

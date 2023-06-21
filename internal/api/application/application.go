@@ -35,6 +35,26 @@ type NewApplicationRequest struct {
 	Comment          string `json:"comment"`
 }
 
+// ListApplicants list all applicants existing in applications table for filter
+func ListApplicants(ctx *gin.Context) {
+	var err error
+	db := api.ForContextOnlyDB(ctx)
+
+	var rslt []map[string]any
+
+	err = db.Model(&model.Application{}).
+		Distinct("wallet").
+		Joins("inner join users on users.wallet = applications.applicant").
+		Select("applications.applicant, users.name").
+		Find(&rslt).Error
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, api.Success(rslt))
+}
+
 // List lists all applications based on query params and return in JSON format
 // GET /applications
 func List(ctx *gin.Context) {
@@ -114,13 +134,15 @@ func Create(ctx *gin.Context) {
 			}
 
 			app := &model.Application{
-				Type:       appType,
-				Applicant:  user.Wallet,
-				State:      model.ApplicationStateOpen,
-				EntityType: req.Entity,
-				EntityId:   req.EntityId,
-				CreatedAt:  time.Now(),
-				UpdatedAt:  time.Now(),
+				Type:         appType,
+				Applicant:    user.Wallet,
+				State:        model.ApplicationStateOpen,
+				EntityType:   req.Entity,
+				EntityId:     req.EntityId,
+				DetailedType: req.DetailedType,
+				Comment:      req.Comment,
+				CreatedAt:    time.Now(),
+				UpdatedAt:    time.Now(),
 			}
 
 			if appType == model.ApplicationNewReward {
@@ -164,8 +186,6 @@ func Create(ctx *gin.Context) {
 	ctx.JSON(http.StatusCreated, api.Success(nil))
 }
 
-// Batch operations, the request body are ids
-
 // Download get lists from passed in IDs and generate file and send to invoker
 func Download(ctx *gin.Context) {
 	fileFormat := ""
@@ -207,7 +227,7 @@ func Download(ctx *gin.Context) {
 		w.Flush()
 
 		ctx.FileAttachment(tmpFile.Name(), fileBaseName)
-		ctx.Writer.Header().Set("attachment", fmt.Sprintf("filename=%s", fileBaseName))
+		ctx.Writer.Header().Set("Content-Disposition", `attachment; filename="`+fileBaseName+`"`)
 	} else if fileFormat == "json" {
 		tmpFile, err := os.CreateTemp(os.TempDir(), "application-list-*.json")
 		defer os.Remove(tmpFile.Name())
@@ -225,11 +245,20 @@ func Download(ctx *gin.Context) {
 		}
 
 		ctx.FileAttachment(tmpFile.Name(), fileBaseName)
-		ctx.Writer.Header().Set("attachment", fmt.Sprintf("filename=%s", fileBaseName))
+		ctx.Writer.Header().Set("Content-Disposition", `attachment; filename="`+fileBaseName+`"`)
 	} else {
 		_, _ = ctx.Writer.Write([]byte(""))
 	}
 }
+
+func DownloadUploadTemplate(ctx *gin.Context) {
+	// TODO: Get content type
+	tmpFile, _ := os.CreateTemp(os.TempDir(), "upload-template-*.csv")
+	defer os.Remove(tmpFile.Name())
+	ctx.Writer.Header().Set("Content-Disposition", `attachment; filename="`+filepath.Base(tmpFile.Name())+`"`)
+}
+
+// Batch operations, the request body are ids
 
 // Export exports application in approved state, and changes exported applications state to processing
 // If there are existing applications in processing state, the export function returns error.
