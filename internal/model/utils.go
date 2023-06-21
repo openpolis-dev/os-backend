@@ -92,6 +92,12 @@ func GenerateFrontendApplicationRecords(db *gorm.DB, queryParams *ListApplicatio
 	appType := MustParseApplicationType(queryParams.Type)
 	querySeg := db.Model(&Application{}).Where(&Application{Type: appType, EntityType: clearEntity})
 
+	if queryParams.Applicant != "" {
+		querySeg = querySeg.Where(&Application{Applicant: queryParams.Applicant})
+	}
+
+	// TODO: parse create_date and end_data
+
 	switch clearEntity {
 	case "project":
 		querySeg = querySeg.Joins("inner join projects on projects.id = applications.entity_id").Select(jointAppProjectFields)

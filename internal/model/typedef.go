@@ -73,6 +73,9 @@ type ListApplicationQueryParams struct {
 	Type      string `form:"type"`
 	Entity    string `form:"entity"`
 	EntityId  string `form:"entity_id"`
+	StartDate string `form:"start_date"`
+	EndDate   string `form:"end_date"`
+	Applicant string `form:"applicant"`
 }
 
 // rewardDetail saves detail of reward application for single budget type

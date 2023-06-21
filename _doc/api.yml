@@ -476,6 +476,24 @@ paths:
           schema:
             type: string
             description: entity ID for the application
+        - name: start_date
+          in: query
+          required: false
+          schema:
+            type: string
+            description: start date of applications, must be used with end_date
+        - name: end_date
+          in: query
+          required: false
+          schema:
+            type: string
+            description: end date of applications, must be used with start_date
+        - name: applicant
+          in: query
+          required: false
+          schema:
+            type: string
+            description: applicant wallet address
 
       responses:
         '200':
