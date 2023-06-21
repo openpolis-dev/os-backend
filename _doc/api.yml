@@ -592,6 +592,7 @@ paths:
 
   /applications/get_upload_template:
     get:
+      tags: [ applications ]
       description: get upload template
       responses:
         200:
