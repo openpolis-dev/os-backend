@@ -134,13 +134,15 @@ func Create(ctx *gin.Context) {
 			}
 
 			app := &model.Application{
-				Type:       appType,
-				Applicant:  user.Wallet,
-				State:      model.ApplicationStateOpen,
-				EntityType: req.Entity,
-				EntityId:   req.EntityId,
-				CreatedAt:  time.Now(),
-				UpdatedAt:  time.Now(),
+				Type:         appType,
+				Applicant:    user.Wallet,
+				State:        model.ApplicationStateOpen,
+				EntityType:   req.Entity,
+				EntityId:     req.EntityId,
+				DetailedType: req.DetailedType,
+				Comment:      req.Comment,
+				CreatedAt:    time.Now(),
+				UpdatedAt:    time.Now(),
 			}
 
 			if appType == model.ApplicationNewReward {

@@ -120,6 +120,8 @@ type FrontendApplicationRecord struct {
 	CreditAmount     uint64    `json:"credit_amount"`
 	BudgetSource     string    `json:"budget_source"` // the data is from name field of project or guild
 	Status           string    `json:"status"`        // application status
+	DetailedType     string    `json:"detailed_type"`
+	Comment          string    `json:"comment"`
 	SubmitterWallet  string    `json:"submitter_wallet"`
 	SubmitterName    string    `json:"submitter_name"`
 	ReviewerWallet   string    `json:"reviewer_wallet"`
@@ -136,6 +138,8 @@ var FrontendApplicationRecordCsvHeader = []string{
 	"credit_amount",
 	"budget_source",
 	"status",
+	"detailed_type",
+	"comment",
 	"submitter_wallet",
 	"submitter_name",
 	"reviewer_wallet",
@@ -153,6 +157,8 @@ func (r *FrontendApplicationRecord) ToCSV() []string {
 		fmt.Sprintf("%d", r.CreditAmount),
 		r.BudgetSource,
 		r.Status,
+		r.DetailedType,
+		r.Comment,
 		r.SubmitterWallet,
 		r.SubmitterName,
 		r.ReviewerWallet,
@@ -173,6 +179,8 @@ applications.updated_at,
 applications.entity_type,
 applications.entity_id,
 applications.detailed_data,
+applications.detailed_type,
+applications.comment,
 projects.name as prj_name,
 projects.id as prj_id`
 
@@ -236,6 +244,8 @@ func (r *jointAppProjectRslt) ToFrontedApplicationRecord(db *gorm.DB) *FrontendA
 		CreditAmount:     creditAmount,
 		BudgetSource:     r.Project.Name,
 		Status:           string(r.Application.State),
+		DetailedType:     r.Application.DetailedType,
+		Comment:          r.Application.Comment,
 		SubmitterWallet:  submitterWallet,
 		SubmitterName:    submitterUsername,
 		ReviewerWallet:   reviewerWallet,
@@ -256,6 +266,8 @@ applications.updated_at,
 applications.entity_type,
 applications.entity_id,
 applications.detailed_data,
+applications.detailed_type,
+applications.comment,
 guilds.name as guild_name,
 guilds.id as guild_id`
 
