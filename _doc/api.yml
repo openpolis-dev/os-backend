@@ -590,6 +590,13 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /applications/get_upload_template:
+    get:
+      description: get upload template
+      responses:
+        200:
+          description: template downloaded
+
   /applications/download:
     post:
       tags: [ applications ]
