@@ -12,6 +12,8 @@ import (
 	"gorm.io/gorm"
 )
 
+const ApplicationDateQueryFormat = "2006-01-02"
+
 // NewApplicationRecord create application and related audit log message with given params
 func NewApplicationRecord(db *gorm.DB, application *Application) error {
 	return db.Transaction(func(tx *gorm.DB) error {
@@ -96,7 +98,19 @@ func GenerateFrontendApplicationRecords(db *gorm.DB, queryParams *ListApplicatio
 		querySeg = querySeg.Where(&Application{Applicant: queryParams.Applicant})
 	}
 
-	// TODO: parse create_date and end_data
+	if queryParams.StartDate != "" && queryParams.EndDate != "" {
+		startDate, err := time.Parse(ApplicationDateQueryFormat, queryParams.StartDate)
+		if err != nil {
+			return nil, 0, err
+		}
+
+		endDate, err := time.Parse(ApplicationDateQueryFormat, queryParams.EndDate)
+		if err != nil {
+			return nil, 0, err
+		}
+
+		querySeg = querySeg.Where("created_at >= ? AND created_at <= ?", startDate, endDate)
+	}
 
 	switch clearEntity {
 	case "project":
