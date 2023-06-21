@@ -1,12 +1,13 @@
 package application
 
 import (
-	"bytes"
 	"encoding/csv"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -167,8 +168,11 @@ func Create(ctx *gin.Context) {
 
 // Download get lists from passed in IDs and generate file and send to invoker
 func Download(ctx *gin.Context) {
-	fileFormat := "csv"
+	fileFormat := ""
 	fileFormat = strings.ToLower(ctx.Query("format"))
+	if fileFormat == "" {
+		fileFormat = "csv"
+	}
 
 	db := api.ForContextOnlyDB(ctx)
 
@@ -184,26 +188,44 @@ func Download(ctx *gin.Context) {
 	}
 
 	if fileFormat == "csv" {
-		b := new(bytes.Buffer)
-		w := csv.NewWriter(b)
+		tmpFile, err := os.CreateTemp(os.TempDir(), "application-list-*.csv")
+		defer os.Remove(tmpFile.Name())
+
+		fileBaseName := filepath.Base(tmpFile.Name())
+
+		w := csv.NewWriter(tmpFile)
 		err = w.Write(model.FrontendApplicationRecordCsvHeader)
 		if err != nil {
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		}
 		for _, r := range rcds {
-			err = w.Write(*r.ToCSV())
+			err = w.Write(r.ToCSV())
 			if err != nil {
 				ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 			}
 		}
+		w.Flush()
 
-		_, _ = ctx.Writer.Write(b.Bytes())
+		ctx.FileAttachment(tmpFile.Name(), fileBaseName)
+		ctx.Writer.Header().Set("attachment", fmt.Sprintf("filename=%s", fileBaseName))
 	} else if fileFormat == "json" {
+		tmpFile, err := os.CreateTemp(os.TempDir(), "application-list-*.json")
+		defer os.Remove(tmpFile.Name())
+
+		fileBaseName := filepath.Base(tmpFile.Name())
+
 		jsonBytes, err := json.Marshal(rcds)
 		if err != nil {
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		}
-		_, _ = ctx.Writer.Write(jsonBytes)
+
+		err = os.WriteFile(tmpFile.Name(), jsonBytes, 0777)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		}
+
+		ctx.FileAttachment(tmpFile.Name(), fileBaseName)
+		ctx.Writer.Header().Set("attachment", fmt.Sprintf("filename=%s", fileBaseName))
 	} else {
 		_, _ = ctx.Writer.Write([]byte(""))
 	}

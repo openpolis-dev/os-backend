@@ -1,9 +1,12 @@
 package model
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 type ApplicationType string
@@ -137,8 +140,8 @@ var FrontendApplicationRecordCsvHeader = []string{
 	"transaction_ids",
 }
 
-func (r *FrontendApplicationRecord) ToCSV() *[]string {
-	return &[]string{
+func (r *FrontendApplicationRecord) ToCSV() []string {
+	return []string{
 		fmt.Sprintf("%d", r.ApplicationID),
 		r.EntityName,
 		r.CreatedAt.Format(time.RFC3339),
@@ -174,4 +177,90 @@ projects.id as prj_id`
 type jointAppProjectRslt struct {
 	Project     *Project     `gorm:"embedded;embeddedPrefix:prj_"`
 	Application *Application `gorm:"embedded"`
+}
+
+func (r *jointAppProjectRslt) ToFrontedApplicationRecord(db *gorm.DB) *FrontendApplicationRecord {
+	var tokenAmount uint64
+	var creditAmount uint64
+	var targetUserWallet string
+	if r.Application.Type == ApplicationNewReward {
+		detailedData := NewRewardApplicationDetailedData{}
+		err := json.Unmarshal(r.Application.DetailedData, &detailedData)
+		if err != nil {
+			return nil
+		}
+
+		tokenAmount, _ = detailedData.AmountOfBudgetType(BudgetTypeToken)
+		creditAmount, _ = detailedData.AmountOfBudgetType(BudgetTypeCredit)
+
+		targetUserWallet = detailedData.GetTargetUserWallet()
+	}
+
+	var submitterWallet string
+	var submitterUsername string
+	var reviewerWallet string
+	var reviewerUsername string
+
+	submitterWallet = r.Application.Applicant
+	submitterUsername, err := UserModel.TryGetUsername(db, submitterWallet)
+	if err != nil {
+		return nil
+	}
+
+	auditlog := ApplicationAuditLog{}
+	err = db.Model(&ApplicationAuditLog{ApplicationID: r.Application.ID}).
+		Where("operation = ?", AuditActionApprove).Or("operation = ?", AuditActionReject).First(&auditlog).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			// No record found, skip
+		} else {
+			return nil
+		}
+	} else {
+		reviewerWallet = auditlog.Operator
+		reviewerUsername, err = UserModel.TryGetUsername(db, reviewerWallet)
+		if err != nil {
+			return nil
+		}
+	}
+
+	return &FrontendApplicationRecord{
+		ApplicationID:    r.Application.ID,
+		EntityName:       r.Application.EntityType,
+		CreatedAt:        r.Application.CreatedAt,
+		TargetUserWallet: targetUserWallet,
+		TokenAmount:      tokenAmount,
+		CreditAmount:     creditAmount,
+		BudgetSource:     r.Project.Name,
+		Status:           string(r.Application.State),
+		SubmitterWallet:  submitterWallet,
+		SubmitterName:    submitterUsername,
+		ReviewerWallet:   reviewerWallet,
+		ReviewerName:     reviewerUsername,
+		TransactionIds:   r.Application.CompleteMessage,
+	}
+}
+
+// Guild are placeholder
+const jointAppGuildFields = `applications.id,
+applications.type,
+applications.applicant,
+applications.state,
+applications.reject_reason,
+applications.complete_message,
+applications.created_at,
+applications.updated_at,
+applications.entity_type,
+applications.entity_id,
+applications.detailed_data,
+guilds.name as guild_name,
+guilds.id as guild_id`
+
+type jointAppGuildRslt struct {
+	//Guild     *Guild     `gorm:"embedded;embeddedPrefix:guild_"`
+	Application *Application `gorm:"embedded"`
+}
+
+func (r *jointAppGuildRslt) ToFrontedApplicationRecord(db *gorm.DB) *FrontendApplicationRecord {
+	return nil
 }

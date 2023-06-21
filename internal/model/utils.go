@@ -1,7 +1,6 @@
 package model
 
 import (
-	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -59,6 +58,23 @@ func NewApplicationRecord(db *gorm.DB, application *Application) error {
 func GenerateFrontendApplicationRecordsByIds(db *gorm.DB, ids []uint64) ([]*FrontendApplicationRecord, error) {
 	rslt := make([]*FrontendApplicationRecord, len(ids))
 
+	projectRcdsQuerySeg := db.Model(&Application{}).
+		Where(&Application{EntityType: "project"}).
+		Where("applications.id IN ?", ids).
+		Joins("inner join projects on projects.id = applications.entity_id").
+		Select(jointAppProjectFields)
+	// TODO: Guild has not implemented yet
+	//guildRecords := db.Model(&Application{}).Where(&Application{EntityType: "guild"}).Joins("inner join guilds on guilds.id = applications.entity_id").Select(jointAppProjectFields)
+
+	projectRcds, err := gormfind.RowsJoin[jointAppProjectRslt](projectRcdsQuerySeg, "applications", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	for i, r := range projectRcds {
+		rslt[i] = r.ToFrontedApplicationRecord(db)
+	}
+
 	return rslt, nil
 }
 
@@ -80,7 +96,8 @@ func GenerateFrontendApplicationRecords(db *gorm.DB, queryParams *ListApplicatio
 	case "project":
 		querySeg = querySeg.Joins("inner join projects on projects.id = applications.entity_id").Select(jointAppProjectFields)
 	case "guild":
-		querySeg = querySeg.Select("guilds.name as entity_name").Joins("left join guilds on projects.id = applications.entity_id")
+		// TODO: guild is not implemented yet
+		querySeg = querySeg.Joins("inner join projects on projects.id = applications.entity_id").Select(jointAppProjectFields)
 	}
 
 	if len(strings.TrimSpace(queryParams.EntityId)) != 0 {
@@ -125,65 +142,7 @@ func GenerateFrontendApplicationRecords(db *gorm.DB, queryParams *ListApplicatio
 	rslt := make([]*FrontendApplicationRecord, len(rcds))
 
 	for i, r := range rcds {
-		var tokenAmount uint64
-		var creditAmount uint64
-		var targetUserWallet string
-		if r.Application.Type == ApplicationNewReward {
-			detailedData := NewRewardApplicationDetailedData{}
-			err := json.Unmarshal(r.Application.DetailedData, &detailedData)
-			if err != nil {
-				return nil, 0, err
-			}
-
-			tokenAmount, _ = detailedData.AmountOfBudgetType(BudgetTypeToken)
-			creditAmount, _ = detailedData.AmountOfBudgetType(BudgetTypeCredit)
-
-			targetUserWallet = detailedData.GetTargetUserWallet()
-		}
-
-		var submitterWallet string
-		var submitterUsername string
-		var reviewerWallet string
-		var reviewerUsername string
-
-		submitterWallet = r.Application.Applicant
-		submitterUsername, err = UserModel.TryGetUsername(db, submitterWallet)
-		if err != nil {
-			return nil, 0, err
-		}
-
-		auditlog := ApplicationAuditLog{}
-		err = db.Model(&ApplicationAuditLog{ApplicationID: r.Application.ID}).
-			Where("operation = ?", AuditActionApprove).Or("operation = ?", AuditActionReject).First(&auditlog).Error
-		if err != nil {
-			if err == gorm.ErrRecordNotFound {
-				// No record found, skip
-			} else {
-				return nil, 0, err
-			}
-		} else {
-			reviewerWallet = auditlog.Operator
-			reviewerUsername, err = UserModel.TryGetUsername(db, reviewerWallet)
-			if err != nil {
-				return nil, 0, err
-			}
-		}
-
-		rslt[i] = &FrontendApplicationRecord{
-			ApplicationID:    r.Application.ID,
-			EntityName:       clearEntity,
-			CreatedAt:        r.Application.CreatedAt,
-			TargetUserWallet: targetUserWallet,
-			TokenAmount:      tokenAmount,
-			CreditAmount:     creditAmount,
-			BudgetSource:     r.Project.Name,
-			Status:           string(r.Application.State),
-			SubmitterWallet:  submitterWallet,
-			SubmitterName:    submitterUsername,
-			ReviewerWallet:   reviewerWallet,
-			ReviewerName:     reviewerUsername,
-			TransactionIds:   r.Application.CompleteMessage,
-		}
+		rslt[i] = r.ToFrontedApplicationRecord(db)
 	}
 
 	return rslt, total, nil
