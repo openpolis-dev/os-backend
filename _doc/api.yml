@@ -539,6 +539,27 @@ paths:
                   msg:
                     type: string
 
+  /applications/applicants:
+    get:
+      tags: [ applications ]
+      description: get applicants of all applications
+      responses:
+        200:
+          description: applicant wallet and username (if have)
+          content:
+            "application/json":
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    wallet:
+                      type: string
+                      description: wallet of applicant user
+                    name:
+                      type: string
+                      description: name of applicant user, and will return "" if not set
+
   /applications/approve:
     post:
       tags: [ applications ]

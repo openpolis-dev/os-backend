@@ -35,6 +35,26 @@ type NewApplicationRequest struct {
 	Comment          string `json:"comment"`
 }
 
+// ListApplicants list all applicants existing in applications table for filter
+func ListApplicants(ctx *gin.Context) {
+	var err error
+	db := api.ForContextOnlyDB(ctx)
+
+	var rslt []map[string]any
+
+	err = db.Model(&model.Application{}).
+		Distinct("wallet").
+		Joins("inner join users on users.wallet = applications.applicant").
+		Select("applications.applicant, users.name").
+		Find(&rslt).Error
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, api.Success(rslt))
+}
+
 // List lists all applications based on query params and return in JSON format
 // GET /applications
 func List(ctx *gin.Context) {

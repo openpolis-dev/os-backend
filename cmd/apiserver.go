@@ -100,6 +100,7 @@ func main() {
 
 		// application routers
 		applicationGroup := v1.Group("/applications")
+		applicationGroup.GET("/applicants", application.ListApplicants)
 		applicationGroup.GET("/:id", application.Detail)
 		applicationGroup.GET("/", application.List)
 		applicationGroup.POST("/download", application.Download)
