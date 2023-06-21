@@ -494,6 +494,12 @@ paths:
           schema:
             type: string
             description: applicant wallet address
+        - name: user_wallet
+          in: query
+          required: false
+          schema:
+            type: string
+            description: target user wallet address
 
       responses:
         '200':
