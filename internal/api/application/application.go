@@ -1,16 +1,20 @@
 package application
 
 import (
+	"encoding/csv"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/samber/lo"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/model"
-	"github.com/xiaosongfu/gormfind"
 	"gorm.io/gorm"
 )
 
@@ -25,117 +29,207 @@ type NewApplicationRequest struct {
 	Entity           string `json:"entity"`
 	EntityId         uint   `json:"entity_id"`
 	TargetUserWallet string `json:"target_user_wallet"`
-	AssetName        string `json:"asset_name"`
-	Amount           uint64 `json:"amount"`
+	CreditAmount     uint64 `json:"credit_amount"`
+	TokenAmount      uint64 `json:"token_amount"`
+	DetailedType     string `json:"detailed_type"`
+	Comment          string `json:"comment"`
 }
 
 // List lists all applications based on query params and return in JSON format
-// POST /applications
+// GET /applications
 func List(ctx *gin.Context) {
+	var err error
 	db := api.ForContextOnlyDB(ctx)
 
-	page := api.ParseAndConvertPageParam(ctx)
+	queryParams := model.ListApplicationQueryParams{}
+	if err := ctx.Bind(&queryParams); err != nil {
+		ctx.JSON(http.StatusBadRequest, api.Reply{
+			Code: -1,
+			Msg:  fmt.Sprintf("query params error: %+v", err),
+		})
+		return
+	}
 
-	querySeg := db.Model(&model.Application{})
-	total, err := gormfind.Count(querySeg)
+	rcds, total, err := model.GenerateFrontendApplicationRecords(db, &queryParams)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.Reply{
 			Code: -1,
-			Msg:  "query error",
+			Msg:  fmt.Sprintf("query result error: %+v", err),
 		})
+		return
 	}
 
-	rcds, err := gormfind.Rows[model.Application](querySeg, page)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.Reply{
-			Code: -1,
-			Msg:  "query error",
-		})
-	}
 	ctx.JSON(http.StatusOK, api.Success(api.ListReplyData{
-		Page:  page.Page,
-		Size:  page.Size,
+		Page:  queryParams.Page,
+		Size:  queryParams.Size,
 		Total: total,
 		Rows:  rcds,
 	}))
 }
 
-// Create handles creating application with passed in data
+// Create handles creating one or more application records with passed in data, the passed in data must be an array
 // An audit log record will be created with application at same time with action open
-// POST /applications
+// POST /applications/
 func Create(ctx *gin.Context) {
-	newApplicationReq := NewApplicationRequest{}
-	if err := ctx.BindJSON(newApplicationReq); err != nil {
+	var newApplicationReqs []NewApplicationRequest
+	if err := ctx.BindJSON(&newApplicationReqs); err != nil {
 		if err != nil {
 			ctx.JSON(http.StatusBadRequest, api.Reply{
 				Code: -1,
-				Msg:  "Data error",
+				Msg:  fmt.Sprintf("passed in data error: %+v", err),
 			})
 		}
-	}
-
-	if newApplicationReq.Type != "close_project" && newApplicationReq.Type != "new_reward" {
-		ctx.JSON(http.StatusBadRequest, api.Reply{
-			Code: -1,
-			Msg:  fmt.Sprintf("unknown application type %s", newApplicationReq.Type),
-		})
-	}
-
-	if newApplicationReq.Entity != "guild" && newApplicationReq.Entity != "project" {
-		ctx.JSON(http.StatusBadRequest, api.Reply{
-			Code: -1,
-			Msg:  fmt.Sprintf("unknown application entity %s", newApplicationReq.Entity),
-		})
+		return
 	}
 
 	user, enforcer, db, _ := api.ForContext(ctx)
 
-	//  check permission: `(0x..., proj_1, create_app)` (0x..., guild_1, create_app)
-	obj := lo.
-		If(newApplicationReq.Entity == "project", fmt.Sprintf("%s%d", api.ObjProjPrefix, newApplicationReq.EntityId)).
-		ElseIf(newApplicationReq.Entity == "guild", fmt.Sprintf("%s%d", api.ObjGuildPrefix, newApplicationReq.EntityId)).
-		Else("")
-	ok, err := enforcer.Enforce(user.Wallet, obj, api.ActCreateApplication)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
-		return
-	}
-	if !ok {
-		ctx.JSON(http.StatusForbidden, api.Forbidden())
-		return
-	}
+	err := db.Transaction(func(tx *gorm.DB) error {
+		for _, req := range newApplicationReqs {
+			// TODO: Verify user wallet and project/guild existing
 
-	application := model.Application{
-		DisplayGroupId: "",
-		Type:           model.ApplicationType(newApplicationReq.Type),
-		Applicant:      user.Wallet,
-		State:          model.ApplicationStateOpen,
-		CreatedAt:      time.Now(),
-		UpdatedAt:      time.Now(),
-		DetailedData: model.ApplicationDetailedData{
-			TargetUserWallet: newApplicationReq.TargetUserWallet,
-			AssetName:        newApplicationReq.AssetName,
-			Amount:           newApplicationReq.Amount,
-		},
-		EntityType: "",
-		EntityId:   0,
-	}
+			// Parse application type
+			appType, err := model.ParseApplicationType(req.Type)
+			if err != nil {
+				return fmt.Errorf("unknown application entity %s", req.Entity)
+			}
 
-	// Update applicant data
-	application.Applicant = user.Wallet
+			if req.Entity != "guild" && req.Entity != "project" {
+				return fmt.Errorf("unknown application entity %s", req.Entity)
+			}
 
-	err = model.NewApplicationRecord(db, &application)
+			//  check permission: `(0x..., proj_1, create_app)` (0x..., guild_1, create_app)
+			obj := lo.
+				If(req.Entity == "project", fmt.Sprintf("%s%d", api.ObjProjPrefix, req.EntityId)).
+				ElseIf(req.Entity == "guild", fmt.Sprintf("%s%d", api.ObjGuildPrefix, req.EntityId)).
+				Else("")
+			ok, err := enforcer.Enforce(user.Wallet, obj, api.ActCreateApplication)
+			if err != nil {
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+				return err
+			}
+			if !ok {
+				ctx.JSON(http.StatusForbidden, api.Forbidden())
+				return err
+			}
+
+			app := &model.Application{
+				Type:       appType,
+				Applicant:  user.Wallet,
+				State:      model.ApplicationStateOpen,
+				EntityType: req.Entity,
+				EntityId:   req.EntityId,
+				CreatedAt:  time.Now(),
+				UpdatedAt:  time.Now(),
+			}
+
+			if appType == model.ApplicationNewReward {
+				rewardDetailedData := model.NewRewardApplicationDetailedData{
+					model.BudgetTypeCredit: {
+						TargetUserWallet: req.TargetUserWallet,
+						AssetType:        model.BudgetTypeCredit,
+						Amount:           req.CreditAmount,
+					},
+					model.BudgetTypeToken: {
+						TargetUserWallet: req.TargetUserWallet,
+						AssetType:        model.BudgetTypeToken,
+						Amount:           req.TokenAmount,
+					},
+				}
+
+				detailedDataBytes, err := json.Marshal(rewardDetailedData)
+				if err != nil {
+					return err
+				}
+
+				app.DetailedData = detailedDataBytes
+			}
+
+			err = model.NewApplicationRecord(db, app)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.Reply{
 			Code: -1,
-			Msg:  fmt.Sprintf("creation application object error, %+v", err),
+			Msg:  fmt.Sprintf("creation application records error, %+v", err),
 		})
+		return
 	}
 
-	ctx.JSON(http.StatusCreated, api.Success(&application))
+	ctx.JSON(http.StatusCreated, api.Success(nil))
 }
 
 // Batch operations, the request body are ids
+
+// Download get lists from passed in IDs and generate file and send to invoker
+func Download(ctx *gin.Context) {
+	fileFormat := ""
+	fileFormat = strings.ToLower(ctx.Query("format"))
+	if fileFormat == "" {
+		fileFormat = "csv"
+	}
+
+	db := api.ForContextOnlyDB(ctx)
+
+	var ids []uint64
+	err := ctx.Bind(&ids)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, api.ServerError(err))
+	}
+
+	rcds, err := model.GenerateFrontendApplicationRecordsByIds(db, ids)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+	}
+
+	if fileFormat == "csv" {
+		tmpFile, err := os.CreateTemp(os.TempDir(), "application-list-*.csv")
+		defer os.Remove(tmpFile.Name())
+
+		fileBaseName := filepath.Base(tmpFile.Name())
+
+		w := csv.NewWriter(tmpFile)
+		err = w.Write(model.FrontendApplicationRecordCsvHeader)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		}
+		for _, r := range rcds {
+			err = w.Write(r.ToCSV())
+			if err != nil {
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+			}
+		}
+		w.Flush()
+
+		ctx.FileAttachment(tmpFile.Name(), fileBaseName)
+		ctx.Writer.Header().Set("attachment", fmt.Sprintf("filename=%s", fileBaseName))
+	} else if fileFormat == "json" {
+		tmpFile, err := os.CreateTemp(os.TempDir(), "application-list-*.json")
+		defer os.Remove(tmpFile.Name())
+
+		fileBaseName := filepath.Base(tmpFile.Name())
+
+		jsonBytes, err := json.Marshal(rcds)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		}
+
+		err = os.WriteFile(tmpFile.Name(), jsonBytes, 0777)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		}
+
+		ctx.FileAttachment(tmpFile.Name(), fileBaseName)
+		ctx.Writer.Header().Set("attachment", fmt.Sprintf("filename=%s", fileBaseName))
+	} else {
+		_, _ = ctx.Writer.Write([]byte(""))
+	}
+}
 
 // Export exports application in approved state, and changes exported applications state to processing
 // If there are existing applications in processing state, the export function returns error.
@@ -155,13 +249,14 @@ func Export(ctx *gin.Context) {
 	}
 
 	var processingRecordCount int64
-	db.Model(&model.Application{}).Where("state <> ?", model.ApplicationStateProcessing).Count(&processingRecordCount)
+	db.Model(&model.Application{}).Where("state = ?", model.ApplicationStateProcessing).Count(&processingRecordCount)
 
 	if processingRecordCount > 0 {
 		ctx.JSON(http.StatusBadRequest, &api.Reply{
 			Code: -1,
 			Msg:  "applications in processing state should be processed before exporting new list",
 		})
+		return
 	}
 
 	var applications []model.Application
@@ -173,6 +268,7 @@ func Export(ctx *gin.Context) {
 			Code: -1,
 			Msg:  fmt.Sprintf("process applications error: %+v", err),
 		})
+		return
 	}
 
 	ctx.JSON(http.StatusOK, api.Success(applications))
@@ -201,6 +297,7 @@ func BatchApprove(ctx *gin.Context) {
 			Code: -1,
 			Msg:  fmt.Sprintf("approve applications error: %+v", err),
 		})
+		return
 	}
 
 	ctx.JSON(http.StatusOK, "")
@@ -230,6 +327,7 @@ func BatchReject(ctx *gin.Context) {
 			Code: -1,
 			Msg:  fmt.Sprintf("reject applications error: %+v", err),
 		})
+		return
 	}
 
 	ctx.JSON(http.StatusOK, "")
@@ -262,6 +360,7 @@ func BatchComplete(ctx *gin.Context) {
 			Code: -1,
 			Msg:  "parse request data error",
 		})
+		return
 	}
 
 	err = model.BatchAuditApplication(db, user.Wallet, &applications, model.AuditActionComplete, reqBody.Message)
@@ -270,6 +369,7 @@ func BatchComplete(ctx *gin.Context) {
 			Code: -1,
 			Msg:  fmt.Sprintf("complete applications error: %+v", err),
 		})
+		return
 	}
 
 	ctx.JSON(http.StatusOK, "")
@@ -280,6 +380,7 @@ func getBatchApplicationsOrReturnError(ctx *gin.Context, applications *[]model.A
 	err := ctx.Bind(&idList)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, api.Reply{Code: -1, Msg: "passed in ID list error"})
+		return
 	}
 
 	db := api.ForContextOnlyDB(ctx)
@@ -341,12 +442,14 @@ func auditApplication(ctx *gin.Context, application *model.Application, auditAct
 				Code: -1,
 				Msg:  fmt.Sprintf("approve application failed, error: %s, please check and resubmit request", err.Error()),
 			})
+			return
 		}
 	} else {
 		ctx.JSON(http.StatusBadRequest, api.Reply{
 			Code: -1,
 			Msg:  fmt.Sprintf("application currently is at state %s, which is not suit for approve", application.State),
 		})
+		return
 	}
 }
 
@@ -358,7 +461,8 @@ func getRecordOrReturnNotFound(ctx *gin.Context, application *model.Application)
 	if errors.Is(tx.Error, gorm.ErrRecordNotFound) {
 		ctx.JSON(http.StatusNotFound, api.Reply{
 			Code: -1,
-			Msg:  fmt.Sprintf("application with id %d not found", id),
+			Msg:  fmt.Sprintf("application with id %s not found", id),
 		})
+		return
 	}
 }

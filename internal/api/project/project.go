@@ -29,8 +29,9 @@ type (
 		Budgets []*BudgetParam `json:"budgets"`
 	}
 	BudgetParam struct {
-		Name        string `json:"name"`
-		TotalAmount uint64 `json:"total_amount"`
+		Name        string           `json:"name"`
+		BudgetType  model.BudgetType `json:"budget_type"`
+		TotalAmount uint64           `json:"total_amount"`
 	}
 	UpdateReq struct {
 		Logo string `json:"logo"`
@@ -96,9 +97,11 @@ func Create(ctx *gin.Context) {
 	// save project budgets
 	budgets := lo.Map[*BudgetParam, *model.ProjectBudget](req.Budgets, func(item *BudgetParam, _ int) *model.ProjectBudget {
 		return &model.ProjectBudget{
-			ProjectID:   proj.ID,
-			Name:        item.Name,
-			TotalAmount: item.TotalAmount,
+			ProjectID:    proj.ID,
+			Type:         item.BudgetType,
+			Name:         item.Name,
+			TotalAmount:  item.TotalAmount,
+			RemainAmount: item.TotalAmount,
 		}
 	})
 	err = model.ProjectBudgetModel.Create(tx, budgets)

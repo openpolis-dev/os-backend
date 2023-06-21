@@ -7,14 +7,22 @@ import (
 	"gorm.io/gorm"
 )
 
+type BudgetType string
+
+const (
+	BudgetTypeCredit BudgetType = "credit"
+	BudgetTypeToken             = "token"
+)
+
 type ProjectBudget struct {
-	ID           uint      `json:"id" gorm:"primaryKey"`
-	ProjectID    uint      `json:"project_id"` // project_id
-	Name         string    `json:"name"`
-	TotalAmount  uint64    `json:"total_amount"`  // total_amount
-	RemainAmount uint64    `json:"remain_amount"` // remain_amount
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	ID           uint       `json:"id" gorm:"primaryKey"`
+	ProjectID    uint       `json:"project_id"` // project_id
+	Name         string     `json:"name"`
+	Type         BudgetType `json:"type"`          // budget type, credit or token
+	TotalAmount  uint64     `json:"total_amount"`  // total_amount
+	RemainAmount uint64     `json:"remain_amount"` // remain_amount
+	CreatedAt    time.Time  `json:"created_at"`
+	UpdatedAt    time.Time  `json:"updated_at"`
 }
 
 type projectBudgetModel struct{}
@@ -41,7 +49,7 @@ func (*projectBudgetModel) ListByProjectId(db *gorm.DB, projID uint) ([]*Project
 	return gormfind.Rows[ProjectBudget](querySeg, nil)
 }
 
-func (*projectBudgetModel) QueryByProjectIdAndAssetName(db *gorm.DB, projID uint, assetName string) (*ProjectBudget, error) {
-	querySeg := db.Where("project_id = ?", projID).Where("name = ?", assetName)
+func (*projectBudgetModel) QueryByProjectIdAndBudgetType(db *gorm.DB, projID uint, budgetType BudgetType) (*ProjectBudget, error) {
+	querySeg := db.Where("project_id = ?", projID).Where("type = ?", budgetType)
 	return gormfind.Row[ProjectBudget](querySeg)
 }

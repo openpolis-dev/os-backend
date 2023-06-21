@@ -42,3 +42,18 @@ func (*userModel) List(db *gorm.DB, wallets []string) ([]*User, error) {
 	querySeg := db.Where("wallet IN (?)", wallets)
 	return gormfind.Rows[User](querySeg, nil)
 }
+
+// TryGetUsername try to get username of passed in wallet address, and return "" if no user record found
+func (*userModel) TryGetUsername(db *gorm.DB, wallet string) (string, error) {
+	querySeg := db.Where("wallet = ?", wallet)
+	user, err := gormfind.Row[User](querySeg)
+	if err != nil && err != gorm.ErrRecordNotFound {
+		return "", err
+	}
+
+	if user != nil {
+		return user.Name, nil
+	} else {
+		return "", nil
+	}
+}
