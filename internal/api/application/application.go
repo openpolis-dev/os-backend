@@ -186,8 +186,6 @@ func Create(ctx *gin.Context) {
 	ctx.JSON(http.StatusCreated, api.Success(nil))
 }
 
-// Batch operations, the request body are ids
-
 // Download get lists from passed in IDs and generate file and send to invoker
 func Download(ctx *gin.Context) {
 	fileFormat := ""
@@ -252,6 +250,15 @@ func Download(ctx *gin.Context) {
 		_, _ = ctx.Writer.Write([]byte(""))
 	}
 }
+
+func DownloadUploadTemplate(ctx *gin.Context) {
+	// TODO: Get content type
+	tmpFile, _ := os.CreateTemp(os.TempDir(), "upload-template-*.csv")
+	defer os.Remove(tmpFile.Name())
+	ctx.Writer.Header().Set("Content-Disposition", `attachment; filename="`+filepath.Base(tmpFile.Name())+`"`)
+}
+
+// Batch operations, the request body are ids
 
 // Export exports application in approved state, and changes exported applications state to processing
 // If there are existing applications in processing state, the export function returns error.

@@ -103,6 +103,7 @@ func main() {
 		applicationGroup.GET("/applicants", application.ListApplicants)
 		applicationGroup.GET("/:id", application.Detail)
 		applicationGroup.GET("/", application.List)
+		applicationGroup.GET("/upload_template", application.DownloadUploadTemplate)
 		applicationGroup.POST("/download", application.Download)
 
 		// foo routers
