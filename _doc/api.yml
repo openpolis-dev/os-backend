@@ -551,6 +551,14 @@ paths:
       security:
         - bearerAuth: [ ]
       description: generate file with requested applications and send to invoker
+      parameters:
+        - name: format
+          in: query
+          description: specify file format for downloaded content
+          schema:
+            type: string
+            enum: [csv, json]
+            default: csv
       requestBody:
         content:
           "application/json":
@@ -561,7 +569,7 @@ paths:
                 description: application id
       responses:
         200:
-          description: ok
+          description: file downloaded
 
   /applications/export:
     post:
