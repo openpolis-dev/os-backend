@@ -39,7 +39,10 @@ func ListApplicants(ctx *gin.Context) {
 	var err error
 	db := api.ForContextOnlyDB(ctx)
 
-	var rslt []map[string]any
+	var rslt []struct {
+		Applicant string
+		Name      string
+	}
 
 	err = db.Model(&model.Application{}).
 		Distinct("wallet").
