@@ -83,6 +83,8 @@ func GenerateFrontendApplicationRecordsByIds(db *gorm.DB, ids []uint64) ([]*Fron
 func GenerateFrontendApplicationRecords(db *gorm.DB, queryParams *ListApplicationQueryParams) ([]*FrontendApplicationRecord, int64, error) {
 	clearAppType := strings.ToLower(strings.TrimSpace(queryParams.Type))
 	clearEntity := strings.ToLower(strings.TrimSpace(queryParams.Entity))
+	clearState := strings.ToLower(strings.TrimSpace(queryParams.State))
+
 	if !lo.Contains([]string{"close_project", "new_reward"}, clearAppType) {
 		return nil, 0, fmt.Errorf("unknown application type %s", queryParams.Type)
 	}
@@ -96,6 +98,13 @@ func GenerateFrontendApplicationRecords(db *gorm.DB, queryParams *ListApplicatio
 
 	if queryParams.Applicant != "" {
 		querySeg = querySeg.Where(&Application{Applicant: queryParams.Applicant})
+	}
+
+	if queryParams.State != "" {
+		if !lo.Contains([]string{"open", "approved", "rejected", "processing", "completed"}, clearState) {
+			return nil, 0, fmt.Errorf("unknown state %s", queryParams.State)
+		}
+		querySeg = querySeg.Where(&Application{State: ApplicationState(clearState)})
 	}
 
 	if queryParams.StartDate != "" && queryParams.EndDate != "" {

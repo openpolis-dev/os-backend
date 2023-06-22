@@ -70,6 +70,7 @@ type ListApplicationQueryParams struct {
 	Size       int    `form:"size"`
 	SortField  string `form:"sort_field"`
 	SortOrder  string `form:"sort_order"`
+	State      string `form:"state"`
 	Type       string `form:"type"`
 	Entity     string `form:"entity"`
 	EntityId   string `form:"entity_id"`

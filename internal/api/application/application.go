@@ -23,7 +23,6 @@ type AuditRequestBody struct {
 }
 
 // NewApplicationRequest is used to save new application request data passed from frontend
-// TODO: Verify with frontend side about passed in params
 type NewApplicationRequest struct {
 	Type             string `json:"type"`
 	Entity           string `json:"entity"`
