@@ -261,6 +261,7 @@ func DownloadUploadTemplate(ctx *gin.Context) {
 }
 
 // Batch operations, the request body are ids
+// TODO: Those batch actions contain similar logic, check whether it is possible to simplify them
 
 // Export exports application in approved state, and changes exported applications state to processing
 // If there are existing applications in processing state, the export function returns error.
@@ -353,6 +354,36 @@ func BatchReject(ctx *gin.Context) {
 	}
 
 	err = model.BatchAuditApplication(db, user.Wallet, &applications, model.AuditActionReject, "")
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, api.Reply{
+			Code: -1,
+			Msg:  fmt.Sprintf("reject applications error: %+v", err),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, "")
+}
+
+// BatchProcess mark multiple application in process state in one call
+func BatchProcess(ctx *gin.Context) {
+	user, enforcer, db, _ := api.ForContext(ctx)
+
+	//  check permission: `(0x..., proj_and_guild, audit_app)`
+	ok, err := enforcer.Enforce(user.Wallet, api.ObjProjAndGuild, api.ActAuditApplication)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		return
+	}
+	if !ok {
+		ctx.JSON(http.StatusForbidden, api.Forbidden())
+		return
+	}
+
+	var applications []model.Application
+	getBatchApplicationsOrReturnError(ctx, &applications)
+
+	err = model.BatchAuditApplication(db, user.Wallet, &applications, model.AuditActionProcess, "")
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, api.Reply{
 			Code: -1,

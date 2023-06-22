@@ -135,6 +135,7 @@ func main() {
 		applicationGroup.POST("/export", application.Export)
 		applicationGroup.POST("/approve", application.BatchApprove)
 		applicationGroup.POST("/reject", application.BatchReject)
+		applicationGroup.POST("/process", application.BatchProcess)
 		applicationGroup.POST("/complete", application.BatchComplete)
 		applicationGroup.POST("/:id/approve", application.Approve)
 		applicationGroup.POST("/:id/reject", application.Reject)
