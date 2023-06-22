@@ -118,7 +118,7 @@ func GenerateFrontendApplicationRecords(db *gorm.DB, queryParams *ListApplicatio
 			return nil, 0, err
 		}
 
-		querySeg = querySeg.Where("created_at >= ? AND created_at <= ?", startDate, endDate)
+		querySeg = querySeg.Where("applications.created_at >= ? AND applications.created_at <= ?", startDate, endDate)
 	}
 
 	switch clearEntity {
