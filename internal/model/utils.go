@@ -134,13 +134,7 @@ func GenerateFrontendApplicationRecords(db *gorm.DB, queryParams *ListApplicatio
 		if err != nil {
 			return nil, 0, err
 		}
-		switch queryParams.Entity {
-		case "project":
-			querySeg = querySeg.Where(&Project{ID: uint(entityId)})
-		case "guild":
-			// TODO: Not implemented yet, use project for example
-			querySeg = querySeg.Where(&Project{ID: uint(entityId)})
-		}
+		querySeg = querySeg.Where("entity_id = ?", entityId)
 	}
 
 	if queryParams.SortField == "" {
