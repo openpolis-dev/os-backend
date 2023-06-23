@@ -8,8 +8,10 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	"github.com/theseed-labs/os-backend/internal/api"
+	"github.com/theseed-labs/os-backend/internal/helper"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"gorm.io/gorm"
 )
@@ -161,6 +163,18 @@ func Create(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
+
+	// send notification
+	notificator := api.ForContextOnlyNotificator(ctx)
+	staffs := append(sponsors, members...)
+	go func(notificator helper.Notificator, staffs []string, projectID uint, projectName string) {
+		lo.ForEach(staffs, func(id string, _ int) {
+			err := notificator.PushTo(id, "Join Project", fmt.Sprintf("You ard added to Project %s", projectName), api.GenerateProjectStaffAddData(projectID))
+			if err != nil {
+				log.Error().Msgf("push to %s failed: %s", id, err)
+			}
+		})
+	}(notificator, staffs, proj.ID, proj.Name)
 
 	ctx.JSON(http.StatusOK, api.Success(nil))
 }
@@ -612,13 +626,6 @@ func UpdateStaffs(ctx *gin.Context) {
 				ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 				return
 			}
-
-			// send notification
-			go func() {
-				lo.ForEach(sponsors, func(item string, _ int) {
-
-				})
-			}()
 		}
 
 		if req.Members != nil && len(req.Members) != 0 {
@@ -644,16 +651,21 @@ func UpdateStaffs(ctx *gin.Context) {
 			//	ctx.JSON(http.StatusInternalServerError, err)
 			//	return
 			//}
-
-			// send notification
-			go func() {
-				lo.ForEach(members, func(item string, _ int) {
-
-				})
-			}()
 		}
 
 		tx.Commit()
+
+		// send notification
+		notificator := api.ForContextOnlyNotificator(ctx)
+		staffs := append(sponsors, members...)
+		go func(notificator helper.Notificator, staffs []string, projectID uint, projectName string) {
+			lo.ForEach(staffs, func(id string, _ int) {
+				err := notificator.PushTo(id, "Join Project", fmt.Sprintf("You ard added to Project %s", projectName), api.GenerateProjectStaffAddData(projectID))
+				if err != nil {
+					log.Error().Msgf("push to %s failed: %s", id, err)
+				}
+			})
+		}(notificator, staffs, proj.ID, proj.Name)
 	} else if req.Action == "remove" {
 		tx := db.Begin()
 
@@ -680,13 +692,6 @@ func UpdateStaffs(ctx *gin.Context) {
 				ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 				return
 			}
-
-			// send notification
-			go func() {
-				lo.ForEach(sponsors, func(item string, _ int) {
-
-				})
-			}()
 		}
 
 		if req.Members != nil && len(req.Members) != 0 {
@@ -710,16 +715,21 @@ func UpdateStaffs(ctx *gin.Context) {
 			//	ctx.JSON(http.StatusInternalServerError, err)
 			//	return
 			//}
-
-			// send notification
-			go func() {
-				lo.ForEach(members, func(item string, _ int) {
-
-				})
-			}()
 		}
 
 		tx.Commit()
+
+		// send notification
+		notificator := api.ForContextOnlyNotificator(ctx)
+		staffs := append(sponsors, members...)
+		go func(notificator helper.Notificator, staffs []string, projectID uint, projectName string) {
+			lo.ForEach(staffs, func(id string, _ int) {
+				err := notificator.PushTo(id, "Quit Project", fmt.Sprintf("You ard removed from Project %s", projectName), api.GenerateProjectStaffAddData(projectID))
+				if err != nil {
+					log.Error().Msgf("push to %s failed: %s", id, err)
+				}
+			})
+		}(notificator, staffs, proj.ID, proj.Name)
 	}
 
 	// ------ ------ ------ ------ ------ ------ ------ ------ ------

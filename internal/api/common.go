@@ -6,6 +6,7 @@ import (
 	"github.com/casbin/casbin/v2"
 	"github.com/gin-gonic/gin"
 	"github.com/theseed-labs/os-backend/internal/config"
+	"github.com/theseed-labs/os-backend/internal/helper"
 	"github.com/theseed-labs/os-backend/internal/middleware"
 	"github.com/xiaosongfu/gormfind"
 	"gorm.io/gorm"
@@ -56,7 +57,7 @@ func Forbidden() *Reply {
 // ------ ------ ------ ------ ------ ------ ------ ------ ------
 // ------ ------ ------ ------ ------ ------ ------ ------ ------
 
-// ForContext read `CurUser DB Config` from `Context`
+// ForContext read `CurUser Enforcer DB Config` from `Context`
 func ForContext(ctx *gin.Context) (user *middleware.CurUser, enforcer *casbin.Enforcer, db *gorm.DB, cfg *config.Config) {
 	user, _ = ctx.Value(middleware.CurUserKey).(*middleware.CurUser)
 	enforcer, _ = ctx.Value(middleware.EnforcerKey).(*casbin.Enforcer)
@@ -73,6 +74,13 @@ func ForContextOnlyUser(ctx *gin.Context) (user *middleware.CurUser) {
 	return
 }
 
+// ForContextOnlyEnforcer read `Enforcer` from `Context`
+func ForContextOnlyEnforcer(ctx *gin.Context) (enforcer *casbin.Enforcer) {
+	enforcer, _ = ctx.Value(middleware.EnforcerKey).(*casbin.Enforcer)
+
+	return
+}
+
 // ForContextOnlyDB read only `DB` from `Context`
 func ForContextOnlyDB(ctx *gin.Context) (db *gorm.DB) {
 	db, _ = ctx.Value(middleware.DBKey).(*gorm.DB)
@@ -80,10 +88,25 @@ func ForContextOnlyDB(ctx *gin.Context) (db *gorm.DB) {
 	return
 }
 
-// ForContextUserAndDB read  `CurUser DB` from `Context`
+// ForContextOnlyNotificator read `Notificator` from `Context`
+func ForContextOnlyNotificator(ctx *gin.Context) (notificator helper.Notificator) {
+	notificator, _ = ctx.Value(middleware.NotificatorKey).(helper.Notificator)
+
+	return
+}
+
+// ForContextUserAndDB read `CurUser DB` from `Context`
 func ForContextUserAndDB(ctx *gin.Context) (user *middleware.CurUser, db *gorm.DB) {
 	user, _ = ctx.Value(middleware.CurUserKey).(*middleware.CurUser)
 	db, _ = ctx.Value(middleware.DBKey).(*gorm.DB)
+
+	return
+}
+
+// ForContextUserAndNotificator read `Notificator` from `Context`
+func ForContextUserAndNotificator(ctx *gin.Context) (user *middleware.CurUser, notificator helper.Notificator) {
+	user, _ = ctx.Value(middleware.CurUserKey).(*middleware.CurUser)
+	notificator, _ = ctx.Value(middleware.NotificatorKey).(helper.Notificator)
 
 	return
 }

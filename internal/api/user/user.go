@@ -172,7 +172,7 @@ func Users(ctx *gin.Context) {
 // GetFrontendPermission `GET /casbin?casbin_subject=0x1`
 // query frontend permission by user wallet
 func GetFrontendPermission(ctx *gin.Context) {
-	_, enforcer, _, _ := api.ForContext(ctx)
+	enforcer := api.ForContextOnlyEnforcer(ctx)
 
 	//sub, _ := ctx.GetQuery("casbin_subject")
 	//data, err := casbin.CasbinJsGetPermissionForUser(enforcer, strings.ToLower(sub))
