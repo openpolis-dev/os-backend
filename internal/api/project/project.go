@@ -807,7 +807,7 @@ func UpdateBudget(ctx *gin.Context) {
 // ------ ------ ------ ------ ------ ------ ------ ------ ------
 // ------ Project Proposals ------ ------
 
-// AddRelatedProposal `POST /projects/:id/add_related_proposal/:proposal_id`
+// AddRelatedProposal `POST /projects/:id/add_related_proposal?proposalIDs=1&proposalIDs=2`
 func AddRelatedProposal(ctx *gin.Context) {
 	idParam := ctx.Param("id")
 	id, err := strconv.Atoi(idParam)
@@ -815,7 +815,7 @@ func AddRelatedProposal(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
 		return
 	}
-	proposalID := ctx.Param("proposal_id")
+	proposalIDs := ctx.QueryArray("proposalIDs")
 
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
@@ -839,7 +839,9 @@ func AddRelatedProposal(ctx *gin.Context) {
 		return
 	}
 
-	proj.Proposals = append(proj.Proposals, proposalID)
+	proj.Proposals = append(proj.Proposals, proposalIDs...)
+	// remove duplicate proposals
+	proj.Proposals = lo.Uniq[string](proj.Proposals)
 	err = model.ProjectModel.CreateOrUpdate(db, proj)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
