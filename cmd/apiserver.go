@@ -13,8 +13,8 @@ import (
 	"github.com/theseed-labs/os-backend/internal/api/project"
 	"github.com/theseed-labs/os-backend/internal/api/user"
 	"github.com/theseed-labs/os-backend/internal/config"
-	"github.com/theseed-labs/os-backend/internal/helper"
 	"github.com/theseed-labs/os-backend/internal/middleware"
+	"github.com/theseed-labs/os-backend/internal/sdk"
 	"github.com/theseed-labs/os-backend/internal/storage"
 )
 
@@ -26,7 +26,7 @@ func main() {
 	cfg := config.LoadConfig(*cfgPath)
 
 	// setup notificator
-	notificator := helper.NewNotificator(cfg.Notification.AppID, cfg.Notification.AppKey)
+	notificator := sdk.NewNotificator(cfg.Notification.AppID, cfg.Notification.AppKey)
 
 	// setup permission system
 	adapter, err := gormadapter.NewAdapter(cfg.Casbin.DriverName, cfg.DataSource.Dsn, true)

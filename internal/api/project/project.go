@@ -11,8 +11,8 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	"github.com/theseed-labs/os-backend/internal/api"
-	"github.com/theseed-labs/os-backend/internal/helper"
 	"github.com/theseed-labs/os-backend/internal/model"
+	"github.com/theseed-labs/os-backend/internal/sdk"
 	"gorm.io/gorm"
 )
 
@@ -93,7 +93,7 @@ func Create(ctx *gin.Context) {
 	proj := model.Project{
 		Logo:      req.Logo,
 		Name:      req.Name,
-		Status:    api.ProjectStatusOpen,
+		Status:    model.ProjectStatusOpen,
 		Sponsors:  sponsors,
 		Members:   members,
 		Proposals: req.Proposals,
@@ -167,9 +167,10 @@ func Create(ctx *gin.Context) {
 	// send notification
 	notificator := api.ForContextOnlyNotificator(ctx)
 	staffs := append(sponsors, members...)
-	go func(notificator helper.Notificator, staffs []string, projectID uint, projectName string) {
+	go func(notificator sdk.Notificator, staffs []string, projectID uint, projectName string) {
+		title, body, data := api.GenerateProjectStaffAddNotificationParams(projectID, projectName)
 		lo.ForEach(staffs, func(id string, _ int) {
-			err := notificator.PushTo(id, "Join Project", fmt.Sprintf("You ard added to Project %s", projectName), api.GenerateProjectStaffAddData(projectID))
+			err := notificator.PushTo(id, title, body, data)
 			if err != nil {
 				log.Error().Msgf("push to %s failed: %s", id, err)
 			}
@@ -658,9 +659,10 @@ func UpdateStaffs(ctx *gin.Context) {
 		// send notification
 		notificator := api.ForContextOnlyNotificator(ctx)
 		staffs := append(sponsors, members...)
-		go func(notificator helper.Notificator, staffs []string, projectID uint, projectName string) {
+		go func(notificator sdk.Notificator, staffs []string, projectID uint, projectName string) {
+			title, body, data := api.GenerateProjectStaffAddNotificationParams(projectID, projectName)
 			lo.ForEach(staffs, func(id string, _ int) {
-				err := notificator.PushTo(id, "Join Project", fmt.Sprintf("You ard added to Project %s", projectName), api.GenerateProjectStaffAddData(projectID))
+				err := notificator.PushTo(id, title, body, data)
 				if err != nil {
 					log.Error().Msgf("push to %s failed: %s", id, err)
 				}
@@ -722,9 +724,10 @@ func UpdateStaffs(ctx *gin.Context) {
 		// send notification
 		notificator := api.ForContextOnlyNotificator(ctx)
 		staffs := append(sponsors, members...)
-		go func(notificator helper.Notificator, staffs []string, projectID uint, projectName string) {
+		go func(notificator sdk.Notificator, staffs []string, projectID uint, projectName string) {
+			title, body, data := api.GenerateProjectStaffRemoveNotificationParams(projectID, projectName)
 			lo.ForEach(staffs, func(id string, _ int) {
-				err := notificator.PushTo(id, "Quit Project", fmt.Sprintf("You ard removed from Project %s", projectName), api.GenerateProjectStaffAddData(projectID))
+				err := notificator.PushTo(id, title, body, data)
 				if err != nil {
 					log.Error().Msgf("push to %s failed: %s", id, err)
 				}

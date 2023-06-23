@@ -1,5 +1,7 @@
 package api
 
+import "fmt"
+
 const (
 	NotificationTypeProjStaffAdd     = "proj_staff_add"
 	NotificationTypeProjStaffRemove  = "proj_staff_remove"
@@ -9,7 +11,7 @@ const (
 	NotificationTypeReceiveAssert = "receive_assert"
 )
 
-// GenerateProjectStaffAddData generate data for project's staff added.
+// GenerateProjectStaffAddNotificationParams generate params for project's staff added.
 /*
 {
  "type": "proj_staff_add",
@@ -18,26 +20,34 @@ const (
  }
 }
 */
-func GenerateProjectStaffAddData(projectID uint) map[string]any {
-	return map[string]any{
+func GenerateProjectStaffAddNotificationParams(projectID uint, projectName string) (title string, body string, data map[string]any) {
+	title = "Join Project"
+	body = fmt.Sprintf("You ard added to Project %s", projectName)
+	data = map[string]any{
 		"type": NotificationTypeProjStaffAdd,
 		"data": map[string]any{
 			"proj_id": projectID,
 		},
 	}
+
+	return
 }
 
-// GenerateProjectStaffRemoveData generate data for project's staff removed.
-func GenerateProjectStaffRemoveData(projectID uint) map[string]any {
-	return map[string]any{
+// GenerateProjectStaffRemoveNotificationParams generate params for project's staff removed.
+func GenerateProjectStaffRemoveNotificationParams(projectID uint, projectName string) (title string, body string, data map[string]any) {
+	title = "Quit Project"
+	body = fmt.Sprintf("You ard removed from Project %s", projectName)
+	data = map[string]any{
 		"type": NotificationTypeProjStaffRemove,
 		"data": map[string]any{
 			"proj_id": projectID,
 		},
 	}
+
+	return
 }
 
-// GenerateReceiveAssertData generate data for user receive assert
+// GenerateObtainAssertNotificationParams generate params for user obtained assert.
 /*
 {
  "type": "receive_assert",
@@ -47,12 +57,16 @@ func GenerateProjectStaffRemoveData(projectID uint) map[string]any {
  }
 }
 */
-func GenerateReceiveAssertData(assertName string, amount int64) map[string]any {
-	return map[string]any{
+func GenerateObtainAssertNotificationParams(assertName string, amount int64) (title string, body string, data map[string]any) {
+	title = "Assert Obtained"
+	body = fmt.Sprintf("You have obtained %d %s", amount, assertName)
+	data = map[string]any{
 		"type": NotificationTypeReceiveAssert,
 		"data": map[string]any{
 			"name":   assertName,
 			"amount": amount,
 		},
 	}
+
+	return
 }

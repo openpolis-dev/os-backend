@@ -6,8 +6,8 @@ import (
 	"github.com/casbin/casbin/v2"
 	"github.com/gin-gonic/gin"
 	"github.com/theseed-labs/os-backend/internal/config"
-	"github.com/theseed-labs/os-backend/internal/helper"
 	"github.com/theseed-labs/os-backend/internal/middleware"
+	"github.com/theseed-labs/os-backend/internal/sdk"
 	"github.com/xiaosongfu/gormfind"
 	"gorm.io/gorm"
 )
@@ -89,8 +89,8 @@ func ForContextOnlyDB(ctx *gin.Context) (db *gorm.DB) {
 }
 
 // ForContextOnlyNotificator read `Notificator` from `Context`
-func ForContextOnlyNotificator(ctx *gin.Context) (notificator helper.Notificator) {
-	notificator, _ = ctx.Value(middleware.NotificatorKey).(helper.Notificator)
+func ForContextOnlyNotificator(ctx *gin.Context) (notificator sdk.Notificator) {
+	notificator, _ = ctx.Value(middleware.NotificatorKey).(sdk.Notificator)
 
 	return
 }
@@ -104,9 +104,9 @@ func ForContextUserAndDB(ctx *gin.Context) (user *middleware.CurUser, db *gorm.D
 }
 
 // ForContextUserAndNotificator read `Notificator` from `Context`
-func ForContextUserAndNotificator(ctx *gin.Context) (user *middleware.CurUser, notificator helper.Notificator) {
+func ForContextUserAndNotificator(ctx *gin.Context) (user *middleware.CurUser, notificator sdk.Notificator) {
 	user, _ = ctx.Value(middleware.CurUserKey).(*middleware.CurUser)
-	notificator, _ = ctx.Value(middleware.NotificatorKey).(helper.Notificator)
+	notificator, _ = ctx.Value(middleware.NotificatorKey).(sdk.Notificator)
 
 	return
 }
