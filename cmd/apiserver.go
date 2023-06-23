@@ -138,7 +138,6 @@ func main() {
 		// application routers
 		applicationGroup := authorizedGroup.Group("/applications")
 		applicationGroup.POST("/", application.Create)
-		applicationGroup.POST("/export", application.Export)
 		applicationGroup.POST("/approve", application.BatchApprove)
 		applicationGroup.POST("/reject", application.BatchReject)
 		applicationGroup.POST("/process", application.BatchProcess)
