@@ -71,18 +71,18 @@ func (*userAssetRecordModel) Rollback(db *gorm.DB, userWallet string, assetType 
 	return db.Save(assetRecords).Error
 }
 
-func (*userAssetRecordModel) CompleteAssetTransaction(db *gorm.DB, userWallet string, assetType BudgetType, dealtAmount uint64) error {
+func (*userAssetRecordModel) CompleteAssetTransaction(db *gorm.DB, userWallet string, assetType BudgetType, amountToBeDealt uint64) error {
 	assetRecords, err := UserAssetRecordModel.FindWithUserWalletAndAssetType(db, userWallet, assetType)
 	if err != nil {
 		return err
 	}
 
-	if (len(assetRecords) != 1) || (assetRecords[0].ProcessingAmount > dealtAmount) {
+	if (len(assetRecords) != 1) || (assetRecords[0].ProcessingAmount < amountToBeDealt) {
 		return fmt.Errorf("user %s has invalid record for asset type %s, please contract admin", userWallet, assetType)
 	}
 
-	assetRecords[0].DealtAmount += dealtAmount
-	assetRecords[0].ProcessingAmount -= dealtAmount
+	assetRecords[0].DealtAmount += amountToBeDealt
+	assetRecords[0].ProcessingAmount -= amountToBeDealt
 
 	return db.Save(assetRecords).Error
 }
