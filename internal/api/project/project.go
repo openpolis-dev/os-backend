@@ -213,6 +213,11 @@ func Update(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
+	if proj == nil {
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("project %d not exist", id)))
+		return
+	}
+
 	// update logo and name
 	proj.Logo = req.Logo
 	proj.Name = req.Name
@@ -250,6 +255,10 @@ func Close(ctx *gin.Context) {
 	project, err := model.ProjectModel.Detail(db, uint(id))
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		return
+	}
+	if project == nil {
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("project %d not exist", id)))
 		return
 	}
 
@@ -343,6 +352,10 @@ func Detail(ctx *gin.Context) {
 	proj, err := model.ProjectModel.Detail(db, uint(id))
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		return
+	}
+	if proj == nil {
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("project %d not exist", id)))
 		return
 	}
 
@@ -596,6 +609,10 @@ func UpdateStaffs(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
+	if proj == nil {
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("project %d not exist", id)))
+		return
+	}
 
 	// ------ ------ ------ ------ ------ ------ ------ ------ ------
 
@@ -815,6 +832,10 @@ func AddRelatedProposal(ctx *gin.Context) {
 	proj, err := model.ProjectModel.Detail(db, uint(id))
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		return
+	}
+	if proj == nil {
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("project %d not exist", id)))
 		return
 	}
 

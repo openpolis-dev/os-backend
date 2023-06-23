@@ -3,6 +3,7 @@ package user
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -101,6 +102,10 @@ func Detail(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
+	if u == nil {
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("user %s not found", user.Wallet)))
+		return
+	}
 
 	ctx.JSON(http.StatusOK, api.Success(u))
 }
@@ -132,6 +137,11 @@ func Update(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
+	if u == nil {
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("user %s not found", user.Wallet)))
+		return
+	}
+
 	// update user info
 	u.Name = req.Name
 	u.Avatar = req.Avatar
