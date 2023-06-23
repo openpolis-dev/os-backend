@@ -66,6 +66,14 @@ func Create(ctx *gin.Context) {
 		return
 	}
 
+	// convert all wallet to lower case
+	sponsors := lo.Map[string](req.Sponsors, func(item string, _ int) string {
+		return strings.ToLower(item)
+	})
+	members := lo.Map[string](req.Members, func(item string, _ int) string {
+		return strings.ToLower(item)
+	})
+
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
 	ok, err := enforcer.Enforce(user.Wallet, api.ObjProj, api.ActCreate)
@@ -84,8 +92,8 @@ func Create(ctx *gin.Context) {
 		Logo:      req.Logo,
 		Name:      req.Name,
 		Status:    api.ProjectStatusOpen,
-		Sponsors:  req.Sponsors,
-		Members:   req.Members,
+		Sponsors:  sponsors,
+		Members:   members,
 		Proposals: req.Proposals,
 	}
 	err = model.ProjectModel.CreateOrUpdate(tx, &proj)
@@ -379,75 +387,148 @@ func MyProjects(ctx *gin.Context) {
 // ------ ------ ------ ------ ------ ------ ------ ------ ------
 // ------ Project Sponsors/Members ------ ------
 
-// UpdateSponsors `POST /projects/:id/update_sponsors`
-func UpdateSponsors(ctx *gin.Context) {
-	idParam := ctx.Param("id")
-	id, err := strconv.Atoi(idParam)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
-		return
-	}
+//// UpdateSponsors `POST /projects/:id/update_sponsors`
+//func UpdateSponsors(ctx *gin.Context) {
+//	idParam := ctx.Param("id")
+//	id, err := strconv.Atoi(idParam)
+//	if err != nil {
+//		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
+//		return
+//	}
+//
+//	req := UpdateSponsorsReq{}
+//	err = ctx.BindJSON(&req)
+//	if err != nil {
+//		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
+//		return
+//	}
+//
+//	user, enforcer, db, _ := api.ForContext(ctx)
+//	//  check permission
+//	ok, err := enforcer.Enforce(user.Wallet, fmt.Sprintf("%s%d", api.ObjProjPrefix, id), api.ActUpdateSponsor)
+//	if err != nil {
+//		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+//		return
+//	}
+//	if !ok {
+//		ctx.JSON(http.StatusForbidden, api.Forbidden())
+//		return
+//	}
+//
+//	proj, err := model.ProjectModel.Detail(db, uint(id))
+//	if err != nil {
+//		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+//		return
+//	}
+//
+//	// remove roles for old sponsors
+//	oldSponsorGroupingPolicies := lo.Map(proj.Sponsors, func(sponsor string, _ int) []string {
+//		// g, 0xc13..1283 proj_sponsor_1
+//		return []string{sponsor, fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, proj.ID)}
+//	})
+//	_, err = enforcer.RemoveGroupingPolicies(oldSponsorGroupingPolicies)
+//	if err != nil {
+//		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+//		return
+//	}
+//
+//	// update project sponsors
+//	proj.Sponsors = req.Sponsors
+//	err = model.ProjectModel.CreateOrUpdate(db, proj)
+//	if err != nil {
+//		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+//		return
+//	}
+//
+//	// add roles for new sponsors
+//	newSponsorGroupingPolicies := lo.Map(req.Sponsors, func(sponsor string, _ int) []string {
+//		// g, 0xc13..1283 proj_sponsor_1
+//		return []string{strings.ToLower(sponsor), fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, proj.ID)}
+//	})
+//	_, err = enforcer.AddGroupingPolicies(newSponsorGroupingPolicies)
+//	if err != nil {
+//		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+//		return
+//	}
+//
+//	ctx.JSON(http.StatusOK, api.Success(nil))
+//}
+//
+//// UpdateMembers `POST /projects/:id/update_members`
+//func UpdateMembers(ctx *gin.Context) {
+//	idParam := ctx.Param("id")
+//	id, err := strconv.Atoi(idParam)
+//	if err != nil {
+//		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
+//		return
+//	}
+//
+//	req := UpdateMembersReq{}
+//	err = ctx.BindJSON(&req)
+//	if err != nil {
+//		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
+//		return
+//	}
+//
+//	user, enforcer, db, _ := api.ForContext(ctx)
+//	//  check permission
+//	ok, err := enforcer.Enforce(user.Wallet, fmt.Sprintf("%s%d", api.ObjProjPrefix, id), api.ActUpdateMember)
+//	if err != nil {
+//		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+//		return
+//	}
+//	if !ok {
+//		ctx.JSON(http.StatusForbidden, api.Forbidden())
+//		return
+//	}
+//
+//	proj, err := model.ProjectModel.Detail(db, uint(id))
+//	if err != nil {
+//		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+//		return
+//	}
+//
+//	//// remove roles for old members
+//	//oldMemberGroupingPolicies := lo.Map(proj.Members, func(member string, _ int) []string {
+//	//	// g, 0xc13..1283 proj_member_1
+//	//	return []string{member, fmt.Sprintf("%s%d", api.RoleProjMemberPrefix, proj.ID)}
+//	//})
+//	//_, err = enforcer.RemoveGroupingPolicies(oldMemberGroupingPolicies)
+//	//if err != nil {
+//	//	ctx.JSON(http.StatusInternalServerError, err)
+//	//	return
+//	//}
+//
+//	// update project members
+//	proj.Members = req.Members
+//	err = model.ProjectModel.CreateOrUpdate(db, proj)
+//	if err != nil {
+//		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+//		return
+//	}
+//
+//	//// add roles for new members
+//	//newMemberGroupingPolicies := lo.Map(req.Members, func(member string, _ int) []string {
+//	//	// g, 0xc13..1283 proj_member_1
+//	//	return []string{strings.ToLower(member), fmt.Sprintf("%s%d", api.RoleProjMemberPrefix, proj.ID)}
+//	//})
+//	//_, err = enforcer.AddGroupingPolicies(newMemberGroupingPolicies)
+//	//if err != nil {
+//	//	ctx.JSON(http.StatusInternalServerError, err)
+//	//	return
+//	//}
+//
+//	ctx.JSON(http.StatusOK, api.Success(nil))
+//}
 
-	req := UpdateSponsorsReq{}
-	err = ctx.BindJSON(&req)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
-		return
-	}
-
-	user, enforcer, db, _ := api.ForContext(ctx)
-	//  check permission
-	ok, err := enforcer.Enforce(user.Wallet, fmt.Sprintf("%s%d", api.ObjProjPrefix, id), api.ActUpdateSponsor)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
-		return
-	}
-	if !ok {
-		ctx.JSON(http.StatusForbidden, api.Forbidden())
-		return
-	}
-
-	proj, err := model.ProjectModel.Detail(db, uint(id))
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
-		return
-	}
-
-	// remove roles for old sponsors
-	oldSponsorGroupingPolicies := lo.Map(proj.Sponsors, func(sponsor string, _ int) []string {
-		// g, 0xc13..1283 proj_sponsor_1
-		return []string{sponsor, fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, proj.ID)}
-	})
-	_, err = enforcer.RemoveGroupingPolicies(oldSponsorGroupingPolicies)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
-		return
-	}
-
-	// update project sponsors
-	proj.Sponsors = req.Sponsors
-	err = model.ProjectModel.CreateOrUpdate(db, proj)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
-		return
-	}
-
-	// add roles for new sponsors
-	newSponsorGroupingPolicies := lo.Map(req.Sponsors, func(sponsor string, _ int) []string {
-		// g, 0xc13..1283 proj_sponsor_1
-		return []string{strings.ToLower(sponsor), fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, proj.ID)}
-	})
-	_, err = enforcer.AddGroupingPolicies(newSponsorGroupingPolicies)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
-		return
-	}
-
-	ctx.JSON(http.StatusOK, api.Success(nil))
+type UpdateStaffsReq struct {
+	Action   string   `json:"action"` // `add` or `remove`
+	Sponsors []string `json:"sponsors"`
+	Members  []string `json:"members"`
 }
 
-// UpdateMembers `POST /projects/:id/update_members`
-func UpdateMembers(ctx *gin.Context) {
+// UpdateStaffs `POST /projects/:id/update_staffs`
+func UpdateStaffs(ctx *gin.Context) {
 	idParam := ctx.Param("id")
 	id, err := strconv.Atoi(idParam)
 	if err != nil {
@@ -455,7 +536,7 @@ func UpdateMembers(ctx *gin.Context) {
 		return
 	}
 
-	req := UpdateMembersReq{}
+	req := UpdateStaffsReq{}
 	err = ctx.BindJSON(&req)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
@@ -464,15 +545,36 @@ func UpdateMembers(ctx *gin.Context) {
 
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
-	ok, err := enforcer.Enforce(user.Wallet, fmt.Sprintf("%s%d", api.ObjProjPrefix, id), api.ActUpdateMember)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
-		return
+	if req.Sponsors != nil && len(req.Sponsors) != 0 {
+		ok, err := enforcer.Enforce(user.Wallet, fmt.Sprintf("%s%d", api.ObjProjPrefix, id), api.ActUpdateSponsor)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+			return
+		}
+		if !ok {
+			ctx.JSON(http.StatusForbidden, api.Forbidden())
+			return
+		}
 	}
-	if !ok {
-		ctx.JSON(http.StatusForbidden, api.Forbidden())
-		return
+	if req.Members != nil && len(req.Members) != 0 {
+		ok, err := enforcer.Enforce(user.Wallet, fmt.Sprintf("%s%d", api.ObjProjPrefix, id), api.ActUpdateMember)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+			return
+		}
+		if !ok {
+			ctx.JSON(http.StatusForbidden, api.Forbidden())
+			return
+		}
 	}
+
+	// convert all wallet to lower case
+	sponsors := lo.Map[string](req.Sponsors, func(item string, _ int) string {
+		return strings.ToLower(item)
+	})
+	members := lo.Map[string](req.Members, func(item string, _ int) string {
+		return strings.ToLower(item)
+	})
 
 	proj, err := model.ProjectModel.Detail(db, uint(id))
 	if err != nil {
@@ -480,35 +582,147 @@ func UpdateMembers(ctx *gin.Context) {
 		return
 	}
 
-	//// remove roles for old members
-	//oldMemberGroupingPolicies := lo.Map(proj.Members, func(member string, _ int) []string {
-	//	// g, 0xc13..1283 proj_member_1
-	//	return []string{member, fmt.Sprintf("%s%d", api.RoleProjMemberPrefix, proj.ID)}
-	//})
-	//_, err = enforcer.RemoveGroupingPolicies(oldMemberGroupingPolicies)
-	//if err != nil {
-	//	ctx.JSON(http.StatusInternalServerError, err)
-	//	return
-	//}
+	// ------ ------ ------ ------ ------ ------ ------ ------ ------
 
-	// update project members
-	proj.Members = req.Members
-	err = model.ProjectModel.CreateOrUpdate(db, proj)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
-		return
+	if req.Action == "add" {
+		tx := db.Begin()
+
+		if req.Sponsors != nil && len(req.Sponsors) != 0 {
+			// add project sponsors
+			proj.Sponsors = append(proj.Sponsors, sponsors...)
+			// remove duplicate sponsors
+			proj.Sponsors = lo.Uniq[string](proj.Sponsors)
+			err = model.ProjectModel.CreateOrUpdate(tx, proj)
+			if err != nil {
+				tx.Rollback()
+
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+				return
+			}
+
+			// add roles for new sponsors
+			newSponsorGroupingPolicies := lo.Map(req.Sponsors, func(sponsor string, _ int) []string {
+				// g, 0xc13..1283 proj_sponsor_1
+				return []string{strings.ToLower(sponsor), fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, proj.ID)}
+			})
+			_, err = enforcer.AddGroupingPolicies(newSponsorGroupingPolicies)
+			if err != nil {
+				tx.Rollback()
+
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+				return
+			}
+
+			// send notification
+			go func() {
+				lo.ForEach(sponsors, func(item string, _ int) {
+
+				})
+			}()
+		}
+
+		if req.Members != nil && len(req.Members) != 0 {
+			// add project members
+			proj.Members = append(proj.Members, members...)
+			// remove duplicate members
+			proj.Members = lo.Uniq[string](proj.Members)
+			err = model.ProjectModel.CreateOrUpdate(tx, proj)
+			if err != nil {
+				tx.Rollback()
+
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+				return
+			}
+
+			//// add roles for new members
+			//newMemberGroupingPolicies := lo.Map(req.Members, func(member string, _ int) []string {
+			//	// g, 0xc13..1283 proj_member_1
+			//	return []string{strings.ToLower(member), fmt.Sprintf("%s%d", api.RoleProjMemberPrefix, proj.ID)}
+			//})
+			//_, err = enforcer.AddGroupingPolicies(newMemberGroupingPolicies)
+			//if err != nil {
+			//	ctx.JSON(http.StatusInternalServerError, err)
+			//	return
+			//}
+
+			// send notification
+			go func() {
+				lo.ForEach(members, func(item string, _ int) {
+
+				})
+			}()
+		}
+
+		tx.Commit()
+	} else if req.Action == "remove" {
+		tx := db.Begin()
+
+		if req.Sponsors != nil && len(req.Sponsors) != 0 {
+			// remove project sponsors
+			proj.Sponsors = lo.Without[string](proj.Sponsors, sponsors...)
+			err = model.ProjectModel.CreateOrUpdate(tx, proj)
+			if err != nil {
+				tx.Rollback()
+
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+				return
+			}
+
+			// remove roles for old sponsors
+			oldSponsorGroupingPolicies := lo.Map(proj.Sponsors, func(sponsor string, _ int) []string {
+				// g, 0xc13..1283 proj_sponsor_1
+				return []string{sponsor, fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, proj.ID)}
+			})
+			_, err = enforcer.RemoveGroupingPolicies(oldSponsorGroupingPolicies)
+			if err != nil {
+				tx.Rollback()
+
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+				return
+			}
+
+			// send notification
+			go func() {
+				lo.ForEach(sponsors, func(item string, _ int) {
+
+				})
+			}()
+		}
+
+		if req.Members != nil && len(req.Members) != 0 {
+			// remove project members
+			proj.Members = lo.Without[string](proj.Members, members...)
+			err = model.ProjectModel.CreateOrUpdate(tx, proj)
+			if err != nil {
+				tx.Rollback()
+
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+				return
+			}
+
+			//// remove roles for old members
+			//oldMemberGroupingPolicies := lo.Map(proj.Members, func(member string, _ int) []string {
+			//	// g, 0xc13..1283 proj_member_1
+			//	return []string{member, fmt.Sprintf("%s%d", api.RoleProjMemberPrefix, proj.ID)}
+			//})
+			//_, err = enforcer.RemoveGroupingPolicies(oldMemberGroupingPolicies)
+			//if err != nil {
+			//	ctx.JSON(http.StatusInternalServerError, err)
+			//	return
+			//}
+
+			// send notification
+			go func() {
+				lo.ForEach(members, func(item string, _ int) {
+
+				})
+			}()
+		}
+
+		tx.Commit()
 	}
 
-	//// add roles for new members
-	//newMemberGroupingPolicies := lo.Map(req.Members, func(member string, _ int) []string {
-	//	// g, 0xc13..1283 proj_member_1
-	//	return []string{strings.ToLower(member), fmt.Sprintf("%s%d", api.RoleProjMemberPrefix, proj.ID)}
-	//})
-	//_, err = enforcer.AddGroupingPolicies(newMemberGroupingPolicies)
-	//if err != nil {
-	//	ctx.JSON(http.StatusInternalServerError, err)
-	//	return
-	//}
+	// ------ ------ ------ ------ ------ ------ ------ ------ ------
 
 	ctx.JSON(http.StatusOK, api.Success(nil))
 }
