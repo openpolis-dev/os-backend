@@ -13,6 +13,7 @@ import (
 	"github.com/theseed-labs/os-backend/internal/api/project"
 	"github.com/theseed-labs/os-backend/internal/api/user"
 	"github.com/theseed-labs/os-backend/internal/config"
+	"github.com/theseed-labs/os-backend/internal/helper"
 	"github.com/theseed-labs/os-backend/internal/middleware"
 	"github.com/theseed-labs/os-backend/internal/storage"
 )
@@ -23,6 +24,9 @@ func main() {
 	casbinModelConfPath := flag.String("casbin-model", "rbac_model.conf", "casbin model conf file path, should be conf format")
 	flag.Parse()
 	cfg := config.LoadConfig(*cfgPath)
+
+	// setup notificator
+	notificator := helper.NewNotificator(cfg.Notification.AppID, cfg.Notification.AppKey)
 
 	// setup permission system
 	adapter, err := gormadapter.NewAdapter(cfg.Casbin.DriverName, cfg.DataSource.Dsn, true)
@@ -77,6 +81,7 @@ func main() {
 		ctx.Set(middleware.DBKey, db)
 		ctx.Set(middleware.CfgKey, cfg)
 		ctx.Set(middleware.EnforcerKey, enforcer)
+		ctx.Set(middleware.NotificatorKey, notificator)
 
 		// <-- before
 		ctx.Next()

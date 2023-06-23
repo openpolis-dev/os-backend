@@ -10,3 +10,7 @@ casbin:
   superUsers:
     - 0x183...3191
     - 0xc1e...1283
+
+notification:
+  appID: bar
+  appKey: foo

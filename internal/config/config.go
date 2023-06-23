@@ -12,9 +12,10 @@ import (
 )
 
 type Config struct {
-	Jwt        jwt        `json:"jwt" yaml:"jwt"`
-	DataSource dataSource `json:"dataSource" yaml:"dataSource"`
-	Casbin     casbin     `json:"casbin" yaml:"casbin"`
+	Jwt          jwt          `json:"jwt" yaml:"jwt"`
+	DataSource   dataSource   `json:"dataSource" yaml:"dataSource"`
+	Casbin       casbin       `json:"casbin" yaml:"casbin"`
+	Notification notification `json:"notification" yaml:"notification"`
 }
 
 type (
@@ -28,6 +29,10 @@ type (
 	casbin struct {
 		DriverName string   `json:"driverName" yaml:"driverName"`
 		SuperUsers []string `json:"superUsers" yaml:"superUsers"`
+	}
+	notification struct {
+		AppID  string `json:"appID" yaml:"appID"`
+		AppKey string `json:"appKey" yaml:"appKey"`
 	}
 )
 
