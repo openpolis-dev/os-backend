@@ -674,7 +674,7 @@ paths:
             schema:
               type: array
               items:
-                type: string
+                type: number
                 description: id for application will be rejected
 
       responses:
