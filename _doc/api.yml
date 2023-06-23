@@ -966,6 +966,64 @@ components:
         data:
           type: object
           description: detailed data for this error
+          properties:
+            id:
+              type: string
+              description: user id
+            wallet:
+              type: string
+              description: user wallet address
+            name:
+              type: string
+              description: user name
+            avatar:
+              type: string
+              description: user avatar string or url
+            email:
+              type: string
+              description: user email
+            wechat:
+              type: string
+              description: user wechat profile name
+            discord_profile:
+              type: string
+            twitter_profile:
+              type: string
+            google_profile:
+              type: string
+            mirror:
+              type: string
+            created_at:
+              type: string
+            updated_at:
+              type: string
+            assets:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: number
+                    description: asset record ID
+                  asset_name:
+                    type: string
+                  asset_type:
+                    type: string
+                    enum: [credit, token]
+                    description: asset type of this record, should be credit or token
+                  user_wallet:
+                    type: string
+                    description: user wallet for this record
+                  dealt_amount:
+                    type: number
+                    description: amount already saved to user wallet
+                  processing_amount:
+                    type: number
+                    description: amount still under processing state
+                  created_at:
+                    type: string
+                  updated_at:
+                    type: string
 
     UserRewardRecord:
       type: object

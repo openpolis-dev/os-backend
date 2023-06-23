@@ -12,7 +12,7 @@ import (
 // For each user and each asset, only one record is allowed in the database
 type UserAssetRecord struct {
 	ID               uint       `json:"id" gorm:"primaryKey"`
-	UserWallet       string     `json:"user_wallet"`
+	UserWallet       string     `json:"user_wallet" gorm:"type:varchar(256)"`
 	AssetType        BudgetType `json:"asset_type"`        // type of the asset, credit or token
 	AssetName        string     `json:"asset_name"`        // asset name
 	DealtAmount      uint64     `json:"dealt_amount"`      // amount of asset that already dealt

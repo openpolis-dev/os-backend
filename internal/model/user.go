@@ -9,7 +9,7 @@ import (
 
 type User struct {
 	ID             uint   `json:"id" gorm:"primaryKey"`
-	Wallet         string `json:"wallet"`
+	Wallet         string `json:"wallet" gorm:"type:varchar(256);index"`
 	Name           string `json:"name"`
 	Avatar         string `json:"avatar"`
 	Email          string `json:"email"`
@@ -22,6 +22,8 @@ type User struct {
 
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
+
+	Assets []*UserAssetRecord `json:"assets" gorm:"foreignKey:UserWallet;references:Wallet"`
 }
 
 type userModel struct{}
@@ -34,12 +36,12 @@ func (*userModel) CreateOrUpdate(db *gorm.DB, user *User) error {
 }
 
 func (*userModel) Detail(db *gorm.DB, wallet string) (*User, error) {
-	querySeg := db.Where("wallet = ?", wallet)
+	querySeg := db.Preload("Assets").Where("wallet = ?", wallet)
 	return gormfind.Row[User](querySeg)
 }
 
 func (*userModel) List(db *gorm.DB, wallets []string) ([]*User, error) {
-	querySeg := db.Where("wallet IN (?)", wallets)
+	querySeg := db.Preload("Assets").Where("wallet IN (?)", wallets)
 	return gormfind.Rows[User](querySeg, nil)
 }
 
