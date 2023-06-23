@@ -109,7 +109,7 @@ func main() {
 		applicationGroup.GET("/:id", application.Detail)
 		applicationGroup.GET("/", application.List)
 		applicationGroup.GET("/get_upload_template", application.DownloadUploadTemplate)
-		applicationGroup.POST("/download", application.Download)
+		applicationGroup.GET("/download", application.Download)
 
 		// foo routers
 	}

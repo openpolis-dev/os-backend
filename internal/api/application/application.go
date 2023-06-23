@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -198,10 +199,28 @@ func Download(ctx *gin.Context) {
 
 	db := api.ForContextOnlyDB(ctx)
 
-	var ids []uint64
-	err := ctx.Bind(&ids)
+	idList := ctx.Query("ids")
+
+	if len(idList) == 0 {
+		ctx.JSON(http.StatusBadRequest,
+			api.ServerError(fmt.Errorf("pass application id in ids query param with format 1,2,3,4")))
+		return
+	}
+
+	var err error
+	err = nil
+
+	ids := lo.Map(strings.Split(idList, ","), func(idStr string, _ int) uint64 {
+		val, err := strconv.ParseUint(idStr, 10, 64)
+		if err != nil {
+			err = fmt.Errorf("invalid application id %s", idStr)
+			return 0
+		}
+		return val
+	})
+
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, api.ServerError(err))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 	}
 
 	rcds, err := model.GenerateFrontendApplicationRecordsByIds(db, ids)

@@ -606,7 +606,7 @@ paths:
           description: template downloaded
 
   /applications/download:
-    post:
+    get:
       tags: [ applications ]
       security:
         - bearerAuth: [ ]
@@ -619,14 +619,10 @@ paths:
             type: string
             enum: [csv, json]
             default: csv
-      requestBody:
-        content:
-          "application/json":
-            schema:
-              type: array
-              items:
-                type: number
-                description: application id
+        - name: ids
+          in: query
+          description: ids of applications should be downloaded, the ids are concat by comma
+          example: 1,2,3,4,5
       responses:
         200:
           description: file downloaded
