@@ -8,12 +8,12 @@ import (
 )
 
 type Notificator interface {
-	PushTo(ids []string, title string, body string, data map[string]any) error
-	PushGroup(groups []string, title string, body string, data map[string]any) error
-	PushAll(title string, body string, data map[string]any) error
-
-	SmsTo(phones []string, title string, body string) error
-	EmailTo(emails []string, title string, body string) error
+	PushTo(ids []string, title *onesignal.StringMap, body *onesignal.StringMap, data map[string]any) error
+	//PushGroup(groups []string, title string, body string, data map[string]any) error
+	//PushAll(title string, body string, data map[string]any) error
+	//
+	//SmsTo(phones []string, title string, body string) error
+	//EmailTo(emails []string, title string, body string) error
 }
 
 type Notification struct {
@@ -28,7 +28,7 @@ func NewNotificator(apiID string, apiKey string) Notificator {
 	return &Notification{onesignalNotificator, apiID, apiKey}
 }
 
-func (n *Notification) PushTo(ids []string, title string, body string, data map[string]any) error {
+func (n *Notification) PushTo(ids []string, title *onesignal.StringMap, body *onesignal.StringMap, data map[string]any) error {
 	notification := onesignal.NewNotification(n.appID)
 	// push to all user
 	//notification.SetIncludedSegments([]string{"Subscribed Users"})
@@ -38,12 +38,8 @@ func (n *Notification) PushTo(ids []string, title string, body string, data map[
 	notification.SetIsIos(true)
 	notification.SetIsAndroid(true)
 	// set title and body
-	titleMap := onesignal.StringMap{}
-	titleMap.SetEn(title)
-	notification.Headings = *onesignal.NewNullableStringMap(&titleMap)
-	bodyMap := onesignal.StringMap{}
-	bodyMap.SetEn(body)
-	notification.Contents = *onesignal.NewNullableStringMap(&bodyMap)
+	notification.Headings = *onesignal.NewNullableStringMap(title)
+	notification.Contents = *onesignal.NewNullableStringMap(body)
 	// set data
 	notification.SetData(data)
 
@@ -59,18 +55,18 @@ func (n *Notification) PushTo(ids []string, title string, body string, data map[
 	return nil
 }
 
-func (n *Notification) PushGroup(groups []string, title string, body string, data map[string]any) error {
-	panic("implement me")
-}
-
-func (n *Notification) PushAll(title string, body string, data map[string]any) error {
-	panic("implement me")
-}
-
-func (n *Notification) SmsTo(phones []string, title string, body string) error {
-	panic("implement me")
-}
-
-func (n *Notification) EmailTo(emails []string, title string, body string) error {
-	panic("implement me")
-}
+//func (n *Notification) PushGroup(groups []string, title string, body string, data map[string]any) error {
+//	panic("implement me")
+//}
+//
+//func (n *Notification) PushAll(title string, body string, data map[string]any) error {
+//	panic("implement me")
+//}
+//
+//func (n *Notification) SmsTo(phones []string, title string, body string) error {
+//	panic("implement me")
+//}
+//
+//func (n *Notification) EmailTo(emails []string, title string, body string) error {
+//	panic("implement me")
+//}

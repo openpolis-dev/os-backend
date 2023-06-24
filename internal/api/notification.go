@@ -1,6 +1,10 @@
 package api
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/OneSignal/onesignal-go-api"
+)
 
 const (
 	NotificationTypeProjStaffAdd     = "proj_staff_add"
@@ -8,7 +12,7 @@ const (
 	NotificationTypeGuildStaffAdd    = "guild_staff_add"
 	NotificationTypeGuildStaffRemove = "guild_staff_remove"
 
-	NotificationTypeReceiveAssert = "receive_assert"
+	NotificationTypeObtainAssert = "obtain_assert"
 )
 
 // GenerateProjectStaffAddNotificationParams generate params for project's staff added.
@@ -20,9 +24,13 @@ const (
  }
 }
 */
-func GenerateProjectStaffAddNotificationParams(projectID uint, projectName string) (title string, body string, data map[string]any) {
-	title = "Join Project"
-	body = fmt.Sprintf("You ard added to Project %s", projectName)
+func GenerateProjectStaffAddNotificationParams(projectID uint, projectName string) (title *onesignal.StringMap, body *onesignal.StringMap, data map[string]any) {
+	title.SetEn("Join Project")
+	title.SetZhHans("加入项目")
+
+	body.SetEn(fmt.Sprintf("You ard added to Project %s", projectName))
+	body.SetZhHans(fmt.Sprintf("You ard added to Project %s", projectName))
+
 	data = map[string]any{
 		"type": NotificationTypeProjStaffAdd,
 		"data": map[string]any{
@@ -34,9 +42,13 @@ func GenerateProjectStaffAddNotificationParams(projectID uint, projectName strin
 }
 
 // GenerateProjectStaffRemoveNotificationParams generate params for project's staff removed.
-func GenerateProjectStaffRemoveNotificationParams(projectID uint, projectName string) (title string, body string, data map[string]any) {
-	title = "Quit Project"
-	body = fmt.Sprintf("You ard removed from Project %s", projectName)
+func GenerateProjectStaffRemoveNotificationParams(projectID uint, projectName string) (title *onesignal.StringMap, body *onesignal.StringMap, data map[string]any) {
+	title.SetEn("Quit Project")
+	title.SetZhHans("退出项目")
+
+	body.SetEn(fmt.Sprintf("You ard removed from Project %s", projectName))
+	body.SetZhHans(fmt.Sprintf("You ard removed from Project %s", projectName))
+
 	data = map[string]any{
 		"type": NotificationTypeProjStaffRemove,
 		"data": map[string]any{
@@ -57,11 +69,15 @@ func GenerateProjectStaffRemoveNotificationParams(projectID uint, projectName st
  }
 }
 */
-func GenerateObtainAssertNotificationParams(assertName string, amount int64) (title string, body string, data map[string]any) {
-	title = "Assert Obtained"
-	body = fmt.Sprintf("You have obtained %d %s", amount, assertName)
+func GenerateObtainAssertNotificationParams(assertName string, amount int64) (title *onesignal.StringMap, body *onesignal.StringMap, data map[string]any) {
+	title.SetEn("Assert Obtained")
+	title.SetZhHans("Assert Obtained")
+
+	body.SetEn(fmt.Sprintf("You have obtained %d %s", amount, assertName))
+	body.SetZhHans(fmt.Sprintf("You have obtained %d %s", amount, assertName))
+
 	data = map[string]any{
-		"type": NotificationTypeReceiveAssert,
+		"type": NotificationTypeObtainAssert,
 		"data": map[string]any{
 			"name":   assertName,
 			"amount": amount,
