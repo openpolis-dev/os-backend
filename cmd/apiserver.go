@@ -105,11 +105,12 @@ func main() {
 
 		// application routers
 		applicationGroup := v1.Group("/applications")
-		applicationGroup.GET("/applicants", application.ListApplicants)
-		applicationGroup.GET("/download", application.Download)
-		applicationGroup.GET("/get_upload_template", application.DownloadUploadTemplate)
 		applicationGroup.GET("/:id", application.Detail)
 		applicationGroup.GET("/", application.List)
+
+		v1.GET("/apps_applicants", application.ListApplicants)
+		v1.GET("/download_applications", application.Download)
+		v1.GET("/get_applications_upload_template", application.DownloadUploadTemplate)
 
 		// foo routers
 	}
@@ -128,24 +129,26 @@ func main() {
 		projGroup.POST("/", project.Create)
 		projGroup.PUT("/:id", project.Update)
 		projGroup.POST("/:id/close", project.Close)
-		projGroup.GET("/my", project.MyProjects)
 		//projGroup.POST("/:id/update_sponsors", project.UpdateSponsors)
 		//projGroup.POST("/:id/update_members", project.UpdateMembers)
 		projGroup.POST("/:id/update_staffs", project.UpdateStaffs)
 		projGroup.POST("/:id/update_budget", project.UpdateBudget)
 		projGroup.POST("/:id/add_related_proposal", project.AddRelatedProposal)
 
+		authorizedGroup.GET("/my_projects", project.MyProjects)
+
 		// application routers
 		applicationGroup := authorizedGroup.Group("/applications")
 		applicationGroup.POST("/", application.Create)
-		applicationGroup.POST("/approve", application.BatchApprove)
-		applicationGroup.POST("/reject", application.BatchReject)
-		applicationGroup.POST("/process", application.BatchProcess)
-		applicationGroup.POST("/complete", application.BatchComplete)
 		applicationGroup.POST("/:id/approve", application.Approve)
 		applicationGroup.POST("/:id/reject", application.Reject)
 		applicationGroup.POST("/:id/complete", application.Complete)
 		applicationGroup.POST("/:id/process", application.Process)
+
+		authorizedGroup.POST("/apps_approve", application.BatchApprove)
+		authorizedGroup.POST("/apps_reject", application.BatchReject)
+		authorizedGroup.POST("/apps_process", application.BatchProcess)
+		authorizedGroup.POST("/apps_complete", application.BatchComplete)
 
 		// foo routers
 	}

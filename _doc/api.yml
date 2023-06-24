@@ -236,7 +236,7 @@ paths:
         200:
           description: ok
 
-  /projects/my:
+  /my_projects:
     get:
       tags: [ project ]
       description: list my projects
@@ -552,7 +552,7 @@ paths:
                   msg:
                     type: string
 
-  /applications/applicants:
+  /apps_applicants:
     get:
       tags: [ applications ]
       description: get applicants of all applications
@@ -573,7 +573,7 @@ paths:
                       type: string
                       description: name of applicant user, and will return "" if not set
 
-  /applications/approve:
+  /apps_approve:
     post:
       tags: [ applications ]
       security:
@@ -597,7 +597,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
-  /applications/get_upload_template:
+  /get_applications_upload_template:
     get:
       tags: [ applications ]
       description: get upload template
@@ -605,7 +605,7 @@ paths:
         200:
           description: template downloaded
 
-  /applications/download:
+  /download_applications:
     get:
       tags: [ applications ]
       security:
@@ -658,7 +658,7 @@ paths:
                   data:
                     $ref: "#/components/schemas/ApplicationJointRecord"
 
-  /applications/reject:
+  /apps_reject:
     post:
       tags: [ applications ]
       security:
@@ -683,7 +683,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
-  /applications/process:
+  /apps_process:
     post:
       tags: [ applications ]
       security:
@@ -708,7 +708,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
-  /applications/complete:
+  /apps_complete:
     post:
       tags: [ applications ]
       security:

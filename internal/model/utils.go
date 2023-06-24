@@ -58,7 +58,6 @@ func NewApplicationRecord(db *gorm.DB, application *Application) error {
 }
 
 func GenerateFrontendApplicationRecordsByIds(db *gorm.DB, ids []uint64) ([]*FrontendApplicationRecord, error) {
-	rslt := make([]*FrontendApplicationRecord, len(ids))
 
 	projectRcdsQuerySeg := db.Model(&Application{}).
 		Where(&Application{EntityType: "project"}).
@@ -73,6 +72,7 @@ func GenerateFrontendApplicationRecordsByIds(db *gorm.DB, ids []uint64) ([]*Fron
 		return nil, err
 	}
 
+	rslt := make([]*FrontendApplicationRecord, len(projectRcds))
 	for i, r := range projectRcds {
 		rslt[i] = r.ToFrontedApplicationRecord(db)
 	}
