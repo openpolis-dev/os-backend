@@ -25,9 +25,11 @@ const (
 }
 */
 func GenerateProjectStaffAddNotificationParams(projectID uint, projectName string) (title *onesignal.StringMap, body *onesignal.StringMap, data map[string]any) {
+	title = &onesignal.StringMap{}
 	title.SetEn("Join Project")
 	title.SetZhHans("加入项目")
 
+	body = &onesignal.StringMap{}
 	body.SetEn(fmt.Sprintf("You ard added to Project %s", projectName))
 	body.SetZhHans(fmt.Sprintf("You ard added to Project %s", projectName))
 
@@ -43,9 +45,11 @@ func GenerateProjectStaffAddNotificationParams(projectID uint, projectName strin
 
 // GenerateProjectStaffRemoveNotificationParams generate params for project's staff removed.
 func GenerateProjectStaffRemoveNotificationParams(projectID uint, projectName string) (title *onesignal.StringMap, body *onesignal.StringMap, data map[string]any) {
+	title = &onesignal.StringMap{}
 	title.SetEn("Quit Project")
 	title.SetZhHans("退出项目")
 
+	body = &onesignal.StringMap{}
 	body.SetEn(fmt.Sprintf("You ard removed from Project %s", projectName))
 	body.SetZhHans(fmt.Sprintf("You ard removed from Project %s", projectName))
 
@@ -69,9 +73,11 @@ func GenerateProjectStaffRemoveNotificationParams(projectID uint, projectName st
 }
 */
 func GenerateGuildStaffAddNotificationParams(guildID uint, guildName string) (title *onesignal.StringMap, body *onesignal.StringMap, data map[string]any) {
+	title = &onesignal.StringMap{}
 	title.SetEn("Join Guild")
 	title.SetZhHans("加入工会")
 
+	body = &onesignal.StringMap{}
 	body.SetEn(fmt.Sprintf("You ard added to Guild %s", guildName))
 	body.SetZhHans(fmt.Sprintf("You ard added to Guild %s", guildName))
 
@@ -87,9 +93,11 @@ func GenerateGuildStaffAddNotificationParams(guildID uint, guildName string) (ti
 
 // GenerateGuildStaffRemoveNotificationParams generate params for guild's staff removed.
 func GenerateGuildStaffRemoveNotificationParams(guildID uint, guildName string) (title *onesignal.StringMap, body *onesignal.StringMap, data map[string]any) {
+	title = &onesignal.StringMap{}
 	title.SetEn("Quit Guild")
 	title.SetZhHans("退出工会")
 
+	body = &onesignal.StringMap{}
 	body.SetEn(fmt.Sprintf("You ard removed from Guild %s", guildName))
 	body.SetZhHans(fmt.Sprintf("You ard removed from Guild %s", guildName))
 
