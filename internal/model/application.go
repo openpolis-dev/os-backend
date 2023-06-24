@@ -221,9 +221,24 @@ func doAuditApplicationInTransaction(tx *gorm.DB, operatorWallet string, applica
 						return err
 					}
 				}
-
 			} else if application.EntityType == "guild" {
-				// TODO: Guild is not implemented yet
+				detailedData := NewRewardApplicationDetailedData{}
+				err := json.Unmarshal(application.DetailedData, &detailedData)
+				if err != nil {
+					return err
+				}
+
+				for budgetType, detail := range detailedData {
+					// Update guild budget
+					if err := GuildModel.WithdrawBudget(tx, application.EntityId, budgetType, detail.AssetName, detail.Amount); err != nil {
+						return err
+					}
+
+					// Update user asset record
+					if err := UserAssetRecordModel.CreateOrUpdate(tx, application.Applicant, budgetType, detail.Amount, 0); err != nil {
+						return err
+					}
+				}
 			} else {
 				return fmt.Errorf("unknown application entity type %s", application.EntityType)
 			}

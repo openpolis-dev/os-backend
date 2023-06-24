@@ -64,3 +64,72 @@ func (*guildModel) ListBySponsorOrMember(db *gorm.DB, wallet string, page *gormf
 	}
 	return data, total, nil
 }
+
+// SetBudget set budget record directly, but only total amount is allowed to set directly
+func (*guildModel) SetBudget(db *gorm.DB, guildId uint, budgetType BudgetType, assertName string, totalAmount uint64) error {
+	return db.Transaction(func(tx *gorm.DB) error {
+		budgetRecord, err := GuildBudgetModel.QueryByGuildIdAndBudgetType(tx, guildId, budgetType)
+		if err != nil {
+			return err
+		}
+
+		if budgetRecord == nil {
+			budgetRecord = &GuildBudget{
+				GuildID:      guildId,
+				Name:         assertName,
+				Type:         budgetType,
+				TotalAmount:  totalAmount,
+				RemainAmount: totalAmount,
+			}
+		} else {
+			budgetRecord.TotalAmount = totalAmount
+		}
+
+		return GuildBudgetModel.Update(tx, budgetRecord)
+	})
+}
+
+// TODO: Some budget related logics can be merged
+
+func (*guildModel) WithdrawBudget(db *gorm.DB, guildId uint, budgetType BudgetType, tokenName string, tokenAmount uint64) error {
+	return db.Transaction(func(tx *gorm.DB) error {
+		budgetRcd, err := GuildBudgetModel.QueryByGuildIdAndBudgetType(tx, guildId, budgetType)
+		if err != nil {
+			return err
+		}
+
+		if budgetRcd == nil {
+			return fmt.Errorf("guild %d has no budget record with asset %s", guildId, tokenName)
+		}
+
+		if budgetRcd.RemainAmount < tokenAmount {
+			return fmt.Errorf("guild %d has insufficient budget record with asset %s", guildId, tokenName)
+		}
+
+		budgetRcd.RemainAmount -= tokenAmount
+		return tx.Save(budgetRcd).Error
+	})
+}
+
+// DepositBudget deposits budget back to guild, e.g. application for reward has been rejected
+func (*guildModel) DepositBudget(db *gorm.DB, guildId uint, budgetType BudgetType, tokenName string, tokenAmount uint64) error {
+	return db.Transaction(func(tx *gorm.DB) error {
+		budgetRcd, err := GuildBudgetModel.QueryByGuildIdAndBudgetType(tx, guildId, budgetType)
+		if err != nil {
+			return err
+		}
+
+		if budgetRcd == nil {
+			return tx.Save(&GuildBudget{
+				GuildID:      guildId,
+				Name:         tokenName,
+				Type:         budgetType,
+				TotalAmount:  tokenAmount,
+				RemainAmount: tokenAmount,
+			}).Error
+		} else {
+			budgetRcd.RemainAmount += tokenAmount
+			return tx.Save(budgetRcd).Error
+		}
+	})
+}
