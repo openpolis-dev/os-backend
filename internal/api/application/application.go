@@ -310,7 +310,11 @@ func BatchProcess(ctx *gin.Context) {
 	}
 
 	var applications []model.Application
-	getBatchApplicationsOrReturnError(ctx, &applications)
+	err = getBatchApplicationsOrReturnError(ctx, &applications)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, api.Reply{Code: -1, Msg: err.Error()})
+		return
+	}
 
 	err = model.BatchAuditApplication(db, user.Wallet, &applications, model.AuditActionProcess, "")
 	if err != nil {
@@ -326,7 +330,11 @@ func BatchProcess(ctx *gin.Context) {
 
 func BatchApprove(ctx *gin.Context) {
 	var applications []model.Application
-	getBatchApplicationsOrReturnError(ctx, &applications)
+	err := getBatchApplicationsOrReturnError(ctx, &applications)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, api.Reply{Code: -1, Msg: err.Error()})
+		return
+	}
 
 	user, enforcer, db, _ := api.ForContext(ctx)
 
@@ -356,7 +364,11 @@ func BatchApprove(ctx *gin.Context) {
 // BatchReject rejects multiple applications in one API call
 func BatchReject(ctx *gin.Context) {
 	var applications []model.Application
-	getBatchApplicationsOrReturnError(ctx, &applications)
+	err := getBatchApplicationsOrReturnError(ctx, &applications)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, api.Reply{Code: -1, Msg: err.Error()})
+		return
+	}
 
 	user, enforcer, db, _ := api.ForContext(ctx)
 
@@ -425,16 +437,16 @@ func BatchComplete(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, "")
 }
 
-func getBatchApplicationsOrReturnError(ctx *gin.Context, applications *[]model.Application) {
+func getBatchApplicationsOrReturnError(ctx *gin.Context, applications *[]model.Application) error {
 	var idList []int
 	err := ctx.Bind(&idList)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, api.Reply{Code: -1, Msg: "passed in ID list error"})
-		return
+		return fmt.Errorf("passed in ID list error")
 	}
 
 	db := api.ForContextOnlyDB(ctx)
 	db.Find(&applications, idList)
+	return nil
 }
 
 // Detail returns single application information with requested ID

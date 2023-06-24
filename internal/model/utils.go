@@ -50,7 +50,7 @@ func NewApplicationRecord(db *gorm.DB, application *Application) error {
 		}
 
 		if application.EntityType == "project" && application.Type == ApplicationCloseProject {
-			return tx.Model(&Project{ID: application.EntityId}).Update("status", ProjectStatusPendingClose).Error
+			return tx.Model(&Project{}).Where(&Project{ID: application.EntityId}).Update("status", ProjectStatusPendingClose).Error
 		}
 
 		return nil
