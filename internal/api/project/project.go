@@ -169,12 +169,10 @@ func Create(ctx *gin.Context) {
 	staffs := append(sponsors, members...)
 	go func(notificator sdk.Notificator, staffs []string, projectID uint, projectName string) {
 		title, body, data := api.GenerateProjectStaffAddNotificationParams(projectID, projectName)
-		lo.ForEach(staffs, func(id string, _ int) {
-			err := notificator.PushTo(id, title, body, data)
-			if err != nil {
-				log.Error().Msgf("push to %s failed: %s", id, err)
-			}
-		})
+		err := notificator.PushTo(staffs, title, body, data)
+		if err != nil {
+			log.Error().Msgf("push to %v failed: %s", staffs, err)
+		}
 	}(notificator, staffs, proj.ID, proj.Name)
 
 	ctx.JSON(http.StatusOK, api.Success(nil))
@@ -678,12 +676,10 @@ func UpdateStaffs(ctx *gin.Context) {
 		staffs := append(sponsors, members...)
 		go func(notificator sdk.Notificator, staffs []string, projectID uint, projectName string) {
 			title, body, data := api.GenerateProjectStaffAddNotificationParams(projectID, projectName)
-			lo.ForEach(staffs, func(id string, _ int) {
-				err := notificator.PushTo(id, title, body, data)
-				if err != nil {
-					log.Error().Msgf("push to %s failed: %s", id, err)
-				}
-			})
+			err := notificator.PushTo(staffs, title, body, data)
+			if err != nil {
+				log.Error().Msgf("push to %+v failed: %s", staffs, err)
+			}
 		}(notificator, staffs, proj.ID, proj.Name)
 	} else if req.Action == "remove" {
 		tx := db.Begin()
@@ -743,12 +739,10 @@ func UpdateStaffs(ctx *gin.Context) {
 		staffs := append(sponsors, members...)
 		go func(notificator sdk.Notificator, staffs []string, projectID uint, projectName string) {
 			title, body, data := api.GenerateProjectStaffRemoveNotificationParams(projectID, projectName)
-			lo.ForEach(staffs, func(id string, _ int) {
-				err := notificator.PushTo(id, title, body, data)
-				if err != nil {
-					log.Error().Msgf("push to %s failed: %s", id, err)
-				}
-			})
+			err := notificator.PushTo(staffs, title, body, data)
+			if err != nil {
+				log.Error().Msgf("push to %+v failed: %s", staffs, err)
+			}
 		}(notificator, staffs, proj.ID, proj.Name)
 	}
 

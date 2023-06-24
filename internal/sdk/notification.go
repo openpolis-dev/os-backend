@@ -8,8 +8,8 @@ import (
 )
 
 type Notificator interface {
-	PushTo(id string, title string, body string, data map[string]any) error
-	PushGroup(group string, title string, body string, data map[string]any) error
+	PushTo(ids []string, title string, body string, data map[string]any) error
+	PushGroup(groups []string, title string, body string, data map[string]any) error
 	PushAll(title string, body string, data map[string]any) error
 
 	SmsTo(phones []string, title string, body string) error
@@ -28,12 +28,12 @@ func NewNotificator(apiID string, apiKey string) Notificator {
 	return &Notification{onesignalNotificator, apiID, apiKey}
 }
 
-func (n *Notification) PushTo(id string, title string, body string, data map[string]any) error {
+func (n *Notification) PushTo(ids []string, title string, body string, data map[string]any) error {
 	notification := onesignal.NewNotification(n.appID)
 	// push to all user
 	//notification.SetIncludedSegments([]string{"Subscribed Users"})
 	// push to a single user
-	notification.SetIncludeExternalUserIds([]string{id})
+	notification.SetIncludeExternalUserIds(ids)
 	//
 	notification.SetIsIos(true)
 	notification.SetIsAndroid(true)
@@ -59,7 +59,7 @@ func (n *Notification) PushTo(id string, title string, body string, data map[str
 	return nil
 }
 
-func (n *Notification) PushGroup(group string, title string, body string, data map[string]any) error {
+func (n *Notification) PushGroup(groups []string, title string, body string, data map[string]any) error {
 	panic("implement me")
 }
 
