@@ -54,9 +54,6 @@ type (
 		AssetName   string `json:"asset_name"`
 		TotalAmount uint64 `json:"total_amount"`
 	}
-	AddProposalReq struct {
-		ProposalID []string `json:"ids"`
-	}
 )
 
 // Create `POST /projects`

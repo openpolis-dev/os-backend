@@ -10,6 +10,7 @@ import (
 	"github.com/samber/lo"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/api/application"
+	"github.com/theseed-labs/os-backend/internal/api/guild"
 	"github.com/theseed-labs/os-backend/internal/api/project"
 	"github.com/theseed-labs/os-backend/internal/api/user"
 	"github.com/theseed-labs/os-backend/internal/config"
@@ -136,6 +137,14 @@ func main() {
 		projGroup.POST("/:id/add_related_proposal", project.AddRelatedProposal)
 
 		authorizedGroup.GET("/my_projects", project.MyProjects)
+
+		// guild routers
+		guildGroup := authorizedGroup.Group("/guilds")
+		guildGroup.POST("/", guild.Create)
+		guildGroup.PUT("/:id", guild.Update)
+		guildGroup.POST("/:id/update_staffs", guild.UpdateStaffs)
+		guildGroup.POST("/:id/update_budget", guild.UpdateBudget)
+		guildGroup.POST("/:id/add_related_proposal", guild.AddRelatedProposal)
 
 		// application routers
 		applicationGroup := authorizedGroup.Group("/applications")

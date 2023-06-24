@@ -34,6 +34,8 @@ func InitGormDB(dsn string) {
 		&model.UserAssetRecord{},
 		&model.Project{},
 		&model.ProjectBudget{},
+		&model.Guild{},
+		&model.GuildBudget{},
 		&model.Application{},
 		&model.ApplicationAuditLog{},
 	)

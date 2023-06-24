@@ -59,6 +59,50 @@ func GenerateProjectStaffRemoveNotificationParams(projectID uint, projectName st
 	return
 }
 
+// GenerateGuildStaffAddNotificationParams generate params for guild's staff added.
+/*
+{
+ "type": "guild_staff_add",
+ "data": {
+  	"guild_id": 1
+ }
+}
+*/
+func GenerateGuildStaffAddNotificationParams(guildID uint, guildName string) (title *onesignal.StringMap, body *onesignal.StringMap, data map[string]any) {
+	title.SetEn("Join Guild")
+	title.SetZhHans("加入工会")
+
+	body.SetEn(fmt.Sprintf("You ard added to Guild %s", guildName))
+	body.SetZhHans(fmt.Sprintf("You ard added to Guild %s", guildName))
+
+	data = map[string]any{
+		"type": NotificationTypeGuildStaffAdd,
+		"data": map[string]any{
+			"guild_id": guildID,
+		},
+	}
+
+	return
+}
+
+// GenerateGuildStaffRemoveNotificationParams generate params for guild's staff removed.
+func GenerateGuildStaffRemoveNotificationParams(guildID uint, guildName string) (title *onesignal.StringMap, body *onesignal.StringMap, data map[string]any) {
+	title.SetEn("Quit Guild")
+	title.SetZhHans("退出工会")
+
+	body.SetEn(fmt.Sprintf("You ard removed from Guild %s", guildName))
+	body.SetZhHans(fmt.Sprintf("You ard removed from Guild %s", guildName))
+
+	data = map[string]any{
+		"type": NotificationTypeGuildStaffRemove,
+		"data": map[string]any{
+			"guild_id": guildID,
+		},
+	}
+
+	return
+}
+
 // GenerateObtainAssertNotificationParams generate params for user obtained assert.
 /*
 {
