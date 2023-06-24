@@ -135,8 +135,6 @@ func main() {
 		projGroup.POST("/", project.Create)
 		projGroup.PUT("/:id", project.Update)
 		projGroup.POST("/:id/close", project.Close)
-		//projGroup.POST("/:id/update_sponsors", project.UpdateSponsors)
-		//projGroup.POST("/:id/update_members", project.UpdateMembers)
 		projGroup.POST("/:id/update_staffs", project.UpdateStaffs)
 		projGroup.POST("/:id/update_budget", project.UpdateBudget)
 		projGroup.POST("/:id/add_related_proposal", project.AddRelatedProposal)
