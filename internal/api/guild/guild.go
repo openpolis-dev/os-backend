@@ -255,14 +255,13 @@ func Detail(ctx *gin.Context) {
 	}))
 }
 
-// List `GET /guilds?status=open&page=1&size=10&sort_field=created_at&sort_order=desc`
+// List `GET /guilds?page=1&size=10&sort_field=created_at&sort_order=desc`
 func List(ctx *gin.Context) {
 	db := api.ForContextOnlyDB(ctx)
 
-	status := ctx.Query("status")
 	page := api.ParseAndConvertPageParam(ctx)
 
-	guilds, total, err := model.GuildModel.List(db, status, page)
+	guilds, total, err := model.GuildModel.List(db, page)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return

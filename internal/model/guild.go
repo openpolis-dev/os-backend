@@ -34,11 +34,8 @@ func (*guildModel) Detail(db *gorm.DB, id uint) (*Guild, error) {
 	return gormfind.Row[Guild](querySeg)
 }
 
-func (*guildModel) List(db *gorm.DB, status string, page *gormfind.Page) (data []*Guild, total int64, err error) {
+func (*guildModel) List(db *gorm.DB, page *gormfind.Page) (data []*Guild, total int64, err error) {
 	querySeg := db.Table("guilds")
-	if status != "" {
-		querySeg.Where("status = ?", status)
-	}
 
 	total, err = gormfind.Count(querySeg)
 	if err != nil {

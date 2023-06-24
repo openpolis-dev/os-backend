@@ -104,6 +104,11 @@ func main() {
 		projGroup.GET("/", project.List)
 		projGroup.GET("/:id", project.Detail)
 
+		// guild routers
+		guildGroup := v1.Group("/guilds")
+		guildGroup.GET("/", guild.List)
+		guildGroup.GET("/:id", guild.Detail)
+
 		// application routers
 		applicationGroup := v1.Group("/applications")
 		applicationGroup.GET("/:id", application.Detail)
@@ -135,7 +140,7 @@ func main() {
 		projGroup.POST("/:id/update_staffs", project.UpdateStaffs)
 		projGroup.POST("/:id/update_budget", project.UpdateBudget)
 		projGroup.POST("/:id/add_related_proposal", project.AddRelatedProposal)
-
+		// my projects
 		authorizedGroup.GET("/my_projects", project.MyProjects)
 
 		// guild routers
@@ -145,6 +150,8 @@ func main() {
 		guildGroup.POST("/:id/update_staffs", guild.UpdateStaffs)
 		guildGroup.POST("/:id/update_budget", guild.UpdateBudget)
 		guildGroup.POST("/:id/add_related_proposal", guild.AddRelatedProposal)
+		// my guilds
+		authorizedGroup.GET("/my_guilds", guild.MyGuilds)
 
 		// application routers
 		applicationGroup := authorizedGroup.Group("/applications")
