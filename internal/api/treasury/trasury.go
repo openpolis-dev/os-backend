@@ -23,12 +23,20 @@ func GetOrCreateCurrentAssetRecords(ctx *gin.Context) {
 
 // UpdateAssets updates asset records of current quarter budget
 func UpdateAssets(ctx *gin.Context) {
-	// TODO: Validate user permission
-	//user, enforcer, db, _ := api.ForContext(ctx)
-	user, _, db, _ := api.ForContext(ctx)
+	user, enforcer, db, _ := api.ForContext(ctx)
+	//  check permission
+	ok, err := enforcer.Enforce(user.Wallet, api.ObjSeeDAO, api.ActUpdateAssertBudget)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		return
+	}
+	if !ok {
+		ctx.JSON(http.StatusForbidden, api.Forbidden())
+		return
+	}
 
 	var updateParams []model.UpdateAssetRequestParams
-	err := ctx.Bind(&updateParams)
+	err = ctx.Bind(&updateParams)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
 	}

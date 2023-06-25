@@ -17,6 +17,8 @@ const (
 
 	ObjProjPrefix  = "proj_"
 	ObjGuildPrefix = "guild_"
+
+	ObjSeeDAO = "seedao"
 )
 
 const (
@@ -29,6 +31,8 @@ const (
 	ActUpdateBudget      = "u_budget"
 	ActCreateApplication = "create_app"
 	ActAuditApplication  = "audit_app"
+
+	ActUpdateAssertBudget = "u_assert_budget"
 )
 
 // default policies
@@ -40,6 +44,7 @@ const (
 // `p, proj_sponsor_1, proj_1, modify` :
 // `p, proj_sponsor_1, proj_1, create_app` :
 // `p, proj_sponsor_1, proj_1, u_member` :
+// `p, proj_sponsor_1, proj_1, u_budget` :
 //
 // `p, proj_member_1, proj_1, modify` :
 // `p, proj_member_1, proj_1, create_app` :
@@ -54,11 +59,12 @@ const (
 /*
 hall: can do anything
 	- create project/guild
-	- close all project/guild
+	- close all project
 	- modify all project/guild's info(includes: update name+logo, add related proposal)
 	- update all project/guild's sponsors and members
 	- update all project/guild's budgets
 	- audit all project and guild's application
+	- update seedao assert budget
 project/guild sponsor:
 	- modify this project/guild's info
 	- create application
@@ -70,14 +76,27 @@ project/guild member: !! project/guild member has no permissions !!
 */
 
 /*
-	(0x..., proj, create)
-	(0x..., proj, close)
+	(0x..., proj, create) 创建项目
+	(0x..., proj, close)  关闭项目
 
-	(0x..., proj_and_guild, audit_app)
+	(0x..., guild, create) 创建工会
 
-	(0x..., proj_1, modify)
-	(0x..., proj_1, u_sponsor)
-	(0x..., proj_1, u_member)
-	(0x..., proj_1, u_budget)
-	(0x..., proj_1, create_app)
+
+	(0x..., proj_1, modify)     修改项目基本信息
+	(0x..., proj_1, u_sponsor)  修改项目牵头人
+	(0x..., proj_1, u_member)   修改项目成员
+	(0x..., proj_1, u_budget)   修改项目预算
+	(0x..., proj_1, create_app) 创建项目的申请
+
+	(0x..., guild_1, modify)     修改工会基本信息
+	(0x..., guild_1, u_sponsor)  修改工会牵头人
+	(0x..., guild_1, u_member)   修改工会成员
+	(0x..., guild_1, u_budget)   修改工会预算
+	(0x..., guild_1, create_app) 创建工会的申请
+
+
+	(0x..., proj_and_guild, audit_app) 审核项目和工会的申请
+
+
+	(0x..., seedao, u_assert_budget)   修改 SeedAO 的资产预算
 */
