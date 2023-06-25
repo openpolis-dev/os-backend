@@ -12,13 +12,13 @@ type TreasuryAsset struct {
 
 	QuarterNum string `json:"quarter_num"` // Quarter num, the format is yyyy0[1234]
 
-	DetailedRecords []TreasuryDetailedRecords `json:"detailed_records"`
+	DetailedRecords []TreasuryDetailedRecord `json:"detailed_records"`
 
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	CreatedAt time.Time `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt time.Time `json:"updated_at" gorm:"autoUpdateTime"`
 }
 
-type TreasuryDetailedRecords struct {
+type TreasuryDetailedRecord struct {
 	ID              uint `json:"id" gorm:"primaryKey"`
 	TreasuryAssetID uint `json:"treasury_asset_id"`
 
@@ -30,14 +30,14 @@ type TreasuryDetailedRecords struct {
 
 	AuditLogs []TreasuryAuditLog `json:"audit_logs"`
 
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	CreatedAt time.Time `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt time.Time `json:"updated_at" gorm:"autoUpdateTime"`
 }
 
 type TreasuryAuditLog struct {
 	ID uint `json:"id" gorm:"primaryKey"`
 
-	TreasureDetailedRecordID uint `json:"treasure_detailed_record_id"`
+	TreasuryDetailedRecordID uint `json:"treasury_detailed_record_id"`
 
 	AuditUserWallet string `json:"audit_user_wallet"`
 
@@ -45,8 +45,8 @@ type TreasuryAuditLog struct {
 
 	Message string `json:"message"`
 
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	CreatedAt time.Time `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt time.Time `json:"updated_at" gorm:"autoUpdateTime"`
 }
 
 type treasuryAssetHelper struct{}
@@ -74,7 +74,7 @@ func (*treasuryAssetHelper) UpsertCQTreasuryDetailedRecord(db *gorm.DB, budgetTy
 		return err
 	}
 
-	r := TreasuryDetailedRecords{}
+	r := TreasuryDetailedRecord{}
 	return db.Transaction(func(tx *gorm.DB) error {
 		// Search by treasury asset id and budget type, and init the record if not found
 		detailedRcd := TreasuryDetailedRecords{
@@ -125,10 +125,10 @@ func (*treasuryAssetHelper) ChangeCQTreasuryAssetValue(db *gorm.DB, budgetType B
 		return err
 	}
 
-	r := TreasuryDetailedRecords{}
+	r := TreasuryDetailedRecord{}
 	return db.Transaction(func(tx *gorm.DB) error {
 		// Search by treasury asset id and budget type, and init the record if not found
-		detailedRcd := TreasuryDetailedRecords{
+		detailedRcd := TreasuryDetailedRecord{
 			TreasuryAssetID: cqRcd.ID,
 			BudgetType:      budgetType,
 			AssetName:       assetName,
@@ -143,7 +143,7 @@ func (*treasuryAssetHelper) ChangeCQTreasuryAssetValue(db *gorm.DB, budgetType B
 		tx.Save(&r)
 
 		return tx.Create(&TreasuryAuditLog{
-			TreasureDetailedRecordID: detailedRcd.ID,
+			TreasuryDetailedRecordID: detailedRcd.ID,
 			AuditUserWallet:          userWallet,
 			Action:                   "update",
 			Message:                  auditMsg,

@@ -40,7 +40,7 @@ func InitGormDB(dsn string) {
 		&model.Application{},
 		&model.ApplicationAuditLog{},
 		&model.TreasuryAsset{},
-		&model.TreasuryDetailedRecords{},
+		&model.TreasuryDetailedRecord{},
 		&model.TreasuryAuditLog{},
 	)
 	if err != nil {
