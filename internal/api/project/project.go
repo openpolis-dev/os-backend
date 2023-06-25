@@ -117,6 +117,17 @@ func Create(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
+
+	// Withdraw asset from treasure
+	for _, budget := range budgets {
+		err = model.TreasuryAssetHelper.WithdrawTreasureAsset(tx, budget.Type, budget.Name, budget.TotalAmount, user.Wallet, fmt.Sprintf("Create project %d by %s", proj.ID, user.Wallet))
+		if err != nil {
+			tx.Rollback()
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+			return
+		}
+	}
+
 	// commit transaction
 	tx.Commit()
 

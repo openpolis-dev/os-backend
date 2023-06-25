@@ -251,6 +251,19 @@ func doAuditApplicationInTransaction(tx *gorm.DB, operatorWallet string, applica
 				return err
 			}
 			project.Status = ProjectStatusClosed
+
+			// Deposit project remain budget back to treasure
+			budgets, err := ProjectBudgetModel.ListByProjectId(tx, project.ID)
+			if err != nil {
+				return err
+			}
+			for _, budget := range budgets {
+				err = TreasuryAssetHelper.DepositTreasureAsset(tx, budget.Type, budget.Name, budget.TotalAmount, operatorWallet, fmt.Sprintf("Close project %d by %s", project.ID, operatorWallet))
+				if err != nil {
+					return err
+				}
+			}
+
 			return tx.Save(project).Error
 		} else if application.Type == ApplicationNewReward {
 			// For new reward application, the `entity_type` is required to get related db table
