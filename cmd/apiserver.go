@@ -96,7 +96,10 @@ func main() {
 	{
 		// user routers
 		userGroup := v1.Group("/user")
+		userGroup.POST("/refresh_nonce", user.RefreshNonce)
+		userGroup.GET("/retrieve_nonce", user.RetrieveNonce)
 		userGroup.POST("/login", user.Login)
+		userGroup.POST("/login2", user.Login2)
 		userGroup.GET("/users", user.Users)
 		userGroup.GET("/casbin", user.GetFrontendPermission)
 
