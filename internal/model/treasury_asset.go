@@ -56,8 +56,16 @@ var TreasuryAssetHelper treasuryAssetHelper
 // GetOrCreateCurrQuarterRecord tries to get treasury record for current quarter, if not found a record with quarter num will be created and returned
 func (*treasuryAssetHelper) GetOrCreateCurrQuarterRecord(db *gorm.DB) (*TreasuryAsset, error) {
 	var r TreasuryAsset
-	err := db.FirstOrInit(&r, TreasuryAsset{QuarterNum: getCurrentQuarterNum()}).Error
-	return &r, err
+	rslt := db.FirstOrInit(&r, TreasuryAsset{QuarterNum: getCurrentQuarterNum()})
+	if rslt.Error != nil {
+		return nil, rslt.Error
+	} else if rslt.RowsAffected == 0 {
+		err := db.Save(&r).Error
+		if err != nil {
+			return nil, rslt.Error
+		}
+	}
+	return &r, nil
 }
 
 // GetCurrQuarterRecord gets the treasury record of current quarter and return not found error if no record found
@@ -77,12 +85,10 @@ func (*treasuryAssetHelper) UpsertCQTreasuryDetailedRecord(db *gorm.DB, budgetTy
 	r := TreasuryDetailedRecord{}
 	return db.Transaction(func(tx *gorm.DB) error {
 		// Search by treasury asset id and budget type, and init the record if not found
-		detailedRcd := TreasuryDetailedRecords{
+		rslt := tx.Where(TreasuryDetailedRecord{
 			TreasuryAssetID: cqRcd.ID,
 			BudgetType:      budgetType,
-		}
-
-		rslt := tx.Where(&detailedRcd).Attrs(TreasuryDetailedRecords{
+		}).Attrs(TreasuryDetailedRecord{
 			AssetName:    assetName,
 			TotalAmount:  totalAmount,
 			RemainAmount: int64(totalAmount),
@@ -92,15 +98,20 @@ func (*treasuryAssetHelper) UpsertCQTreasuryDetailedRecord(db *gorm.DB, budgetTy
 			return rslt.Error
 		} else if rslt.RowsAffected > 0 {
 			// Record found, need to update the total amount
-			detailedRcd.TotalAmount = totalAmount
-			err = tx.Save(&detailedRcd).Error
+			r.TotalAmount = totalAmount
+			err = tx.Save(&r).Error
 			if err != nil {
 				return err
+			}
+		} else if rslt.RowsAffected == 0 {
+			err := db.Save(&r).Error
+			if err != nil {
+				return rslt.Error
 			}
 		}
 
 		return tx.Create(&TreasuryAuditLog{
-			TreasureDetailedRecordID: detailedRcd.ID,
+			TreasuryDetailedRecordID: r.ID,
 			AuditUserWallet:          userWallet,
 			Action:                   "create",
 		}).Error
