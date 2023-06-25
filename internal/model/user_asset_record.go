@@ -26,7 +26,7 @@ type userAssetRecordModel struct{}
 var UserAssetRecordModel userAssetRecordModel
 
 func (*userAssetRecordModel) FindWithUserWalletAndAssetType(db *gorm.DB, userWallet string, budgetType BudgetType) ([]*UserAssetRecord, error) {
-	querySeg := db.Model(&UserAssetRecord{}).Where(&UserAssetRecord{UserWallet: userWallet, AssetType: budgetType})
+	querySeg := db.Where(&UserAssetRecord{UserWallet: userWallet, AssetType: budgetType})
 	return gormfind.Rows[UserAssetRecord](querySeg, nil)
 }
 
