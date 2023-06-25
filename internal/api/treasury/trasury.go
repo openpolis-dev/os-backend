@@ -45,6 +45,10 @@ func UpdateAssets(ctx *gin.Context) {
 		return nil
 	})
 
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+	}
+
 	currQuarterTreasuryRecord, err := model.TreasuryAssetHelper.GetOrCreateCurrQuarterRecord(db)
 	ctx.JSON(http.StatusOK, api.Success(currQuarterTreasuryRecord))
 }
