@@ -31,8 +31,7 @@ type userModel struct{}
 var UserModel userModel
 
 func (*userModel) CreateOrUpdate(db *gorm.DB, user *User) error {
-	tx := db.Save(user)
-	return tx.Error
+	return db.Save(user).Error
 }
 
 func (*userModel) Detail(db *gorm.DB, wallet string) (*User, error) {

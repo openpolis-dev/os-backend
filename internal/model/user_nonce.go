@@ -19,8 +19,7 @@ type userNonceModel struct{}
 var UserNonceModel userNonceModel
 
 func (*userNonceModel) CreateOrUpdate(db *gorm.DB, userNonce *UserNonce) error {
-	tx := db.Save(userNonce)
-	return tx.Error
+	return db.Save(userNonce).Error
 }
 
 func (*userNonceModel) Detail(db *gorm.DB, wallet string) (*UserNonce, error) {

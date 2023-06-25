@@ -28,8 +28,7 @@ func (*guildBudgetModel) Create(db *gorm.DB, budgets []*GuildBudget) error {
 }
 
 func (*guildBudgetModel) Update(db *gorm.DB, budget *GuildBudget) error {
-	tx := db.Save(budget)
-	return tx.Error
+	return db.Save(budget).Error
 }
 
 func (*guildBudgetModel) Detail(db *gorm.DB, id uint) (*GuildBudget, error) {

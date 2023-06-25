@@ -34,8 +34,7 @@ type projectModel struct{}
 var ProjectModel projectModel
 
 func (*projectModel) CreateOrUpdate(db *gorm.DB, proj *Project) error {
-	tx := db.Save(proj)
-	return tx.Error
+	return db.Save(proj).Error
 }
 
 func (*projectModel) Detail(db *gorm.DB, id uint) (*Project, error) {

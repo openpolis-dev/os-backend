@@ -35,8 +35,7 @@ func (*projectBudgetModel) Create(db *gorm.DB, budgets []*ProjectBudget) error {
 }
 
 func (*projectBudgetModel) Update(db *gorm.DB, budget *ProjectBudget) error {
-	tx := db.Save(budget)
-	return tx.Error
+	return db.Save(budget).Error
 }
 
 func (*projectBudgetModel) Detail(db *gorm.DB, id uint) (*ProjectBudget, error) {
