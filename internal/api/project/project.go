@@ -300,47 +300,6 @@ func Close(ctx *gin.Context) {
 		return tx.Save(project).Error
 	})
 
-	// remove policies
-	policies := [][]string{
-		// p, proj_sponsor_1, proj_1, modify
-		// p, proj_sponsor_1, proj_1, create_app
-		// p, proj_sponsor_1, proj_1, u_member
-		// p, proj_sponsor_1, proj_1, u_budget
-		{fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, project.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, project.ID), api.ActModify},
-		{fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, project.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, project.ID), api.ActCreateApplication},
-		{fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, project.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, project.ID), api.ActUpdateMember},
-		{fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, project.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, project.ID), api.ActUpdateBudget},
-		//// p, proj_member_1, proj_1, modify
-		//// p, proj_member_1, proj_1, create_app
-		//{fmt.Sprintf("%s%d", api.RoleProjMemberPrefix, project.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, project.ID), api.ActModify},
-		//{fmt.Sprintf("%s%d", api.RoleProjMemberPrefix, project.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, project.ID), api.ActCreateApplication},
-	}
-	_, err = enforcer.RemovePolicies(policies)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
-		return
-	}
-	// remove roles for sponsors
-	oldSponsorGroupingPolicies := lo.Map(project.Sponsors, func(sponsor string, _ int) []string {
-		// g, 0xc13..1283 proj_sponsor_1
-		return []string{sponsor, fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, project.ID)}
-	})
-	_, err = enforcer.RemoveGroupingPolicies(oldSponsorGroupingPolicies)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
-		return
-	}
-	//// remove roles for members
-	//oldMemberGroupingPolicies := lo.Map(project.Members, func(member string, _ int) []string {
-	//	// g, 0xc13..1283 proj_member_1
-	//	return []string{member, fmt.Sprintf("%s%d", api.RoleProjMemberPrefix, project.ID)}
-	//})
-	//_, err = enforcer.RemoveGroupingPolicies(oldMemberGroupingPolicies)
-	//if err != nil {
-	//	ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
-	//	return
-	//}
-
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.Reply{
 			Code: -1,

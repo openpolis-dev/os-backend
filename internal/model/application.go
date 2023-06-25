@@ -9,6 +9,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/rs/zerolog/log"
+	"github.com/samber/lo"
+	"github.com/theseed-labs/os-backend/internal/api"
+	"github.com/theseed-labs/os-backend/internal/sdk"
 	"github.com/xiaosongfu/gormfind"
 	"gorm.io/gorm"
 )
@@ -264,7 +268,50 @@ func doAuditApplicationInTransaction(tx *gorm.DB, operatorWallet string, applica
 				}
 			}
 
-			return tx.Save(project).Error
+			err = tx.Save(project).Error
+			if err != nil {
+				return err
+			}
+
+			// clean rbac
+			enforcer := api.ForContextOnlyEnforcer(ctx)
+			// remove policies
+			policies := [][]string{
+				// p, proj_sponsor_1, proj_1, modify
+				// p, proj_sponsor_1, proj_1, create_app
+				// p, proj_sponsor_1, proj_1, u_member
+				// p, proj_sponsor_1, proj_1, u_budget
+				{fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, project.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, project.ID), api.ActModify},
+				{fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, project.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, project.ID), api.ActCreateApplication},
+				{fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, project.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, project.ID), api.ActUpdateMember},
+				{fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, project.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, project.ID), api.ActUpdateBudget},
+				//// p, proj_member_1, proj_1, modify
+				//// p, proj_member_1, proj_1, create_app
+				//{fmt.Sprintf("%s%d", api.RoleProjMemberPrefix, project.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, project.ID), api.ActModify},
+				//{fmt.Sprintf("%s%d", api.RoleProjMemberPrefix, project.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, project.ID), api.ActCreateApplication},
+			}
+			_, err = enforcer.RemovePolicies(policies)
+			if err != nil {
+				return err
+			}
+			// remove roles for sponsors
+			oldSponsorGroupingPolicies := lo.Map(project.Sponsors, func(sponsor string, _ int) []string {
+				// g, 0xc13..1283 proj_sponsor_1
+				return []string{sponsor, fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, project.ID)}
+			})
+			_, err = enforcer.RemoveGroupingPolicies(oldSponsorGroupingPolicies)
+			if err != nil {
+				return err
+			}
+			//// remove roles for members
+			//oldMemberGroupingPolicies := lo.Map(project.Members, func(member string, _ int) []string {
+			//	// g, 0xc13..1283 proj_member_1
+			//	return []string{member, fmt.Sprintf("%s%d", api.RoleProjMemberPrefix, project.ID)}
+			//})
+			//_, err = enforcer.RemoveGroupingPolicies(oldMemberGroupingPolicies)
+			//if err != nil {
+			//	return err
+			//}
 		} else if application.Type == ApplicationNewReward {
 			// For new reward application, the `entity_type` is required to get related db table
 			// The main steps for the post complete operation are:
@@ -282,6 +329,17 @@ func doAuditApplicationInTransaction(tx *gorm.DB, operatorWallet string, applica
 					return err
 				}
 			}
+
+			// send notification
+			notificator := api.ForContextOnlyNotificator(ctx)
+			var users []string // lowercase wallet-address slice
+			go func(notificator sdk.Notificator, staffs []string, assertName string, amount int64) {
+				title, body, data := api.GenerateObtainAssertNotificationParams(assertName, amount)
+				err := notificator.PushTo(staffs, title, body, data)
+				if err != nil {
+					log.Error().Msgf("push to %+v failed: %s", staffs, err)
+				}
+			}(notificator, users, assertName, amount)
 		}
 	}
 
