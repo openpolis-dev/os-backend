@@ -9,9 +9,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// TODO: How to get passed in token name and budget type?
-
-func GetOrCreateCurrentBudget(ctx *gin.Context) {
+func GetOrCreateCurrentAssetRecords(ctx *gin.Context) {
 	db := api.ForContextOnlyDB(ctx)
 
 	currQuarterTreasuryRecord, err := model.TreasuryAssetHelper.GetOrCreateCurrQuarterRecord(db)
@@ -20,7 +18,7 @@ func GetOrCreateCurrentBudget(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, api.Success(currQuarterTreasuryRecord))
+	ctx.JSON(http.StatusOK, api.Success(currQuarterTreasuryRecord.ToTreasuryAssetsResponse()))
 }
 
 // UpdateAssets updates asset records of current quarter budget

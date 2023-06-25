@@ -49,6 +49,29 @@ type TreasuryAuditLog struct {
 	UpdatedAt time.Time `json:"updated_at" gorm:"autoUpdateTime"`
 }
 
+func (r *TreasuryAsset) ToTreasuryAssetsResponse() *TreasuryAssetsResponse {
+	var creditTotal, tokenTotal uint64
+	var creditRemain, tokenRemain int64
+	for _, detailedRcd := range r.DetailedRecords {
+		if detailedRcd.BudgetType == BudgetTypeCredit {
+			creditTotal += detailedRcd.TotalAmount
+			creditRemain += detailedRcd.RemainAmount
+		} else if detailedRcd.BudgetType == BudgetTypeToken {
+			tokenTotal += detailedRcd.TotalAmount
+			tokenRemain += detailedRcd.RemainAmount
+		}
+	}
+
+	return &TreasuryAssetsResponse{
+		ID:                 r.ID,
+		QuarterNum:         r.QuarterNum,
+		CreditTotalAmount:  creditTotal,
+		CreditRemainAmount: creditRemain,
+		TokenTotalAmount:   tokenTotal,
+		TokenRemainAmount:  tokenRemain,
+	}
+}
+
 type treasuryAssetHelper struct{}
 
 var TreasuryAssetHelper treasuryAssetHelper
@@ -56,7 +79,7 @@ var TreasuryAssetHelper treasuryAssetHelper
 // GetOrCreateCurrQuarterRecord tries to get treasury record for current quarter, if not found a record with quarter num will be created and returned
 func (*treasuryAssetHelper) GetOrCreateCurrQuarterRecord(db *gorm.DB) (*TreasuryAsset, error) {
 	var r TreasuryAsset
-	rslt := db.FirstOrInit(&r, TreasuryAsset{QuarterNum: getCurrentQuarterNum()})
+	rslt := db.Preload("DetailedRecords").FirstOrInit(&r, TreasuryAsset{QuarterNum: getCurrentQuarterNum()})
 	if rslt.Error != nil {
 		return nil, rslt.Error
 	} else if rslt.RowsAffected == 0 {

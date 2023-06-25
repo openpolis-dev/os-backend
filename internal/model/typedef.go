@@ -288,3 +288,12 @@ type UpdateAssetRequestParams struct {
 	BudgetType  BudgetType `json:"budget_type"`
 	TotalAmount uint64     `json:"total_amount"`
 }
+
+type TreasuryAssetsResponse struct {
+	ID                 uint   `json:"id"`
+	QuarterNum         string `json:"quarter_num"`
+	CreditTotalAmount  uint64 `json:"credit_total_amount"`
+	CreditRemainAmount int64  `json:"credit_remain_amount"`
+	TokenTotalAmount   uint64 `json:"token_total_amount"`
+	TokenRemainAmount  int64  `json:"token_remain_amount"`
+}

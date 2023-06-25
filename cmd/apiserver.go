@@ -124,7 +124,7 @@ func main() {
 
 		// SeeDAO assets routers
 		treasuryGroup := v1.Group("/treasury")
-		treasuryGroup.GET("/current", treasury.GetOrCreateCurrentBudget)
+		treasuryGroup.GET("/current", treasury.GetOrCreateCurrentAssetRecords)
 
 		// foo routers
 	}

@@ -389,7 +389,14 @@ paths:
           content:
             "application/json":
               schema:
-                $ref: "#/components/schemas/TreasuryAssetResponse"
+                type: object
+                properties:
+                  code:
+                    type: number
+                  msg:
+                    type: string
+                  data:
+                    $ref: "#/components/schemas/TreasuryAssetResponse"
 
 
   /treasury/update_assets:
@@ -412,7 +419,7 @@ paths:
                   budget_type:
                     type: string
                     description: Budget type of this record
-                    enum: [credit, coin]
+                    enum: [ credit, coin ]
                   total_amount:
                     type: number
                     description: Total amount of the asset
@@ -551,7 +558,7 @@ paths:
           schema:
             type: string
             description: state of applications
-            enum: [open, approved, rejected, processing, completed]
+            enum: [ open, approved, rejected, processing, completed ]
 
       responses:
         '200':
@@ -662,7 +669,7 @@ paths:
           description: specify file format for downloaded content
           schema:
             type: string
-            enum: [csv, json]
+            enum: [ csv, json ]
             default: csv
         - name: ids
           in: query
@@ -943,7 +950,7 @@ components:
         entity_name:
           type: string
           description: entity type of this application
-          enum: [project, guild]
+          enum: [ project, guild ]
         created_at:
           type: string
           description: when the application is created
@@ -984,7 +991,7 @@ components:
         transaction_ids:
           type: string
           description: transaction IDs for this reward, only shown for completed applications
-        
+
     User:
       type: object
       description: user information
@@ -1050,7 +1057,7 @@ components:
                     type: string
                   asset_type:
                     type: string
-                    enum: [credit, token]
+                    enum: [ credit, token ]
                     description: asset type of this record, should be credit or token
                   user_wallet:
                     type: string
@@ -1213,20 +1220,16 @@ components:
         quarter_num:
           type: string
           description: quarter number, in format yyyy0[1234]
-        detailed_records:
-          type: array
-          items:
-            type: object
-            properties:
-              budget_type:
-                type: string
-                description: Budget type of this record
-              asset_name:
-                type: string
-                description: asset name
-              total_amount:
-                type: number
-                description: total amount of this record in current quarter
-              remain_amount:
-                type: number
-                description: remain amount of this record in current quarter
+        credit_total_amount:
+          type: number
+          description: total credit amount
+        credit_remain_amount:
+          type: number
+          description: remain credit amount
+        token_total_amount:
+          type: number
+          description: total token amount
+        token_remain_amount:
+          type: number
+          description: remain token amount
+
