@@ -9,6 +9,7 @@ import (
 	"github.com/samber/lo"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/xiaosongfu/gormfind"
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
 
@@ -143,6 +144,13 @@ func GenerateFrontendApplicationRecords(db *gorm.DB, queryParams *ListApplicatio
 
 	if queryParams.Size == 0 {
 		queryParams.Size = api.DefaultPageSize
+	}
+
+	// TODO: Currently the key for detailed data is budget type, which will be changed to asset name in future, and this query should also be updated
+	if queryParams.UserWallet != "" {
+		querySeg = querySeg.
+			Where(datatypes.JSONQuery("detailed_data").Equals(queryParams.UserWallet, "credit", "user_wallet")).
+			Or(datatypes.JSONQuery("detailed_data").Equals(queryParams.UserWallet, "token", "user_wallet"))
 	}
 
 	gormFindPage := gormfind.Page{

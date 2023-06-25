@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/xiaosongfu/gormfind"
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
 
@@ -44,7 +45,7 @@ type Application struct {
 	// DetailedData saves application detailed data
 	// Currently the design is using this struct to save serialized detailed data for all applications.
 	// The data will be deserialized to specified struct before using
-	DetailedData []byte `json:"detailed_data,omitempty"`
+	DetailedData datatypes.JSON `json:"detailed_data,omitempty"`
 
 	// Entity means this application's refer, which maybe project or guild.
 	// And the field EntityId is the db record ID for Project or Guild table
