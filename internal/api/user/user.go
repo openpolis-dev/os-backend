@@ -106,7 +106,7 @@ type RefreshNonceReply struct {
 
 // RefreshNonce `POST /refresh_nonce`
 func RefreshNonce(ctx *gin.Context) {
-	req := LoginReq{}
+	req := RefreshNonceReq{}
 	err := ctx.BindJSON(&req)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
@@ -155,12 +155,12 @@ func RetrieveNonce(ctx *gin.Context) {
 		return
 	}
 
-	nonce := "no-login-request-recently"
-	if userNonce != nil {
-		nonce = userNonce.Nonce
+	if userNonce == nil {
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("no-login-request-recently")))
+		return
 	}
 
-	ctx.JSON(http.StatusOK, api.Success(RetrieveNonceReply{Nonce: nonce}))
+	ctx.JSON(http.StatusOK, api.Success(RetrieveNonceReply{Nonce: userNonce.Nonce}))
 }
 
 type Login2Req struct {
