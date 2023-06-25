@@ -1,6 +1,7 @@
 package project
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -221,6 +222,12 @@ func Update(ctx *gin.Context) {
 	}
 	if proj == nil {
 		ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("project %d not exist", id)))
+		return
+	}
+
+	// project can be updated only when its status is 'open'
+	if proj.Status != model.ProjectStatusOpen {
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("project %d can't be update", id)))
 		return
 	}
 
@@ -620,6 +627,12 @@ func UpdateStaffs(ctx *gin.Context) {
 		return
 	}
 
+	// project can be updated only when its status is 'open'
+	if proj.Status != model.ProjectStatusOpen {
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("project can't be update")))
+		return
+	}
+
 	// ------ ------ ------ ------ ------ ------ ------ ------ ------
 
 	if req.Action == "add" {
@@ -790,6 +803,22 @@ func UpdateBudget(ctx *gin.Context) {
 		return
 	}
 
+	proj, err := model.ProjectModel.Detail(db, uint(id))
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		return
+	}
+	if proj == nil {
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("project %d not exist", id)))
+		return
+	}
+
+	// project can be updated only when its status is 'open'
+	if proj.Status != model.ProjectStatusOpen {
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("project %d can't be update", id)))
+		return
+	}
+
 	budget, err := model.ProjectBudgetModel.Detail(db, req.Id)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
@@ -838,6 +867,12 @@ func AddRelatedProposal(ctx *gin.Context) {
 	}
 	if proj == nil {
 		ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("project %d not exist", id)))
+		return
+	}
+
+	// project can be updated only when its status is 'open'
+	if proj.Status != model.ProjectStatusOpen {
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("project %d can't be update", id)))
 		return
 	}
 
