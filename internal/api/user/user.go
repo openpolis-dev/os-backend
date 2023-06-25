@@ -3,12 +3,15 @@ package user
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
 	"time"
 
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/gin-gonic/gin"
+	"github.com/spruceid/siwe-go"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/middleware"
@@ -85,9 +88,162 @@ func Login(ctx *gin.Context) {
 	}))
 }
 
-// Logout `GET /logout`
+// Logout `POST /logout`
 func Logout(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, api.Success(nil))
+}
+
+// ------ ------ ------ ------ ------ ------ ------ ------ ------
+// ------ Sign in with Ethereum ------ ------
+
+type RefreshNonceReq struct {
+	Wallet string `json:"wallet"`
+}
+
+type RefreshNonceReply struct {
+	Nonce string `json:"nonce"`
+}
+
+// RefreshNonce `POST /refresh_nonce`
+func RefreshNonce(ctx *gin.Context) {
+	req := LoginReq{}
+	err := ctx.BindJSON(&req)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
+		return
+	}
+
+	db := api.ForContextOnlyDB(ctx)
+
+	userNonce, err := model.UserNonceModel.Detail(db, req.Wallet)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		return
+	}
+
+	// new nonce and refreshAt
+	nonce := siwe.GenerateNonce()
+	refreshAt := time.Now().UnixMilli()
+	// update with new value
+	if userNonce == nil {
+		userNonce = &model.UserNonce{Wallet: req.Wallet}
+	}
+	userNonce.Nonce = nonce
+	userNonce.RefreshAt = refreshAt
+	err = model.UserNonceModel.CreateOrUpdate(db, userNonce)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, api.Success(RefreshNonceReply{Nonce: nonce}))
+}
+
+type RetrieveNonceReply struct {
+	Nonce string `json:"nonce"`
+}
+
+// RetrieveNonce `GET /retrieve_nonce?wallet=0x123
+func RetrieveNonce(ctx *gin.Context) {
+	wallet := ctx.Query("wallet")
+
+	db := api.ForContextOnlyDB(ctx)
+
+	userNonce, err := model.UserNonceModel.RecentNonce(db, wallet, 10*1000) // timeout is 10s
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		return
+	}
+
+	nonce := "no-login-request-recently"
+	if userNonce != nil {
+		nonce = userNonce.Nonce
+	}
+
+	ctx.JSON(http.StatusOK, api.Success(RetrieveNonceReply{Nonce: nonce}))
+}
+
+type Login2Req struct {
+	Wallet    string `json:"wallet" binding:"required"`
+	Domain    string `json:"domain" binding:"required"`
+	Message   string `json:"message" binding:"required"`
+	Signature string `json:"signature" binding:"required"`
+}
+
+// Login2 `POST /login2`
+func Login2(ctx *gin.Context) {
+	req := Login2Req{}
+	err := ctx.BindJSON(&req)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
+		return
+	}
+
+	_, _, db, cfg := api.ForContext(ctx)
+
+	// verify sign
+	// --> query nonce
+	userNonce, err := model.UserNonceModel.RecentNonce(db, strings.ToLower(req.Wallet), 10*1000) // timeout is 10s
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		return
+	}
+	if userNonce == nil {
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("please refresh nonce firstly")))
+		return
+	}
+	// --> verify signature
+	message, err := siwe.ParseMessage(req.Message)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
+		return
+	}
+	timestamp := time.Now()
+	publicKey, err := message.Verify(req.Signature, &req.Domain, &userNonce.Nonce, &timestamp)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
+		return
+	}
+	if !strings.EqualFold(req.Wallet, crypto.PubkeyToAddress(*publicKey).Hex()) {
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("signature not match")))
+		return
+	}
+
+	// query user
+	user, err := model.UserModel.Detail(db, strings.ToLower(req.Wallet))
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		return
+	}
+	if user == nil {
+		user = &model.User{
+			Wallet: strings.ToLower(req.Wallet),
+		}
+		err = model.UserModel.CreateOrUpdate(db, user)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+			return
+		}
+	}
+
+	// generate jwt token
+	token, tokenExp, err := common.GenerateJwtToken[middleware.CurUser](
+		&middleware.CurUser{
+			Wallet: user.Wallet,
+		},
+		time.Duration(cfg.Jwt.Exp)*time.Hour,
+		cfg.Jwt.Secret,
+	)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, api.Success(LoginReply{
+		Token:    token,
+		TokenExp: tokenExp,
+		User:     user,
+	}))
 }
 
 // ------ ------ ------ ------ ------ ------ ------ ------ ------

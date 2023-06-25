@@ -31,6 +31,7 @@ func InitGormDB(dsn string) {
 	// Migrate the schema
 	err = gormDB.AutoMigrate(
 		&model.User{},
+		&model.UserNonce{},
 		&model.UserAssetRecord{},
 		&model.Project{},
 		&model.ProjectBudget{},
