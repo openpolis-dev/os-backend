@@ -111,6 +111,14 @@ func ForContextUserAndNotificator(ctx *gin.Context) (user *middleware.CurUser, n
 	return
 }
 
+// ForContextDBAndConfig read `DB Config` from `Context`
+func ForContextDBAndConfig(ctx *gin.Context) (db *gorm.DB, cfg *config.Config) {
+	db, _ = ctx.Value(middleware.DBKey).(*gorm.DB)
+	cfg, _ = ctx.Value(middleware.CfgKey).(*config.Config)
+
+	return
+}
+
 // ------ ------ ------ ------ ------ ------ ------ ------ ------
 // ------ ------ ------ ------ ------ ------ ------ ------ ------
 

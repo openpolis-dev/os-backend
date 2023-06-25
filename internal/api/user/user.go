@@ -2,6 +2,7 @@ package user
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,13 +10,16 @@ import (
 	"strings"
 	"time"
 
+	eth_common "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/gin-gonic/gin"
 	"github.com/spruceid/siwe-go"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/middleware"
 	"github.com/theseed-labs/os-backend/internal/model"
+	unipass_sigverify "github.com/unipassid/unipass-sigverify-go"
 )
 
 // ------ ------ ------ ------ ------ ------ ------ ------ ------
@@ -147,9 +151,9 @@ type RetrieveNonceReply struct {
 func RetrieveNonce(ctx *gin.Context) {
 	wallet := ctx.Query("wallet")
 
-	db := api.ForContextOnlyDB(ctx)
+	db, cfg := api.ForContextDBAndConfig(ctx)
 
-	userNonce, err := model.UserNonceModel.RecentNonce(db, wallet, 10*1000) // timeout is 10s
+	userNonce, err := model.UserNonceModel.RecentNonce(db, wallet, cfg.Auth.NonceLifespan)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
@@ -164,10 +168,11 @@ func RetrieveNonce(ctx *gin.Context) {
 }
 
 type Login2Req struct {
-	Wallet    string `json:"wallet" binding:"required"`
-	Domain    string `json:"domain" binding:"required"`
-	Message   string `json:"message" binding:"required"`
-	Signature string `json:"signature" binding:"required"`
+	Wallet     string `json:"wallet" binding:"required"`
+	WalletType string `json:"wallet_type" binding:"required"`
+	Domain     string `json:"domain" binding:"required"`
+	Message    string `json:"message" binding:"required"`
+	Signature  string `json:"signature" binding:"required"`
 }
 
 // Login2 `POST /login2`
@@ -183,7 +188,7 @@ func Login2(ctx *gin.Context) {
 
 	// verify sign
 	// --> query nonce
-	userNonce, err := model.UserNonceModel.RecentNonce(db, strings.ToLower(req.Wallet), 10*1000) // timeout is 10s
+	userNonce, err := model.UserNonceModel.RecentNonce(db, strings.ToLower(req.Wallet), cfg.Auth.NonceLifespan)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
@@ -192,21 +197,43 @@ func Login2(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("please refresh nonce firstly")))
 		return
 	}
-	// --> verify signature
-	message, err := siwe.ParseMessage(req.Message)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
-		return
-	}
-	timestamp := time.Now()
-	publicKey, err := message.Verify(req.Signature, &req.Domain, &userNonce.Nonce, &timestamp)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
-		return
-	}
-	if !strings.EqualFold(req.Wallet, crypto.PubkeyToAddress(*publicKey).Hex()) {
-		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("signature not match")))
-		return
+	if strings.EqualFold(req.WalletType, "EOA") {
+		// --> verify signature
+		message, err := siwe.ParseMessage(req.Message)
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
+			return
+		}
+		timestamp := time.Now()
+		publicKey, err := message.Verify(req.Signature, &req.Domain, &userNonce.Nonce, &timestamp)
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
+			return
+		}
+		if !strings.EqualFold(req.Wallet, crypto.PubkeyToAddress(*publicKey).Hex()) {
+			ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("signature not match")))
+			return
+		}
+	} else if strings.EqualFold(req.WalletType, "AA") {
+		client, err := ethclient.Dial(cfg.Auth.PolygonRPC)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+			return
+		}
+
+		account := eth_common.HexToAddress(req.Wallet)
+		sig := eth_common.FromHex(req.Signature)
+		msg := []byte(req.Message)
+
+		ok, err := unipass_sigverify.VerifyMessageSignature(context.Background(), account, msg, sig, true, client)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+			return
+		}
+		if !ok {
+			ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("signature not match")))
+			return
+		}
 	}
 
 	// query user

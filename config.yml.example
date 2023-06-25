@@ -3,7 +3,11 @@ dataSource:
 
 jwt:
   secret: <placeholder>
-  exp: 24 # unit is hour
+  exp: 24 # unit is hour `24h`
+
+auth:
+  polygonRPC: https://polygon.llamarpc.com
+  nonceLifespan: 45_000 # unit is milliseconds `45000ms=45s`
 
 casbin:
   driverName: mysql

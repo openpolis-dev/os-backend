@@ -12,8 +12,9 @@ import (
 )
 
 type Config struct {
-	Jwt          jwt          `json:"jwt" yaml:"jwt"`
 	DataSource   dataSource   `json:"dataSource" yaml:"dataSource"`
+	Jwt          jwt          `json:"jwt" yaml:"jwt"`
+	Auth         auth         `json:"auth" yaml:"auth"`
 	Casbin       casbin       `json:"casbin" yaml:"casbin"`
 	Notification notification `json:"notification" yaml:"notification"`
 }
@@ -25,6 +26,10 @@ type (
 	jwt struct {
 		Secret string `json:"secret" yaml:"secret" env:"JWT_SECRET,overwrite"`
 		Exp    int    `json:"exp" yaml:"exp" env:"JWT_EXP,overwrite"`
+	}
+	auth struct {
+		PolygonRPC    string `json:"polygonRPC" yaml:"polygonRPC"`
+		NonceLifespan int64  `json:"nonceLifespan" yaml:"nonceLifespan"`
 	}
 	casbin struct {
 		DriverName string   `json:"driverName" yaml:"driverName"`
