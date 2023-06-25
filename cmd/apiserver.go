@@ -125,7 +125,6 @@ func main() {
 		// SeeDAO assets routers
 		treasuryGroup := v1.Group("/treasury")
 		treasuryGroup.GET("/current", treasury.GetOrCreateCurrentBudget)
-		treasuryGroup.POST("/update_assets", treasury.UpdateAssets)
 
 		// foo routers
 	}
@@ -172,6 +171,10 @@ func main() {
 		authorizedGroup.POST("/apps_reject", application.BatchReject)
 		authorizedGroup.POST("/apps_process", application.BatchProcess)
 		authorizedGroup.POST("/apps_complete", application.BatchComplete)
+
+		// SeeDAO assets routers
+		treasuryGroup := authorizedGroup.Group("/treasury")
+		treasuryGroup.POST("/update_assets", treasury.UpdateAssets)
 
 		// foo routers
 	}
