@@ -379,6 +379,51 @@ paths:
         200:
           description: proposal added to project successfully
 
+  /treasury/current:
+    get:
+      tags: [ treasury ]
+      description: get current quarter treasury record
+      responses:
+        '200':
+          description: return current budget record
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/TreasuryAssetResponse"
+
+
+  /treasury/update_assets:
+    post:
+      tags: [ treasury ]
+      description: >
+        update assets total amount of current quarter record, if record with given budget type and asset name 
+        is not existing, a new record will be created
+      requestBody:
+        content:
+          "application/json":
+            schema:
+              type: array
+              items:
+                type: object
+                properties:
+                  asset_name:
+                    type: string
+                    description: Name of the assets
+                  budget_type:
+                    type: string
+                    description: Budget type of this record
+                    enum: [credit, coin]
+                  total_amount:
+                    type: number
+                    description: Total amount of the asset
+      responses:
+        '200':
+          description: asset records has been updated successfully
+          content:
+            'application/json':
+              schema:
+                $ref: "#/components/schemas/TreasuryAssetResponse"
+
   #  /projects/{id}/new_reward_request:
   #    post:
   #      tags: [ project ]
@@ -1159,3 +1204,29 @@ components:
           type: string
           description: other comment of this application
 
+    TreasuryAssetResponse:
+      type: object
+      properties:
+        id:
+          type: number
+          description: treasury asset record ID
+        quarter_num:
+          type: string
+          description: quarter number, in format yyyy0[1234]
+        detailed_records:
+          type: array
+          items:
+            type: object
+            properties:
+              budget_type:
+                type: string
+                description: Budget type of this record
+              asset_name:
+                type: string
+                description: asset name
+              total_amount:
+                type: number
+                description: total amount of this record in current quarter
+              remain_amount:
+                type: number
+                description: remain amount of this record in current quarter

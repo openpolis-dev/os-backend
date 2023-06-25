@@ -12,6 +12,7 @@ import (
 	"github.com/theseed-labs/os-backend/internal/api/application"
 	"github.com/theseed-labs/os-backend/internal/api/guild"
 	"github.com/theseed-labs/os-backend/internal/api/project"
+	"github.com/theseed-labs/os-backend/internal/api/treasury"
 	"github.com/theseed-labs/os-backend/internal/api/user"
 	"github.com/theseed-labs/os-backend/internal/config"
 	"github.com/theseed-labs/os-backend/internal/middleware"
@@ -121,6 +122,10 @@ func main() {
 		v1.GET("/download_applications", application.Download)
 		v1.GET("/get_applications_upload_template", application.DownloadUploadTemplate)
 
+		// SeeDAO assets routers
+		treasuryGroup := v1.Group("/treasury")
+		treasuryGroup.GET("/current", treasury.GetOrCreateCurrentBudget)
+
 		// foo routers
 	}
 	// --> auth required
@@ -166,6 +171,10 @@ func main() {
 		authorizedGroup.POST("/apps_reject", application.BatchReject)
 		authorizedGroup.POST("/apps_process", application.BatchProcess)
 		authorizedGroup.POST("/apps_complete", application.BatchComplete)
+
+		// SeeDAO assets routers
+		treasuryGroup := authorizedGroup.Group("/treasury")
+		treasuryGroup.POST("/update_assets", treasury.UpdateAssets)
 
 		// foo routers
 	}

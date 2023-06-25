@@ -282,3 +282,9 @@ type jointAppGuildRslt struct {
 func (r *jointAppGuildRslt) ToFrontedApplicationRecord(db *gorm.DB) *FrontendApplicationRecord {
 	return nil
 }
+
+type UpdateAssetRequestParams struct {
+	AssetName   string     `json:"asset_name"`
+	BudgetType  BudgetType `json:"budget_type"`
+	TotalAmount uint64     `json:"total_amount"`
+}
