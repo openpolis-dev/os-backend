@@ -1,0 +1,12 @@
+{
+  "join_proj_title": "加入项目",
+  "join_proj_body": "你被添加到 %s 项目",
+  "quit_proj_title": "离开项目",
+  "quit_proj_body": "你被从 %s 项目移除",
+  "join_guild_title": "加入工会",
+  "join_guild_body": "你被添加到 %s 工会",
+  "quit_guild_title": "离开工会",
+  "quit_guild_body": "你被从 %s 工会移除",
+  "obtain_assert_title": "获得新积分",
+  "obtain_assert_body": "获得 %d %s"
+}

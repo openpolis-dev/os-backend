@@ -26,12 +26,12 @@ const (
 */
 func GenerateProjectStaffAddNotificationParams(projectID uint, projectName string) (title *onesignal.StringMap, body *onesignal.StringMap, data map[string]any) {
 	title = &onesignal.StringMap{}
-	title.SetEn("Join Project")
-	title.SetZhHans("加入项目")
+	title.SetEn("Project notification")
+	title.SetZhHans("项目提示")
 
 	body = &onesignal.StringMap{}
-	body.SetEn(fmt.Sprintf("You ard added to Project %s", projectName))
-	body.SetZhHans(fmt.Sprintf("You ard added to Project %s", projectName))
+	body.SetEn(fmt.Sprintf("You have been added to %s project", projectName))
+	body.SetZhHans(fmt.Sprintf("你已被添加为 %s 项目的成员", projectName))
 
 	data = map[string]any{
 		"type": NotificationTypeProjStaffAdd,
@@ -46,12 +46,12 @@ func GenerateProjectStaffAddNotificationParams(projectID uint, projectName strin
 // GenerateProjectStaffRemoveNotificationParams generate params for project's staff removed.
 func GenerateProjectStaffRemoveNotificationParams(projectID uint, projectName string) (title *onesignal.StringMap, body *onesignal.StringMap, data map[string]any) {
 	title = &onesignal.StringMap{}
-	title.SetEn("Quit Project")
-	title.SetZhHans("退出项目")
+	title.SetEn("Project notification")
+	title.SetZhHans("项目提示")
 
 	body = &onesignal.StringMap{}
-	body.SetEn(fmt.Sprintf("You ard removed from Project %s", projectName))
-	body.SetZhHans(fmt.Sprintf("You ard removed from Project %s", projectName))
+	body.SetEn(fmt.Sprintf("x %s", projectName))
+	body.SetZhHans(fmt.Sprintf("x %s", projectName))
 
 	data = map[string]any{
 		"type": NotificationTypeProjStaffRemove,
@@ -74,12 +74,12 @@ func GenerateProjectStaffRemoveNotificationParams(projectID uint, projectName st
 */
 func GenerateGuildStaffAddNotificationParams(guildID uint, guildName string) (title *onesignal.StringMap, body *onesignal.StringMap, data map[string]any) {
 	title = &onesignal.StringMap{}
-	title.SetEn("Join Guild")
-	title.SetZhHans("加入工会")
+	title.SetEn("Guild notification")
+	title.SetZhHans("公会提示")
 
 	body = &onesignal.StringMap{}
-	body.SetEn(fmt.Sprintf("You ard added to Guild %s", guildName))
-	body.SetZhHans(fmt.Sprintf("You ard added to Guild %s", guildName))
+	body.SetEn(fmt.Sprintf("You have been added to %s guild", guildName))
+	body.SetZhHans(fmt.Sprintf("你已被添加为 %s 公会的成员", guildName))
 
 	data = map[string]any{
 		"type": NotificationTypeGuildStaffAdd,
@@ -94,12 +94,12 @@ func GenerateGuildStaffAddNotificationParams(guildID uint, guildName string) (ti
 // GenerateGuildStaffRemoveNotificationParams generate params for guild's staff removed.
 func GenerateGuildStaffRemoveNotificationParams(guildID uint, guildName string) (title *onesignal.StringMap, body *onesignal.StringMap, data map[string]any) {
 	title = &onesignal.StringMap{}
-	title.SetEn("Quit Guild")
-	title.SetZhHans("退出工会")
+	title.SetEn("Guild notification")
+	title.SetZhHans("公会提示")
 
 	body = &onesignal.StringMap{}
-	body.SetEn(fmt.Sprintf("You ard removed from Guild %s", guildName))
-	body.SetZhHans(fmt.Sprintf("You ard removed from Guild %s", guildName))
+	body.SetEn(fmt.Sprintf("x %s", guildName))
+	body.SetZhHans(fmt.Sprintf("x %s", guildName))
 
 	data = map[string]any{
 		"type": NotificationTypeGuildStaffRemove,
@@ -122,11 +122,11 @@ func GenerateGuildStaffRemoveNotificationParams(guildID uint, guildName string) 
 }
 */
 func GenerateObtainAssertNotificationParams(assertName string, amount int64) (title *onesignal.StringMap, body *onesignal.StringMap, data map[string]any) {
-	title.SetEn("Assert Obtained")
-	title.SetZhHans("Assert Obtained")
+	title.SetEn("Personal assets")
+	title.SetZhHans("个人资产")
 
-	body.SetEn(fmt.Sprintf("You have obtained %d %s", amount, assertName))
-	body.SetZhHans(fmt.Sprintf("You have obtained %d %s", amount, assertName))
+	body.SetEn(fmt.Sprintf("%d %s received", amount, assertName))
+	body.SetZhHans(fmt.Sprintf("已收到 %d %s", amount, assertName))
 
 	data = map[string]any{
 		"type": NotificationTypeObtainAssert,
