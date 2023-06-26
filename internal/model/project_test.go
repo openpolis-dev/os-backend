@@ -62,8 +62,63 @@ var _ = Describe("Project", func() {
 			Expect(carolPrjCnt).To(BeEquivalentTo(0))
 			Expect(len(carolPrjs)).To(Equal(0))
 		})
+	})
 
-		It("Can set budget correctly", func() {
+	Describe("Budget related functions", func() {
+		var prjRcd model.Project
+		BeforeEach(func() {
+			prjRcd = model.Project{
+				Logo:     "logo",
+				Name:     "test project",
+				Status:   model.ProjectStatusOpen,
+				Sponsors: []string{aliceWallet},
+				Members:  []string{bobWallet},
+			}
+			_ = model.ProjectModel.CreateOrUpdate(db, &prjRcd)
 		})
+
+		It("can set budget correctly", func() {
+			err := model.ProjectModel.SetBudget(db, prjRcd.ID, token1Type, token1Name, 100)
+			Expect(err).To(BeNil())
+
+			budgetRecord, err := model.ProjectBudgetModel.QueryByProjectIdAndBudgetProps(db, prjRcd.ID, token1Type, token1Name)
+			Expect(err).To(BeNil())
+			Expect(budgetRecord.TotalAmount).To(BeEquivalentTo(100))
+			Expect(budgetRecord.RemainAmount).To(BeEquivalentTo(100))
+		})
+
+		It("can withdraw budget correctly", func() {
+			_ = model.ProjectModel.SetBudget(db, prjRcd.ID, token1Type, token1Name, 100)
+
+			err := model.ProjectModel.WithdrawBudget(db, prjRcd.ID, token1Type, token1Name, 50)
+			Expect(err).To(BeNil())
+
+			budgetRecord, err := model.ProjectBudgetModel.QueryByProjectIdAndBudgetProps(db, prjRcd.ID, token1Type, token1Name)
+			Expect(err).To(BeNil())
+			Expect(budgetRecord.TotalAmount).To(BeEquivalentTo(100))
+			Expect(budgetRecord.RemainAmount).To(BeEquivalentTo(50))
+		})
+		It("update project budget record after deposit successfully", func() {
+			_ = model.ProjectModel.SetBudget(db, prjRcd.ID, token1Type, token1Name, 100)
+			_ = model.ProjectModel.WithdrawBudget(db, prjRcd.ID, token1Type, token1Name, 50)
+
+			err := model.ProjectModel.DepositBudget(db, prjRcd.ID, token1Type, token1Name, 20)
+			Expect(err).To(BeNil())
+
+			budgetRecord, err := model.ProjectBudgetModel.QueryByProjectIdAndBudgetProps(db, prjRcd.ID, token1Type, token1Name)
+			Expect(err).To(BeNil())
+			Expect(budgetRecord.TotalAmount).To(BeEquivalentTo(100))
+			Expect(budgetRecord.RemainAmount).To(BeEquivalentTo(70))
+		})
+		It("create budget record if deposit to non-existing asset", func() {
+			err := model.ProjectModel.DepositBudget(db, prjRcd.ID, token2Type, token2Name, 20)
+			Expect(err).To(BeNil())
+
+			budgetRecord, err := model.ProjectBudgetModel.QueryByProjectIdAndBudgetProps(db, prjRcd.ID, token2Type, token2Name)
+			Expect(err).To(BeNil())
+			Expect(budgetRecord.TotalAmount).To(BeEquivalentTo(20))
+			Expect(budgetRecord.RemainAmount).To(BeEquivalentTo(20))
+		})
+
 	})
 })

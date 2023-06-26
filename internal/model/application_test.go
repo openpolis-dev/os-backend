@@ -426,9 +426,9 @@ var _ = Describe("Application", func() {
 				budgetRecords, _ := model.ProjectBudgetModel.ListByProjectId(db, openProject.ID)
 				for _, r := range budgetRecords {
 					if r.Type == token1Type {
-						Expect(r.RemainAmount).To(Equal(r.TotalAmount - 10)) // 100-10
+						Expect(r.RemainAmount).To(BeEquivalentTo(r.TotalAmount - 10)) // 100-10
 					} else if r.Type == token2Type {
-						Expect(r.RemainAmount).To(Equal(r.TotalAmount))
+						Expect(r.RemainAmount).To(BeEquivalentTo(r.TotalAmount))
 					}
 				}
 			})
