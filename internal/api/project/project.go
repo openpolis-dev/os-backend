@@ -109,7 +109,7 @@ func Create(ctx *gin.Context) {
 			Type:         item.BudgetType,
 			AssetName:    item.Name,
 			TotalAmount:  item.TotalAmount,
-			RemainAmount: item.TotalAmount,
+			RemainAmount: int64(item.TotalAmount),
 		}
 	})
 	err = model.ProjectBudgetModel.Create(tx, budgets)
