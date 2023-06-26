@@ -25,25 +25,26 @@ type userAssetRecordModel struct{}
 
 var UserAssetRecordModel userAssetRecordModel
 
-func (*userAssetRecordModel) FindWithUserWalletAndAssetType(db *gorm.DB, userWallet string, budgetType BudgetType) ([]*UserAssetRecord, error) {
-	querySeg := db.Where(&UserAssetRecord{UserWallet: userWallet, AssetType: budgetType})
+func (*userAssetRecordModel) FindWithUserWalletAndAssetProps(db *gorm.DB, userWallet string, assetType BudgetType, assetName string) ([]*UserAssetRecord, error) {
+	querySeg := db.Where(&UserAssetRecord{UserWallet: userWallet, AssetType: assetType, AssetName: assetName})
 	return gormfind.Rows[UserAssetRecord](querySeg, nil)
 }
 
-func (*userAssetRecordModel) CreateOrUpdate(db *gorm.DB, userWallet string, assetType BudgetType, processingAmount, dealtAmount uint64) error {
-	assetRecords, err := UserAssetRecordModel.FindWithUserWalletAndAssetType(db, userWallet, assetType)
+func (*userAssetRecordModel) CreateOrUpdate(db *gorm.DB, userWallet string, assetType BudgetType, assetName string, processingAmount, dealtAmount uint64) error {
+	assetRecords, err := UserAssetRecordModel.FindWithUserWalletAndAssetProps(db, userWallet, assetType, assetName)
 	if err != nil {
 		return err
 	}
 
 	if len(assetRecords) > 1 {
-		return fmt.Errorf("user %s has more than one record for asset type %s, please contract admin", userWallet, assetType)
+		return fmt.Errorf("user %s has more than one record for asset type %s.%s, please contract admin", userWallet, assetName, assetType)
 	}
 
 	if len(assetRecords) == 0 {
 		return db.Save(&UserAssetRecord{
 			UserWallet:       userWallet,
 			AssetType:        assetType,
+			AssetName:        assetName,
 			DealtAmount:      dealtAmount,
 			ProcessingAmount: processingAmount,
 		}).Error
@@ -55,8 +56,8 @@ func (*userAssetRecordModel) CreateOrUpdate(db *gorm.DB, userWallet string, asse
 }
 
 // Rollback extracts processing and dealt amount from records
-func (*userAssetRecordModel) Rollback(db *gorm.DB, userWallet string, assetType BudgetType, processingAmount, dealtAmount uint64) error {
-	assetRecords, err := UserAssetRecordModel.FindWithUserWalletAndAssetType(db, userWallet, assetType)
+func (*userAssetRecordModel) Rollback(db *gorm.DB, userWallet string, assetType BudgetType, assetName string, processingAmount, dealtAmount uint64) error {
+	assetRecords, err := UserAssetRecordModel.FindWithUserWalletAndAssetProps(db, userWallet, assetType, assetName)
 	if err != nil {
 		return err
 	}
@@ -71,8 +72,8 @@ func (*userAssetRecordModel) Rollback(db *gorm.DB, userWallet string, assetType 
 	return db.Save(assetRecords).Error
 }
 
-func (*userAssetRecordModel) CompleteAssetTransaction(db *gorm.DB, userWallet string, assetType BudgetType, amountToBeDealt uint64) error {
-	assetRecords, err := UserAssetRecordModel.FindWithUserWalletAndAssetType(db, userWallet, assetType)
+func (*userAssetRecordModel) CompleteAssetTransaction(db *gorm.DB, userWallet string, assetType BudgetType, assetName string, amountToBeDealt uint64) error {
+	assetRecords, err := UserAssetRecordModel.FindWithUserWalletAndAssetProps(db, userWallet, assetType, assetName)
 	if err != nil {
 		return err
 	}

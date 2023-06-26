@@ -409,7 +409,7 @@ var _ = Describe("Application", func() {
 				err := model.AuditApplication(db, carolWallet, &app, model.AuditActionProcess, "")
 				Expect(err).To(BeNil())
 
-				userAssetRcd, err := model.UserAssetRecordModel.FindWithUserWalletAndAssetType(db, daveWallet, token1Type)
+				userAssetRcd, err := model.UserAssetRecordModel.FindWithUserWalletAndAssetProps(db, daveWallet, token1Type, token1Name)
 				Expect(err).To(BeNil())
 
 				Expect(len(userAssetRcd)).To(Equal(1))
@@ -457,7 +457,7 @@ var _ = Describe("Application", func() {
 				err := model.AuditApplication(db, carolWallet, &app, model.AuditActionComplete, "")
 				Expect(err).To(BeNil())
 
-				userAssetRcd, err := model.UserAssetRecordModel.FindWithUserWalletAndAssetType(db, daveWallet, token1Type)
+				userAssetRcd, err := model.UserAssetRecordModel.FindWithUserWalletAndAssetProps(db, daveWallet, token1Type, token1Name)
 				Expect(err).To(BeNil())
 
 				Expect(len(userAssetRcd)).To(Equal(1))

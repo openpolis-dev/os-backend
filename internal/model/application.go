@@ -218,7 +218,7 @@ func doAuditApplicationInTransaction(tx *gorm.DB, operatorWallet string, applica
 					}
 
 					// Update user asset record
-					if err := UserAssetRecordModel.CreateOrUpdate(tx, detail.TargetUserWallet, budgetType, detail.Amount, 0); err != nil {
+					if err := UserAssetRecordModel.CreateOrUpdate(tx, detail.TargetUserWallet, budgetType, detail.AssetName, detail.Amount, 0); err != nil {
 						return err
 					}
 				}
@@ -279,7 +279,7 @@ func doAuditApplicationInTransaction(tx *gorm.DB, operatorWallet string, applica
 
 			for budgetType, detail := range detailedData {
 				// Update user asset record
-				if err := UserAssetRecordModel.CompleteAssetTransaction(tx, detail.TargetUserWallet, budgetType, detail.Amount); err != nil {
+				if err := UserAssetRecordModel.CompleteAssetTransaction(tx, detail.TargetUserWallet, budgetType, detail.AssetName, detail.Amount); err != nil {
 					return err
 				}
 			}
