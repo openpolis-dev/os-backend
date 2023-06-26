@@ -29,7 +29,9 @@ type NewApplicationRequest struct {
 	Entity           string `json:"entity"`
 	EntityId         uint   `json:"entity_id"`
 	TargetUserWallet string `json:"target_user_wallet"`
+	CreditAssetName  string `json:"credit_asset_name"`
 	CreditAmount     uint64 `json:"credit_amount"`
+	TokenAssetName   string `json:"token_asset_name"`
 	TokenAmount      uint64 `json:"token_amount"`
 	DetailedType     string `json:"detailed_type"`
 	Comment          string `json:"comment"`
@@ -150,15 +152,18 @@ func Create(ctx *gin.Context) {
 
 			if appType == model.ApplicationNewReward {
 				rewardDetailedData := model.NewRewardApplicationDetailedData{
-					model.BudgetTypeCredit: {
-						TargetUserWallet: req.TargetUserWallet,
-						AssetType:        model.BudgetTypeCredit,
-						Amount:           req.CreditAmount,
-					},
-					model.BudgetTypeToken: {
-						TargetUserWallet: req.TargetUserWallet,
-						AssetType:        model.BudgetTypeToken,
-						Amount:           req.TokenAmount,
+					TargetUserWallet: req.TargetUserWallet,
+					Assets: map[string]model.NewRewardAssetRecord{
+						req.CreditAssetName: {
+							AssetType: model.BudgetTypeCredit,
+							AssetName: req.CreditAssetName,
+							Amount:    req.CreditAmount,
+						},
+						req.TokenAssetName: {
+							AssetType: model.BudgetTypeToken,
+							AssetName: req.TokenAssetName,
+							Amount:    req.TokenAmount,
+						},
 					},
 				}
 

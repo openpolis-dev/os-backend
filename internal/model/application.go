@@ -216,14 +216,14 @@ func doAuditApplicationInTransaction(tx *gorm.DB, operatorWallet string, applica
 					return err
 				}
 
-				for budgetType, detail := range detailedData {
+				for assetName, assetRecord := range detailedData.Assets {
 					// Update project budget
-					if err := ProjectModel.WithdrawBudget(tx, application.EntityId, budgetType, detail.AssetName, detail.Amount); err != nil {
+					if err := ProjectModel.WithdrawBudget(tx, application.EntityId, assetRecord.AssetType, assetName, assetRecord.Amount); err != nil {
 						return err
 					}
 
 					// Update user asset record
-					if err := UserAssetRecordModel.CreateOrUpdate(tx, detail.TargetUserWallet, budgetType, detail.AssetName, detail.Amount, 0); err != nil {
+					if err := UserAssetRecordModel.CreateOrUpdate(tx, detailedData.TargetUserWallet, assetRecord.AssetType, assetName, assetRecord.Amount, 0); err != nil {
 						return err
 					}
 				}
@@ -234,14 +234,14 @@ func doAuditApplicationInTransaction(tx *gorm.DB, operatorWallet string, applica
 					return err
 				}
 
-				for budgetType, detail := range detailedData {
+				for assetName, assetRecord := range detailedData.Assets {
 					// Update guild budget
-					if err := GuildModel.WithdrawBudget(tx, application.EntityId, budgetType, detail.AssetName, detail.Amount); err != nil {
+					if err := GuildModel.WithdrawBudget(tx, application.EntityId, assetRecord.AssetType, assetName, assetRecord.Amount); err != nil {
 						return err
 					}
 
 					// Update user asset record
-					if err := UserAssetRecordModel.CreateOrUpdate(tx, detail.TargetUserWallet, budgetType, detail.AssetName, detail.Amount, 0); err != nil {
+					if err := UserAssetRecordModel.CreateOrUpdate(tx, detailedData.TargetUserWallet, assetRecord.AssetType, assetName, assetRecord.Amount, 0); err != nil {
 						return err
 					}
 				}
@@ -326,9 +326,9 @@ func doAuditApplicationInTransaction(tx *gorm.DB, operatorWallet string, applica
 				return err
 			}
 
-			for budgetType, detail := range detailedData {
+			for assetName, assetRecord := range detailedData.Assets {
 				// Update user asset record
-				if err := UserAssetRecordModel.CompleteAssetTransaction(tx, detail.TargetUserWallet, budgetType, detail.AssetName, detail.Amount); err != nil {
+				if err := UserAssetRecordModel.CompleteAssetTransaction(tx, detailedData.TargetUserWallet, assetRecord.AssetType, assetName, assetRecord.Amount); err != nil {
 					return err
 				}
 
@@ -340,7 +340,7 @@ func doAuditApplicationInTransaction(tx *gorm.DB, operatorWallet string, applica
 						if err != nil {
 							log.Error().Msgf("push to %+v failed: %s", staffs, err)
 						}
-					}(notificator, []string{strings.ToLower(detail.TargetUserWallet)}, detail.AssetName, int64(detail.Amount))
+					}(notificator, []string{strings.ToLower(detailedData.TargetUserWallet)}, assetRecord.AssetName, int64(assetRecord.Amount))
 				}
 			}
 		}
