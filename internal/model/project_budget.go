@@ -17,7 +17,7 @@ const (
 type ProjectBudget struct {
 	ID           uint       `json:"id" gorm:"primaryKey"`
 	ProjectID    uint       `json:"project_id"` // project_id
-	Name         string     `json:"name"`
+	AssetName    string     `json:"name"`
 	Type         BudgetType `json:"type"`          // budget type, credit or token
 	TotalAmount  uint64     `json:"total_amount"`  // total_amount
 	RemainAmount uint64     `json:"remain_amount"` // remain_amount

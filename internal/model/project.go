@@ -87,7 +87,7 @@ func (*projectModel) SetBudget(db *gorm.DB, projectId uint, budgetType BudgetTyp
 		if budgetRecord == nil {
 			budgetRecord = &ProjectBudget{
 				ProjectID:    projectId,
-				Name:         assertName,
+				AssetName:    assertName,
 				Type:         budgetType,
 				TotalAmount:  totalAmount,
 				RemainAmount: totalAmount,
@@ -100,7 +100,7 @@ func (*projectModel) SetBudget(db *gorm.DB, projectId uint, budgetType BudgetTyp
 	})
 }
 
-func (*projectModel) WithdrawBudget(db *gorm.DB, projectId uint, budgetType BudgetType, tokenName string, tokenAmount uint64) error {
+func (*projectModel) WithdrawBudget(db *gorm.DB, projectId uint, budgetType BudgetType, assetName string, tokenAmount uint64) error {
 	return db.Transaction(func(tx *gorm.DB) error {
 		budgetRcd, err := ProjectBudgetModel.QueryByProjectIdAndBudgetType(tx, projectId, budgetType)
 		if err != nil {
@@ -108,11 +108,11 @@ func (*projectModel) WithdrawBudget(db *gorm.DB, projectId uint, budgetType Budg
 		}
 
 		if budgetRcd == nil {
-			return fmt.Errorf("project %d has no budget record with asset %s", projectId, tokenName)
+			return fmt.Errorf("project %d has no budget record with asset %s", projectId, assetName)
 		}
 
 		if budgetRcd.RemainAmount < tokenAmount {
-			return fmt.Errorf("project %d has insufficient budget record with asset %s", projectId, tokenName)
+			return fmt.Errorf("project %d has insufficient budget record with asset %s", projectId, assetName)
 		}
 
 		budgetRcd.RemainAmount -= tokenAmount
@@ -121,7 +121,7 @@ func (*projectModel) WithdrawBudget(db *gorm.DB, projectId uint, budgetType Budg
 }
 
 // DepositBudget deposits budget back to project, e.g. application for reward has been rejected
-func (*projectModel) DepositBudget(db *gorm.DB, projectId uint, budgetType BudgetType, tokenName string, tokenAmount uint64) error {
+func (*projectModel) DepositBudget(db *gorm.DB, projectId uint, budgetType BudgetType, assetName string, tokenAmount uint64) error {
 	return db.Transaction(func(tx *gorm.DB) error {
 		budgetRcd, err := ProjectBudgetModel.QueryByProjectIdAndBudgetType(tx, projectId, budgetType)
 		if err != nil {
@@ -131,7 +131,7 @@ func (*projectModel) DepositBudget(db *gorm.DB, projectId uint, budgetType Budge
 		if budgetRcd == nil {
 			return tx.Save(&ProjectBudget{
 				ProjectID:    projectId,
-				Name:         tokenName,
+				AssetName:    assetName,
 				Type:         budgetType,
 				TotalAmount:  tokenAmount,
 				RemainAmount: tokenAmount,

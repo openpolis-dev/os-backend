@@ -107,7 +107,7 @@ func Create(ctx *gin.Context) {
 		return &model.ProjectBudget{
 			ProjectID:    proj.ID,
 			Type:         item.BudgetType,
-			Name:         item.Name,
+			AssetName:    item.Name,
 			TotalAmount:  item.TotalAmount,
 			RemainAmount: item.TotalAmount,
 		}
@@ -121,7 +121,7 @@ func Create(ctx *gin.Context) {
 
 	// Withdraw asset from treasure
 	for _, budget := range budgets {
-		err = model.TreasuryAssetHelper.WithdrawTreasureAsset(tx, budget.Type, budget.Name, budget.TotalAmount, user.Wallet, fmt.Sprintf("Create project %d by %s", proj.ID, user.Wallet))
+		err = model.TreasuryAssetHelper.WithdrawTreasureAsset(tx, budget.Type, budget.AssetName, budget.TotalAmount, user.Wallet, fmt.Sprintf("Create project %d by %s", proj.ID, user.Wallet))
 		if err != nil {
 			tx.Rollback()
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))

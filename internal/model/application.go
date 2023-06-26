@@ -259,7 +259,7 @@ func doAuditApplicationInTransaction(tx *gorm.DB, operatorWallet string, applica
 				return err
 			}
 			for _, budget := range budgets {
-				err = TreasuryAssetHelper.DepositTreasureAsset(tx, budget.Type, budget.Name, budget.TotalAmount, operatorWallet, fmt.Sprintf("Close project %d by %s", project.ID, operatorWallet))
+				err = TreasuryAssetHelper.DepositTreasureAsset(tx, budget.Type, budget.AssetName, budget.TotalAmount, operatorWallet, fmt.Sprintf("Close project %d by %s", project.ID, operatorWallet))
 				if err != nil {
 					return err
 				}

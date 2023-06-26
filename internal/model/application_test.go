@@ -244,7 +244,7 @@ var _ = Describe("Application", func() {
 				Expect(len(budgetRcds)).To(BeEquivalentTo(2))
 
 				tokenNameAmountList := lo.Map(budgetRcds, func(r *model.ProjectBudget, _ int) map[string]uint64 {
-					return map[string]uint64{r.Name: r.TotalAmount}
+					return map[string]uint64{r.AssetName: r.TotalAmount}
 				})
 				Expect(tokenNameAmountList).To(ConsistOf([]map[string]uint64{{token1Name: 100}, {token2Name: 200}}))
 			})
@@ -276,7 +276,7 @@ var _ = Describe("Application", func() {
 				budgetRcds, _ := model.ProjectBudgetModel.ListByProjectId(db, openProject.ID)
 				Expect(len(budgetRcds)).To(Equal(2))
 				tokenNameAmountList := lo.Map(budgetRcds, func(r *model.ProjectBudget, _ int) map[string]uint64 {
-					return map[string]uint64{r.Name: r.TotalAmount}
+					return map[string]uint64{r.AssetName: r.TotalAmount}
 				})
 				Expect(tokenNameAmountList).To(ConsistOf([]map[string]uint64{{token1Name: 100}, {token2Name: 200}}))
 			})
