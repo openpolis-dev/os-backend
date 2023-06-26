@@ -9,6 +9,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/casbin/casbin/v2"
+	"github.com/rs/zerolog/log"
+	"github.com/samber/lo"
+	"github.com/theseed-labs/os-backend/internal/api"
+	"github.com/theseed-labs/os-backend/internal/sdk"
 	"github.com/xiaosongfu/gormfind"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
@@ -103,7 +108,7 @@ func (app *Application) nextStateAfterAction(action AuditActionType) Application
 }
 
 // AuditApplication applies audit action on application and create related audit log in transaction
-func AuditApplication(db *gorm.DB, operatorWallet string, application *Application, action AuditActionType, extraMsg string) error {
+func AuditApplication(db *gorm.DB, operatorWallet string, application *Application, action AuditActionType, extraMsg string, enforcer *casbin.Enforcer, notificator sdk.Notificator) error {
 	// Check application record, verify whether the action can be applied on the application
 	if !application.ValidateAuditAction(action) {
 		// TODO: Define the error message as project constant
@@ -130,7 +135,7 @@ func AuditApplication(db *gorm.DB, operatorWallet string, application *Applicati
 	}
 
 	return db.Transaction(func(tx *gorm.DB) error {
-		return doAuditApplicationInTransaction(tx, operatorWallet, application, action, extraMsg)
+		return doAuditApplicationInTransaction(tx, operatorWallet, application, action, extraMsg, enforcer, notificator)
 	})
 }
 
@@ -151,7 +156,7 @@ func BatchAuditApplication(db *gorm.DB, operatorWallet string, applications *[]A
 
 	return db.Transaction(func(tx *gorm.DB) error {
 		for _, application := range *applications {
-			err = doAuditApplicationInTransaction(tx, operatorWallet, &application, action, extraMsg)
+			err = doAuditApplicationInTransaction(tx, operatorWallet, &application, action, extraMsg, nil, nil)
 			if err != nil {
 				return err
 			}
@@ -160,7 +165,7 @@ func BatchAuditApplication(db *gorm.DB, operatorWallet string, applications *[]A
 	})
 }
 
-func doAuditApplicationInTransaction(tx *gorm.DB, operatorWallet string, application *Application, action AuditActionType, extraMsg string) error {
+func doAuditApplicationInTransaction(tx *gorm.DB, operatorWallet string, application *Application, action AuditActionType, extraMsg string, enforcer *casbin.Enforcer, notificator sdk.Notificator) error {
 	nextState := application.nextStateAfterAction(action)
 
 	// Create audit log for application
@@ -265,7 +270,51 @@ func doAuditApplicationInTransaction(tx *gorm.DB, operatorWallet string, applica
 				}
 			}
 
-			return tx.Save(project).Error
+			err = tx.Save(project).Error
+			if err != nil {
+				return err
+			}
+
+			// clean rbac if passed in enforcer
+			if enforcer != nil {
+				// remove policies
+				policies := [][]string{
+					// p, proj_sponsor_1, proj_1, modify
+					// p, proj_sponsor_1, proj_1, create_app
+					// p, proj_sponsor_1, proj_1, u_member
+					// p, proj_sponsor_1, proj_1, u_budget
+					{fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, project.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, project.ID), api.ActModify},
+					{fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, project.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, project.ID), api.ActCreateApplication},
+					{fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, project.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, project.ID), api.ActUpdateMember},
+					{fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, project.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, project.ID), api.ActUpdateBudget},
+					//// p, proj_member_1, proj_1, modify
+					//// p, proj_member_1, proj_1, create_app
+					//{fmt.Sprintf("%s%d", api.RoleProjMemberPrefix, project.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, project.ID), api.ActModify},
+					//{fmt.Sprintf("%s%d", api.RoleProjMemberPrefix, project.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, project.ID), api.ActCreateApplication},
+				}
+				_, err = enforcer.RemovePolicies(policies)
+				if err != nil {
+					return err
+				}
+				// remove roles for sponsors
+				oldSponsorGroupingPolicies := lo.Map(project.Sponsors, func(sponsor string, _ int) []string {
+					// g, 0xc13..1283 proj_sponsor_1
+					return []string{sponsor, fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, project.ID)}
+				})
+				_, err = enforcer.RemoveGroupingPolicies(oldSponsorGroupingPolicies)
+				if err != nil {
+					return err
+				}
+				//// remove roles for members
+				//oldMemberGroupingPolicies := lo.Map(project.Members, func(member string, _ int) []string {
+				//	// g, 0xc13..1283 proj_member_1
+				//	return []string{member, fmt.Sprintf("%s%d", api.RoleProjMemberPrefix, project.ID)}
+				//})
+				//_, err = enforcer.RemoveGroupingPolicies(oldMemberGroupingPolicies)
+				//if err != nil {
+				//	return err
+				//}
+			}
 		} else if application.Type == ApplicationNewReward {
 			// For new reward application, the `entity_type` is required to get related db table
 			// The main steps for the post complete operation are:
@@ -281,6 +330,17 @@ func doAuditApplicationInTransaction(tx *gorm.DB, operatorWallet string, applica
 				// Update user asset record
 				if err := UserAssetRecordModel.CompleteAssetTransaction(tx, detail.TargetUserWallet, budgetType, detail.AssetName, detail.Amount); err != nil {
 					return err
+				}
+
+				// send notification in separated coroutines if passed in notificator
+				if notificator != nil {
+					go func(notificator sdk.Notificator, staffs []string, assertName string, amount int64) {
+						title, body, data := api.GenerateObtainAssertNotificationParams(assertName, amount)
+						err := notificator.PushTo(staffs, title, body, data)
+						if err != nil {
+							log.Error().Msgf("push to %+v failed: %s", staffs, err)
+						}
+					}(notificator, []string{strings.ToLower(detail.TargetUserWallet)}, detail.AssetName, int64(detail.Amount))
 				}
 			}
 		}

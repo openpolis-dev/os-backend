@@ -485,6 +485,7 @@ func auditApplication(ctx *gin.Context, application *model.Application, auditAct
 	getRecordOrReturnNotFound(ctx, application)
 
 	user, enforcer, db, _ := api.ForContext(ctx)
+	notificator := api.ForContextOnlyNotificator(ctx)
 
 	//  check permission: `(0x..., proj_and_guild, audit_app)`
 	ok, err := enforcer.Enforce(user.Wallet, api.ObjProjAndGuild, api.ActAuditApplication)
@@ -498,7 +499,7 @@ func auditApplication(ctx *gin.Context, application *model.Application, auditAct
 	}
 
 	if application.ValidateAuditAction(auditAction) {
-		err = model.AuditApplication(db, user.Wallet, application, auditAction, auditMsg)
+		err = model.AuditApplication(db, user.Wallet, application, auditAction, auditMsg, enforcer, notificator)
 		if err != nil {
 			ctx.JSON(http.StatusBadRequest, api.Reply{
 				Code: -1,
