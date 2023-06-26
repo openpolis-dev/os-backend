@@ -236,7 +236,7 @@ func doAuditApplicationInTransaction(tx *gorm.DB, operatorWallet string, applica
 					}
 
 					// Update user asset record
-					if err := UserAssetRecordModel.CreateOrUpdate(tx, application.Applicant, budgetType, detail.Amount, 0); err != nil {
+					if err := UserAssetRecordModel.CreateOrUpdate(tx, detail.TargetUserWallet, budgetType, detail.AssetName, detail.Amount, 0); err != nil {
 						return err
 					}
 				}
