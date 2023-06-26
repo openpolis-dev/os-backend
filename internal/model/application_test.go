@@ -9,30 +9,6 @@ import (
 	"github.com/theseed-labs/os-backend/internal/model"
 )
 
-const (
-	aliceWallet = "0x_alice_wallet"
-	bobWallet   = "0x_bob_wallet"
-	carolWallet = "0x_carol_wallet"
-	daveWallet  = "0x_dave_wallet"
-
-	token1Type = model.BudgetTypeCredit
-	token1Name = "TTT"
-	token2Type = model.BudgetTypeToken
-	token2Name = "AAT"
-	token3Name = "42T"
-)
-
-var openProject, pendingCloseProject, closedProject *model.Project
-
-var tables = []any{
-	&model.Application{},
-	&model.ApplicationAuditLog{},
-	&model.Project{},
-	&model.ProjectBudget{},
-	&model.User{},
-	&model.UserAssetRecord{},
-}
-
 var _ = Describe("Application", func() {
 
 	// Before each `It` execution, create the table and init project data
@@ -52,7 +28,8 @@ var _ = Describe("Application", func() {
 	AfterEach(func() {
 		_ = db.Migrator().DropTable(tables...)
 	})
-	Describe("Test application detailed data", func() {
+
+	Describe("Validate application detailed data", func() {
 		var app model.Application
 
 		BeforeEach(func() {
