@@ -179,7 +179,7 @@ var _ = Describe("Application", func() {
 				preLatestAuditLog, _ := app.GetLatestAuditLog(db)
 				Expect(preLatestAuditLog.PostState).To(BeEquivalentTo(model.ApplicationStateOpen))
 
-				err := model.AuditApplication(db, carolWallet, &app, model.AuditActionApprove, "")
+				err := model.AuditApplication(db, carolWallet, &app, model.AuditActionApprove, "", nil, nil)
 				Expect(err).To(BeNil())
 
 				project, _ := model.ProjectModel.Detail(db, openProject.ID)
@@ -200,7 +200,7 @@ var _ = Describe("Application", func() {
 			})
 			It("should return error if project is not in pending_close status", func() {
 				db.Model(&openProject).Update("status", model.ApplicationStateOpen)
-				Expect(model.AuditApplication(db, carolWallet, &app, model.AuditActionApprove, "")).NotTo(BeNil())
+				Expect(model.AuditApplication(db, carolWallet, &app, model.AuditActionApprove, "", nil, nil)).NotTo(BeNil())
 			})
 		})
 		When("to approve new reward application", func() {
@@ -251,7 +251,7 @@ var _ = Describe("Application", func() {
 			It("should update application status to approved and create new audit log", func() {
 				preLatestAuditLog, _ := app.GetLatestAuditLog(db)
 				Expect(preLatestAuditLog.PostState).To(BeEquivalentTo(model.ApplicationStateOpen))
-				_ = model.AuditApplication(db, carolWallet, &app, model.AuditActionApprove, "")
+				_ = model.AuditApplication(db, carolWallet, &app, model.AuditActionApprove, "", nil, nil)
 
 				project, _ := model.ProjectModel.Detail(db, openProject.ID)
 				Expect(project.Status).To(BeEquivalentTo(model.ProjectStatusOpen))
@@ -268,11 +268,11 @@ var _ = Describe("Application", func() {
 				openProject.Status = model.ProjectStatusPendingClose
 				db.Save(&openProject)
 
-				err := model.AuditApplication(db, carolWallet, &app, model.AuditActionApprove, "")
+				err := model.AuditApplication(db, carolWallet, &app, model.AuditActionApprove, "", nil, nil)
 				Expect(err).NotTo(BeNil())
 			})
 			It("should not change project budget record", func() {
-				_ = model.AuditApplication(db, carolWallet, &app, model.AuditActionApprove, "")
+				_ = model.AuditApplication(db, carolWallet, &app, model.AuditActionApprove, "", nil, nil)
 				budgetRcds, _ := model.ProjectBudgetModel.ListByProjectId(db, openProject.ID)
 				Expect(len(budgetRcds)).To(Equal(2))
 				tokenNameAmountList := lo.Map(budgetRcds, func(r *model.ProjectBudget, _ int) map[string]uint64 {
@@ -317,7 +317,7 @@ var _ = Describe("Application", func() {
 			It("should update application state to rejected", func() {
 				preLatestAuditLog, _ := app.GetLatestAuditLog(db)
 				Expect(preLatestAuditLog.PostState).To(BeEquivalentTo(model.ApplicationStateOpen))
-				err := model.AuditApplication(db, carolWallet, &app, model.AuditActionReject, "test reason")
+				err := model.AuditApplication(db, carolWallet, &app, model.AuditActionReject, "test reason", nil, nil)
 				Expect(err).To(BeNil())
 
 				project, _ := model.ProjectModel.Detail(db, openProject.ID)
@@ -334,7 +334,7 @@ var _ = Describe("Application", func() {
 			})
 			It("should return error if application state is not open", func() {
 				db.Model(&app).Update("state", model.ApplicationStateApproved)
-				err := model.AuditApplication(db, carolWallet, &app, model.AuditActionReject, "test reason")
+				err := model.AuditApplication(db, carolWallet, &app, model.AuditActionReject, "test reason", nil, nil)
 				Expect(err).NotTo(BeNil())
 			})
 		})
@@ -372,13 +372,13 @@ var _ = Describe("Application", func() {
 
 				db.Save(&app)
 
-				_ = model.AuditApplication(db, carolWallet, &app, model.AuditActionApprove, "")
+				_ = model.AuditApplication(db, carolWallet, &app, model.AuditActionApprove, "", nil, nil)
 			})
 			It("should update application status to processing and create new audit log", func() {
 				preLatestAuditLog, _ := app.GetLatestAuditLog(db)
 				Expect(preLatestAuditLog.PostState).To(BeEquivalentTo(model.ApplicationStateApproved))
 
-				err := model.AuditApplication(db, carolWallet, &app, model.AuditActionProcess, "")
+				err := model.AuditApplication(db, carolWallet, &app, model.AuditActionProcess, "", nil, nil)
 				Expect(err).To(BeNil())
 
 				project, _ := model.ProjectModel.Detail(db, openProject.ID)
@@ -393,7 +393,7 @@ var _ = Describe("Application", func() {
 				Expect(postLatestAuditLog.PostState).To(BeEquivalentTo(model.ApplicationStateProcessing))
 			})
 			It("should update project budget remain amount", func() {
-				err := model.AuditApplication(db, carolWallet, &app, model.AuditActionProcess, "")
+				err := model.AuditApplication(db, carolWallet, &app, model.AuditActionProcess, "", nil, nil)
 				Expect(err).To(BeNil())
 
 				budgetRecords, _ := model.ProjectBudgetModel.ListByProjectId(db, openProject.ID)
@@ -406,7 +406,7 @@ var _ = Describe("Application", func() {
 				}
 			})
 			It("should add to processing amount of user asset record", func() {
-				err := model.AuditApplication(db, carolWallet, &app, model.AuditActionProcess, "")
+				err := model.AuditApplication(db, carolWallet, &app, model.AuditActionProcess, "", nil, nil)
 				Expect(err).To(BeNil())
 
 				userAssetRcd, err := model.UserAssetRecordModel.FindWithUserWalletAndAssetType(db, daveWallet, token1Type)
@@ -450,11 +450,11 @@ var _ = Describe("Application", func() {
 				app.DetailedData = detailedDataByte
 				db.Save(&app)
 
-				_ = model.AuditApplication(db, carolWallet, &app, model.AuditActionApprove, "")
-				_ = model.AuditApplication(db, carolWallet, &app, model.AuditActionProcess, "")
+				_ = model.AuditApplication(db, carolWallet, &app, model.AuditActionApprove, "", nil, nil)
+				_ = model.AuditApplication(db, carolWallet, &app, model.AuditActionProcess, "", nil, nil)
 			})
 			It("should add to processing amount of user asset record", func() {
-				err := model.AuditApplication(db, carolWallet, &app, model.AuditActionComplete, "")
+				err := model.AuditApplication(db, carolWallet, &app, model.AuditActionComplete, "", nil, nil)
 				Expect(err).To(BeNil())
 
 				userAssetRcd, err := model.UserAssetRecordModel.FindWithUserWalletAndAssetType(db, daveWallet, token1Type)
