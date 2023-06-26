@@ -52,6 +52,56 @@ var _ = Describe("Application", func() {
 	AfterEach(func() {
 		_ = db.Migrator().DropTable(tables...)
 	})
+	Describe("Test application detailed data", func() {
+		var app model.Application
+
+		BeforeEach(func() {
+			app = model.Application{
+				Type:       model.MustParseApplicationType("new_reward"),
+				Applicant:  aliceWallet,
+				State:      model.ApplicationStateOpen,
+				EntityType: "project",
+				EntityId:   openProject.ID,
+			}
+
+			// Create correct application before testing
+			_ = model.NewApplicationRecord(db, &app)
+
+			// Set budget for project
+			_ = model.ProjectModel.SetBudget(db, openProject.ID, token1Type, token1Name, 100)
+			_ = model.ProjectModel.SetBudget(db, openProject.ID, token2Type, token2Name, 200)
+
+			// For new_reward application, detailed data is required for reward detail
+			detailedData := model.NewRewardApplicationDetailedData{
+				token1Type: {
+					ApplicationID:    app.ID,
+					TargetUserWallet: daveWallet,
+					AssetType:        token1Type,
+					AssetName:        token1Name,
+					Amount:           10,
+				},
+			}
+			detailedDataByte, _ := json.Marshal(detailedData)
+			app.DetailedData = detailedDataByte
+			db.Save(&app)
+		})
+		When("new reward application", func() {
+			It("should return correct user target wallet ", func() {
+				detailedData := model.NewRewardApplicationDetailedData{}
+				err := json.Unmarshal(app.DetailedData, &detailedData)
+				Expect(err).To(BeNil())
+
+				Expect(detailedData.GetTargetUserWallet()).To(BeEquivalentTo(daveWallet))
+				token1Amount, token1Found := detailedData.AmountOfBudgetType(token1Type)
+				Expect(token1Amount).To(BeEquivalentTo(10))
+				Expect(token1Found).To(Equal(true))
+
+				token2Amount, token2Found := detailedData.AmountOfBudgetType(token2Type)
+				Expect(token2Amount).To(BeEquivalentTo(0))
+				Expect(token2Found).To(Equal(false))
+			})
+		})
+	})
 
 	Describe("Invoking NewApplicationRecord function", func() {
 		When("to create close project application", func() {
