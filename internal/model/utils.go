@@ -23,6 +23,9 @@ func NewApplicationRecord(db *gorm.DB, application *Application) error {
 			if err != nil {
 				return err
 			}
+			if project == nil {
+				return fmt.Errorf("project with id %d not found", application.EntityId)
+			}
 
 			if project.Status != ProjectStatusOpen {
 				return fmt.Errorf("project related applications can only be applied on project in open state, detail : %+v", application)
