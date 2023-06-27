@@ -39,6 +39,7 @@ func UpdateAssets(ctx *gin.Context) {
 	err = ctx.Bind(&updateParams)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
+		return
 	}
 
 	err = db.Transaction(func(tx *gorm.DB) error {

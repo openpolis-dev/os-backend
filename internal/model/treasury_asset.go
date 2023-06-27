@@ -95,7 +95,11 @@ func (*treasuryAssetHelper) GetOrCreateCurrQuarterRecord(db *gorm.DB) (*Treasury
 func (*treasuryAssetHelper) GetCurrQuarterRecord(db *gorm.DB) (*TreasuryAsset, error) {
 	var r TreasuryAsset
 	err := db.Where(&r, TreasuryAsset{QuarterNum: getCurrentQuarterNum()}).First(&r).Error
-	return &r, err
+	if err == gorm.ErrRecordNotFound {
+		return nil, fmt.Errorf("treasury asset record not found for current quarter, contract admin to create it first")
+	} else {
+		return &r, err
+	}
 }
 
 // UpsertCQTreasuryDetailedRecord creates treasury detailed record and related create audit log
@@ -162,22 +166,26 @@ func (*treasuryAssetHelper) ChangeCQTreasuryAssetValue(db *gorm.DB, budgetType B
 	r := TreasuryDetailedRecord{}
 	return db.Transaction(func(tx *gorm.DB) error {
 		// Search by treasury asset id and budget type, and init the record if not found
-		detailedRcd := TreasuryDetailedRecord{
+		detailedRcdQuery := TreasuryDetailedRecord{
 			TreasuryAssetID: cqRcd.ID,
 			BudgetType:      budgetType,
 			AssetName:       assetName,
 		}
 
-		err = tx.Where(&detailedRcd).First(&r).Error
+		err = tx.Where(&detailedRcdQuery).First(&r).Error
 		if err != nil {
-			return err
+			if err == gorm.ErrRecordNotFound {
+				return fmt.Errorf("treasury has no record for asset %s, contract admin to prepare it in advanced", assetName)
+			} else {
+				return err
+			}
 		}
 
 		r.RemainAmount -= deltaValue
 		tx.Save(&r)
 
 		return tx.Create(&TreasuryAuditLog{
-			TreasuryDetailedRecordID: detailedRcd.ID,
+			TreasuryDetailedRecordID: r.ID,
 			AuditUserWallet:          userWallet,
 			Action:                   "update",
 			Message:                  auditMsg,
