@@ -23,20 +23,6 @@ type AuditRequestBody struct {
 	Message string `json:"message"`
 }
 
-// NewApplicationRequest is used to save new application request data passed from frontend
-type NewApplicationRequest struct {
-	Type             string `json:"type"`
-	Entity           string `json:"entity"`
-	EntityId         uint   `json:"entity_id"`
-	TargetUserWallet string `json:"target_user_wallet"`
-	CreditAssetName  string `json:"credit_asset_name"`
-	CreditAmount     uint64 `json:"credit_amount"`
-	TokenAssetName   string `json:"token_asset_name"`
-	TokenAmount      uint64 `json:"token_amount"`
-	DetailedType     string `json:"detailed_type"`
-	Comment          string `json:"comment"`
-}
-
 // ListApplicants list all applicants existing in applications table for filter
 func ListApplicants(ctx *gin.Context) {
 	var err error
@@ -96,7 +82,7 @@ func List(ctx *gin.Context) {
 // An audit log record will be created with application at same time with action open
 // POST /applications/
 func Create(ctx *gin.Context) {
-	var newApplicationReqs []NewApplicationRequest
+	var newApplicationReqs []model.NewApplicationRequest
 	if err := ctx.BindJSON(&newApplicationReqs); err != nil {
 		if err != nil {
 			ctx.JSON(http.StatusBadRequest, api.Reply{

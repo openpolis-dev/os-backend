@@ -295,3 +295,17 @@ type TreasuryAssetsResponse struct {
 	TokenTotalAmount   uint64 `json:"token_total_amount"`
 	TokenRemainAmount  int64  `json:"token_remain_amount"`
 }
+
+// NewApplicationRequest is used to save new application request data passed from frontend
+type NewApplicationRequest struct {
+	Type             string `json:"type"`
+	Entity           string `json:"entity"`
+	EntityId         uint   `json:"entity_id"`
+	TargetUserWallet string `json:"target_user_wallet"`
+	CreditAssetName  string `json:"credit_asset_name"`
+	CreditAmount     uint64 `json:"credit_amount"`
+	TokenAssetName   string `json:"token_asset_name"`
+	TokenAmount      uint64 `json:"token_amount"`
+	DetailedType     string `json:"detailed_type"`
+	Comment          string `json:"comment"`
+}
