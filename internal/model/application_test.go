@@ -50,12 +50,13 @@ var _ = Describe("Application", func() {
 
 			// For new_reward application, detailed data is required for reward detail
 			detailedData := model.NewRewardApplicationDetailedData{
-				token1Type: {
-					ApplicationID:    app.ID,
-					TargetUserWallet: daveWallet,
-					AssetType:        token1Type,
-					AssetName:        token1Name,
-					Amount:           10,
+				TargetUserWallet: daveWallet,
+				Assets: map[string]model.NewRewardAssetRecord{
+					token1Name: {
+						AssetType: token1Type,
+						AssetName: token1Name,
+						Amount:    10,
+					},
 				},
 			}
 			detailedDataByte, _ := json.Marshal(detailedData)
@@ -68,12 +69,12 @@ var _ = Describe("Application", func() {
 				err := json.Unmarshal(app.DetailedData, &detailedData)
 				Expect(err).To(BeNil())
 
-				Expect(detailedData.GetTargetUserWallet()).To(BeEquivalentTo(daveWallet))
-				token1Amount, token1Found := detailedData.AmountOfBudgetType(token1Type)
+				Expect(detailedData.TargetUserWallet).To(BeEquivalentTo(daveWallet))
+				token1Amount, token1Found := detailedData.AmountOfAssetType(token1Type)
 				Expect(token1Amount).To(BeEquivalentTo(10))
 				Expect(token1Found).To(Equal(true))
 
-				token2Amount, token2Found := detailedData.AmountOfBudgetType(token2Type)
+				token2Amount, token2Found := detailedData.AmountOfAssetType(token2Type)
 				Expect(token2Amount).To(BeEquivalentTo(0))
 				Expect(token2Found).To(Equal(false))
 			})
@@ -251,12 +252,13 @@ var _ = Describe("Application", func() {
 
 				// For new_reward application, detailed data is required for reward detail
 				detailedData := model.NewRewardApplicationDetailedData{
-					token1Type: {
-						ApplicationID:    app.ID,
-						TargetUserWallet: daveWallet,
-						AssetType:        token1Type,
-						AssetName:        token1Name,
-						Amount:           10,
+					TargetUserWallet: daveWallet,
+					Assets: map[string]model.NewRewardAssetRecord{
+						token1Name: {
+							AssetType: token1Type,
+							AssetName: token1Name,
+							Amount:    10,
+						},
 					},
 				}
 				detailedDataByte, _ := json.Marshal(detailedData)
@@ -329,12 +331,13 @@ var _ = Describe("Application", func() {
 
 				// For new_reward application, detailed data is required for reward detail
 				detailedData := model.NewRewardApplicationDetailedData{
-					token1Type: {
-						ApplicationID:    app.ID,
-						TargetUserWallet: daveWallet,
-						AssetType:        token1Type,
-						AssetName:        token1Name,
-						Amount:           10,
+					TargetUserWallet: daveWallet,
+					Assets: map[string]model.NewRewardAssetRecord{
+						token1Name: {
+							AssetType: token1Type,
+							AssetName: token1Name,
+							Amount:    10,
+						},
 					},
 				}
 				detailedDataByte, _ := json.Marshal(detailedData)
@@ -386,12 +389,13 @@ var _ = Describe("Application", func() {
 
 				// For new_reward application, detailed data is required for reward detail
 				detailedData := model.NewRewardApplicationDetailedData{
-					token1Type: {
-						ApplicationID:    app.ID,
-						TargetUserWallet: daveWallet,
-						AssetType:        token1Type,
-						AssetName:        token1Name,
-						Amount:           10,
+					TargetUserWallet: daveWallet,
+					Assets: map[string]model.NewRewardAssetRecord{
+						token1Name: {
+							AssetType: token1Type,
+							AssetName: token1Name,
+							Amount:    10,
+						},
 					},
 				}
 				detailedDataByte, _ := json.Marshal(detailedData)
@@ -465,12 +469,13 @@ var _ = Describe("Application", func() {
 
 				// For new_reward application, detailed data is required for reward detail
 				detailedData := model.NewRewardApplicationDetailedData{
-					token1Type: {
-						ApplicationID:    app.ID,
-						TargetUserWallet: daveWallet,
-						AssetType:        token1Type,
-						AssetName:        token1Name,
-						Amount:           10,
+					TargetUserWallet: daveWallet,
+					Assets: map[string]model.NewRewardAssetRecord{
+						token1Name: {
+							AssetType: token1Type,
+							AssetName: token1Name,
+							Amount:    10,
+						},
 					},
 				}
 				detailedDataByte, _ := json.Marshal(detailedData)
