@@ -681,6 +681,11 @@ paths:
           in: query
           description: ids of applications should be downloaded, the ids are concat by comma
           example: 1,2,3,4,5
+        - name: lang
+          in: query
+          description: language selector for the header
+          schema:
+            enum: [ zh, en ]
       responses:
         200:
           description: file downloaded

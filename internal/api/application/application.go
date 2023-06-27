@@ -228,6 +228,14 @@ func Download(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 	}
 
+	lang := api.GetLangFromQuery(ctx, "en")
+	headerStr := api.ApplicationUploadTemplateHeader[lang]
+	if header, found := api.ApplicationUploadTemplateHeader[lang]; found {
+		headerStr = header
+	}
+
+	csvHeaderList := strings.Split(headerStr, ",")
+
 	if fileFormat == "csv" {
 		tmpFile, err := os.CreateTemp(os.TempDir(), "application-list-*.csv")
 		defer os.Remove(tmpFile.Name())
@@ -235,7 +243,7 @@ func Download(ctx *gin.Context) {
 		fileBaseName := filepath.Base(tmpFile.Name())
 
 		w := csv.NewWriter(tmpFile)
-		err = w.Write(model.FrontendApplicationRecordCsvHeader)
+		err = w.Write(csvHeaderList)
 		if err != nil {
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		}
@@ -273,8 +281,8 @@ func Download(ctx *gin.Context) {
 }
 
 func DownloadUploadTemplate(ctx *gin.Context) {
-	lang := ctx.Query("lang")
-	headerStr := api.ApplicationUploadTemplateHeader["en"]
+	lang := api.GetLangFromQuery(ctx, "en")
+	headerStr := api.ApplicationUploadTemplateHeader[lang]
 	if header, found := api.ApplicationUploadTemplateHeader[lang]; found {
 		headerStr = header
 	}
