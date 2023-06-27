@@ -93,12 +93,18 @@ func GenerateFrontendApplicationRecords(db *gorm.DB, queryParams *ListApplicatio
 		return nil, 0, fmt.Errorf("unknown application type %s", queryParams.Type)
 	}
 
-	if !lo.Contains([]string{"project", "guild"}, clearEntity) {
-		return nil, 0, fmt.Errorf("unknown entity type %s", queryParams.Entity)
+	if clearEntity != "" {
+		if !lo.Contains([]string{"project", "guild"}, clearEntity) {
+			return nil, 0, fmt.Errorf("unknown entity type %s", queryParams.Entity)
+		}
 	}
 
 	appType := MustParseApplicationType(queryParams.Type)
-	querySeg := db.Model(&Application{}).Where(&Application{Type: appType, EntityType: clearEntity})
+	querySeg := db.Model(&Application{}).Where(&Application{Type: appType})
+
+	if clearEntity != "" {
+		querySeg.Where(&Application{EntityType: clearEntity})
+	}
 
 	if queryParams.Applicant != "" {
 		querySeg = querySeg.Where(&Application{Applicant: queryParams.Applicant})
