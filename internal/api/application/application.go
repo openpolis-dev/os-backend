@@ -273,10 +273,20 @@ func Download(ctx *gin.Context) {
 }
 
 func DownloadUploadTemplate(ctx *gin.Context) {
-	// TODO: Get content type
-	tmpFile, _ := os.CreateTemp(os.TempDir(), "upload-template-*.csv")
-	defer os.Remove(tmpFile.Name())
-	ctx.Writer.Header().Set("Content-Disposition", `attachment; filename="`+filepath.Base(tmpFile.Name())+`"`)
+	lang := ctx.Query("lang")
+	headerStr := api.ApplicationUploadTemplateHeader["en"]
+	if header, found := api.ApplicationUploadTemplateHeader[lang]; found {
+		headerStr = header
+	}
+
+	reader := strings.NewReader(headerStr)
+	contentLength := len(headerStr)
+
+	extraHeaders := map[string]string{
+		"Content-Disposition": `attachment; filename="upload-template.csv"`,
+	}
+
+	ctx.DataFromReader(http.StatusOK, int64(contentLength), "encoding/csv", reader, extraHeaders)
 }
 
 // Batch operations, the request body are ids

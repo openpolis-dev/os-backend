@@ -653,6 +653,12 @@ paths:
     get:
       tags: [ applications ]
       description: get upload template
+      parameters:
+        - name: lang
+          in: query
+          description: language selector for the header
+          schema:
+            enum: [ zh, en ]
       responses:
         200:
           description: template downloaded
