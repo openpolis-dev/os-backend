@@ -50,8 +50,8 @@ func GenerateProjectStaffRemoveNotificationParams(projectID uint, projectName st
 	title.SetZhHans("项目提示")
 
 	body = &onesignal.StringMap{}
-	body.SetEn(fmt.Sprintf("x %s", projectName))
-	body.SetZhHans(fmt.Sprintf("x %s", projectName))
+	body.SetEn(fmt.Sprintf("You have been removed by %s project", projectName))
+	body.SetZhHans(fmt.Sprintf("你已被 %s 项目移除", projectName))
 
 	data = map[string]any{
 		"type": NotificationTypeProjStaffRemove,
@@ -98,8 +98,8 @@ func GenerateGuildStaffRemoveNotificationParams(guildID uint, guildName string) 
 	title.SetZhHans("公会提示")
 
 	body = &onesignal.StringMap{}
-	body.SetEn(fmt.Sprintf("x %s", guildName))
-	body.SetZhHans(fmt.Sprintf("x %s", guildName))
+	body.SetEn(fmt.Sprintf("You have been removed by %s guild", guildName))
+	body.SetZhHans(fmt.Sprintf("你已被 %s 公会移除", guildName))
 
 	data = map[string]any{
 		"type": NotificationTypeGuildStaffRemove,
