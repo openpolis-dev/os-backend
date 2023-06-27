@@ -124,6 +124,10 @@ func Create(ctx *gin.Context) {
 				return err
 			}
 
+			if (req.CreditAmount != 0 && req.CreditAssetName == "") || (req.TokenAmount != 0 && req.TokenAssetName == "") {
+				return fmt.Errorf("asset name for related amount is required")
+			}
+
 			app := &model.Application{
 				Type:         appType,
 				Applicant:    user.Wallet,
