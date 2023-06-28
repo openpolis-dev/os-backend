@@ -7,7 +7,6 @@ import (
 
 	"github.com/samber/lo"
 	"github.com/theseed-labs/os-backend/internal/api"
-	"github.com/xiaosongfu/gormfind"
 	"gorm.io/gorm"
 )
 
@@ -69,16 +68,10 @@ func NewApplicationRecord(db *gorm.DB, application *Application) error {
 }
 
 func GenerateFrontendApplicationRecordsByIds(db *gorm.DB, ids []uint64) ([]*FrontendApplicationRecord, error) {
+	querySQL := QueryApplicationsWithEntityNameBaseSQL + " WHERE applications.id IN ?"
 
-	projectRcdsQuerySeg := db.Model(&Application{}).
-		Where(&Application{EntityType: "project"}).
-		Where("applications.id IN ?", ids).
-		Joins("inner join projects on projects.id = applications.entity_id").
-		Select(jointAppProjectFields)
-	// TODO: Guild has not implemented yet
-	//guildRecords := db.Model(&Application{}).Where(&Application{EntityType: "guild"}).Joins("inner join guilds on guilds.id = applications.entity_id").Select(jointAppProjectFields)
-
-	projectRcds, err := gormfind.RowsJoin[jointAppEntityRslt](projectRcdsQuerySeg, "applications", nil)
+	var projectRcds []jointAppEntityRslt
+	err := db.Raw(querySQL, ids).Find(&projectRcds).Error
 	if err != nil {
 		return nil, err
 	}
