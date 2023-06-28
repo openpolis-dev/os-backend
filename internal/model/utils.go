@@ -78,7 +78,7 @@ func GenerateFrontendApplicationRecordsByIds(db *gorm.DB, ids []uint64) ([]*Fron
 	// TODO: Guild has not implemented yet
 	//guildRecords := db.Model(&Application{}).Where(&Application{EntityType: "guild"}).Joins("inner join guilds on guilds.id = applications.entity_id").Select(jointAppProjectFields)
 
-	projectRcds, err := gormfind.RowsJoin[jointAppProjectRslt](projectRcdsQuerySeg, "applications", nil)
+	projectRcds, err := gormfind.RowsJoin[jointAppEntityRslt](projectRcdsQuerySeg, "applications", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -167,12 +167,15 @@ func GenerateFrontendApplicationRecords(db *gorm.DB, queryParams *ListApplicatio
 		queryParams.SortOrder = "desc"
 	}
 
-	// TODO: Currently the key for detailed data is budget type, which will be changed to asset name in future, and this query should also be updated
-	//if queryParams.UserWallet != "" {
-	//	querySeg = querySeg.
-	//		Where(datatypes.JSONQuery("detailed_data").Equals(queryParams.UserWallet, "credit", "user_wallet")).
-	//		Or(datatypes.JSONQuery("detailed_data").Equals(queryParams.UserWallet, "token", "user_wallet"))
-	//}
+	if queryParams.UserWallet != "" {
+		whereClause += " AND applications.detailed_data ilike %@user_wallet%"
+		whereParams["user_wallet"] = strings.TrimSpace(queryParams.UserWallet)
+	}
+
+	// Calculate total count
+	total := db.Raw(querySQL+whereClause, whereParams).Scan(&[]map[string]any{}).RowsAffected
+
+	fmt.Printf("TTT: Total records: %d\n", total)
 
 	// TODO: This is the mysql style, need to find way to get db schema here and implement pg way
 	whereClause += "\nORDER BY @order_by LIMIT @offset, @limit"
@@ -180,38 +183,20 @@ func GenerateFrontendApplicationRecords(db *gorm.DB, queryParams *ListApplicatio
 	whereParams["offset"] = (queryParams.Page - 1) * queryParams.Size
 	whereParams["limit"] = queryParams.Size
 
-	fmt.Printf("TTT: query sql: %s\n", querySQL+whereClause)
-	fmt.Printf("TTT: where params: %+v\n", whereParams)
-
 	sql := db.ToSQL(func(tx *gorm.DB) *gorm.DB {
 		return tx.Raw(querySQL+whereClause, whereParams)
 	})
 	fmt.Printf("TTT: sql: %+s\n", sql)
 
-	var foobar []map[string]any
-	err := db.Raw(querySQL+whereClause, whereParams).Find(&foobar).Error
+	var rcds []jointAppEntityRslt
+	err := db.Raw(querySQL+whereClause, whereParams).Find(&rcds).Error
 	if err != nil {
-		panic(err)
+		return nil, 0, err
 	}
-	for _, r := range foobar {
-		fmt.Printf("TTT: Rcd: %+v\n", r)
+	rslt := make([]*FrontendApplicationRecord, len(rcds))
+	for i, r := range rcds {
+		fmt.Printf("TTT: rcd: %+v\n", r)
+		rslt[i] = r.ToFrontedApplicationRecord(db)
 	}
-
-	//total, err := gormfind.Count(querySeg)
-	//if err != nil {
-	//	return nil, 0, err
-	//}
-	//
-	//rcds, err := gormfind.RowsJoin[jointAppProjectRslt](querySeg, "applications", &gormFindPage)
-	//if err != nil {
-	//	return nil, 0, err
-	//}
-	//
-	//rslt := make([]*FrontendApplicationRecord, len(rcds))
-	//
-	//for i, r := range rcds {
-	//	rslt[i] = r.ToFrontedApplicationRecord(db)
-	//}
-
-	return nil, 0, nil
+	return rslt, total, nil
 }
