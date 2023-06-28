@@ -230,8 +230,8 @@ func Download(ctx *gin.Context) {
 	}
 
 	lang := api.GetLangFromQuery(ctx, "en")
-	headerStr := api.ApplicationUploadTemplateHeader[lang]
-	if header, found := api.ApplicationUploadTemplateHeader[lang]; found {
+	headerStr := api.ApplicationDownloadHeader[lang]
+	if header, found := api.ApplicationDownloadHeader[lang]; found {
 		headerStr = header
 	}
 

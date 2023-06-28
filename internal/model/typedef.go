@@ -141,7 +141,9 @@ func (r *FrontendApplicationRecord) ToCSV() []string {
 		r.BudgetSource,
 		r.Comment,
 		r.Status,
+		r.SubmitterName,
 		r.SubmitterWallet,
+		r.ReviewerName,
 		r.ReviewerWallet,
 	}
 }
