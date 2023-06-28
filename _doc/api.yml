@@ -1215,9 +1215,15 @@ components:
         target_user_wallet:
           type: string
           description: which account should this reward be sent to
+        token_asset_name:
+          type: string
+          description: asset name for token
         token_amount:
           type: number
           description: how many token will be sent in this reward
+        credit_asset_name:
+          type: string
+          description: asset name for credit
         credit_amount:
           type: number
           description: how many SeeDAO credit will be sent in this reward
