@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/xiaosongfu/gormfind"
@@ -26,7 +27,8 @@ type userAssetRecordModel struct{}
 var UserAssetRecordModel userAssetRecordModel
 
 func (*userAssetRecordModel) FindWithUserWalletAndAssetProps(db *gorm.DB, userWallet string, assetType BudgetType, assetName string) ([]*UserAssetRecord, error) {
-	querySeg := db.Where(&UserAssetRecord{UserWallet: userWallet, AssetType: assetType, AssetName: assetName})
+	formattedUserWallet := strings.TrimSpace(strings.ToLower(userWallet))
+	querySeg := db.Where(&UserAssetRecord{UserWallet: formattedUserWallet, AssetType: assetType, AssetName: assetName})
 	return gormfind.Rows[UserAssetRecord](querySeg, nil)
 }
 
@@ -42,7 +44,7 @@ func (*userAssetRecordModel) CreateOrUpdate(db *gorm.DB, userWallet string, asse
 
 	if len(assetRecords) == 0 {
 		return db.Save(&UserAssetRecord{
-			UserWallet:       userWallet,
+			UserWallet:       strings.TrimSpace(strings.ToLower(userWallet)),
 			AssetType:        assetType,
 			AssetName:        assetName,
 			DealtAmount:      dealtAmount,
