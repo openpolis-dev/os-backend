@@ -133,21 +133,16 @@ type FrontendApplicationRecord struct {
 
 func (r *FrontendApplicationRecord) ToCSV() []string {
 	return []string{
-		fmt.Sprintf("%d", r.ApplicationID),
-		r.EntityName,
 		r.CreatedAt.Format(time.RFC3339),
 		r.TargetUserWallet,
-		fmt.Sprintf("%d", r.TokenAmount),
 		fmt.Sprintf("%d", r.CreditAmount),
+		fmt.Sprintf("%d", r.TokenAmount),
+		r.EntityName,
 		r.BudgetSource,
-		r.Status,
-		r.DetailedType,
 		r.Comment,
+		r.Status,
 		r.SubmitterWallet,
-		r.SubmitterName,
 		r.ReviewerWallet,
-		r.ReviewerName,
-		r.TransactionIds,
 	}
 }
 
