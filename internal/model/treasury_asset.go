@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 )
 
@@ -146,18 +147,18 @@ func (*treasuryAssetHelper) UpsertCQTreasuryDetailedRecord(db *gorm.DB, budgetTy
 }
 
 // WithdrawTreasureAsset get asset from treasury record
-func (*treasuryAssetHelper) WithdrawTreasureAsset(db *gorm.DB, budgetType BudgetType, assetName string, deltaValue uint64, userWallet string, auditMsg string) error {
-	return TreasuryAssetHelper.ChangeCQTreasuryAssetValue(db, budgetType, assetName, int64(deltaValue), userWallet, auditMsg)
+func (*treasuryAssetHelper) WithdrawTreasureAsset(db *gorm.DB, budgetType BudgetType, assetName string, deltaValue decimal.Decimal, userWallet string, auditMsg string) error {
+	return TreasuryAssetHelper.ChangeCQTreasuryAssetValue(db, budgetType, assetName, deltaValue, userWallet, auditMsg)
 }
 
 // DepositTreasureAsset save asset back to treasury record
-func (*treasuryAssetHelper) DepositTreasureAsset(db *gorm.DB, budgetType BudgetType, assetName string, deltaValue uint64, userWallet string, auditMsg string) error {
-	return TreasuryAssetHelper.ChangeCQTreasuryAssetValue(db, budgetType, assetName, int64(-deltaValue), userWallet, auditMsg)
+func (*treasuryAssetHelper) DepositTreasureAsset(db *gorm.DB, budgetType BudgetType, assetName string, deltaValue decimal.Decimal, userWallet string, auditMsg string) error {
+	return TreasuryAssetHelper.ChangeCQTreasuryAssetValue(db, budgetType, assetName, deltaValue.Neg(), userWallet, auditMsg)
 }
 
 // ChangeCQTreasuryAssetValue update asset value for current quarter treasury record, the value passed in deltaValue allows both positive and negative value
 // For positive value, the remain amount will be decreased while the negative means remain amount will be increased
-func (*treasuryAssetHelper) ChangeCQTreasuryAssetValue(db *gorm.DB, budgetType BudgetType, assetName string, deltaValue int64, userWallet string, auditMsg string) error {
+func (*treasuryAssetHelper) ChangeCQTreasuryAssetValue(db *gorm.DB, budgetType BudgetType, assetName string, deltaValue decimal.Decimal, userWallet string, auditMsg string) error {
 	cqRcd, err := TreasuryAssetHelper.GetCurrQuarterRecord(db)
 	if err != nil {
 		return err

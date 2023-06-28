@@ -3,6 +3,7 @@ package model
 import (
 	"time"
 
+	"github.com/shopspring/decimal"
 	"github.com/xiaosongfu/gormfind"
 	"gorm.io/gorm"
 )
@@ -15,14 +16,14 @@ const (
 )
 
 type ProjectBudget struct {
-	ID           uint       `json:"id" gorm:"primaryKey"`
-	ProjectID    uint       `json:"project_id"` // project_id
-	AssetName    string     `json:"name"`
-	Type         BudgetType `json:"type"`          // budget type, credit or token
-	TotalAmount  uint64     `json:"total_amount"`  // total_amount
-	RemainAmount int64      `json:"remain_amount"` // remain_amount
-	CreatedAt    time.Time  `json:"created_at"`
-	UpdatedAt    time.Time  `json:"updated_at"`
+	ID           uint            `json:"id" gorm:"primaryKey"`
+	ProjectID    uint            `json:"project_id"` // project_id
+	AssetName    string          `json:"name"`
+	Type         BudgetType      `json:"type"`                                    // budget type, credit or token
+	TotalAmount  decimal.Decimal `json:"total_amount" sql:"type:decimal(20,8);"`  // total_amount
+	RemainAmount decimal.Decimal `json:"remain_amount" sql:"type:decimal(20,8);"` // remain_amount
+	CreatedAt    time.Time       `json:"created_at"`
+	UpdatedAt    time.Time       `json:"updated_at"`
 }
 
 type projectBudgetModel struct{}

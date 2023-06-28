@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/shopspring/decimal"
 	"github.com/xiaosongfu/gormfind"
 	"gorm.io/gorm"
 )
@@ -104,7 +105,7 @@ func (*projectModel) SetBudget(db *gorm.DB, projectId uint, budgetType BudgetTyp
 	})
 }
 
-func (*projectModel) WithdrawBudget(db *gorm.DB, projectId uint, budgetType BudgetType, assetName string, tokenAmount uint64) error {
+func (*projectModel) WithdrawBudget(db *gorm.DB, projectId uint, budgetType BudgetType, assetName string, tokenAmount decimal.Decimal) error {
 	return db.Transaction(func(tx *gorm.DB) error {
 		budgetRcd, err := ProjectBudgetModel.QueryByProjectIdAndBudgetProps(tx, projectId, budgetType, assetName)
 		if err != nil {

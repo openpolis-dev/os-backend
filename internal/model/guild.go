@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/shopspring/decimal"
 	"github.com/xiaosongfu/gormfind"
 	"gorm.io/gorm"
 )
@@ -90,7 +91,7 @@ func (*guildModel) SetBudget(db *gorm.DB, guildId uint, budgetType BudgetType, a
 
 // TODO: Some budget related logics can be merged
 
-func (*guildModel) WithdrawBudget(db *gorm.DB, guildId uint, budgetType BudgetType, tokenName string, tokenAmount uint64) error {
+func (*guildModel) WithdrawBudget(db *gorm.DB, guildId uint, budgetType BudgetType, tokenName string, tokenAmount decimal.Decimal) error {
 	return db.Transaction(func(tx *gorm.DB) error {
 		budgetRcd, err := GuildBudgetModel.QueryByGuildIdAndBudgetType(tx, guildId, budgetType)
 		if err != nil {
@@ -111,7 +112,7 @@ func (*guildModel) WithdrawBudget(db *gorm.DB, guildId uint, budgetType BudgetTy
 }
 
 // DepositBudget deposits budget back to guild, e.g. application for reward has been rejected
-func (*guildModel) DepositBudget(db *gorm.DB, guildId uint, budgetType BudgetType, tokenName string, tokenAmount uint64) error {
+func (*guildModel) DepositBudget(db *gorm.DB, guildId uint, budgetType BudgetType, tokenName string, tokenAmount decimal.Decimal) error {
 	return db.Transaction(func(tx *gorm.DB) error {
 		budgetRcd, err := GuildBudgetModel.QueryByGuildIdAndBudgetType(tx, guildId, budgetType)
 		if err != nil {
