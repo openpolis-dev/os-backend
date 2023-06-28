@@ -139,3 +139,12 @@ func ParseAndConvertPageParam(ctx *gin.Context) *gormfind.Page {
 		Order:     &sortOrder,
 	}
 }
+
+func GetLangFromQuery(ctx *gin.Context, defaultLang string) string {
+	lang, found := ctx.GetQuery("lang")
+	if found {
+		return lang
+	} else {
+		return defaultLang
+	}
+}

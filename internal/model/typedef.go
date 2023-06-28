@@ -131,41 +131,20 @@ type FrontendApplicationRecord struct {
 	TransactionIds   string    `json:"transaction_ids"`
 }
 
-var FrontendApplicationRecordCsvHeader = []string{
-	"application_id",
-	"entity_name",
-	"created_at",
-	"target_user_wallet",
-	"token_amount",
-	"credit_amount",
-	"budget_source",
-	"status",
-	"detailed_type",
-	"comment",
-	"submitter_wallet",
-	"submitter_name",
-	"reviewer_wallet",
-	"reviewer_name",
-	"transaction_ids",
-}
-
 func (r *FrontendApplicationRecord) ToCSV() []string {
 	return []string{
-		fmt.Sprintf("%d", r.ApplicationID),
-		r.EntityName,
 		r.CreatedAt.Format(time.RFC3339),
 		r.TargetUserWallet,
-		fmt.Sprintf("%d", r.TokenAmount),
 		fmt.Sprintf("%d", r.CreditAmount),
+		fmt.Sprintf("%d", r.TokenAmount),
+		r.EntityName,
 		r.BudgetSource,
-		r.Status,
-		r.DetailedType,
 		r.Comment,
-		r.SubmitterWallet,
+		r.Status,
 		r.SubmitterName,
-		r.ReviewerWallet,
+		r.SubmitterWallet,
 		r.ReviewerName,
-		r.TransactionIds,
+		r.ReviewerWallet,
 	}
 }
 
@@ -186,13 +165,13 @@ applications.comment,
 projects.name as prj_name,
 projects.id as prj_id`
 
-// jointAppProjectRslt saves results returned by application and project join query
-type jointAppProjectRslt struct {
-	Project     *Project     `gorm:"embedded;embeddedPrefix:prj_"`
+// jointAppEntityRslt saves results returned by application and project join query
+type jointAppEntityRslt struct {
 	Application *Application `gorm:"embedded"`
+	EntityName  string       `json:"entity_name"`
 }
 
-func (r *jointAppProjectRslt) ToFrontedApplicationRecord(db *gorm.DB) *FrontendApplicationRecord {
+func (r *jointAppEntityRslt) ToFrontedApplicationRecord(db *gorm.DB) *FrontendApplicationRecord {
 	var tokenAmount uint64
 	var creditAmount uint64
 	var targetUserWallet string
@@ -245,7 +224,7 @@ func (r *jointAppProjectRslt) ToFrontedApplicationRecord(db *gorm.DB) *FrontendA
 		TargetUserWallet: targetUserWallet,
 		TokenAmount:      tokenAmount,
 		CreditAmount:     creditAmount,
-		BudgetSource:     r.Project.Name,
+		BudgetSource:     r.EntityName,
 		Status:           string(r.Application.State),
 		DetailedType:     r.Application.DetailedType,
 		Comment:          r.Application.Comment,
@@ -255,32 +234,6 @@ func (r *jointAppProjectRslt) ToFrontedApplicationRecord(db *gorm.DB) *FrontendA
 		ReviewerName:     reviewerUsername,
 		TransactionIds:   r.Application.CompleteMessage,
 	}
-}
-
-// Guild related code are placeholder currently
-const jointAppGuildFields = `applications.id,
-applications.type,
-applications.applicant,
-applications.state,
-applications.reject_reason,
-applications.complete_message,
-applications.created_at,
-applications.updated_at,
-applications.entity_type,
-applications.entity_id,
-applications.detailed_data,
-applications.detailed_type,
-applications.comment,
-guilds.name as guild_name,
-guilds.id as guild_id`
-
-type jointAppGuildRslt struct {
-	//Guild     *Guild     `gorm:"embedded;embeddedPrefix:guild_"`
-	Application *Application `gorm:"embedded"`
-}
-
-func (r *jointAppGuildRslt) ToFrontedApplicationRecord(db *gorm.DB) *FrontendApplicationRecord {
-	return nil
 }
 
 type UpdateAssetRequestParams struct {

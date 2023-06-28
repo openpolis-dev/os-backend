@@ -1,6 +1,7 @@
 package application
 
 import (
+	"bytes"
 	"encoding/csv"
 	"encoding/json"
 	"errors"
@@ -228,18 +229,26 @@ func Download(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 	}
 
+	lang := api.GetLangFromQuery(ctx, "en")
+	headerStr := api.ApplicationDownloadHeader[lang]
+	if header, found := api.ApplicationDownloadHeader[lang]; found {
+		headerStr = header
+	}
+
+	csvHeaderList := strings.Split(headerStr, ",")
+
 	if fileFormat == "csv" {
-		tmpFile, err := os.CreateTemp(os.TempDir(), "application-list-*.csv")
-		defer os.Remove(tmpFile.Name())
-
-		fileBaseName := filepath.Base(tmpFile.Name())
-
-		w := csv.NewWriter(tmpFile)
-		err = w.Write(model.FrontendApplicationRecordCsvHeader)
+		buf := new(bytes.Buffer)
+		w := csv.NewWriter(buf)
+		err = w.Write(csvHeaderList)
 		if err != nil {
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		}
 		for _, r := range rcds {
+			fmt.Printf("TTT: rcd: %+v\n", r)
+			if r == nil {
+				continue
+			}
 			err = w.Write(r.ToCSV())
 			if err != nil {
 				ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
@@ -247,8 +256,15 @@ func Download(ctx *gin.Context) {
 		}
 		w.Flush()
 
-		ctx.FileAttachment(tmpFile.Name(), fileBaseName)
-		ctx.Writer.Header().Set("Content-Disposition", `attachment; filename="`+fileBaseName+`"`)
+		r := bytes.NewReader(buf.Bytes())
+
+		contentLength := buf.Len()
+
+		extraHeaders := map[string]string{
+			"Content-Disposition": `attachment; filename="applications-list.csv"`,
+		}
+
+		ctx.DataFromReader(http.StatusOK, int64(contentLength), "encoding/csv", r, extraHeaders)
 	} else if fileFormat == "json" {
 		tmpFile, err := os.CreateTemp(os.TempDir(), "application-list-*.json")
 		defer os.Remove(tmpFile.Name())
@@ -273,10 +289,20 @@ func Download(ctx *gin.Context) {
 }
 
 func DownloadUploadTemplate(ctx *gin.Context) {
-	// TODO: Get content type
-	tmpFile, _ := os.CreateTemp(os.TempDir(), "upload-template-*.csv")
-	defer os.Remove(tmpFile.Name())
-	ctx.Writer.Header().Set("Content-Disposition", `attachment; filename="`+filepath.Base(tmpFile.Name())+`"`)
+	lang := api.GetLangFromQuery(ctx, "en")
+	headerStr := api.ApplicationUploadTemplateHeader[lang]
+	if header, found := api.ApplicationUploadTemplateHeader[lang]; found {
+		headerStr = header
+	}
+
+	reader := strings.NewReader(headerStr)
+	contentLength := len(headerStr)
+
+	extraHeaders := map[string]string{
+		"Content-Disposition": `attachment; filename="upload-template.csv"`,
+	}
+
+	ctx.DataFromReader(http.StatusOK, int64(contentLength), "encoding/csv", reader, extraHeaders)
 }
 
 // Batch operations, the request body are ids
