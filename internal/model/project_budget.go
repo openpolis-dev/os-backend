@@ -17,10 +17,10 @@ const (
 type ProjectBudget struct {
 	ID           uint       `json:"id" gorm:"primaryKey"`
 	ProjectID    uint       `json:"project_id"` // project_id
-	Name         string     `json:"name"`
+	AssetName    string     `json:"name"`
 	Type         BudgetType `json:"type"`          // budget type, credit or token
 	TotalAmount  uint64     `json:"total_amount"`  // total_amount
-	RemainAmount uint64     `json:"remain_amount"` // remain_amount
+	RemainAmount int64      `json:"remain_amount"` // remain_amount
 	CreatedAt    time.Time  `json:"created_at"`
 	UpdatedAt    time.Time  `json:"updated_at"`
 }
@@ -48,7 +48,7 @@ func (*projectBudgetModel) ListByProjectId(db *gorm.DB, projID uint) ([]*Project
 	return gormfind.Rows[ProjectBudget](querySeg, nil)
 }
 
-func (*projectBudgetModel) QueryByProjectIdAndBudgetType(db *gorm.DB, projID uint, budgetType BudgetType) (*ProjectBudget, error) {
-	querySeg := db.Where("project_id = ?", projID).Where("type = ?", budgetType)
+func (*projectBudgetModel) QueryByProjectIdAndBudgetProps(db *gorm.DB, projID uint, budgetType BudgetType, assetName string) (*ProjectBudget, error) {
+	querySeg := db.Where(&ProjectBudget{ProjectID: projID, AssetName: assetName, Type: budgetType})
 	return gormfind.Row[ProjectBudget](querySeg)
 }

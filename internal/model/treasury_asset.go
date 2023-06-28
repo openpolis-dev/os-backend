@@ -115,8 +115,8 @@ func (*treasuryAssetHelper) UpsertCQTreasuryDetailedRecord(db *gorm.DB, budgetTy
 		rslt := tx.Where(TreasuryDetailedRecord{
 			TreasuryAssetID: cqRcd.ID,
 			BudgetType:      budgetType,
+			AssetName:       assetName,
 		}).Attrs(TreasuryDetailedRecord{
-			AssetName:    assetName,
 			TotalAmount:  totalAmount,
 			RemainAmount: int64(totalAmount),
 		}).FirstOrInit(&r)

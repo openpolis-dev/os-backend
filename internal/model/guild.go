@@ -24,8 +24,8 @@ type guildModel struct{}
 
 var GuildModel guildModel
 
-func (*guildModel) CreateOrUpdate(db *gorm.DB, proj *Guild) error {
-	return db.Save(proj).Error
+func (*guildModel) CreateOrUpdate(db *gorm.DB, guildRecord *Guild) error {
+	return db.Save(guildRecord).Error
 }
 
 func (*guildModel) Detail(db *gorm.DB, id uint) (*Guild, error) {

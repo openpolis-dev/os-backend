@@ -80,13 +80,7 @@ type ListApplicationQueryParams struct {
 	UserWallet string `form:"user_wallet"`
 }
 
-// rewardDetail saves detail of reward application for single budget type
-type rewardDetail struct {
-	ApplicationID uint `json:"application_id"`
-
-	// TargetUserWallet saves user wallet address that the reward will be sent to
-	TargetUserWallet string `json:"user_wallet"`
-
+type NewRewardAssetRecord struct {
 	// AssetName and Amount saves the token related info about this reward application.
 	// The asset type is same with project budget type, which is used to match budget record in project / guild
 	AssetType BudgetType `json:"asset_type"`
@@ -96,20 +90,24 @@ type rewardDetail struct {
 
 // NewRewardApplicationDetailedData saves detailed data for new reward applications
 // Note: this struct has no DB table associated
-type NewRewardApplicationDetailedData map[BudgetType]rewardDetail
+type NewRewardApplicationDetailedData struct {
+	// TargetUserWallet saves user wallet address that the reward will be sent to
+	TargetUserWallet string `json:"user_wallet"`
 
-func (detailedData *NewRewardApplicationDetailedData) AmountOfBudgetType(budgetType BudgetType) (uint64, bool) {
-	if r, found := (*detailedData)[budgetType]; found {
-		return r.Amount, true
-	} else {
-		return 0, false
-	}
+	// Assets saves all application assets, the key for this map is asset name
+	Assets map[string]NewRewardAssetRecord `json:"assets"`
 }
-func (detailedData *NewRewardApplicationDetailedData) GetTargetUserWallet() string {
-	for _, rcd := range *detailedData {
-		return rcd.TargetUserWallet
+
+func (detailedData *NewRewardApplicationDetailedData) AmountOfAssetType(assetType BudgetType) (uint64, bool) {
+	total := uint64(0)
+	found := false
+	for _, record := range (*detailedData).Assets {
+		if record.AssetType == assetType {
+			total += record.Amount
+			found = true
+		}
 	}
-	return ""
+	return total, found
 }
 
 // FrontendApplicationRecord defines struct for application record that returns to frontend invoker
@@ -182,10 +180,10 @@ func (r *jointAppEntityRslt) ToFrontedApplicationRecord(db *gorm.DB) *FrontendAp
 			return nil
 		}
 
-		tokenAmount, _ = detailedData.AmountOfBudgetType(BudgetTypeToken)
-		creditAmount, _ = detailedData.AmountOfBudgetType(BudgetTypeCredit)
+		tokenAmount, _ = detailedData.AmountOfAssetType(BudgetTypeToken)
+		creditAmount, _ = detailedData.AmountOfAssetType(BudgetTypeCredit)
 
-		targetUserWallet = detailedData.GetTargetUserWallet()
+		targetUserWallet = detailedData.TargetUserWallet
 	}
 
 	var submitterWallet string
@@ -249,4 +247,18 @@ type TreasuryAssetsResponse struct {
 	CreditRemainAmount int64  `json:"credit_remain_amount"`
 	TokenTotalAmount   uint64 `json:"token_total_amount"`
 	TokenRemainAmount  int64  `json:"token_remain_amount"`
+}
+
+// NewApplicationRequest is used to save new application request data passed from frontend
+type NewApplicationRequest struct {
+	Type             string `json:"type"`
+	Entity           string `json:"entity"`
+	EntityId         uint   `json:"entity_id"`
+	TargetUserWallet string `json:"target_user_wallet"`
+	CreditAssetName  string `json:"credit_asset_name"`
+	CreditAmount     uint64 `json:"credit_amount"`
+	TokenAssetName   string `json:"token_asset_name"`
+	TokenAmount      uint64 `json:"token_amount"`
+	DetailedType     string `json:"detailed_type"`
+	Comment          string `json:"comment"`
 }

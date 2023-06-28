@@ -9,30 +9,6 @@ import (
 	"github.com/theseed-labs/os-backend/internal/model"
 )
 
-const (
-	aliceWallet = "0x_alice_wallet"
-	bobWallet   = "0x_bob_wallet"
-	carolWallet = "0x_carol_wallet"
-	daveWallet  = "0x_dave_wallet"
-
-	token1Type = model.BudgetTypeCredit
-	token1Name = "TTT"
-	token2Type = model.BudgetTypeToken
-	token2Name = "AAT"
-	token3Name = "42T"
-)
-
-var openProject, pendingCloseProject, closedProject *model.Project
-
-var tables = []any{
-	&model.Application{},
-	&model.ApplicationAuditLog{},
-	&model.Project{},
-	&model.ProjectBudget{},
-	&model.User{},
-	&model.UserAssetRecord{},
-}
-
 var _ = Describe("Application", func() {
 
 	// Before each `It` execution, create the table and init project data
@@ -51,6 +27,58 @@ var _ = Describe("Application", func() {
 	// After each `It` execution, drop tables
 	AfterEach(func() {
 		_ = db.Migrator().DropTable(tables...)
+	})
+
+	Describe("Validate application detailed data", func() {
+		var app model.Application
+
+		BeforeEach(func() {
+			app = model.Application{
+				Type:       model.MustParseApplicationType("new_reward"),
+				Applicant:  aliceWallet,
+				State:      model.ApplicationStateOpen,
+				EntityType: "project",
+				EntityId:   openProject.ID,
+			}
+
+			// Create correct application before testing
+			_ = model.NewApplicationRecord(db, &app)
+
+			// Set budget for project
+			_ = model.ProjectModel.SetBudget(db, openProject.ID, token1Type, token1Name, 100)
+			_ = model.ProjectModel.SetBudget(db, openProject.ID, token2Type, token2Name, 200)
+
+			// For new_reward application, detailed data is required for reward detail
+			detailedData := model.NewRewardApplicationDetailedData{
+				TargetUserWallet: daveWallet,
+				Assets: map[string]model.NewRewardAssetRecord{
+					token1Name: {
+						AssetType: token1Type,
+						AssetName: token1Name,
+						Amount:    10,
+					},
+				},
+			}
+			detailedDataByte, _ := json.Marshal(detailedData)
+			app.DetailedData = detailedDataByte
+			db.Save(&app)
+		})
+		When("new reward application", func() {
+			It("should return correct user target wallet ", func() {
+				detailedData := model.NewRewardApplicationDetailedData{}
+				err := json.Unmarshal(app.DetailedData, &detailedData)
+				Expect(err).To(BeNil())
+
+				Expect(detailedData.TargetUserWallet).To(BeEquivalentTo(daveWallet))
+				token1Amount, token1Found := detailedData.AmountOfAssetType(token1Type)
+				Expect(token1Amount).To(BeEquivalentTo(10))
+				Expect(token1Found).To(Equal(true))
+
+				token2Amount, token2Found := detailedData.AmountOfAssetType(token2Type)
+				Expect(token2Amount).To(BeEquivalentTo(0))
+				Expect(token2Found).To(Equal(false))
+			})
+		})
 	})
 
 	Describe("Invoking NewApplicationRecord function", func() {
@@ -224,12 +252,13 @@ var _ = Describe("Application", func() {
 
 				// For new_reward application, detailed data is required for reward detail
 				detailedData := model.NewRewardApplicationDetailedData{
-					token1Type: {
-						ApplicationID:    app.ID,
-						TargetUserWallet: daveWallet,
-						AssetType:        token1Type,
-						AssetName:        token1Name,
-						Amount:           10,
+					TargetUserWallet: daveWallet,
+					Assets: map[string]model.NewRewardAssetRecord{
+						token1Name: {
+							AssetType: token1Type,
+							AssetName: token1Name,
+							Amount:    10,
+						},
 					},
 				}
 				detailedDataByte, _ := json.Marshal(detailedData)
@@ -244,7 +273,7 @@ var _ = Describe("Application", func() {
 				Expect(len(budgetRcds)).To(BeEquivalentTo(2))
 
 				tokenNameAmountList := lo.Map(budgetRcds, func(r *model.ProjectBudget, _ int) map[string]uint64 {
-					return map[string]uint64{r.Name: r.TotalAmount}
+					return map[string]uint64{r.AssetName: r.TotalAmount}
 				})
 				Expect(tokenNameAmountList).To(ConsistOf([]map[string]uint64{{token1Name: 100}, {token2Name: 200}}))
 			})
@@ -276,7 +305,7 @@ var _ = Describe("Application", func() {
 				budgetRcds, _ := model.ProjectBudgetModel.ListByProjectId(db, openProject.ID)
 				Expect(len(budgetRcds)).To(Equal(2))
 				tokenNameAmountList := lo.Map(budgetRcds, func(r *model.ProjectBudget, _ int) map[string]uint64 {
-					return map[string]uint64{r.Name: r.TotalAmount}
+					return map[string]uint64{r.AssetName: r.TotalAmount}
 				})
 				Expect(tokenNameAmountList).To(ConsistOf([]map[string]uint64{{token1Name: 100}, {token2Name: 200}}))
 			})
@@ -302,12 +331,13 @@ var _ = Describe("Application", func() {
 
 				// For new_reward application, detailed data is required for reward detail
 				detailedData := model.NewRewardApplicationDetailedData{
-					token1Type: {
-						ApplicationID:    app.ID,
-						TargetUserWallet: daveWallet,
-						AssetType:        token1Type,
-						AssetName:        token1Name,
-						Amount:           10,
+					TargetUserWallet: daveWallet,
+					Assets: map[string]model.NewRewardAssetRecord{
+						token1Name: {
+							AssetType: token1Type,
+							AssetName: token1Name,
+							Amount:    10,
+						},
 					},
 				}
 				detailedDataByte, _ := json.Marshal(detailedData)
@@ -359,12 +389,13 @@ var _ = Describe("Application", func() {
 
 				// For new_reward application, detailed data is required for reward detail
 				detailedData := model.NewRewardApplicationDetailedData{
-					token1Type: {
-						ApplicationID:    app.ID,
-						TargetUserWallet: daveWallet,
-						AssetType:        token1Type,
-						AssetName:        token1Name,
-						Amount:           10,
+					TargetUserWallet: daveWallet,
+					Assets: map[string]model.NewRewardAssetRecord{
+						token1Name: {
+							AssetType: token1Type,
+							AssetName: token1Name,
+							Amount:    10,
+						},
 					},
 				}
 				detailedDataByte, _ := json.Marshal(detailedData)
@@ -399,9 +430,9 @@ var _ = Describe("Application", func() {
 				budgetRecords, _ := model.ProjectBudgetModel.ListByProjectId(db, openProject.ID)
 				for _, r := range budgetRecords {
 					if r.Type == token1Type {
-						Expect(r.RemainAmount).To(Equal(r.TotalAmount - 10)) // 100-10
+						Expect(r.RemainAmount).To(BeEquivalentTo(r.TotalAmount - 10)) // 100-10
 					} else if r.Type == token2Type {
-						Expect(r.RemainAmount).To(Equal(r.TotalAmount))
+						Expect(r.RemainAmount).To(BeEquivalentTo(r.TotalAmount))
 					}
 				}
 			})
@@ -409,7 +440,7 @@ var _ = Describe("Application", func() {
 				err := model.AuditApplication(db, carolWallet, &app, model.AuditActionProcess, "", nil, nil)
 				Expect(err).To(BeNil())
 
-				userAssetRcd, err := model.UserAssetRecordModel.FindWithUserWalletAndAssetType(db, daveWallet, token1Type)
+				userAssetRcd, err := model.UserAssetRecordModel.FindWithUserWalletAndAssetProps(db, daveWallet, token1Type, token1Name)
 				Expect(err).To(BeNil())
 
 				Expect(len(userAssetRcd)).To(Equal(1))
@@ -438,12 +469,13 @@ var _ = Describe("Application", func() {
 
 				// For new_reward application, detailed data is required for reward detail
 				detailedData := model.NewRewardApplicationDetailedData{
-					token1Type: {
-						ApplicationID:    app.ID,
-						TargetUserWallet: daveWallet,
-						AssetType:        token1Type,
-						AssetName:        token1Name,
-						Amount:           10,
+					TargetUserWallet: daveWallet,
+					Assets: map[string]model.NewRewardAssetRecord{
+						token1Name: {
+							AssetType: token1Type,
+							AssetName: token1Name,
+							Amount:    10,
+						},
 					},
 				}
 				detailedDataByte, _ := json.Marshal(detailedData)
@@ -457,7 +489,7 @@ var _ = Describe("Application", func() {
 				err := model.AuditApplication(db, carolWallet, &app, model.AuditActionComplete, "", nil, nil)
 				Expect(err).To(BeNil())
 
-				userAssetRcd, err := model.UserAssetRecordModel.FindWithUserWalletAndAssetType(db, daveWallet, token1Type)
+				userAssetRcd, err := model.UserAssetRecordModel.FindWithUserWalletAndAssetProps(db, daveWallet, token1Type, token1Name)
 				Expect(err).To(BeNil())
 
 				Expect(len(userAssetRcd)).To(Equal(1))

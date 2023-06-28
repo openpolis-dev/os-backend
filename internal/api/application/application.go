@@ -24,18 +24,6 @@ type AuditRequestBody struct {
 	Message string `json:"message"`
 }
 
-// NewApplicationRequest is used to save new application request data passed from frontend
-type NewApplicationRequest struct {
-	Type             string `json:"type"`
-	Entity           string `json:"entity"`
-	EntityId         uint   `json:"entity_id"`
-	TargetUserWallet string `json:"target_user_wallet"`
-	CreditAmount     uint64 `json:"credit_amount"`
-	TokenAmount      uint64 `json:"token_amount"`
-	DetailedType     string `json:"detailed_type"`
-	Comment          string `json:"comment"`
-}
-
 // ListApplicants list all applicants existing in applications table for filter
 func ListApplicants(ctx *gin.Context) {
 	var err error
@@ -95,7 +83,7 @@ func List(ctx *gin.Context) {
 // An audit log record will be created with application at same time with action open
 // POST /applications/
 func Create(ctx *gin.Context) {
-	var newApplicationReqs []NewApplicationRequest
+	var newApplicationReqs []model.NewApplicationRequest
 	if err := ctx.BindJSON(&newApplicationReqs); err != nil {
 		if err != nil {
 			ctx.JSON(http.StatusBadRequest, api.Reply{
@@ -137,6 +125,10 @@ func Create(ctx *gin.Context) {
 				return err
 			}
 
+			if (req.CreditAmount != 0 && req.CreditAssetName == "") || (req.TokenAmount != 0 && req.TokenAssetName == "") {
+				return fmt.Errorf("asset name for related amount is required")
+			}
+
 			app := &model.Application{
 				Type:         appType,
 				Applicant:    user.Wallet,
@@ -151,15 +143,18 @@ func Create(ctx *gin.Context) {
 
 			if appType == model.ApplicationNewReward {
 				rewardDetailedData := model.NewRewardApplicationDetailedData{
-					model.BudgetTypeCredit: {
-						TargetUserWallet: req.TargetUserWallet,
-						AssetType:        model.BudgetTypeCredit,
-						Amount:           req.CreditAmount,
-					},
-					model.BudgetTypeToken: {
-						TargetUserWallet: req.TargetUserWallet,
-						AssetType:        model.BudgetTypeToken,
-						Amount:           req.TokenAmount,
+					TargetUserWallet: req.TargetUserWallet,
+					Assets: map[string]model.NewRewardAssetRecord{
+						req.CreditAssetName: {
+							AssetType: model.BudgetTypeCredit,
+							AssetName: req.CreditAssetName,
+							Amount:    req.CreditAmount,
+						},
+						req.TokenAssetName: {
+							AssetType: model.BudgetTypeToken,
+							AssetName: req.TokenAssetName,
+							Amount:    req.TokenAmount,
+						},
 					},
 				}
 
