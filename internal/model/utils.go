@@ -2,18 +2,25 @@ package model
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/samber/lo"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/xiaosongfu/gormfind"
-	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
 
 const ApplicationDateQueryFormat = "2006-01-02"
+
+const QueryApplicationsWithEntityNameBaseSQL = `SELECT applications.*,
+CASE
+   WHEN applications.entity_type = 'project' THEN projects.name
+   WHEN applications.entity_type = 'guild' THEN guilds.name
+   ELSE NULL END AS entity_name
+FROM applications
+   LEFT JOIN projects ON applications.entity_type = 'project' AND applications.entity_id = projects.id
+   LEFT JOIN guilds ON applications.entity_type = 'guild' AND applications.entity_id = guilds.id`
 
 // NewApplicationRecord create application and related audit log message with given params
 func NewApplicationRecord(db *gorm.DB, application *Application) error {
@@ -93,22 +100,34 @@ func GenerateFrontendApplicationRecords(db *gorm.DB, queryParams *ListApplicatio
 		return nil, 0, fmt.Errorf("unknown application type %s", queryParams.Type)
 	}
 
-	if !lo.Contains([]string{"project", "guild"}, clearEntity) {
-		return nil, 0, fmt.Errorf("unknown entity type %s", queryParams.Entity)
+	if clearEntity != "" {
+		if !lo.Contains([]string{"project", "guild"}, clearEntity) {
+			return nil, 0, fmt.Errorf("unknown entity type %s", queryParams.Entity)
+		}
 	}
 
 	appType := MustParseApplicationType(queryParams.Type)
-	querySeg := db.Model(&Application{}).Where(&Application{Type: appType, EntityType: clearEntity})
+
+	querySQL := QueryApplicationsWithEntityNameBaseSQL
+	whereClause := "\nWHERE applications.type = @app_type"
+	whereParams := map[string]any{"app_type": appType}
+
+	if clearEntity != "" {
+		whereClause += " AND applications.entity_type = @entity_type"
+		whereParams["entity_type"] = clearEntity
+	}
 
 	if queryParams.Applicant != "" {
-		querySeg = querySeg.Where(&Application{Applicant: queryParams.Applicant})
+		whereClause += " AND applications.applicant = @applicant"
+		whereParams["applicant"] = queryParams.Applicant
 	}
 
 	if queryParams.State != "" {
 		if !lo.Contains([]string{"open", "approved", "rejected", "processing", "completed"}, clearState) {
 			return nil, 0, fmt.Errorf("unknown state %s", queryParams.State)
 		}
-		querySeg = querySeg.Where(&Application{State: ApplicationState(clearState)})
+		whereClause += " AND applications.state = @state"
+		whereParams["state"] = ApplicationState(clearState)
 	}
 
 	if queryParams.StartDate != "" && queryParams.EndDate != "" {
@@ -122,23 +141,14 @@ func GenerateFrontendApplicationRecords(db *gorm.DB, queryParams *ListApplicatio
 			return nil, 0, err
 		}
 
-		querySeg = querySeg.Where("applications.created_at >= ? AND applications.created_at <= ?", startDate, endDate)
-	}
-
-	switch clearEntity {
-	case "project":
-		querySeg = querySeg.Joins("inner join projects on projects.id = applications.entity_id").Select(jointAppProjectFields)
-	case "guild":
-		// TODO: guild is not implemented yet
-		querySeg = querySeg.Joins("inner join projects on projects.id = applications.entity_id").Select(jointAppProjectFields)
+		whereClause += " AND applications.created_at >= @start_date AND applications.created_at <= @end_date"
+		whereParams["start_date"] = startDate
+		whereParams["end_date"] = endDate
 	}
 
 	if len(strings.TrimSpace(queryParams.EntityId)) != 0 {
-		entityId, err := strconv.ParseUint(queryParams.EntityId, 10, 64)
-		if err != nil {
-			return nil, 0, err
-		}
-		querySeg = querySeg.Where("entity_id = ?", entityId)
+		whereClause += " AND applications.entity_id = @entity_id"
+		whereParams["entity_id"] = strings.TrimSpace(queryParams.EntityId)
 	}
 
 	if queryParams.SortField == "" {
@@ -149,35 +159,59 @@ func GenerateFrontendApplicationRecords(db *gorm.DB, queryParams *ListApplicatio
 		queryParams.Size = api.DefaultPageSize
 	}
 
+	if queryParams.Page == 0 {
+		queryParams.Page = 1
+	}
+
+	if queryParams.SortOrder == "" {
+		queryParams.SortOrder = "desc"
+	}
+
 	// TODO: Currently the key for detailed data is budget type, which will be changed to asset name in future, and this query should also be updated
-	if queryParams.UserWallet != "" {
-		querySeg = querySeg.
-			Where(datatypes.JSONQuery("detailed_data").Equals(queryParams.UserWallet, "credit", "user_wallet")).
-			Or(datatypes.JSONQuery("detailed_data").Equals(queryParams.UserWallet, "token", "user_wallet"))
-	}
+	//if queryParams.UserWallet != "" {
+	//	querySeg = querySeg.
+	//		Where(datatypes.JSONQuery("detailed_data").Equals(queryParams.UserWallet, "credit", "user_wallet")).
+	//		Or(datatypes.JSONQuery("detailed_data").Equals(queryParams.UserWallet, "token", "user_wallet"))
+	//}
 
-	gormFindPage := gormfind.Page{
-		Page:      queryParams.Page,
-		Size:      queryParams.Size,
-		SortField: &queryParams.SortField,
-		Order:     &queryParams.SortOrder,
-	}
+	// TODO: This is the mysql style, need to find way to get db schema here and implement pg way
+	whereClause += "\nORDER BY @order_by LIMIT @offset, @limit"
+	whereParams["order_by"] = fmt.Sprintf("%s %s", queryParams.SortField, queryParams.SortOrder)
+	whereParams["offset"] = (queryParams.Page - 1) * queryParams.Size
+	whereParams["limit"] = queryParams.Size
 
-	total, err := gormfind.Count(querySeg)
+	fmt.Printf("TTT: query sql: %s\n", querySQL+whereClause)
+	fmt.Printf("TTT: where params: %+v\n", whereParams)
+
+	sql := db.ToSQL(func(tx *gorm.DB) *gorm.DB {
+		return tx.Raw(querySQL+whereClause, whereParams)
+	})
+	fmt.Printf("TTT: sql: %+s\n", sql)
+
+	var foobar []map[string]any
+	err := db.Raw(querySQL+whereClause, whereParams).Find(&foobar).Error
 	if err != nil {
-		return nil, 0, err
+		panic(err)
+	}
+	for _, r := range foobar {
+		fmt.Printf("TTT: Rcd: %+v\n", r)
 	}
 
-	rcds, err := gormfind.RowsJoin[jointAppProjectRslt](querySeg, "applications", &gormFindPage)
-	if err != nil {
-		return nil, 0, err
-	}
+	//total, err := gormfind.Count(querySeg)
+	//if err != nil {
+	//	return nil, 0, err
+	//}
+	//
+	//rcds, err := gormfind.RowsJoin[jointAppProjectRslt](querySeg, "applications", &gormFindPage)
+	//if err != nil {
+	//	return nil, 0, err
+	//}
+	//
+	//rslt := make([]*FrontendApplicationRecord, len(rcds))
+	//
+	//for i, r := range rcds {
+	//	rslt[i] = r.ToFrontedApplicationRecord(db)
+	//}
 
-	rslt := make([]*FrontendApplicationRecord, len(rcds))
-
-	for i, r := range rcds {
-		rslt[i] = r.ToFrontedApplicationRecord(db)
-	}
-
-	return rslt, total, nil
+	return nil, 0, nil
 }
