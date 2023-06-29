@@ -3,19 +3,20 @@ package model
 import (
 	"time"
 
+	"github.com/shopspring/decimal"
 	"github.com/xiaosongfu/gormfind"
 	"gorm.io/gorm"
 )
 
 type GuildBudget struct {
-	ID           uint       `json:"id" gorm:"primaryKey"`
-	GuildID      uint       `json:"guild_id"` // guild_id
-	Name         string     `json:"name"`
-	Type         BudgetType `json:"type"`          // budget type, credit or token
-	TotalAmount  uint64     `json:"total_amount"`  // total_amount
-	RemainAmount uint64     `json:"remain_amount"` // remain_amount
-	CreatedAt    time.Time  `json:"created_at"`
-	UpdatedAt    time.Time  `json:"updated_at"`
+	ID           uint            `json:"id" gorm:"primaryKey"`
+	GuildID      uint            `json:"guild_id"` // guild_id
+	Name         string          `json:"name"`
+	Type         BudgetType      `json:"type"`                                   // budget type, credit or token
+	TotalAmount  decimal.Decimal `json:"total_amount" sql:"type:decimal(20,8);"` // total_amount
+	RemainAmount decimal.Decimal `json:"remain_amount sql:"type:decimal(20,8);"` // remain_amount
+	CreatedAt    time.Time       `json:"created_at"`
+	UpdatedAt    time.Time       `json:"updated_at"`
 }
 
 type guildBudgetModel struct{}

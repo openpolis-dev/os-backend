@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 )
 
@@ -24,9 +25,9 @@ type TreasuryDetailedRecord struct {
 
 	BudgetType BudgetType `json:"budget_type"`
 
-	AssetName    string `json:"asset_name"`
-	TotalAmount  uint64 `json:"total_amount"`
-	RemainAmount int64  `json:"remain_amount"`
+	AssetName    string          `json:"asset_name"`
+	TotalAmount  decimal.Decimal `json:"total_amount" sql:"type:decimal(20,8);"`
+	RemainAmount decimal.Decimal `json:"remain_amount" sql:"type:decimal(20,8);"`
 
 	AuditLogs []TreasuryAuditLog `json:"audit_logs"`
 
@@ -50,15 +51,14 @@ type TreasuryAuditLog struct {
 }
 
 func (r *TreasuryAsset) ToTreasuryAssetsResponse() *TreasuryAssetsResponse {
-	var creditTotal, tokenTotal uint64
-	var creditRemain, tokenRemain int64
+	var creditTotal, creditRemain, tokenTotal, tokenRemain decimal.Decimal
 	for _, detailedRcd := range r.DetailedRecords {
 		if detailedRcd.BudgetType == BudgetTypeCredit {
-			creditTotal += detailedRcd.TotalAmount
-			creditRemain += detailedRcd.RemainAmount
+			creditTotal = creditTotal.Add(detailedRcd.TotalAmount)
+			creditRemain = creditRemain.Add(detailedRcd.RemainAmount)
 		} else if detailedRcd.BudgetType == BudgetTypeToken {
-			tokenTotal += detailedRcd.TotalAmount
-			tokenRemain += detailedRcd.RemainAmount
+			tokenTotal = tokenTotal.Add(detailedRcd.TotalAmount)
+			tokenRemain = tokenRemain.Add(detailedRcd.RemainAmount)
 		}
 	}
 
@@ -103,7 +103,7 @@ func (*treasuryAssetHelper) GetCurrQuarterRecord(db *gorm.DB) (*TreasuryAsset, e
 }
 
 // UpsertCQTreasuryDetailedRecord creates treasury detailed record and related create audit log
-func (*treasuryAssetHelper) UpsertCQTreasuryDetailedRecord(db *gorm.DB, budgetType BudgetType, assetName string, totalAmount uint64, userWallet string) error {
+func (*treasuryAssetHelper) UpsertCQTreasuryDetailedRecord(db *gorm.DB, budgetType BudgetType, assetName string, totalAmount decimal.Decimal, userWallet string) error {
 	cqRcd, err := TreasuryAssetHelper.GetCurrQuarterRecord(db)
 	if err != nil {
 		return err
@@ -118,7 +118,7 @@ func (*treasuryAssetHelper) UpsertCQTreasuryDetailedRecord(db *gorm.DB, budgetTy
 			AssetName:       assetName,
 		}).Attrs(TreasuryDetailedRecord{
 			TotalAmount:  totalAmount,
-			RemainAmount: int64(totalAmount),
+			RemainAmount: totalAmount,
 		}).FirstOrInit(&r)
 
 		if rslt.Error != nil {
@@ -146,18 +146,18 @@ func (*treasuryAssetHelper) UpsertCQTreasuryDetailedRecord(db *gorm.DB, budgetTy
 }
 
 // WithdrawTreasureAsset get asset from treasury record
-func (*treasuryAssetHelper) WithdrawTreasureAsset(db *gorm.DB, budgetType BudgetType, assetName string, deltaValue uint64, userWallet string, auditMsg string) error {
-	return TreasuryAssetHelper.ChangeCQTreasuryAssetValue(db, budgetType, assetName, int64(deltaValue), userWallet, auditMsg)
+func (*treasuryAssetHelper) WithdrawTreasureAsset(db *gorm.DB, budgetType BudgetType, assetName string, deltaValue decimal.Decimal, userWallet string, auditMsg string) error {
+	return TreasuryAssetHelper.ChangeCQTreasuryAssetValue(db, budgetType, assetName, deltaValue, userWallet, auditMsg)
 }
 
 // DepositTreasureAsset save asset back to treasury record
-func (*treasuryAssetHelper) DepositTreasureAsset(db *gorm.DB, budgetType BudgetType, assetName string, deltaValue uint64, userWallet string, auditMsg string) error {
-	return TreasuryAssetHelper.ChangeCQTreasuryAssetValue(db, budgetType, assetName, int64(-deltaValue), userWallet, auditMsg)
+func (*treasuryAssetHelper) DepositTreasureAsset(db *gorm.DB, budgetType BudgetType, assetName string, deltaValue decimal.Decimal, userWallet string, auditMsg string) error {
+	return TreasuryAssetHelper.ChangeCQTreasuryAssetValue(db, budgetType, assetName, deltaValue.Neg(), userWallet, auditMsg)
 }
 
 // ChangeCQTreasuryAssetValue update asset value for current quarter treasury record, the value passed in deltaValue allows both positive and negative value
 // For positive value, the remain amount will be decreased while the negative means remain amount will be increased
-func (*treasuryAssetHelper) ChangeCQTreasuryAssetValue(db *gorm.DB, budgetType BudgetType, assetName string, deltaValue int64, userWallet string, auditMsg string) error {
+func (*treasuryAssetHelper) ChangeCQTreasuryAssetValue(db *gorm.DB, budgetType BudgetType, assetName string, deltaValue decimal.Decimal, userWallet string, auditMsg string) error {
 	cqRcd, err := TreasuryAssetHelper.GetCurrQuarterRecord(db)
 	if err != nil {
 		return err
@@ -181,7 +181,7 @@ func (*treasuryAssetHelper) ChangeCQTreasuryAssetValue(db *gorm.DB, budgetType B
 			}
 		}
 
-		r.RemainAmount -= deltaValue
+		r.RemainAmount = r.RemainAmount.Sub(deltaValue)
 		tx.Save(&r)
 
 		return tx.Create(&TreasuryAuditLog{

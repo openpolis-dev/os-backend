@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 )
 
@@ -83,9 +84,9 @@ type ListApplicationQueryParams struct {
 type NewRewardAssetRecord struct {
 	// AssetName and Amount saves the token related info about this reward application.
 	// The asset type is same with project budget type, which is used to match budget record in project / guild
-	AssetType BudgetType `json:"asset_type"`
-	AssetName string     `json:"asset_name"`
-	Amount    uint64     `json:"amount"`
+	AssetType BudgetType      `json:"asset_type"`
+	AssetName string          `json:"asset_name"`
+	Amount    decimal.Decimal `json:"amount" sql:"type:decimal(20,8);"`
 }
 
 // NewRewardApplicationDetailedData saves detailed data for new reward applications
@@ -98,12 +99,12 @@ type NewRewardApplicationDetailedData struct {
 	Assets map[string]NewRewardAssetRecord `json:"assets"`
 }
 
-func (detailedData *NewRewardApplicationDetailedData) AmountOfAssetType(assetType BudgetType) (uint64, bool) {
-	total := uint64(0)
+func (detailedData *NewRewardApplicationDetailedData) AmountOfAssetType(assetType BudgetType) (decimal.Decimal, bool) {
+	total := decimal.NewFromInt(0)
 	found := false
 	for _, record := range (*detailedData).Assets {
 		if record.AssetType == assetType {
-			total += record.Amount
+			total = total.Add(record.Amount)
 			found = true
 		}
 	}
@@ -116,8 +117,8 @@ type FrontendApplicationRecord struct {
 	EntityName       string    `json:"entity_name"` // name field value from specified entity table
 	CreatedAt        time.Time `json:"created_at"`
 	TargetUserWallet string    `json:"target_user_wallet"`
-	TokenAmount      uint64    `json:"token_amount"`
-	CreditAmount     uint64    `json:"credit_amount"`
+	TokenAmount      string    `json:"token_amount"`
+	CreditAmount     string    `json:"credit_amount"`
 	BudgetSource     string    `json:"budget_source"` // the data is from name field of project or guild
 	Status           string    `json:"status"`        // application status
 	DetailedType     string    `json:"detailed_type"`
@@ -133,8 +134,8 @@ func (r *FrontendApplicationRecord) ToCSV() []string {
 	return []string{
 		r.CreatedAt.Format(time.RFC3339),
 		r.TargetUserWallet,
-		fmt.Sprintf("%d", r.CreditAmount),
-		fmt.Sprintf("%d", r.TokenAmount),
+		r.CreditAmount,
+		r.TokenAmount,
 		r.EntityName,
 		r.BudgetSource,
 		r.Comment,
@@ -170,8 +171,8 @@ type jointAppEntityRslt struct {
 }
 
 func (r *jointAppEntityRslt) ToFrontedApplicationRecord(db *gorm.DB) *FrontendApplicationRecord {
-	var tokenAmount uint64
-	var creditAmount uint64
+	var tokenAmount decimal.Decimal
+	var creditAmount decimal.Decimal
 	var targetUserWallet string
 	if r.Application.Type == ApplicationNewReward {
 		detailedData := NewRewardApplicationDetailedData{}
@@ -220,8 +221,8 @@ func (r *jointAppEntityRslt) ToFrontedApplicationRecord(db *gorm.DB) *FrontendAp
 		EntityName:       r.Application.EntityType,
 		CreatedAt:        r.Application.CreatedAt,
 		TargetUserWallet: targetUserWallet,
-		TokenAmount:      tokenAmount,
-		CreditAmount:     creditAmount,
+		TokenAmount:      tokenAmount.String(),
+		CreditAmount:     creditAmount.String(),
 		BudgetSource:     r.EntityName,
 		Status:           string(r.Application.State),
 		DetailedType:     r.Application.DetailedType,
@@ -235,30 +236,30 @@ func (r *jointAppEntityRslt) ToFrontedApplicationRecord(db *gorm.DB) *FrontendAp
 }
 
 type UpdateAssetRequestParams struct {
-	AssetName   string     `json:"asset_name"`
-	BudgetType  BudgetType `json:"budget_type"`
-	TotalAmount uint64     `json:"total_amount"`
+	AssetName   string          `json:"asset_name"`
+	BudgetType  BudgetType      `json:"budget_type"`
+	TotalAmount decimal.Decimal `json:"total_amount" sql:"type:decimal(20,8);"`
 }
 
 type TreasuryAssetsResponse struct {
-	ID                 uint   `json:"id"`
-	QuarterNum         string `json:"quarter_num"`
-	CreditTotalAmount  uint64 `json:"credit_total_amount"`
-	CreditRemainAmount int64  `json:"credit_remain_amount"`
-	TokenTotalAmount   uint64 `json:"token_total_amount"`
-	TokenRemainAmount  int64  `json:"token_remain_amount"`
+	ID                 uint            `json:"id"`
+	QuarterNum         string          `json:"quarter_num"`
+	CreditTotalAmount  decimal.Decimal `json:"credit_total_amount"`
+	CreditRemainAmount decimal.Decimal `json:"credit_remain_amount"`
+	TokenTotalAmount   decimal.Decimal `json:"token_total_amount"`
+	TokenRemainAmount  decimal.Decimal `json:"token_remain_amount"`
 }
 
 // NewApplicationRequest is used to save new application request data passed from frontend
 type NewApplicationRequest struct {
-	Type             string `json:"type"`
-	Entity           string `json:"entity"`
-	EntityId         uint   `json:"entity_id"`
-	TargetUserWallet string `json:"target_user_wallet"`
-	CreditAssetName  string `json:"credit_asset_name"`
-	CreditAmount     uint64 `json:"credit_amount"`
-	TokenAssetName   string `json:"token_asset_name"`
-	TokenAmount      uint64 `json:"token_amount"`
-	DetailedType     string `json:"detailed_type"`
-	Comment          string `json:"comment"`
+	Type             string          `json:"type"`
+	Entity           string          `json:"entity"`
+	EntityId         uint            `json:"entity_id"`
+	TargetUserWallet string          `json:"target_user_wallet"`
+	CreditAssetName  string          `json:"credit_asset_name"`
+	CreditAmount     decimal.Decimal `json:"credit_amount"`
+	TokenAssetName   string          `json:"token_asset_name"`
+	TokenAmount      decimal.Decimal `json:"token_amount"`
+	DetailedType     string          `json:"detailed_type"`
+	Comment          string          `json:"comment"`
 }

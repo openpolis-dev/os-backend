@@ -11,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
+	"github.com/shopspring/decimal"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk"
@@ -34,7 +35,7 @@ type (
 	BudgetParam struct {
 		Name        string           `json:"name"`
 		BudgetType  model.BudgetType `json:"budget_type"`
-		TotalAmount uint64           `json:"total_amount"`
+		TotalAmount decimal.Decimal  `json:"total_amount"`
 	}
 	UpdateReq struct {
 		Logo string `json:"logo"`
@@ -51,9 +52,9 @@ type (
 		Members []string `json:"members"`
 	}
 	UpdateBudgetReq struct {
-		Id          uint   `json:"id"`
-		AssetName   string `json:"asset_name"`
-		TotalAmount uint64 `json:"total_amount"`
+		Id          uint            `json:"id"`
+		AssetName   string          `json:"asset_name"`
+		TotalAmount decimal.Decimal `json:"total_amount"`
 	}
 )
 
@@ -109,7 +110,7 @@ func Create(ctx *gin.Context) {
 			Type:         item.BudgetType,
 			AssetName:    item.Name,
 			TotalAmount:  item.TotalAmount,
-			RemainAmount: int64(item.TotalAmount),
+			RemainAmount: item.TotalAmount,
 		}
 	})
 	err = model.ProjectBudgetModel.Create(tx, budgets)

@@ -15,6 +15,7 @@ require (
 	github.com/onsi/gomega v1.27.7
 	github.com/rs/zerolog v1.29.1
 	github.com/samber/lo v1.38.1
+	github.com/shopspring/decimal v1.2.0
 	github.com/spruceid/siwe-go v0.2.0
 	github.com/unipassid/unipass-sigverify-go v0.9.0
 	github.com/xiaosongfu/ethsign v0.1.0
