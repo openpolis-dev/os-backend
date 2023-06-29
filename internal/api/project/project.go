@@ -784,8 +784,12 @@ func UpdateBudget(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
+
 	// update `TotalAmount`
+	// TODO: Merge the used amount change logic in here and treasury
+	usedAmount := budget.TotalAmount.Sub(budget.RemainAmount)
 	budget.TotalAmount = req.TotalAmount
+	budget.RemainAmount = budget.TotalAmount.Sub(usedAmount)
 	err = model.ProjectBudgetModel.Update(db, budget)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
