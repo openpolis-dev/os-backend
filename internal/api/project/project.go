@@ -110,6 +110,7 @@ func Create(ctx *gin.Context) {
 			Type:         item.BudgetType,
 			AssetName:    item.Name,
 			TotalAmount:  item.TotalAmount,
+			UsedAmount:   decimal.Zero,
 			RemainAmount: item.TotalAmount,
 		}
 	})
@@ -786,10 +787,8 @@ func UpdateBudget(ctx *gin.Context) {
 	}
 
 	// update `TotalAmount`
-	// TODO: Merge the used amount change logic in here and treasury
-	usedAmount := budget.TotalAmount.Sub(budget.RemainAmount)
 	budget.TotalAmount = req.TotalAmount
-	budget.RemainAmount = budget.TotalAmount.Sub(usedAmount)
+	budget.RemainAmount = budget.TotalAmount.Sub(budget.UsedAmount)
 	err = model.ProjectBudgetModel.Update(db, budget)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))

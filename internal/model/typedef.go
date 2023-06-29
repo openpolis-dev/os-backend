@@ -245,8 +245,10 @@ type TreasuryAssetsResponse struct {
 	ID                 uint            `json:"id"`
 	QuarterNum         string          `json:"quarter_num"`
 	CreditTotalAmount  decimal.Decimal `json:"credit_total_amount"`
+	CreditUsedAmount   decimal.Decimal `json:"credit_used_amount"`
 	CreditRemainAmount decimal.Decimal `json:"credit_remain_amount"`
 	TokenTotalAmount   decimal.Decimal `json:"token_total_amount"`
+	TokenUsedAmount    decimal.Decimal `json:"token_used_amount"`
 	TokenRemainAmount  decimal.Decimal `json:"token_remain_amount"`
 }
 

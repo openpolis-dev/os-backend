@@ -3,6 +3,7 @@ package model_test
 import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/shopspring/decimal"
 	"github.com/theseed-labs/os-backend/internal/model"
 )
 
@@ -83,8 +84,9 @@ var _ = Describe("Project", func() {
 
 			budgetRecord, err := model.ProjectBudgetModel.QueryByProjectIdAndBudgetProps(db, prjRcd.ID, token1Type, token1Name)
 			Expect(err).To(BeNil())
-			Expect(budgetRecord.TotalAmount).To(Equal(token1Budget))
-			Expect(budgetRecord.RemainAmount).To(Equal(token1Budget))
+			Expect(budgetRecord.TotalAmount.Cmp(token1Budget)).To(Equal(0))
+			Expect(budgetRecord.UsedAmount.Cmp(decimal.Zero)).To(Equal(0))
+			Expect(budgetRecord.RemainAmount.Cmp(token1Budget)).To(Equal(0))
 		})
 
 		It("can withdraw budget correctly", func() {
@@ -95,8 +97,9 @@ var _ = Describe("Project", func() {
 
 			budgetRecord, err := model.ProjectBudgetModel.QueryByProjectIdAndBudgetProps(db, prjRcd.ID, token1Type, token1Name)
 			Expect(err).To(BeNil())
-			Expect(budgetRecord.TotalAmount).To(Equal(token1Budget))
-			Expect(budgetRecord.RemainAmount).To(Equal(token1Budget.Sub(token1WithdrawAmount)))
+			Expect(budgetRecord.TotalAmount.Cmp(token1Budget)).To(BeEquivalentTo(0))
+			Expect(budgetRecord.UsedAmount.Cmp(token1WithdrawAmount)).To(BeEquivalentTo(0))
+			Expect(budgetRecord.RemainAmount.Cmp(token1Budget.Sub(token1WithdrawAmount))).To(BeEquivalentTo(0))
 		})
 		It("update project budget record after deposit successfully", func() {
 			_ = model.ProjectModel.SetBudget(db, prjRcd.ID, token1Type, token1Name, token1Budget)
@@ -107,8 +110,9 @@ var _ = Describe("Project", func() {
 
 			budgetRecord, err := model.ProjectBudgetModel.QueryByProjectIdAndBudgetProps(db, prjRcd.ID, token1Type, token1Name)
 			Expect(err).To(BeNil())
-			Expect(budgetRecord.TotalAmount).To(Equal(token1Budget))
-			Expect(budgetRecord.RemainAmount).To(BeEquivalentTo(token1Budget.Sub(token1WithdrawAmount).Add(token1DepositAmount)))
+			Expect(budgetRecord.TotalAmount.Cmp(token1Budget)).To(BeEquivalentTo(0))
+			Expect(budgetRecord.UsedAmount.Cmp(token1WithdrawAmount.Sub(token1DepositAmount))).To(BeEquivalentTo(0))
+			Expect(budgetRecord.RemainAmount.Cmp(token1Budget.Sub(token1WithdrawAmount).Add(token1DepositAmount))).To(BeEquivalentTo(0))
 		})
 		It("create budget record if deposit to non-existing asset", func() {
 			err := model.ProjectModel.DepositBudget(db, prjRcd.ID, token2Type, token2Name, token1DepositAmount)
@@ -116,8 +120,9 @@ var _ = Describe("Project", func() {
 
 			budgetRecord, err := model.ProjectBudgetModel.QueryByProjectIdAndBudgetProps(db, prjRcd.ID, token2Type, token2Name)
 			Expect(err).To(BeNil())
-			Expect(budgetRecord.TotalAmount).To(Equal(token1DepositAmount))
-			Expect(budgetRecord.RemainAmount).To(Equal(token1DepositAmount))
+			Expect(budgetRecord.TotalAmount.Cmp(token1DepositAmount)).To(BeEquivalentTo(0))
+			Expect(budgetRecord.UsedAmount.Cmp(decimal.Zero)).To(BeEquivalentTo(0))
+			Expect(budgetRecord.RemainAmount.Cmp(token1DepositAmount)).To(BeEquivalentTo(0))
 		})
 
 	})

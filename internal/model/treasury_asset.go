@@ -66,8 +66,10 @@ func (r *TreasuryAsset) ToTreasuryAssetsResponse() *TreasuryAssetsResponse {
 		ID:                 r.ID,
 		QuarterNum:         r.QuarterNum,
 		CreditTotalAmount:  creditTotal,
+		CreditUsedAmount:   creditTotal.Sub(creditRemain),
 		CreditRemainAmount: creditRemain,
 		TokenTotalAmount:   tokenTotal,
+		TokenUsedAmount:    tokenTotal.Sub(tokenRemain),
 		TokenRemainAmount:  tokenRemain,
 	}
 }

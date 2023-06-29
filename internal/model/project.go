@@ -93,12 +93,12 @@ func (*projectModel) SetBudget(db *gorm.DB, projectId uint, budgetType BudgetTyp
 				AssetName:    assertName,
 				Type:         budgetType,
 				TotalAmount:  totalAmount,
+				UsedAmount:   decimal.Zero,
 				RemainAmount: totalAmount,
 			}
 		} else {
-			usedAmount := budgetRecord.TotalAmount.Sub(budgetRecord.RemainAmount)
 			budgetRecord.TotalAmount = totalAmount
-			budgetRecord.RemainAmount = totalAmount.Sub(usedAmount)
+			budgetRecord.RemainAmount = totalAmount.Sub(budgetRecord.UsedAmount)
 		}
 
 		return ProjectBudgetModel.Update(tx, budgetRecord)
@@ -116,6 +116,7 @@ func (*projectModel) WithdrawBudget(db *gorm.DB, projectId uint, budgetType Budg
 			return fmt.Errorf("project %d has no budget record with asset %s", projectId, assetName)
 		}
 
+		budgetRcd.UsedAmount = budgetRcd.UsedAmount.Add(tokenAmount)
 		budgetRcd.RemainAmount = budgetRcd.RemainAmount.Sub(tokenAmount)
 		return tx.Save(budgetRcd).Error
 	})
@@ -135,9 +136,11 @@ func (*projectModel) DepositBudget(db *gorm.DB, projectId uint, budgetType Budge
 				AssetName:    assetName,
 				Type:         budgetType,
 				TotalAmount:  tokenAmount,
+				UsedAmount:   decimal.Zero,
 				RemainAmount: tokenAmount,
 			}).Error
 		} else {
+			budgetRcd.UsedAmount = budgetRcd.UsedAmount.Sub(tokenAmount)
 			budgetRcd.RemainAmount = budgetRcd.RemainAmount.Add(tokenAmount)
 			return tx.Save(budgetRcd).Error
 		}

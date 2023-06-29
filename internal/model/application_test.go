@@ -432,8 +432,10 @@ var _ = Describe("Application", func() {
 				for _, r := range budgetRecords {
 					if r.Type == token1Type {
 						Expect(r.RemainAmount).To(BeEquivalentTo(r.TotalAmount.Sub(token1RewardAmount)))
+						Expect(r.UsedAmount).To(BeEquivalentTo(token1RewardAmount))
 					} else if r.Type == token2Type {
 						Expect(r.RemainAmount).To(BeEquivalentTo(r.TotalAmount))
+						Expect(r.UsedAmount.Cmp(decimal.Zero)).To(BeEquivalentTo(0))
 					}
 				}
 			})
