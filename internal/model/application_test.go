@@ -6,6 +6,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/samber/lo"
+	"github.com/shopspring/decimal"
 	"github.com/theseed-labs/os-backend/internal/model"
 )
 
@@ -45,8 +46,8 @@ var _ = Describe("Application", func() {
 			_ = model.NewApplicationRecord(db, &app)
 
 			// Set budget for project
-			_ = model.ProjectModel.SetBudget(db, openProject.ID, token1Type, token1Name, 100)
-			_ = model.ProjectModel.SetBudget(db, openProject.ID, token2Type, token2Name, 200)
+			_ = model.ProjectModel.SetBudget(db, openProject.ID, token1Type, token1Name, token1Budget)
+			_ = model.ProjectModel.SetBudget(db, openProject.ID, token2Type, token2Name, token2Budget)
 
 			// For new_reward application, detailed data is required for reward detail
 			detailedData := model.NewRewardApplicationDetailedData{
@@ -55,7 +56,7 @@ var _ = Describe("Application", func() {
 					token1Name: {
 						AssetType: token1Type,
 						AssetName: token1Name,
-						Amount:    10,
+						Amount:    token1RewardAmount,
 					},
 				},
 			}
@@ -71,11 +72,11 @@ var _ = Describe("Application", func() {
 
 				Expect(detailedData.TargetUserWallet).To(BeEquivalentTo(daveWallet))
 				token1Amount, token1Found := detailedData.AmountOfAssetType(token1Type)
-				Expect(token1Amount).To(BeEquivalentTo(10))
+				Expect(token1Amount).To(Equal(token1RewardAmount))
 				Expect(token1Found).To(Equal(true))
 
 				token2Amount, token2Found := detailedData.AmountOfAssetType(token2Type)
-				Expect(token2Amount).To(BeEquivalentTo(0))
+				Expect(token2Amount.Cmp(decimal.Zero)).To(Equal(0))
 				Expect(token2Found).To(Equal(false))
 			})
 		})
@@ -247,8 +248,8 @@ var _ = Describe("Application", func() {
 				_ = model.NewApplicationRecord(db, &app)
 
 				// Set budget for project
-				_ = model.ProjectModel.SetBudget(db, openProject.ID, token1Type, token1Name, 100)
-				_ = model.ProjectModel.SetBudget(db, openProject.ID, token2Type, token2Name, 200)
+				_ = model.ProjectModel.SetBudget(db, openProject.ID, token1Type, token1Name, token1Budget)
+				_ = model.ProjectModel.SetBudget(db, openProject.ID, token2Type, token2Name, token2Budget)
 
 				// For new_reward application, detailed data is required for reward detail
 				detailedData := model.NewRewardApplicationDetailedData{
@@ -257,7 +258,7 @@ var _ = Describe("Application", func() {
 						token1Name: {
 							AssetType: token1Type,
 							AssetName: token1Name,
-							Amount:    10,
+							Amount:    token1RewardAmount,
 						},
 					},
 				}
@@ -272,10 +273,10 @@ var _ = Describe("Application", func() {
 				budgetRcds, _ := model.ProjectBudgetModel.ListByProjectId(db, openProject.ID)
 				Expect(len(budgetRcds)).To(BeEquivalentTo(2))
 
-				tokenNameAmountList := lo.Map(budgetRcds, func(r *model.ProjectBudget, _ int) map[string]uint64 {
-					return map[string]uint64{r.AssetName: r.TotalAmount}
+				tokenNameAmountList := lo.Map(budgetRcds, func(r *model.ProjectBudget, _ int) map[string]decimal.Decimal {
+					return map[string]decimal.Decimal{r.AssetName: r.TotalAmount}
 				})
-				Expect(tokenNameAmountList).To(ConsistOf([]map[string]uint64{{token1Name: 100}, {token2Name: 200}}))
+				Expect(tokenNameAmountList).To(ConsistOf([]map[string]decimal.Decimal{{token1Name: token1Budget}, {token2Name: token2Budget}}))
 			})
 			It("should update application status to approved and create new audit log", func() {
 				preLatestAuditLog, _ := app.GetLatestAuditLog(db)
@@ -304,10 +305,10 @@ var _ = Describe("Application", func() {
 				_ = model.AuditApplication(db, carolWallet, &app, model.AuditActionApprove, "", nil, nil)
 				budgetRcds, _ := model.ProjectBudgetModel.ListByProjectId(db, openProject.ID)
 				Expect(len(budgetRcds)).To(Equal(2))
-				tokenNameAmountList := lo.Map(budgetRcds, func(r *model.ProjectBudget, _ int) map[string]uint64 {
-					return map[string]uint64{r.AssetName: r.TotalAmount}
+				tokenNameAmountList := lo.Map(budgetRcds, func(r *model.ProjectBudget, _ int) map[string]decimal.Decimal {
+					return map[string]decimal.Decimal{r.AssetName: r.TotalAmount}
 				})
-				Expect(tokenNameAmountList).To(ConsistOf([]map[string]uint64{{token1Name: 100}, {token2Name: 200}}))
+				Expect(tokenNameAmountList).To(ConsistOf([]map[string]decimal.Decimal{{token1Name: token1Budget}, {token2Name: token2Budget}}))
 			})
 		})
 		When("to reject new reward application", func() {
@@ -326,8 +327,8 @@ var _ = Describe("Application", func() {
 				_ = model.NewApplicationRecord(db, &app)
 
 				// Set budget for project
-				_ = model.ProjectModel.SetBudget(db, openProject.ID, token1Type, token1Name, 100)
-				_ = model.ProjectModel.SetBudget(db, openProject.ID, token2Type, token2Name, 200)
+				_ = model.ProjectModel.SetBudget(db, openProject.ID, token1Type, token1Name, token1Budget)
+				_ = model.ProjectModel.SetBudget(db, openProject.ID, token2Type, token2Name, token2Budget)
 
 				// For new_reward application, detailed data is required for reward detail
 				detailedData := model.NewRewardApplicationDetailedData{
@@ -336,7 +337,7 @@ var _ = Describe("Application", func() {
 						token1Name: {
 							AssetType: token1Type,
 							AssetName: token1Name,
-							Amount:    10,
+							Amount:    token1RewardAmount,
 						},
 					},
 				}
@@ -384,8 +385,8 @@ var _ = Describe("Application", func() {
 				_ = model.NewApplicationRecord(db, &app)
 
 				// Set budget for project
-				_ = model.ProjectModel.SetBudget(db, openProject.ID, token1Type, token1Name, 100)
-				_ = model.ProjectModel.SetBudget(db, openProject.ID, token2Type, token2Name, 200)
+				_ = model.ProjectModel.SetBudget(db, openProject.ID, token1Type, token1Name, token1Budget)
+				_ = model.ProjectModel.SetBudget(db, openProject.ID, token2Type, token2Name, token2Budget)
 
 				// For new_reward application, detailed data is required for reward detail
 				detailedData := model.NewRewardApplicationDetailedData{
@@ -394,7 +395,7 @@ var _ = Describe("Application", func() {
 						token1Name: {
 							AssetType: token1Type,
 							AssetName: token1Name,
-							Amount:    10,
+							Amount:    token1RewardAmount,
 						},
 					},
 				}
@@ -430,7 +431,7 @@ var _ = Describe("Application", func() {
 				budgetRecords, _ := model.ProjectBudgetModel.ListByProjectId(db, openProject.ID)
 				for _, r := range budgetRecords {
 					if r.Type == token1Type {
-						Expect(r.RemainAmount).To(BeEquivalentTo(r.TotalAmount - 10)) // 100-10
+						Expect(r.RemainAmount).To(BeEquivalentTo(r.TotalAmount.Sub(token1RewardAmount)))
 					} else if r.Type == token2Type {
 						Expect(r.RemainAmount).To(BeEquivalentTo(r.TotalAmount))
 					}
@@ -444,8 +445,8 @@ var _ = Describe("Application", func() {
 				Expect(err).To(BeNil())
 
 				Expect(len(userAssetRcd)).To(Equal(1))
-				Expect(userAssetRcd[0].DealtAmount).To(BeEquivalentTo(0))
-				Expect(userAssetRcd[0].ProcessingAmount).To(BeEquivalentTo(10))
+				Expect(userAssetRcd[0].DealtAmount.Cmp(decimal.Zero)).To(Equal(0))
+				Expect(userAssetRcd[0].ProcessingAmount.Cmp(token1RewardAmount)).To(Equal(0))
 			})
 		})
 		When("to complete new reward application", func() {
@@ -464,8 +465,8 @@ var _ = Describe("Application", func() {
 				_ = model.NewApplicationRecord(db, &app)
 
 				// Set budget for project
-				_ = model.ProjectModel.SetBudget(db, openProject.ID, token1Type, token1Name, 100)
-				_ = model.ProjectModel.SetBudget(db, openProject.ID, token2Type, token2Name, 200)
+				_ = model.ProjectModel.SetBudget(db, openProject.ID, token1Type, token1Name, token1Budget)
+				_ = model.ProjectModel.SetBudget(db, openProject.ID, token2Type, token2Name, token2Budget)
 
 				// For new_reward application, detailed data is required for reward detail
 				detailedData := model.NewRewardApplicationDetailedData{
@@ -474,7 +475,7 @@ var _ = Describe("Application", func() {
 						token1Name: {
 							AssetType: token1Type,
 							AssetName: token1Name,
-							Amount:    10,
+							Amount:    token1RewardAmount,
 						},
 					},
 				}
@@ -493,8 +494,8 @@ var _ = Describe("Application", func() {
 				Expect(err).To(BeNil())
 
 				Expect(len(userAssetRcd)).To(Equal(1))
-				Expect(userAssetRcd[0].DealtAmount).To(BeEquivalentTo(10))
-				Expect(userAssetRcd[0].ProcessingAmount).To(BeEquivalentTo(0))
+				Expect(userAssetRcd[0].DealtAmount).To(Equal(token1RewardAmount))
+				Expect(userAssetRcd[0].ProcessingAmount.Cmp(decimal.Zero)).To(Equal(0))
 			})
 		})
 	})

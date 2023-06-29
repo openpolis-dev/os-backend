@@ -6,6 +6,7 @@ import (
 	"github.com/glebarez/sqlite"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/shopspring/decimal"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"gorm.io/gorm"
 )
@@ -39,6 +40,14 @@ var tables = []any{
 	&model.TreasuryDetailedRecord{},
 	&model.TreasuryAuditLog{},
 }
+
+var (
+	token1Budget            = decimal.NewFromInt(100)
+	token2Budget            = decimal.NewFromInt(200)
+	token1RewardAmount, _   = decimal.NewFromString("9.9")
+	token1WithdrawAmount, _ = decimal.NewFromString("42.24")
+	token1DepositAmount, _  = decimal.NewFromString("24.42")
+)
 
 var openProject, pendingCloseProject, closedProject *model.Project
 

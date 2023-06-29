@@ -104,7 +104,7 @@ func (detailedData *NewRewardApplicationDetailedData) AmountOfAssetType(assetTyp
 	found := false
 	for _, record := range (*detailedData).Assets {
 		if record.AssetType == assetType {
-			total.Add(record.Amount)
+			total = total.Add(record.Amount)
 			found = true
 		}
 	}
@@ -134,8 +134,8 @@ func (r *FrontendApplicationRecord) ToCSV() []string {
 	return []string{
 		r.CreatedAt.Format(time.RFC3339),
 		r.TargetUserWallet,
-		fmt.Sprintf("%d", r.CreditAmount),
-		fmt.Sprintf("%d", r.TokenAmount),
+		r.CreditAmount,
+		r.TokenAmount,
 		r.EntityName,
 		r.BudgetSource,
 		r.Comment,
