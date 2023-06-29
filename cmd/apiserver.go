@@ -6,6 +6,7 @@ import (
 	"github.com/casbin/casbin/v2"
 	gormadapter "github.com/casbin/gorm-adapter/v3"
 	"github.com/gin-contrib/cors"
+	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
 	"github.com/samber/lo"
 	"github.com/theseed-labs/os-backend/internal/api"
@@ -71,6 +72,7 @@ func main() {
 	db := storage.GetGormDB()
 
 	r := gin.Default()
+	r.Use(gzip.Gzip(gzip.DefaultCompression))
 
 	// setup cors refer: https://github.com/gin-contrib/cors
 	corsCfg := cors.DefaultConfig()
