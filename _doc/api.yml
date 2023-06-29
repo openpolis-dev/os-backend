@@ -353,7 +353,7 @@ paths:
                   type: string
                   description: budget asset name
                 total_amount:
-                  type: number
+                  type: string
                   description: total amount of the budget
       responses:
         '200':
@@ -421,7 +421,7 @@ paths:
                     description: Budget type of this record
                     enum: [ credit, coin ]
                   total_amount:
-                    type: number
+                    type: string
                     description: Total amount of the asset
       responses:
         '200':
@@ -916,10 +916,10 @@ components:
           type: string
           description: token name for this budget
         total_amount:
-          type: integer
+          type: string
           description: total amount of the budget
         remain_amount:
-          type: integer
+          type: string
           description: remain amount of the budget
         created_at:
           type: string
@@ -972,13 +972,13 @@ components:
           type: string
           description: asset name for token
         token_amount:
-          type: number
+          type: string
           description: how many token will be sent in this reward
         credit_asset_name:
           type: string
           description: asset name for credit
         credit_amount:
-          type: number
+          type: string
           description: how many credit will be sent in this reward
         budget_source:
           type: string
@@ -1080,10 +1080,10 @@ components:
                     type: string
                     description: user wallet for this record
                   dealt_amount:
-                    type: number
+                    type: string
                     description: amount already saved to user wallet
                   processing_amount:
-                    type: number
+                    type: string
                     description: amount still under processing state
                   created_at:
                     type: string
@@ -1111,7 +1111,7 @@ components:
           type: string
           description: type of this reward, `credit` or <token name>
         reward_amount:
-          type: number
+          type: string
           description: amount of this reward
         created_at:
           type: number
@@ -1219,13 +1219,13 @@ components:
           type: string
           description: asset name for token
         token_amount:
-          type: number
+          type: string
           description: how many token will be sent in this reward
         credit_asset_name:
           type: string
           description: asset name for credit
         credit_amount:
-          type: number
+          type: string
           description: how many SeeDAO credit will be sent in this reward
         detailed_type:
           type: string
@@ -1244,15 +1244,15 @@ components:
           type: string
           description: quarter number, in format yyyy0[1234]
         credit_total_amount:
-          type: number
+          type: string
           description: total credit amount
         credit_remain_amount:
-          type: number
+          type: string
           description: remain credit amount
         token_total_amount:
-          type: number
+          type: string
           description: total token amount
         token_remain_amount:
-          type: number
+          type: string
           description: remain token amount
 
