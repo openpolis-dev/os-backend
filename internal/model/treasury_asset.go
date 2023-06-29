@@ -125,7 +125,9 @@ func (*treasuryAssetHelper) UpsertCQTreasuryDetailedRecord(db *gorm.DB, budgetTy
 			return rslt.Error
 		} else if rslt.RowsAffected > 0 {
 			// Record found, need to update the total amount
+			usedAmount := r.TotalAmount.Sub(r.RemainAmount)
 			r.TotalAmount = totalAmount
+			r.RemainAmount = totalAmount.Sub(usedAmount)
 			err = tx.Save(&r).Error
 			if err != nil {
 				return err
