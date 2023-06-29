@@ -12,6 +12,7 @@ import (
 	"github.com/casbin/casbin/v2"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
+	"github.com/shopspring/decimal"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/sdk"
 	"github.com/xiaosongfu/gormfind"
@@ -223,7 +224,7 @@ func doAuditApplicationInTransaction(tx *gorm.DB, operatorWallet string, applica
 					}
 
 					// Update user asset record
-					if err := UserAssetRecordModel.CreateOrUpdate(tx, detailedData.TargetUserWallet, assetRecord.AssetType, assetName, assetRecord.Amount, 0); err != nil {
+					if err := UserAssetRecordModel.CreateOrUpdate(tx, detailedData.TargetUserWallet, assetRecord.AssetType, assetName, assetRecord.Amount, decimal.Zero); err != nil {
 						return err
 					}
 				}
@@ -241,7 +242,7 @@ func doAuditApplicationInTransaction(tx *gorm.DB, operatorWallet string, applica
 					}
 
 					// Update user asset record
-					if err := UserAssetRecordModel.CreateOrUpdate(tx, detailedData.TargetUserWallet, assetRecord.AssetType, assetName, assetRecord.Amount, 0); err != nil {
+					if err := UserAssetRecordModel.CreateOrUpdate(tx, detailedData.TargetUserWallet, assetRecord.AssetType, assetName, assetRecord.Amount, decimal.Zero); err != nil {
 						return err
 					}
 				}
@@ -334,13 +335,13 @@ func doAuditApplicationInTransaction(tx *gorm.DB, operatorWallet string, applica
 
 				// send notification in separated coroutines if passed in notificator
 				if notificator != nil {
-					go func(notificator sdk.Notificator, staffs []string, assertName string, amount int64) {
+					go func(notificator sdk.Notificator, staffs []string, assertName string, amount string) {
 						title, body, data := api.GenerateObtainAssertNotificationParams(assertName, amount)
 						err := notificator.PushTo(staffs, title, body, data)
 						if err != nil {
 							log.Error().Msgf("push to %+v failed: %s", staffs, err)
 						}
-					}(notificator, []string{strings.ToLower(detailedData.TargetUserWallet)}, assetRecord.AssetName, int64(assetRecord.Amount))
+					}(notificator, []string{strings.ToLower(detailedData.TargetUserWallet)}, assetRecord.AssetName, assetRecord.Amount.String())
 				}
 			}
 		}

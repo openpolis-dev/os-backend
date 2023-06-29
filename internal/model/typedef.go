@@ -236,30 +236,30 @@ func (r *jointAppEntityRslt) ToFrontedApplicationRecord(db *gorm.DB) *FrontendAp
 }
 
 type UpdateAssetRequestParams struct {
-	AssetName   string     `json:"asset_name"`
-	BudgetType  BudgetType `json:"budget_type"`
-	TotalAmount uint64     `json:"total_amount"`
+	AssetName   string          `json:"asset_name"`
+	BudgetType  BudgetType      `json:"budget_type"`
+	TotalAmount decimal.Decimal `json:"total_amount" sql:"type:decimal(20,8);"`
 }
 
 type TreasuryAssetsResponse struct {
-	ID                 uint   `json:"id"`
-	QuarterNum         string `json:"quarter_num"`
-	CreditTotalAmount  uint64 `json:"credit_total_amount"`
-	CreditRemainAmount int64  `json:"credit_remain_amount"`
-	TokenTotalAmount   uint64 `json:"token_total_amount"`
-	TokenRemainAmount  int64  `json:"token_remain_amount"`
+	ID                 uint            `json:"id"`
+	QuarterNum         string          `json:"quarter_num"`
+	CreditTotalAmount  decimal.Decimal `json:"credit_total_amount"`
+	CreditRemainAmount decimal.Decimal `json:"credit_remain_amount"`
+	TokenTotalAmount   decimal.Decimal `json:"token_total_amount"`
+	TokenRemainAmount  decimal.Decimal `json:"token_remain_amount"`
 }
 
 // NewApplicationRequest is used to save new application request data passed from frontend
 type NewApplicationRequest struct {
-	Type             string `json:"type"`
-	Entity           string `json:"entity"`
-	EntityId         uint   `json:"entity_id"`
-	TargetUserWallet string `json:"target_user_wallet"`
-	CreditAssetName  string `json:"credit_asset_name"`
-	CreditAmount     uint64 `json:"credit_amount"`
-	TokenAssetName   string `json:"token_asset_name"`
-	TokenAmount      uint64 `json:"token_amount"`
-	DetailedType     string `json:"detailed_type"`
-	Comment          string `json:"comment"`
+	Type             string          `json:"type"`
+	Entity           string          `json:"entity"`
+	EntityId         uint            `json:"entity_id"`
+	TargetUserWallet string          `json:"target_user_wallet"`
+	CreditAssetName  string          `json:"credit_asset_name"`
+	CreditAmount     decimal.Decimal `json:"credit_amount"`
+	TokenAssetName   string          `json:"token_asset_name"`
+	TokenAmount      decimal.Decimal `json:"token_amount"`
+	DetailedType     string          `json:"detailed_type"`
+	Comment          string          `json:"comment"`
 }

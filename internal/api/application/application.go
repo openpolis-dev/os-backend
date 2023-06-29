@@ -15,6 +15,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/samber/lo"
+	"github.com/shopspring/decimal"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"gorm.io/gorm"
@@ -125,7 +126,7 @@ func Create(ctx *gin.Context) {
 				return err
 			}
 
-			if (req.CreditAmount != 0 && req.CreditAssetName == "") || (req.TokenAmount != 0 && req.TokenAssetName == "") {
+			if (!req.CreditAmount.Equal(decimal.Zero) && req.CreditAssetName == "") || (!req.TokenAmount.Equal(decimal.Zero) && req.TokenAssetName == "") {
 				return fmt.Errorf("asset name for related amount is required")
 			}
 

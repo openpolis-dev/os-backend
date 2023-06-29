@@ -59,34 +59,34 @@ func (*userAssetRecordModel) CreateOrUpdate(db *gorm.DB, userWallet string, asse
 }
 
 // Rollback extracts processing and dealt amount from records
-func (*userAssetRecordModel) Rollback(db *gorm.DB, userWallet string, assetType BudgetType, assetName string, processingAmount, dealtAmount uint64) error {
+func (*userAssetRecordModel) Rollback(db *gorm.DB, userWallet string, assetType BudgetType, assetName string, processingAmount, dealtAmount decimal.Decimal) error {
 	assetRecords, err := UserAssetRecordModel.FindWithUserWalletAndAssetProps(db, userWallet, assetType, assetName)
 	if err != nil {
 		return err
 	}
 
-	if (len(assetRecords) != 1) || (assetRecords[0].ProcessingAmount > processingAmount) || (assetRecords[0].DealtAmount > dealtAmount) {
+	if (len(assetRecords) != 1) || (assetRecords[0].ProcessingAmount.Cmp(processingAmount) == 1) || (assetRecords[0].DealtAmount.Cmp(dealtAmount) == 1) {
 		return fmt.Errorf("user %s has invalid record for asset type %s, please contract admin", userWallet, assetType)
 	}
 
-	assetRecords[0].DealtAmount -= dealtAmount
-	assetRecords[0].ProcessingAmount -= processingAmount
+	assetRecords[0].DealtAmount = assetRecords[0].DealtAmount.Sub(dealtAmount)
+	assetRecords[0].ProcessingAmount = assetRecords[0].ProcessingAmount.Sub(processingAmount)
 
 	return db.Save(assetRecords).Error
 }
 
-func (*userAssetRecordModel) CompleteAssetTransaction(db *gorm.DB, userWallet string, assetType BudgetType, assetName string, amountToBeDealt uint64) error {
+func (*userAssetRecordModel) CompleteAssetTransaction(db *gorm.DB, userWallet string, assetType BudgetType, assetName string, amountToBeDealt decimal.Decimal) error {
 	assetRecords, err := UserAssetRecordModel.FindWithUserWalletAndAssetProps(db, userWallet, assetType, assetName)
 	if err != nil {
 		return err
 	}
 
-	if (len(assetRecords) != 1) || (assetRecords[0].ProcessingAmount < amountToBeDealt) {
+	if (len(assetRecords) != 1) || (assetRecords[0].ProcessingAmount.Cmp(amountToBeDealt) == -1) {
 		return fmt.Errorf("user %s has invalid record for asset type %s, please contract admin", userWallet, assetType)
 	}
 
-	assetRecords[0].DealtAmount += amountToBeDealt
-	assetRecords[0].ProcessingAmount -= amountToBeDealt
+	assetRecords[0].DealtAmount = assetRecords[0].DealtAmount.Add(amountToBeDealt)
+	assetRecords[0].ProcessingAmount = assetRecords[0].ProcessingAmount.Sub(amountToBeDealt)
 
 	return db.Save(assetRecords).Error
 }
