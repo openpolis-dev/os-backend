@@ -193,3 +193,12 @@ func GenerateFrontendApplicationRecords(db *gorm.DB, queryParams *ListApplicatio
 	}
 	return rslt, total, nil
 }
+
+func ConvertTimeToTzString(t time.Time, timeLoc string, timeFormat string) (string, error) {
+	loc, err := time.LoadLocation(timeLoc)
+	if err != nil {
+		return "", err
+	}
+	locTime := t.In(loc) // convert to UTC+8 timezone
+	return locTime.Format(timeFormat), nil
+}

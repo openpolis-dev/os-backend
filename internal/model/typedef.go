@@ -14,6 +14,9 @@ type ApplicationType string
 type AuditActionType string
 type ApplicationState string
 
+const ExportApplicationTimeZone = "Asia/Shanghai"
+const ExportApplicationTimeFormat = "2006-01-02 15:04:05"
+
 func ParseApplicationType(typeStr string) (ApplicationType, error) {
 	switch strings.ToUpper(typeStr) {
 	case "CLOSE_PROJECT":
@@ -131,8 +134,15 @@ type FrontendApplicationRecord struct {
 }
 
 func (r *FrontendApplicationRecord) ToCSV() []string {
+	var createdAtStr string
+	var err error
+	createdAtStr, err = ConvertTimeToTzString(r.CreatedAt, ExportApplicationTimeZone, ExportApplicationTimeFormat)
+	if err != nil {
+		createdAtStr = r.CreatedAt.Format(time.RFC3339)
+	}
+
 	return []string{
-		r.CreatedAt.Format(time.RFC3339),
+		createdAtStr,
 		r.TargetUserWallet,
 		r.CreditAmount,
 		r.TokenAmount,
