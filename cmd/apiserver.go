@@ -96,6 +96,11 @@ func main() {
 	v1 := r.Group("/v1")
 	// --> no auth required
 	{
+		// preview mode
+		v1.GET("/preview_enable", user.PreviewEnable)
+		v1.PUT("/preview_toggle", user.PreviewToggle)
+		v1.POST("/preview_login", user.PreviewLogin)
+
 		// user routers
 		userGroup := v1.Group("/user")
 		userGroup.POST("/refresh_nonce", user.RefreshNonce)

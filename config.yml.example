@@ -9,6 +9,9 @@ auth:
   polygonRPC: https://polygon.llamarpc.com
   nonceLifespan: 45_000 # unit is milliseconds `45000ms=45s`
 
+previewMode:
+  wallet: 0x183...3192
+
 casbin:
   driverName: mysql
   superUsers:
