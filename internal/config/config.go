@@ -15,6 +15,7 @@ type Config struct {
 	DataSource   dataSource   `json:"dataSource" yaml:"dataSource"`
 	Jwt          jwt          `json:"jwt" yaml:"jwt"`
 	Auth         auth         `json:"auth" yaml:"auth"`
+	PreviewMode  previewMode  `json:"previewMode" yaml:"previewMode"`
 	Casbin       casbin       `json:"casbin" yaml:"casbin"`
 	Notification notification `json:"notification" yaml:"notification"`
 	AwsConfig    awsConfig    `json:"awsConfig" yaml:"awsConfig"`
@@ -31,6 +32,9 @@ type (
 	auth struct {
 		PolygonRPC    string `json:"polygonRPC" yaml:"polygonRPC"`
 		NonceLifespan int64  `json:"nonceLifespan" yaml:"nonceLifespan"`
+	}
+	previewMode struct {
+		Wallet string `json:"wallet" yaml:"wallet"`
 	}
 	casbin struct {
 		DriverName string   `json:"driverName" yaml:"driverName"`
