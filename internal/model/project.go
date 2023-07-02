@@ -19,7 +19,7 @@ const (
 
 type Project struct {
 	ID        uint          `json:"id" gorm:"primaryKey"`
-	Logo      string        `json:"logo"`
+	LogoUrl   string        `json:"logo_url"`
 	Name      string        `json:"name"`
 	Status    ProjectStatus `json:"status"` // Status may have those values: open/pending_close/closed
 	Sponsors  []string      `json:"sponsors" gorm:"serializer:json"`

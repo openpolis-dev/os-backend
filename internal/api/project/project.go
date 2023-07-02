@@ -23,8 +23,8 @@ import (
 
 type (
 	CreateReq struct {
-		Logo string `json:"logo"`
-		Name string `json:"name"`
+		LogoStr string `json:"logo"` // base64 encoded image string
+		Name    string `json:"name"`
 
 		Sponsors  []string `json:"sponsors"`
 		Members   []string `json:"members"`
@@ -38,8 +38,8 @@ type (
 		TotalAmount decimal.Decimal  `json:"total_amount"`
 	}
 	UpdateReq struct {
-		Logo string `json:"logo"`
-		Name string `json:"name"`
+		LogoStr string `json:"logo"`
+		Name    string `json:"name"`
 	}
 	DetailReply struct {
 		model.Project
@@ -90,7 +90,6 @@ func Create(ctx *gin.Context) {
 	tx := db.Begin()
 	// save project
 	proj := model.Project{
-		Logo:      req.Logo,
 		Name:      req.Name,
 		Status:    model.ProjectStatusOpen,
 		Sponsors:  sponsors,
@@ -133,6 +132,18 @@ func Create(ctx *gin.Context) {
 
 	// commit transaction
 	tx.Commit()
+
+	// Save logo image to S3
+	logoUrl, err := sdk.GetAwsClient().UploadEntityLogo(proj.ID, "project", req.LogoStr)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		return
+	}
+	err = db.Model(&proj).Update("logo_url", logoUrl).Error
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		return
+	}
 
 	// add policies
 	policies := [][]string{
@@ -233,8 +244,14 @@ func Update(ctx *gin.Context) {
 		return
 	}
 
+	logoUrl, err := sdk.GetAwsClient().UploadEntityLogo(proj.ID, "project", req.LogoStr)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("upload logo for project %d failed, err: %+v", id, err)))
+		return
+	}
+
 	// update logo and name
-	proj.Logo = req.Logo
+	proj.LogoUrl = logoUrl
 	proj.Name = req.Name
 	err = model.ProjectModel.CreateOrUpdate(db, proj)
 	if err != nil {
