@@ -17,6 +17,7 @@ type Config struct {
 	Auth         auth         `json:"auth" yaml:"auth"`
 	Casbin       casbin       `json:"casbin" yaml:"casbin"`
 	Notification notification `json:"notification" yaml:"notification"`
+	AwsConfig    awsConfig    `json:"awsConfig" yaml:"awsConfig"`
 }
 
 type (
@@ -38,6 +39,13 @@ type (
 	notification struct {
 		AppID  string `json:"appID" yaml:"appID"`
 		AppKey string `json:"appKey" yaml:"appKey"`
+	}
+
+	awsConfig struct {
+		AccessKey  string `json:"accessKey" yaml:"accessKey"`
+		SecretKey  string `json:"secretKey" yaml:"secretKey"`
+		Region     string `json:"region" yaml:"region"`
+		BucketName string `json:"bucketName" yaml:"bucketName"`
 	}
 )
 
