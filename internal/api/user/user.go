@@ -95,7 +95,7 @@ func RetrieveNonce(ctx *gin.Context) {
 type LoginReq struct {
 	Wallet         string `json:"wallet" binding:"required"`
 	WalletType     string `json:"wallet_type" binding:"required"`
-	IsEIP191Prefix bool   `json:"is_eip191_prefix" binding:"required"`
+	IsEIP191Prefix bool   `json:"is_eip191_prefix"`
 	Domain         string `json:"domain" binding:"required"`
 	Message        string `json:"message" binding:"required"`
 	Signature      string `json:"signature" binding:"required"`
