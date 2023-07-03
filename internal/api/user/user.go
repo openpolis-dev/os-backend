@@ -23,81 +23,6 @@ import (
 )
 
 // ------ ------ ------ ------ ------ ------ ------ ------ ------
-// ------ Auth ------ ------
-
-type LoginReq struct {
-	Wallet    string `json:"wallet" binding:"required"`
-	Timestamp int64  `json:"timestamp" binding:"required"` // time unit: seconds
-	Sign      string `json:"sign" binding:"required"`
-}
-
-type LoginReply struct {
-	Token    string      `json:"token"`
-	TokenExp int64       `json:"token_exp"` // time unit: seconds
-	User     *model.User `json:"user"`
-}
-
-// Login `POST /login`
-func Login(ctx *gin.Context) {
-	req := LoginReq{}
-	err := ctx.BindJSON(&req)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
-		return
-	}
-
-	// verify sign
-	err = common.VerifyWalletSign(req.Wallet, req.Timestamp, req.Sign)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
-		return
-	}
-
-	_, _, db, cfg := api.ForContext(ctx)
-
-	// query user
-	user, err := model.UserModel.Detail(db, strings.ToLower(req.Wallet))
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
-		return
-	}
-	if user == nil {
-		user = &model.User{
-			Wallet: strings.ToLower(req.Wallet),
-		}
-		err = model.UserModel.CreateOrUpdate(db, user)
-		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
-			return
-		}
-	}
-
-	// generate jwt token
-	token, tokenExp, err := common.GenerateJwtToken[middleware.CurUser](
-		&middleware.CurUser{
-			Wallet: user.Wallet,
-		},
-		time.Duration(cfg.Jwt.Exp)*time.Hour,
-		cfg.Jwt.Secret,
-	)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
-		return
-	}
-
-	ctx.JSON(http.StatusOK, api.Success(LoginReply{
-		Token:    token,
-		TokenExp: tokenExp,
-		User:     user,
-	}))
-}
-
-// Logout `POST /logout`
-func Logout(ctx *gin.Context) {
-	ctx.JSON(http.StatusOK, api.Success(nil))
-}
-
-// ------ ------ ------ ------ ------ ------ ------ ------ ------
 // ------ Sign in with Ethereum ------ ------
 
 type RefreshNonceReq struct {
@@ -167,17 +92,24 @@ func RetrieveNonce(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, api.Success(RetrieveNonceReply{Nonce: userNonce.Nonce}))
 }
 
-type Login2Req struct {
-	Wallet     string `json:"wallet" binding:"required"`
-	WalletType string `json:"wallet_type" binding:"required"`
-	Domain     string `json:"domain" binding:"required"`
-	Message    string `json:"message" binding:"required"`
-	Signature  string `json:"signature" binding:"required"`
+type LoginReq struct {
+	Wallet         string `json:"wallet" binding:"required"`
+	WalletType     string `json:"wallet_type" binding:"required"`
+	IsEIP191Prefix bool   `json:"is_eip191_prefix" binding:"required"`
+	Domain         string `json:"domain" binding:"required"`
+	Message        string `json:"message" binding:"required"`
+	Signature      string `json:"signature" binding:"required"`
 }
 
-// Login2 `POST /login2`
-func Login2(ctx *gin.Context) {
-	req := Login2Req{}
+type LoginReply struct {
+	Token    string      `json:"token"`
+	TokenExp int64       `json:"token_exp"` // time unit: seconds
+	User     *model.User `json:"user"`
+}
+
+// Login `POST /login`
+func Login(ctx *gin.Context) {
+	req := LoginReq{}
 	err := ctx.BindJSON(&req)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
@@ -225,7 +157,7 @@ func Login2(ctx *gin.Context) {
 		sig := eth_common.FromHex(req.Signature)
 		msg := []byte(req.Message)
 
-		ok, err := unipass_sigverify.VerifyMessageSignature(context.Background(), account, msg, sig, true, client)
+		ok, err := unipass_sigverify.VerifyMessageSignature(context.Background(), account, msg, sig, req.IsEIP191Prefix, client)
 		if err != nil {
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 			return
@@ -271,6 +203,11 @@ func Login2(ctx *gin.Context) {
 		TokenExp: tokenExp,
 		User:     user,
 	}))
+}
+
+// Logout `POST /logout`
+func Logout(ctx *gin.Context) {
+	ctx.JSON(http.StatusOK, api.Success(nil))
 }
 
 // ------ ------ ------ ------ ------ ------ ------ ------ ------
