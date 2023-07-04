@@ -230,7 +230,7 @@ func Update(ctx *gin.Context) {
 	}
 
 	// update name
-	guild.LogoUrl = logoUrl
+	guild.Logo = logoUrl
 	guild.Name = req.Name
 	err = model.GuildModel.CreateOrUpdate(db, guild)
 	if err != nil {

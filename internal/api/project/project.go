@@ -139,7 +139,7 @@ func Create(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
-	err = db.Model(&proj).Update("logo_url", logoUrl).Error
+	err = db.Model(&proj).Update("logo", logoUrl).Error
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
@@ -251,7 +251,7 @@ func Update(ctx *gin.Context) {
 	}
 
 	// update logo and name
-	proj.LogoUrl = logoUrl
+	proj.Logo = logoUrl
 	proj.Name = req.Name
 	err = model.ProjectModel.CreateOrUpdate(db, proj)
 	if err != nil {

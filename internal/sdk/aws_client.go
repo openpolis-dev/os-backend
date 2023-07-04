@@ -45,8 +45,11 @@ func GetAwsClient() *AwsClient {
 	return awsClient
 }
 
-func (c *AwsClient) UploadEntityLogo(entityId uint, entityType string, b64ImageStr string) (string, error) {
-	decode, err := base64.StdEncoding.DecodeString(b64ImageStr)
+// UploadEntityLogo uploads entity logo passed from frontend in base64 format to AWS S3 and return URL
+// Note: The passed in base64 image string contains header, such as `data:image/png;base64,XXXX`
+func (c *AwsClient) UploadEntityLogo(entityId uint, entityType string, b64ImgSrcWithType string) (string, error) {
+	imgData := strings.Split(b64ImgSrcWithType, ";base64,")
+	decode, err := base64.StdEncoding.DecodeString(imgData[1])
 
 	if err != nil {
 		return "", err
@@ -54,7 +57,7 @@ func (c *AwsClient) UploadEntityLogo(entityId uint, entityType string, b64ImageS
 
 	// Parse file extension from passed in params
 	fileExt := "png"
-	if strings.Contains(b64ImageStr, "image/jpeg") {
+	if strings.Contains(imgData[0], "image/jpeg") || strings.Contains(imgData[0], "image/jpg") {
 		fileExt = "jpg"
 	}
 
@@ -70,5 +73,5 @@ func (c *AwsClient) UploadEntityLogo(entityId uint, entityType string, b64ImageS
 		return "", err
 	}
 
-	return fmt.Sprintf("https://%s.%s.amazonaws.com/%s", c.BucketName, c.Region, fileKey), nil
+	return fmt.Sprintf("https://%s.s3.%s.amazonaws.com/%s", c.BucketName, c.Region, fileKey), nil
 }

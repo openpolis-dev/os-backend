@@ -18,3 +18,9 @@ casbin:
 notification:
   appID: bar
   appKey: foo
+
+awsConfig:
+  accessKey: "aws-access-key"
+  secretKey: "aws-secret-key"
+  region: "aws-region"
+  bucketName: "aws-bucket"

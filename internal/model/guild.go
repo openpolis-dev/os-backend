@@ -11,7 +11,7 @@ import (
 
 type Guild struct {
 	ID        uint     `json:"id" gorm:"primaryKey"`
-	LogoUrl   string   `json:"logo_url"`
+	Logo      string   `json:"logo"`
 	Name      string   `json:"name"`
 	Sponsors  []string `json:"sponsors" gorm:"serializer:json"`
 	Members   []string `json:"members" gorm:"serializer:json"`
