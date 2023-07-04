@@ -14,6 +14,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/gin-gonic/gin"
+	"github.com/samber/lo"
 	"github.com/spruceid/siwe-go"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/common"
@@ -223,8 +224,7 @@ func Detail(ctx *gin.Context) {
 		return
 	}
 	if u == nil {
-		ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("user %s not found", user.Wallet)))
-		return
+		u = &model.User{Wallet: user.Wallet}
 	}
 
 	ctx.JSON(http.StatusOK, api.Success(u))
@@ -284,6 +284,10 @@ func Update(ctx *gin.Context) {
 // query multiple users by wallet array on batch
 func Users(ctx *gin.Context) {
 	wallets := ctx.QueryArray("wallets")
+	//// convert all wallet to lower case
+	//wallets := lo.Map[string](walletsParam, func(item string, _ int) string {
+	//	return strings.ToLower(item)
+	//})
 
 	db := api.ForContextOnlyDB(ctx)
 
@@ -291,6 +295,17 @@ func Users(ctx *gin.Context) {
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
+	}
+
+	if len(users) != len(wallets) {
+		existUsers := lo.Map[*model.User](users, func(item *model.User, _ int) string {
+			return item.Wallet
+		})
+		for _, w := range wallets {
+			if !lo.Contains(existUsers, w) {
+				users = append(users, &model.User{Wallet: w})
+			}
+		}
 	}
 
 	ctx.JSON(http.StatusOK, api.Success(users))
