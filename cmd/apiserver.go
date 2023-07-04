@@ -71,6 +71,12 @@ func main() {
 	storage.InitGormDB(cfg.DataSource.Dsn)
 	db := storage.GetGormDB()
 
+	// setup S3 uploader manager
+	err = sdk.InitAwsClient(cfg.AwsConfig.AccessKey, cfg.AwsConfig.SecretKey, cfg.AwsConfig.Region, cfg.AwsConfig.BucketName)
+	if err != nil {
+		panic(err)
+	}
+
 	r := gin.Default()
 	r.Use(gzip.Gzip(gzip.DefaultCompression))
 
