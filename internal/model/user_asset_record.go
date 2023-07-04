@@ -52,8 +52,8 @@ func (*userAssetRecordModel) CreateOrUpdate(db *gorm.DB, userWallet string, asse
 			ProcessingAmount: processingAmount,
 		}).Error
 	} else {
-		assetRecords[0].DealtAmount.Add(dealtAmount)
-		assetRecords[0].ProcessingAmount.Add(processingAmount)
+		assetRecords[0].DealtAmount = assetRecords[0].DealtAmount.Add(dealtAmount)
+		assetRecords[0].ProcessingAmount = assetRecords[0].ProcessingAmount.Add(processingAmount)
 		return db.Save(assetRecords).Error
 	}
 }
