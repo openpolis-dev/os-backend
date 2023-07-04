@@ -59,6 +59,8 @@ func (c *AwsClient) UploadEntityLogo(entityId uint, entityType string, b64ImgSrc
 	fileExt := "png"
 	if strings.Contains(imgData[0], "image/jpeg") || strings.Contains(imgData[0], "image/jpg") {
 		fileExt = "jpg"
+	} else if strings.Contains(imgData[0], "image/svg") {
+		fileExt = "svg"
 	}
 
 	fileKey := fmt.Sprintf("%s-%d/logo.%s", entityType, entityId, fileExt)
