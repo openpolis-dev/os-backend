@@ -55,20 +55,24 @@ func (c *AwsClient) UploadEntityLogo(entityId uint, entityType string, b64ImgSrc
 		return "", err
 	}
 
-	// Parse file extension from passed in params
+	// Parse file extension and content type from passed in params. The default file format is PNG file
 	fileExt := "png"
+	contentType := "image/png"
 	if strings.Contains(imgData[0], "image/jpeg") || strings.Contains(imgData[0], "image/jpg") {
 		fileExt = "jpg"
+		contentType = "image/jpeg"
 	} else if strings.Contains(imgData[0], "image/svg") {
 		fileExt = "svg"
+		contentType = "image/svg+xml"
 	}
 
 	fileKey := fmt.Sprintf("%s-%d/logo.%s", entityType, entityId, fileExt)
 
 	_, err = c.Uploader.Upload(&s3manager.UploadInput{
-		Bucket: aws.String(c.BucketName),
-		Key:    aws.String(fileKey),
-		Body:   bytes.NewReader(decode),
+		Bucket:      aws.String(c.BucketName),
+		Key:         aws.String(fileKey),
+		Body:        bytes.NewReader(decode),
+		ContentType: aws.String(contentType),
 	})
 
 	if err != nil {
