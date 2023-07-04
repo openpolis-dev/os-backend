@@ -123,7 +123,7 @@ func Create(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
-	err = db.Model(&guild).Update("logo_url", logoUrl).Error
+	err = db.Model(&guild).Update("logo", logoUrl).Error
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
