@@ -142,7 +142,7 @@ func AuditApplication(db *gorm.DB, operatorWallet string, application *Applicati
 
 // BatchAuditApplication audits multiple applications in same transaction.
 // Note: if any error occurred during the transaction the whole transaction will not be performed.
-func BatchAuditApplication(db *gorm.DB, operatorWallet string, applications *[]Application, action AuditActionType, extraMsg string) error {
+func BatchAuditApplication(db *gorm.DB, operatorWallet string, applications *[]Application, action AuditActionType, extraMsg string, enforcer *casbin.Enforcer, notificator sdk.Notificator) error {
 	for _, application := range *applications {
 		if !application.ValidateAuditAction(action) {
 			// TODO: Define the error message as project constant
@@ -157,7 +157,7 @@ func BatchAuditApplication(db *gorm.DB, operatorWallet string, applications *[]A
 
 	return db.Transaction(func(tx *gorm.DB) error {
 		for _, application := range *applications {
-			err = doAuditApplicationInTransaction(tx, operatorWallet, &application, action, extraMsg, nil, nil)
+			err = doAuditApplicationInTransaction(tx, operatorWallet, &application, action, extraMsg, enforcer, notificator)
 			if err != nil {
 				return err
 			}
