@@ -122,9 +122,11 @@ func GenerateGuildStaffRemoveNotificationParams(guildID uint, guildName string) 
 }
 */
 func GenerateObtainAssertNotificationParams(assertName string, amount string) (title *onesignal.StringMap, body *onesignal.StringMap, data map[string]any) {
+	title = &onesignal.StringMap{}
 	title.SetEn("Personal assets")
 	title.SetZhHans("个人资产")
 
+	body = &onesignal.StringMap{}
 	body.SetEn(fmt.Sprintf("%s %s received", amount, assertName))
 	body.SetZhHans(fmt.Sprintf("已收到 %s %s", amount, assertName))
 
