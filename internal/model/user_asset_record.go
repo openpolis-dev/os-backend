@@ -29,6 +29,19 @@ var UserAssetRecordModel userAssetRecordModel
 
 func (*userAssetRecordModel) FindWithUserWalletAndAssetProps(db *gorm.DB, userWallet string, assetType BudgetType, assetName string) ([]*UserAssetRecord, error) {
 	formattedUserWallet := strings.TrimSpace(strings.ToLower(userWallet))
+
+	// Create user record if not existing
+	var r User
+	userRslt := db.FirstOrInit(&r, User{Wallet: formattedUserWallet})
+	if userRslt.Error != nil {
+		return nil, userRslt.Error
+	} else if userRslt.RowsAffected == 0 {
+		err := db.Save(&r).Error
+		if err != nil {
+			return nil, userRslt.Error
+		}
+	}
+
 	querySeg := db.Where(&UserAssetRecord{UserWallet: formattedUserWallet, AssetType: assetType, AssetName: assetName})
 	return gormfind.Rows[UserAssetRecord](querySeg, nil)
 }
