@@ -338,7 +338,9 @@ func BatchProcess(ctx *gin.Context) {
 		return
 	}
 
-	err = model.BatchAuditApplication(db, user.Wallet, &applications, model.AuditActionProcess, "")
+	notificator := api.ForContextOnlyNotificator(ctx)
+
+	err = model.BatchAuditApplication(db, user.Wallet, &applications, model.AuditActionProcess, "", enforcer, notificator)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, api.Reply{
 			Code: -1,
@@ -371,7 +373,8 @@ func BatchApprove(ctx *gin.Context) {
 		return
 	}
 
-	err = model.BatchAuditApplication(db, user.Wallet, &applications, model.AuditActionApprove, "")
+	notificator := api.ForContextOnlyNotificator(ctx)
+	err = model.BatchAuditApplication(db, user.Wallet, &applications, model.AuditActionApprove, "", enforcer, notificator)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, api.Reply{
 			Code: -1,
@@ -405,7 +408,8 @@ func BatchReject(ctx *gin.Context) {
 		return
 	}
 
-	err = model.BatchAuditApplication(db, user.Wallet, &applications, model.AuditActionReject, "")
+	notificator := api.ForContextOnlyNotificator(ctx)
+	err = model.BatchAuditApplication(db, user.Wallet, &applications, model.AuditActionReject, "", enforcer, notificator)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, api.Reply{
 			Code: -1,
@@ -447,7 +451,8 @@ func BatchComplete(ctx *gin.Context) {
 		return
 	}
 
-	err = model.BatchAuditApplication(db, user.Wallet, &applications, model.AuditActionComplete, reqBody.Message)
+	notificator := api.ForContextOnlyNotificator(ctx)
+	err = model.BatchAuditApplication(db, user.Wallet, &applications, model.AuditActionComplete, reqBody.Message, enforcer, notificator)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, api.Reply{
 			Code: -1,
