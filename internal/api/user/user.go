@@ -20,6 +20,7 @@ import (
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/middleware"
 	"github.com/theseed-labs/os-backend/internal/model"
+	"github.com/theseed-labs/os-backend/internal/sdk"
 	unipass_sigverify "github.com/unipassid/unipass-sigverify-go"
 )
 
@@ -264,13 +265,21 @@ func Update(ctx *gin.Context) {
 
 	// update user info
 	u.Name = req.Name
-	u.Avatar = req.Avatar
 	u.Email = req.Email
 	u.Wechat = req.Wechat
 	u.DiscordProfile = req.DiscordProfile
 	u.TwitterProfile = req.TwitterProfile
 	u.GoogleProfile = req.GoogleProfile
 	u.Mirror = req.Mirror
+
+	avatarUrl, err := sdk.GetAwsClient().UploadUserAvatar(u.Wallet, req.Avatar)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		return
+	}
+
+	u.Avatar = avatarUrl
+
 	err = model.UserModel.CreateOrUpdate(db, u)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
