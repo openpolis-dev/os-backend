@@ -333,6 +333,10 @@ func doAuditApplicationInTransaction(tx *gorm.DB, operatorWallet string, applica
 					return err
 				}
 
+				if assetRecord.Amount.Cmp(decimal.Zero) == 0 {
+					continue
+				}
+
 				// send notification in separated coroutines if passed in notificator
 				if notificator != nil {
 					go func(notificator sdk.Notificator, staffs []string, assertName string, amount string) {
