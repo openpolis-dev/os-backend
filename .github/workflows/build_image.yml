@@ -2,8 +2,8 @@ name: ci
 
 on:
   push:
-#    branches:
-#      - 'main'
+    branches:
+      - 'feature/deploy_materials'
 
 env:
   REGISTRY: ghcr.io
