@@ -14,5 +14,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o /go/bin/apiserver
 FROM alpine:latest
 
 COPY --from=build /go/bin/apiserver /usr/local/bin/apiserver
+COPY --from=build /go/src/rbac_model.conf /conf/rbac_model.conf
 
-ENTRYPOINT ["/usr/local/bin/apiserver"]
+WORKDIR /superapp-backend/
+ENTRYPOINT ["/usr/local/bin/apiserver", "-casbin-model", "/conf/rbac_model.conf", "-config", "/conf/config.yml"]
