@@ -2,9 +2,11 @@ name: ci
 
 on:
   push:
-    # Note: current branch is for testing only, will change to main/dev after debug done
     branches:
-      - 'feature/deploy_materials'
+      - 'main'
+      - 'dev'
+    tags:
+      - v*
 
 env:
   REGISTRY: ghcr.io
@@ -33,6 +35,13 @@ jobs:
         uses: docker/metadata-action@9ec57ed1fcdbf14dcef7dfbe97b2010124a938b7
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=sha
 
       - name: Build and push
         uses: docker/build-push-action@f2a1d5e99d037542a71f64918e516c093c6f3fc4
