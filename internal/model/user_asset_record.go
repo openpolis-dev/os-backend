@@ -32,7 +32,7 @@ func (*userAssetRecordModel) FindWithUserWalletAndAssetProps(db *gorm.DB, userWa
 
 	// Create user record if not existing
 	var r User
-	userRslt := db.FirstOrInit(&r, User{Wallet: formattedUserWallet, CreatedAt: time.Now(), UpdatedAt: time.Now()})
+	userRslt := db.Where(User{Wallet: formattedUserWallet}).Attrs(User{CreatedAt: time.Now(), UpdatedAt: time.Now()}).FirstOrInit(&r)
 	if userRslt.Error != nil {
 		return nil, userRslt.Error
 	} else if userRslt.RowsAffected == 0 {
