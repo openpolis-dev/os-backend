@@ -102,10 +102,7 @@ func (*guildModel) WithdrawBudget(db *gorm.DB, guildId uint, budgetType BudgetTy
 			return fmt.Errorf("guild %d has no budget record with asset %s", guildId, tokenName)
 		}
 
-		if budgetRcd.RemainAmount.Cmp(tokenAmount) == -1 {
-			return fmt.Errorf("guild %d has insufficient budget record with asset %s", guildId, tokenName)
-		}
-
+		budgetRcd.UsedAmount = budgetRcd.UsedAmount.Add(tokenAmount)
 		budgetRcd.RemainAmount = budgetRcd.RemainAmount.Sub(tokenAmount)
 		return tx.Save(budgetRcd).Error
 	})
@@ -125,9 +122,11 @@ func (*guildModel) DepositBudget(db *gorm.DB, guildId uint, budgetType BudgetTyp
 				Name:         tokenName,
 				Type:         budgetType,
 				TotalAmount:  tokenAmount,
+				UsedAmount:   decimal.Zero,
 				RemainAmount: tokenAmount,
 			}).Error
 		} else {
+			budgetRcd.UsedAmount = budgetRcd.UsedAmount.Sub(tokenAmount)
 			budgetRcd.RemainAmount = budgetRcd.RemainAmount.Add(tokenAmount)
 			return tx.Save(budgetRcd).Error
 		}
