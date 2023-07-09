@@ -2,6 +2,7 @@ name: ci
 
 on:
   push:
+    # Note: current branch is for testing only, will change to main/dev after debug done
     branches:
       - 'feature/deploy_materials'
 
@@ -24,7 +25,7 @@ jobs:
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ secrets.UPDATE_PACKAGE_TOKEN }}
 
 
       - name: Extract metadata (tags, labels) for Docker
@@ -38,6 +39,5 @@ jobs:
         with:
           context: .
           push: true
-#          tags: superapp/backend:latest
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
