@@ -1,0 +1,13 @@
+version: '3'
+
+services:
+  apiserver:
+    image: ghcr.io/taoist-labs/os-backend
+    user: "1001:1000"
+    ports:
+      - "127.0.0.1:8080-8081:8080"  # Port range, support --scale apiserver=2
+    volumes:
+      - ./logs/:/superapp-backend/logs
+      - ./conf/config.yml:/superapp-backend/conf/config.yml
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
