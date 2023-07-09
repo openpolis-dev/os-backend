@@ -17,10 +17,4 @@ COPY --from=build /go/bin/apiserver /usr/local/bin/apiserver
 COPY --from=build /go/src/rbac_model.conf /superapp-backend/conf/rbac_model.conf
 
 WORKDIR /superapp-backend/
-ENTRYPOINT [
-    "/usr/local/bin/apiserver",
-    "-casbin-model",
-    "/superapp-backend/conf/rbac_model.conf",
-    "-config",
-    "/superapp-backend/conf/config.yml"
- ]
+ENTRYPOINT [ "/usr/local/bin/apiserver", "-casbin-model", "/superapp-backend/conf/rbac_model.conf", "-config", "/superapp-backend/conf/config.yml" ]
