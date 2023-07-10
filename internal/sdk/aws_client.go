@@ -58,6 +58,12 @@ func GetAwsClient() *AwsClient {
 // UploadEntityLogo uploads entity logo passed from frontend in base64 format to AWS S3 and return URL
 // Note: The passed in base64 image string contains header, such as `data:image/png;base64,XXXX`
 func (c *AwsClient) UploadEntityLogo(entityId uint, entityType string, b64ImgSrcWithType string) (string, error) {
+	// Passed in data is not a b64 image string, a possible data is image url.
+	// Return the passed in data directly and no error
+	if !strings.HasPrefix(b64ImgSrcWithType, "data:image") {
+		return b64ImgSrcWithType, nil
+	}
+
 	// For non-activated client, return b64 string directly
 	if !c.isActivated {
 		return b64ImgSrcWithType, nil
@@ -75,6 +81,12 @@ func (c *AwsClient) UploadEntityLogo(entityId uint, entityType string, b64ImgSrc
 }
 
 func (c *AwsClient) UploadUserAvatar(userWallet string, b64ImgSrcWithType string) (string, error) {
+	// Passed in data is not a b64 image string, a possible data is image url.
+	// Return the passed in data directly and no error
+	if !strings.HasPrefix(b64ImgSrcWithType, "data:image") {
+		return b64ImgSrcWithType, nil
+	}
+
 	// For non-activated client, return b64 string directly
 	if !c.isActivated {
 		return b64ImgSrcWithType, nil
