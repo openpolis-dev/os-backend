@@ -93,8 +93,34 @@ func (*treasuryAssetHelper) GetOrCreateCurrQuarterRecord(db *gorm.DB) (*Treasury
 	return &r, nil
 }
 
-func (*treasuryAssetHelper) GetOrCreateCQDetailedRecord(db *gorm.DB, budgetType BudgetType, assetName string, totalAmount decimal.Decimal, userWallet string) (*TreasuryDetailedRecord, error) {
+// GetOrCreateCQDetailedRecord creates detailed record for current quarter if not existing, then return the record to invoker
+// The second return value indicates whether the record returned in first param is new created or existing data
+func (*treasuryAssetHelper) GetOrCreateCQDetailedRecord(db *gorm.DB, treasuryRecordId uint, budgetType BudgetType, assetName string, totalAmount decimal.Decimal) (*TreasuryDetailedRecord, bool, error) {
+	r := TreasuryDetailedRecord{}
+	rslt := db.Where(TreasuryDetailedRecord{
+		TreasuryAssetID: treasuryRecordId,
+		BudgetType:      budgetType,
+		AssetName:       assetName,
+	}).Attrs(TreasuryDetailedRecord{
+		TotalAmount:  totalAmount,
+		RemainAmount: totalAmount,
+	}).FirstOrInit(&r)
 
+	if rslt.Error != nil {
+		return nil, false, rslt.Error
+	} else {
+		if rslt.RowsAffected > 0 {
+			return &r, false, nil
+		} else {
+			// RowsAffected == 0, record not existing so create it
+			err := db.Save(&r).Error
+			if err != nil {
+				return nil, false, rslt.Error
+			} else {
+				return &r, true, nil
+			}
+		}
+	}
 }
 
 // UpsertCQTreasuryDetailedRecord creates treasury detailed record and related create audit log
@@ -104,33 +130,20 @@ func (*treasuryAssetHelper) UpsertCQTreasuryDetailedRecord(db *gorm.DB, budgetTy
 		return err
 	}
 
-	r := TreasuryDetailedRecord{}
 	return db.Transaction(func(tx *gorm.DB) error {
-		// Search by treasury asset id and budget type, and init the record if not found
-		rslt := tx.Where(TreasuryDetailedRecord{
-			TreasuryAssetID: cqRcd.ID,
-			BudgetType:      budgetType,
-			AssetName:       assetName,
-		}).Attrs(TreasuryDetailedRecord{
-			TotalAmount:  totalAmount,
-			RemainAmount: totalAmount,
-		}).FirstOrInit(&r)
+		r, newRecord, err := TreasuryAssetHelper.GetOrCreateCQDetailedRecord(tx, cqRcd.ID, budgetType, assetName, totalAmount)
+		if err != nil {
+			return err
+		}
 
-		if rslt.Error != nil {
-			return rslt.Error
-		} else if rslt.RowsAffected > 0 {
-			// Record found, need to update the total amount
+		if !newRecord {
+			// Record found, need to update the total amount and used amount
 			usedAmount := r.TotalAmount.Sub(r.RemainAmount)
 			r.TotalAmount = totalAmount
 			r.RemainAmount = totalAmount.Sub(usedAmount)
 			err = tx.Save(&r).Error
 			if err != nil {
 				return err
-			}
-		} else if rslt.RowsAffected == 0 {
-			err := db.Save(&r).Error
-			if err != nil {
-				return rslt.Error
 			}
 		}
 
@@ -160,22 +173,11 @@ func (*treasuryAssetHelper) ChangeCQTreasuryAssetValue(db *gorm.DB, budgetType B
 		return err
 	}
 
-	r := TreasuryDetailedRecord{}
 	return db.Transaction(func(tx *gorm.DB) error {
 		// Search by treasury asset id and budget type, and init the record if not found
-		detailedRcdQuery := TreasuryDetailedRecord{
-			TreasuryAssetID: cqRcd.ID,
-			BudgetType:      budgetType,
-			AssetName:       assetName,
-		}
-
-		err = tx.Where(&detailedRcdQuery).First(&r).Error
+		r, _, err := TreasuryAssetHelper.GetOrCreateCQDetailedRecord(tx, cqRcd.ID, budgetType, assetName, decimal.Zero)
 		if err != nil {
-			if err == gorm.ErrRecordNotFound {
-				return fmt.Errorf("treasury has no record for asset %s, contract admin to prepare it in advanced", assetName)
-			} else {
-				return err
-			}
+			return err
 		}
 
 		r.RemainAmount = r.RemainAmount.Sub(deltaValue)
