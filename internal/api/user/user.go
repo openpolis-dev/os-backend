@@ -272,13 +272,15 @@ func Update(ctx *gin.Context) {
 	u.GoogleProfile = req.GoogleProfile
 	u.Mirror = req.Mirror
 
-	avatarUrl, err := sdk.GetAwsClient().UploadUserAvatar(u.Wallet, req.Avatar)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
-		return
+	// Only upload image when data is b64 image string (start with `data:image`)
+	if strings.HasPrefix(req.Avatar, "data:image") {
+		avatarUrl, err := sdk.GetAwsClient().UploadUserAvatar(u.Wallet, req.Avatar)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+			return
+		}
+		u.Avatar = avatarUrl
 	}
-
-	u.Avatar = avatarUrl
 
 	err = model.UserModel.CreateOrUpdate(db, u)
 	if err != nil {
