@@ -93,20 +93,13 @@ func (*treasuryAssetHelper) GetOrCreateCurrQuarterRecord(db *gorm.DB) (*Treasury
 	return &r, nil
 }
 
-// GetCurrQuarterRecord gets the treasury record of current quarter and return not found error if no record found
-func (*treasuryAssetHelper) GetCurrQuarterRecord(db *gorm.DB) (*TreasuryAsset, error) {
-	var r TreasuryAsset
-	err := db.Where(&r, TreasuryAsset{QuarterNum: getCurrentQuarterNum()}).First(&r).Error
-	if err == gorm.ErrRecordNotFound {
-		return nil, fmt.Errorf("treasury asset record not found for current quarter, contract admin to create it first")
-	} else {
-		return &r, err
-	}
+func (*treasuryAssetHelper) GetOrCreateCQDetailedRecord(db *gorm.DB, budgetType BudgetType, assetName string, totalAmount decimal.Decimal, userWallet string) (*TreasuryDetailedRecord, error) {
+
 }
 
 // UpsertCQTreasuryDetailedRecord creates treasury detailed record and related create audit log
 func (*treasuryAssetHelper) UpsertCQTreasuryDetailedRecord(db *gorm.DB, budgetType BudgetType, assetName string, totalAmount decimal.Decimal, userWallet string) error {
-	cqRcd, err := TreasuryAssetHelper.GetCurrQuarterRecord(db)
+	cqRcd, err := TreasuryAssetHelper.GetOrCreateCurrQuarterRecord(db)
 	if err != nil {
 		return err
 	}
@@ -162,7 +155,7 @@ func (*treasuryAssetHelper) DepositTreasureAsset(db *gorm.DB, budgetType BudgetT
 // ChangeCQTreasuryAssetValue update asset value for current quarter treasury record, the value passed in deltaValue allows both positive and negative value
 // For positive value, the remain amount will be decreased while the negative means remain amount will be increased
 func (*treasuryAssetHelper) ChangeCQTreasuryAssetValue(db *gorm.DB, budgetType BudgetType, assetName string, deltaValue decimal.Decimal, userWallet string, auditMsg string) error {
-	cqRcd, err := TreasuryAssetHelper.GetCurrQuarterRecord(db)
+	cqRcd, err := TreasuryAssetHelper.GetOrCreateCurrQuarterRecord(db)
 	if err != nil {
 		return err
 	}
