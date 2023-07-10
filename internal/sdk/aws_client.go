@@ -17,11 +17,20 @@ type AwsClient struct {
 	BucketName string
 
 	Uploader *s3manager.Uploader
+
+	isActivated bool // Indicate whether this client is activated, client will be marked as activated only when accessKey, secret, region and bucketName are all non-empty
 }
 
 var awsClient *AwsClient
 
 func InitAwsClient(accessKey, secret, region, bucketName string) error {
+	if accessKey == "" || secret == "" || region == "" || bucketName == "" {
+		awsClient = &AwsClient{
+			isActivated: false,
+		}
+		return nil
+	}
+
 	awsSession, err := session.NewSession(&aws.Config{
 		Credentials: credentials.NewStaticCredentials(accessKey, secret, ""),
 		Region:      aws.String(region)},
@@ -34,9 +43,10 @@ func InitAwsClient(accessKey, secret, region, bucketName string) error {
 	uploader := s3manager.NewUploader(awsSession)
 
 	awsClient = &AwsClient{
-		Region:     region,
-		BucketName: bucketName,
-		Uploader:   uploader,
+		Region:      region,
+		BucketName:  bucketName,
+		Uploader:    uploader,
+		isActivated: true,
 	}
 	return nil
 }
@@ -48,6 +58,11 @@ func GetAwsClient() *AwsClient {
 // UploadEntityLogo uploads entity logo passed from frontend in base64 format to AWS S3 and return URL
 // Note: The passed in base64 image string contains header, such as `data:image/png;base64,XXXX`
 func (c *AwsClient) UploadEntityLogo(entityId uint, entityType string, b64ImgSrcWithType string) (string, error) {
+	// For non-activated client, return b64 string directly
+	if !c.isActivated {
+		return b64ImgSrcWithType, nil
+	}
+
 	imageData, contentType, fileExt, err := c.parseB64ImageStringWithType(b64ImgSrcWithType)
 
 	if err != nil {
@@ -60,6 +75,11 @@ func (c *AwsClient) UploadEntityLogo(entityId uint, entityType string, b64ImgSrc
 }
 
 func (c *AwsClient) UploadUserAvatar(userWallet string, b64ImgSrcWithType string) (string, error) {
+	// For non-activated client, return b64 string directly
+	if !c.isActivated {
+		return b64ImgSrcWithType, nil
+	}
+
 	imageData, contentType, fileExt, err := c.parseB64ImageStringWithType(b64ImgSrcWithType)
 
 	if err != nil {
