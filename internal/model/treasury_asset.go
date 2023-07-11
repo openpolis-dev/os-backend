@@ -72,14 +72,15 @@ func (r *TreasuryAsset) ToTreasuryAssetsResponse(db *gorm.DB) *TreasuryAssetsRes
 
 	creditUsed = decimal.Zero
 	tokenUsed = decimal.Zero
-	var detailedData NewRewardApplicationDetailedData
 	for _, application := range applications {
+		var detailedData NewRewardApplicationDetailedData
 		err := json.Unmarshal(application.DetailedData, &detailedData)
 		if err != nil {
 			panic(err)
 		}
 		rewardTokenAmount := decimal.Zero
 		rewardCreditAmount := decimal.Zero
+
 		for _, assetRcd := range detailedData.Assets {
 			switch assetRcd.AssetType {
 			case BudgetTypeToken:
