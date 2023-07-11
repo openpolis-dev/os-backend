@@ -84,17 +84,21 @@ func (r *TreasuryAsset) ToTreasuryAssetsResponse(db *gorm.DB) *TreasuryAssetsRes
 			switch assetRcd.AssetType {
 			case BudgetTypeToken:
 				rewardTokenAmount = rewardTokenAmount.Add(assetRcd.Amount)
+				break
 			case BudgetTypeCredit:
 				rewardCreditAmount = rewardCreditAmount.Add(assetRcd.Amount)
+				break
 			}
 		}
 
 		switch application.State {
 		case ApplicationStateProcessing:
 			creditUsed = creditUsed.Add(rewardCreditAmount)
+			break
 		case ApplicationStateCompleted:
 			creditUsed = creditUsed.Add(rewardCreditAmount)
 			tokenUsed = tokenUsed.Add(rewardTokenAmount)
+			break
 		}
 	}
 
