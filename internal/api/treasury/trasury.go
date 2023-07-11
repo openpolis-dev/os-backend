@@ -18,7 +18,7 @@ func GetOrCreateCurrentAssetRecords(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, api.Success(currQuarterTreasuryRecord.ToTreasuryAssetsResponse()))
+	ctx.JSON(http.StatusOK, api.Success(currQuarterTreasuryRecord.ToTreasuryAssetsResponse(db)))
 }
 
 // UpdateAssets updates asset records of current quarter budget

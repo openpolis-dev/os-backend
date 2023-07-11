@@ -1,6 +1,7 @@
 package model
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -50,27 +51,60 @@ type TreasuryAuditLog struct {
 	UpdatedAt time.Time `json:"updated_at" gorm:"autoUpdateTime"`
 }
 
-func (r *TreasuryAsset) ToTreasuryAssetsResponse() *TreasuryAssetsResponse {
-	var creditTotal, creditRemain, tokenTotal, tokenRemain decimal.Decimal
+func (r *TreasuryAsset) ToTreasuryAssetsResponse(db *gorm.DB) *TreasuryAssetsResponse {
+	var creditTotal, creditUsed, tokenTotal, tokenUsed decimal.Decimal
+
+	// Calculate total amount
 	for _, detailedRcd := range r.DetailedRecords {
 		if detailedRcd.BudgetType == BudgetTypeCredit {
 			creditTotal = creditTotal.Add(detailedRcd.TotalAmount)
-			creditRemain = creditRemain.Add(detailedRcd.RemainAmount)
 		} else if detailedRcd.BudgetType == BudgetTypeToken {
 			tokenTotal = tokenTotal.Add(detailedRcd.TotalAmount)
-			tokenRemain = tokenRemain.Add(detailedRcd.RemainAmount)
+		}
+	}
+
+	// Calculate used amount
+	startDate, endDate := getCurrentQuarterTimeRange()
+	var applications []Application
+	db.Model(&Application{}).
+		Where("created_at >= ? AND created_at < ? AND state IN (?, ?) AND type = ?", startDate, endDate, ApplicationStateProcessing, ApplicationStateCompleted, ApplicationNewReward).
+		Find(&applications)
+
+	creditUsed = decimal.Zero
+	tokenUsed = decimal.Zero
+	var detailedData NewRewardApplicationDetailedData
+	for _, application := range applications {
+		err := json.Unmarshal(application.DetailedData, &detailedData)
+		if err != nil {
+			panic(err)
+		}
+		rewardTokenAmount := decimal.Zero
+		rewardCreditAmount := decimal.Zero
+		for _, assetRcd := range detailedData.Assets {
+			switch assetRcd.AssetType {
+			case BudgetTypeToken:
+				rewardTokenAmount = rewardTokenAmount.Add(assetRcd.Amount)
+			case BudgetTypeCredit:
+				rewardCreditAmount = rewardCreditAmount.Add(assetRcd.Amount)
+			}
+		}
+
+		switch application.State {
+		case ApplicationStateProcessing:
+			creditUsed = creditUsed.Add(rewardCreditAmount)
+		case ApplicationStateCompleted:
+			creditUsed = creditUsed.Add(rewardCreditAmount)
+			tokenUsed = tokenUsed.Add(rewardTokenAmount)
 		}
 	}
 
 	return &TreasuryAssetsResponse{
-		ID:                 r.ID,
-		QuarterNum:         r.QuarterNum,
-		CreditTotalAmount:  creditTotal,
-		CreditUsedAmount:   creditTotal.Sub(creditRemain),
-		CreditRemainAmount: creditRemain,
-		TokenTotalAmount:   tokenTotal,
-		TokenUsedAmount:    tokenTotal.Sub(tokenRemain),
-		TokenRemainAmount:  tokenRemain,
+		ID:                r.ID,
+		QuarterNum:        r.QuarterNum,
+		CreditTotalAmount: creditTotal,
+		CreditUsedAmount:  creditUsed,
+		TokenTotalAmount:  tokenTotal,
+		TokenUsedAmount:   tokenUsed,
 	}
 }
 
@@ -192,7 +226,7 @@ func (*treasuryAssetHelper) ChangeCQTreasuryAssetValue(db *gorm.DB, budgetType B
 	})
 }
 
-func monthToSeasonIndex(m time.Month) int {
+func monthToQuarterIndex(m time.Month) int {
 	switch m {
 	case time.January, time.February, time.March:
 		return 1
@@ -208,7 +242,22 @@ func monthToSeasonIndex(m time.Month) int {
 
 func getCurrentQuarterNum() string {
 	year, month, _ := time.Now().Date()
-	quarterIdx := monthToSeasonIndex(month)
+	quarterIdx := monthToQuarterIndex(month)
 
 	return fmt.Sprintf("%d%02d", year, quarterIdx)
+}
+
+func getCurrentQuarterTimeRange() (string, string) {
+	year, month, _ := time.Now().Date()
+	quarterIdx := monthToQuarterIndex(month)
+	if quarterIdx == 0 {
+		panic(fmt.Errorf("unknown month: %d", month))
+	}
+	startMon := (quarterIdx-1)*3 + 1
+	endMon := startMon + 3
+	if quarterIdx == 4 {
+		return fmt.Sprintf("%d-%d-01", year, startMon), fmt.Sprintf("%d-01-01", year+1)
+	} else {
+		return fmt.Sprintf("%d-%d-01", year, startMon), fmt.Sprintf("%d-%d-01", year, endMon)
+	}
 }
