@@ -11,6 +11,7 @@ import (
 	"github.com/samber/lo"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/api/application"
+	"github.com/theseed-labs/os-backend/internal/api/event"
 	"github.com/theseed-labs/os-backend/internal/api/guild"
 	"github.com/theseed-labs/os-backend/internal/api/project"
 	"github.com/theseed-labs/os-backend/internal/api/treasury"
@@ -138,6 +139,11 @@ func main() {
 		treasuryGroup := v1.Group("/treasury")
 		treasuryGroup.GET("/current", treasury.GetOrCreateCurrentAssetRecords)
 
+		// SeeDAO events routers
+		eventsGroup := v1.Group("/events")
+		eventsGroup.GET("/", event.List)
+		eventsGroup.GET("/:id", event.Detail)
+
 		// foo routers
 	}
 	// --> auth required
@@ -187,6 +193,13 @@ func main() {
 		// SeeDAO assets routers
 		treasuryGroup := authorizedGroup.Group("/treasury")
 		treasuryGroup.POST("/update_assets", treasury.UpdateAssets)
+
+		// SeeDAO events routers
+		eventsGroup := v1.Group("/events")
+		eventsGroup.POST("/", event.Create)
+		eventsGroup.PUT("/:id", event.Update)
+
+		authorizedGroup.GET("/my_guilds", event.MyList)
 
 		// foo routers
 	}

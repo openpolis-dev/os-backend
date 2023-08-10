@@ -10,7 +10,8 @@ import (
 	"gorm.io/gorm"
 )
 
-const ApplicationDateQueryFormat = "2006-01-02"
+const DateQueryFormat = "2006-01-02"
+const DateTimeFormat = "2006-01-02T15:04:05"
 
 const QueryApplicationsWithEntityNameBaseSQL = `SELECT applications.*,
 CASE
@@ -124,12 +125,12 @@ func GenerateFrontendApplicationRecords(db *gorm.DB, queryParams *ListApplicatio
 	}
 
 	if queryParams.StartDate != "" && queryParams.EndDate != "" {
-		startDate, err := time.Parse(ApplicationDateQueryFormat, queryParams.StartDate)
+		startDate, err := time.Parse(DateQueryFormat, queryParams.StartDate)
 		if err != nil {
 			return nil, 0, err
 		}
 
-		endDate, err := time.Parse(ApplicationDateQueryFormat, queryParams.EndDate)
+		endDate, err := time.Parse(DateQueryFormat, queryParams.EndDate)
 		if err != nil {
 			return nil, 0, err
 		}
