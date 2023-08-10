@@ -33,7 +33,7 @@ func List(ctx *gin.Context) {
 	page := api.ParseAndConvertPageParam(ctx)
 	querySeg := db.Model(model.Event{})
 
-	listReplyData, err := getMultipleRecords(db, page, querySeg)
+	listReplyData, err := getMultipleRecords(page, querySeg)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.BadRequest(err))
 		return
@@ -130,7 +130,7 @@ func MyList(ctx *gin.Context) {
 	page := api.ParseAndConvertPageParam(ctx)
 	querySeg := db.Where(model.Event{Initiator: user.Wallet})
 
-	listReplyData, err := getMultipleRecords(db, page, querySeg)
+	listReplyData, err := getMultipleRecords(page, querySeg)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.BadRequest(err))
 		return
@@ -149,7 +149,7 @@ func getRecord(db *gorm.DB, idStr string) (*model.Event, error) {
 	return gormfind.Row[model.Event](querySeg)
 }
 
-func getMultipleRecords(db *gorm.DB, page *gormfind.Page, querySeg *gorm.DB) (*api.ListReplyData, error) {
+func getMultipleRecords(page *gormfind.Page, querySeg *gorm.DB) (*api.ListReplyData, error) {
 	total, err := gormfind.Count(querySeg)
 	if err != nil {
 		return nil, err
