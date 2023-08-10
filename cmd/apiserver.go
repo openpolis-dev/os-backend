@@ -195,11 +195,12 @@ func main() {
 		treasuryGroup.POST("/update_assets", treasury.UpdateAssets)
 
 		// SeeDAO events routers
-		eventsGroup := v1.Group("/events")
+		eventsGroup := authorizedGroup.Group("/events")
 		eventsGroup.POST("/", event.Create)
 		eventsGroup.PUT("/:id", event.Update)
 
-		authorizedGroup.GET("/my_guilds", event.MyList)
+		// my events
+		authorizedGroup.GET("/my_events", event.MyList)
 
 		// foo routers
 	}
