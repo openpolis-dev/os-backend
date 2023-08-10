@@ -5,10 +5,12 @@ import (
 	"encoding/base64"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 )
 
@@ -16,7 +18,8 @@ type AwsClient struct {
 	Region     string
 	BucketName string
 
-	Uploader *s3manager.Uploader
+	Uploader *s3manager.Uploader // s3 uploaeder client
+	Svc      *s3.S3              // s3 service client
 
 	isActivated bool // Indicate whether this client is activated, client will be marked as activated only when accessKey, secret, region and bucketName are all non-empty
 }
@@ -41,11 +44,13 @@ func InitAwsClient(accessKey, secret, region, bucketName string) error {
 	}
 
 	uploader := s3manager.NewUploader(awsSession)
+	svc := s3.New(awsSession)
 
 	awsClient = &AwsClient{
 		Region:      region,
 		BucketName:  bucketName,
 		Uploader:    uploader,
+		Svc:         svc,
 		isActivated: true,
 	}
 	return nil
@@ -101,6 +106,19 @@ func (c *AwsClient) UploadUserAvatar(userWallet string, b64ImgSrcWithType string
 	fileKey := fmt.Sprintf("user_avatars/%s.%s", userWallet, fileExt)
 
 	return c.uploadB64Image(imageData, contentType, fileKey)
+}
+
+func (c *AwsClient) GetS3PreSignedURL(fileName string, contentType string) (string, error) {
+	req, _ := c.Svc.PutObjectRequest(&s3.PutObjectInput{
+		Bucket:      aws.String(c.BucketName),
+		Key:         aws.String(fileName),
+		ContentType: aws.String(contentType),
+	})
+	urlStr, err := req.Presign(5 * time.Minute)
+	if err != nil {
+		return "", err
+	}
+	return urlStr, nil
 }
 
 func (c *AwsClient) parseB64ImageStringWithType(b64ImgSrcWithType string) ([]byte, string, string, error) {

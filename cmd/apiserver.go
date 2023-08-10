@@ -144,6 +144,9 @@ func main() {
 		eventsGroup.GET("/", event.List)
 		eventsGroup.GET("/:id", event.Detail)
 
+		// pre-signed s3 upload url
+		v1.GET("/url_for_uploading_s3", api.PreSignedUrlForS3)
+
 		// foo routers
 	}
 	// --> auth required
