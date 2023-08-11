@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -19,9 +20,8 @@ type (
 		CoverImg string `json:"cover_img"`
 		Content  string `json:"content"`
 
-		Initiator string `json:"initiator"`
-		StartAt   string `json:"start_at"`
-		EndAt     string `json:"end_at"`
+		StartAt string `json:"start_at"`
+		EndAt   string `json:"end_at"`
 
 		Metadata string `json:"metadata"`
 	}
@@ -50,7 +50,7 @@ func List(ctx *gin.Context) {
 func MyList(ctx *gin.Context) {
 	user, db := api.ForContextUserAndDB(ctx)
 	page := api.ParseAndConvertPageParam(ctx)
-	querySeg := db.Where(model.Event{Initiator: user.Wallet})
+	querySeg := db.Model(model.Event{}).Where(model.Event{Initiator: strings.ToLower(user.Wallet)})
 	querySeg, err := updateQuerySegByState(ctx, querySeg)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.BadRequest(err))
@@ -95,9 +95,9 @@ func Create(ctx *gin.Context) {
 		return
 	}
 
-	db := api.ForContextOnlyDB(ctx)
+	user, db := api.ForContextUserAndDB(ctx)
 	eventRecord := model.Event{
-		Initiator: req.Initiator,
+		Initiator: strings.ToLower(user.Wallet),
 		Title:     req.Title,
 		CoverImg:  req.CoverImg,
 		Content:   req.Content,
@@ -116,9 +116,16 @@ func Create(ctx *gin.Context) {
 
 func Detail(ctx *gin.Context) {
 	db := api.ForContextOnlyDB(ctx)
+	patterStr := ctx.Query("delete_key")
+	if patterStr != api.EventDeleteMagicWorld {
+		ctx.JSON(http.StatusNotFound, "")
+		return
+	}
+
 	eventRecord, err := getRecord(db, ctx.Param("id"))
+	err = db.Delete(&eventRecord).Error
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
 	ctx.JSON(http.StatusOK, api.Success(eventRecord))
@@ -226,7 +233,7 @@ func updateEventFromRequest(eventRecord *model.Event, req CreateOrUpdateReq) err
 
 	// Verify startDate is later than today if have
 	if req.StartAt != "" {
-		startTime, err := time.Parse(req.StartAt, model.DateTimeFormat)
+		startTime, err := parseTimestampStrToTime(req.StartAt)
 		if err != nil {
 			return err
 		}
@@ -239,7 +246,7 @@ func updateEventFromRequest(eventRecord *model.Event, req CreateOrUpdateReq) err
 
 	// Verify endDate is later than today and startDate
 	if req.EndAt != "" {
-		endTime, err := time.Parse(req.EndAt, model.DateTimeFormat)
+		endTime, err := parseTimestampStrToTime(req.EndAt)
 		if err != nil {
 			return err
 		}

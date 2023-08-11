@@ -22,7 +22,7 @@ type Event struct {
 	Metadata string `json:"metadata"`
 
 	// Member init this application
-	Initiator string `json:"applicant"`
+	Initiator string `json:"initiator"`
 
 	// Information of the event
 	Title   string    `json:"title"`
