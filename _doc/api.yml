@@ -888,9 +888,18 @@ paths:
           content:
             "application/json":
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/EventResponse"
+                type: object
+                properties:
+                  page:
+                    type: number
+                  size:
+                    type: number
+                  total:
+                    type: number
+                  rows:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/EventResponse"
     post:
       security:
         - bearerAuth: [ ]
@@ -1007,7 +1016,11 @@ paths:
           example:
             - image/jpg
             - image/png
-            - image/svg
+            - image/svg+xml
+        - name: entity
+          in: query
+          description: |
+            entity name for this image, which can help to improvement the file structure in S3
       responses:
         '200':
           description: pre signed URL from S3 that can be used to upload file
