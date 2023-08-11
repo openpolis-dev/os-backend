@@ -45,6 +45,8 @@ func main() {
 	// add default policies
 	defaultPolicies := [][]string{
 		{api.RoleHall, "*", "*"}, // `p, hall, *, *` hall can do anything
+		{api.RoleTreasuryManager, api.ObjTreasury, api.ActUpdateAssertBudget}, // `p, treasury_manager, treasury, u_assert_budget`
+		{api.RoleEventManager, api.ObjEvent, api.ActCreateEvent},              // `p, event_manager, event, create_event`
 	}
 	_, err = enforcer.AddPolicies(defaultPolicies)
 	if err != nil {
