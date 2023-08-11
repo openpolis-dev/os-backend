@@ -67,8 +67,20 @@ func MyList(ctx *gin.Context) {
 }
 
 func Create(ctx *gin.Context) {
+	user, enforcer, db, _ := api.ForContext(ctx)
+	//  check permission
+	ok, err := enforcer.Enforce(user.Wallet, api.ObjEvent, api.ActCreateEvent)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		return
+	}
+	if !ok {
+		ctx.JSON(http.StatusForbidden, api.Forbidden())
+		return
+	}
+
 	req := CreateOrUpdateReq{}
-	err := ctx.BindJSON(&req)
+	err = ctx.BindJSON(&req)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
 		return
@@ -95,7 +107,6 @@ func Create(ctx *gin.Context) {
 		return
 	}
 
-	user, db := api.ForContextUserAndDB(ctx)
 	eventRecord := model.Event{
 		Initiator: strings.ToLower(user.Wallet),
 		Title:     req.Title,
@@ -132,14 +143,25 @@ func Detail(ctx *gin.Context) {
 }
 
 func Update(ctx *gin.Context) {
+	user, enforcer, db, _ := api.ForContext(ctx)
+	//  check permission
+	ok, err := enforcer.Enforce(user.Wallet, api.ObjEvent, api.ActCreateEvent)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		return
+	}
+	if !ok {
+		ctx.JSON(http.StatusForbidden, api.Forbidden())
+		return
+	}
+
 	req := CreateOrUpdateReq{}
-	err := ctx.BindJSON(&req)
+	err = ctx.BindJSON(&req)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
 		return
 	}
 
-	db := api.ForContextOnlyDB(ctx)
 	eventRecord, err := getRecord(db, ctx.Param("id"))
 	if eventRecord.StartAt.Before(time.Now()) {
 		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("updating started event is not allowed")))
