@@ -13,6 +13,7 @@ import (
 	"github.com/theseed-labs/os-backend/internal/api/application"
 	"github.com/theseed-labs/os-backend/internal/api/event"
 	"github.com/theseed-labs/os-backend/internal/api/guild"
+	"github.com/theseed-labs/os-backend/internal/api/permission"
 	"github.com/theseed-labs/os-backend/internal/api/project"
 	"github.com/theseed-labs/os-backend/internal/api/treasury"
 	"github.com/theseed-labs/os-backend/internal/api/user"
@@ -205,6 +206,11 @@ func main() {
 
 		// my events
 		authorizedGroup.GET("/my_events", event.MyList)
+
+		// permission routers
+		permissionGroup := authorizedGroup.Group("/permission")
+		permissionGroup.POST("/grant_role", permission.GrantRole)
+		permissionGroup.POST("/revoke_role", permission.RevokeRole)
 
 		// foo routers
 	}
