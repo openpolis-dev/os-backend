@@ -306,6 +306,10 @@ func doAuditApplicationInTransaction(tx *gorm.DB, operatorWallet string, applica
 				if err != nil {
 					return err
 				}
+				err = enforcer.SavePolicy()
+				if err != nil {
+					return err
+				}
 				//// remove roles for members
 				//oldMemberGroupingPolicies := lo.Map(project.Members, func(member string, _ int) []string {
 				//	// g, 0xc13..1283 proj_member_1
