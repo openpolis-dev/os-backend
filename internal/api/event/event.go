@@ -2,7 +2,6 @@ package event
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -16,8 +15,9 @@ import (
 
 type (
 	CreateOrUpdateReq struct {
-		Title   string `json:"title"`
-		Content string `json:"content"`
+		Title    string `json:"title"`
+		CoverImg string `json:"cover_img"`
+		Content  string `json:"content"`
 
 		Initiator string `json:"initiator"`
 		StartAt   string `json:"start_at"`
@@ -99,6 +99,7 @@ func Create(ctx *gin.Context) {
 	eventRecord := model.Event{
 		Initiator: req.Initiator,
 		Title:     req.Title,
+		CoverImg:  req.CoverImg,
 		Content:   req.Content,
 		StartAt:   startDate,
 		EndAt:     endDate,
@@ -217,6 +218,10 @@ func updateEventFromRequest(eventRecord *model.Event, req CreateOrUpdateReq) err
 	}
 	if req.Content != "" {
 		eventRecord.Content = req.Content
+	}
+
+	if req.CoverImg != "" {
+		eventRecord.CoverImg = req.CoverImg
 	}
 
 	// Verify startDate is later than today if have
