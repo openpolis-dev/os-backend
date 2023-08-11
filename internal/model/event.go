@@ -7,8 +7,8 @@ import (
 type EventState string
 
 const (
-	EventStatePrepare    EventState = "prepare"
-	EventStateInProgress            = "in_progress"
+	EventStatePrepare    EventState = "preparing"
+	EventStateInProgress            = "inprogress"
 	EventStateCompleted             = "completed"
 	EventStateCancelled             = "cancelled"
 )
@@ -19,7 +19,7 @@ type Event struct {
 
 	CoverImg string `json:"cover_img"`
 
-	Metadata map[string]string `json:"metadata"`
+	Metadata string `json:"metadata"`
 
 	// Member init this application
 	Initiator string `json:"applicant"`

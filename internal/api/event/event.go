@@ -2,6 +2,7 @@ package event
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -28,10 +29,33 @@ type (
 
 // List `GET /events?status=open&page=1&size=10&sort_field=created_at&sort_order=desc`
 func List(ctx *gin.Context) {
-	var err error
 	db := api.ForContextOnlyDB(ctx)
 	page := api.ParseAndConvertPageParam(ctx)
 	querySeg := db.Model(model.Event{})
+	querySeg, err := updateQuerySegByState(ctx, querySeg)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, api.BadRequest(err))
+		return
+	}
+
+	listReplyData, err := getMultipleRecords(page, querySeg)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, api.BadRequest(err))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, api.Success(listReplyData))
+}
+
+func MyList(ctx *gin.Context) {
+	user, db := api.ForContextUserAndDB(ctx)
+	page := api.ParseAndConvertPageParam(ctx)
+	querySeg := db.Where(model.Event{Initiator: user.Wallet})
+	querySeg, err := updateQuerySegByState(ctx, querySeg)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, api.BadRequest(err))
+		return
+	}
 
 	listReplyData, err := getMultipleRecords(page, querySeg)
 	if err != nil {
@@ -55,15 +79,18 @@ func Create(ctx *gin.Context) {
 		return
 	}
 
-	startDate, endDate, err := parseStartEndDate(req)
+	if req.EndAt == "" {
+		req.EndAt = req.StartAt
+	}
+
+	startDate, err := parseTimestampStrToTime(req.StartAt)
+	endDate, err := parseTimestampStrToTime(req.EndAt)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("invalid start or end date")))
 		return
 	}
 
-	// TODO: Verify the date time check for EndAt not passed cases
-	dateIsValid := isDateValid(startDate, endDate)
-	if !dateIsValid {
+	if endDate.Before(startDate) || startDate.Before(time.Now()) || endDate.Before(time.Now()) {
 		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("invalid start or end date")))
 		return
 	}
@@ -75,7 +102,7 @@ func Create(ctx *gin.Context) {
 		Content:   req.Content,
 		StartAt:   startDate,
 		EndAt:     endDate,
-		State:     model.EventStatePrepare,
+		Metadata:  req.Metadata,
 	}
 
 	err = db.Create(&eventRecord).Error
@@ -125,20 +152,6 @@ func Update(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, api.Success(eventRecord))
 }
 
-func MyList(ctx *gin.Context) {
-	user, db := api.ForContextUserAndDB(ctx)
-	page := api.ParseAndConvertPageParam(ctx)
-	querySeg := db.Where(model.Event{Initiator: user.Wallet})
-
-	listReplyData, err := getMultipleRecords(page, querySeg)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.BadRequest(err))
-		return
-	}
-
-	ctx.JSON(http.StatusOK, api.Success(listReplyData))
-}
-
 func getRecord(db *gorm.DB, idStr string) (*model.Event, error) {
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
@@ -147,6 +160,27 @@ func getRecord(db *gorm.DB, idStr string) (*model.Event, error) {
 
 	querySeg := db.Where("id = ?", id)
 	return gormfind.Row[model.Event](querySeg)
+}
+
+func updateQuerySegByState(ctx *gin.Context, querySeg *gorm.DB) (*gorm.DB, error) {
+	stateStr := ctx.Query("state")
+	if stateStr == "" {
+		return querySeg, nil
+	}
+
+	state := model.EventState(stateStr)
+
+	if state == model.EventStatePrepare {
+		querySeg = querySeg.Where("created_at >= ?", time.Now().Unix())
+	} else if state == model.EventStateInProgress {
+		querySeg = querySeg.Where("created_at < ? AND end_at > ?", time.Now().Unix(), time.Now().Unix())
+	} else if state == model.EventStateCompleted {
+		querySeg = querySeg.Where("end_at < ?", time.Now().Unix())
+	} else {
+		return querySeg, errors.New("unknown state")
+	}
+
+	return querySeg, nil
 }
 
 func getMultipleRecords(page *gormfind.Page, querySeg *gorm.DB) (*api.ListReplyData, error) {
@@ -168,22 +202,12 @@ func getMultipleRecords(page *gormfind.Page, querySeg *gorm.DB) (*api.ListReplyD
 	}, err
 }
 
-func parseStartEndDate(req CreateOrUpdateReq) (startDate time.Time, endDate time.Time, err error) {
-	startDate, err = time.Parse(req.StartAt, model.DateQueryFormat)
+func parseTimestampStrToTime(timeStr string) (tsObject time.Time, err error) {
+	i, err := strconv.ParseInt(timeStr, 10, 64)
 	if err != nil {
-		return
+		return time.Time{}, err
 	}
-	if req.EndAt != "" {
-		endDate, err = time.Parse(req.EndAt, model.DateQueryFormat)
-		if err != nil {
-			return
-		}
-	}
-	return
-}
-
-func isDateValid(startDate, endDate time.Time) bool {
-	return startDate.Before(endDate) && startDate.Before(time.Now()) && endDate.Before(time.Now())
+	return time.Unix(i, 0), nil
 }
 
 func updateEventFromRequest(eventRecord *model.Event, req CreateOrUpdateReq) error {
