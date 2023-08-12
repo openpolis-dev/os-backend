@@ -132,6 +132,11 @@ func Detail(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
+	if eventRecord == nil {
+		ctx.JSON(http.StatusNotFound, nil)
+		return
+	}
+
 	ctx.JSON(http.StatusOK, api.Success(eventRecord))
 }
 
@@ -173,6 +178,16 @@ func Update(ctx *gin.Context) {
 	}
 
 	eventRecord, err := getRecord(db, ctx.Param("id"))
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		return
+	}
+
+	if eventRecord == nil {
+		ctx.JSON(http.StatusNotFound, nil)
+		return
+	}
+
 	if eventRecord.StartAt.Before(time.Now()) {
 		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("updating started event is not allowed")))
 		return
@@ -287,6 +302,10 @@ func updateEventFromRequest(eventRecord *model.Event, req CreateOrUpdateReq) err
 			return errors.New("invalid end time")
 		}
 		eventRecord.EndAt = endTime
+	}
+
+	if req.Metadata != "" {
+		eventRecord.Metadata = req.Metadata
 	}
 
 	return nil
