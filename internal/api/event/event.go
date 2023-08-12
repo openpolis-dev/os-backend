@@ -127,6 +127,16 @@ func Create(ctx *gin.Context) {
 
 func Detail(ctx *gin.Context) {
 	db := api.ForContextOnlyDB(ctx)
+	eventRecord, err := getRecord(db, ctx.Param("id"))
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		return
+	}
+	ctx.JSON(http.StatusOK, api.Success(eventRecord))
+}
+
+func Delete(ctx *gin.Context) {
+	db := api.ForContextOnlyDB(ctx)
 	patterStr := ctx.Query("delete_key")
 	if patterStr != api.EventDeleteMagicWorld {
 		ctx.JSON(http.StatusNotFound, "")

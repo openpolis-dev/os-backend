@@ -204,7 +204,7 @@ func main() {
 		eventsGroup := authorizedGroup.Group("/events")
 		eventsGroup.POST("/", event.Create)
 		eventsGroup.PUT("/:id", event.Update)
-		eventsGroup.DELETE("/:id", event.Detail)
+		eventsGroup.DELETE("/:id", event.Delete)
 
 		// my events
 		authorizedGroup.GET("/my_events", event.MyList)
