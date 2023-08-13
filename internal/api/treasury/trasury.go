@@ -18,14 +18,14 @@ func GetOrCreateCurrentAssetRecords(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, api.Success(currQuarterTreasuryRecord.ToTreasuryAssetsResponse()))
+	ctx.JSON(http.StatusOK, api.Success(currQuarterTreasuryRecord.ToTreasuryAssetsResponse(db)))
 }
 
 // UpdateAssets updates asset records of current quarter budget
 func UpdateAssets(ctx *gin.Context) {
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
-	ok, err := enforcer.Enforce(user.Wallet, api.ObjSeeDAO, api.ActUpdateAssertBudget)
+	ok, err := enforcer.Enforce(user.Wallet, api.ObjTreasury, api.ActUpdateAssertBudget)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return

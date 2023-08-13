@@ -852,6 +852,180 @@ paths:
         '200':
           description: application has been rejected
 
+  /events:
+    get:
+      tags: [ event ]
+      summary: List all events
+      parameters:
+        - name: page
+          in: query
+          description: which page
+          schema:
+            type: number
+          required: false
+        - name: size
+          in: query
+          description: size of each page
+          schema:
+            type: number
+        - name: sort_field
+          in: query
+          schema:
+            type: string
+        - name: sort_order
+          in: query
+          schema:
+            type: string
+            enum: [ asc, desc ]
+        - name: state
+          in: query
+          schema:
+            type: string
+            enum: [ preparing, inprogress, completed ]
+      responses:
+        '200':
+          description: OK
+          content:
+            "application/json":
+              schema:
+                type: object
+                properties:
+                  page:
+                    type: number
+                  size:
+                    type: number
+                  total:
+                    type: number
+                  rows:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/EventResponse"
+    post:
+      security:
+        - bearerAuth: [ ]
+      tags: [event]
+      summary: create event
+      requestBody:
+        content:
+          "application/json":
+            schema:
+              $ref: "#/components/schemas/EventCreateRequest"
+      responses:
+        '201':
+          description: event created
+
+  /my_events:
+    get:
+      security:
+        - bearerAuth: [ ]
+      summary: return events created by login user
+      parameters:
+        - name: page
+          in: query
+          description: which page
+          schema:
+            type: number
+          required: false
+        - name: size
+          in: query
+          description: size of each page
+          schema:
+            type: number
+        - name: sort_field
+          in: query
+          schema:
+            type: string
+        - name: sort_order
+          in: query
+          schema:
+            type: string
+            enum: [ asc, desc ]
+        - name: state
+          in: query
+          schema:
+            type: string
+            enum: [ preparing, inprogress, completed ]
+      responses:
+        '200':
+          description: OK
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/EventResponse"
+
+  /events/{id}:
+    get:
+      tags: [event]
+      summary: get detail of single event
+      responses:
+        '200':
+          description: detailed event data
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/EventResponse"
+    put:
+      tags: [event]
+      security:
+        - bearerAuth: [ ]
+      summary: update single non started event
+      parameters:
+        - name: title
+          in: query
+          description: title of event
+        - name: content
+          in: query
+          description: content of event
+        - name: start_at
+          in: query
+          description: start timestamp of event, should be later than current time
+        - name: end_at
+          in: query
+          description: end timestamp of event, should be later than current time
+        - name: metadata
+          in: query
+          description: metadata for event, json encoded string
+      responses:
+        '200':
+          description: detailed event data
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/EventResponse"
+    delete:
+      tags: [event]
+      security:
+        - bearerAuth: [ ]
+      description: |
+        delete event, this is a hidden API that has no frontend interface,
+        need to find some way to guarantee it can only be used internally
+      responses:
+        '200':
+          description: event item deleted
+
+  /url_for_uploading_s3:
+    get:
+      description: Return pre signed upload URL
+      parameters:
+        - name: filename
+          in: query
+          description: filename will be used in s3 storage
+        - name: type
+          in: query
+          description: content type for the file
+          example:
+            - image/jpg
+            - image/png
+            - image/svg+xml
+        - name: entity
+          in: query
+          description: |
+            entity name for this image, which can help to improvement the file structure in S3
+      responses:
+        '200':
+          description: pre signed URL from S3 that can be used to upload file
+
+
 
 components:
   securitySchemes:
@@ -1255,4 +1429,54 @@ components:
         token_remain_amount:
           type: string
           description: remain token amount
+
+    EventCreateRequest:
+      type: object
+      properties:
+        cover_img:
+          type: string
+          description: cover image url
+        title:
+          type: string
+          description: title of image
+        content:
+          type: string
+          description: detailed content of image
+        start_at:
+          type: number
+          description: start timestamp of this event
+        end_at:
+          type: number
+          required: false
+          description: |
+            end timestamp of event, if not given the start_at time wil be used for this field
+        metadata:
+          type: string
+          description: JSON encoded various fields, will be saved to DB without change
+
+    EventResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          description: uniq event id
+        cover_img:
+          type: string
+          description: cover image URL
+        title:
+          type: string
+          description: event title
+        content:
+          type: string
+          description: detailed content of the event
+        start_at:
+          type: number
+          description: start timestamp in second format of this event
+        end_at:
+          type: number
+          description: end timestamp in second format of this event
+        metadata:
+          type: object
+          description: various metadata of this event
+
 

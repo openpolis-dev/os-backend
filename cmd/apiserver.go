@@ -11,7 +11,9 @@ import (
 	"github.com/samber/lo"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/api/application"
+	"github.com/theseed-labs/os-backend/internal/api/event"
 	"github.com/theseed-labs/os-backend/internal/api/guild"
+	"github.com/theseed-labs/os-backend/internal/api/permission"
 	"github.com/theseed-labs/os-backend/internal/api/project"
 	"github.com/theseed-labs/os-backend/internal/api/treasury"
 	"github.com/theseed-labs/os-backend/internal/api/user"
@@ -43,6 +45,8 @@ func main() {
 	// add default policies
 	defaultPolicies := [][]string{
 		{api.RoleHall, "*", "*"}, // `p, hall, *, *` hall can do anything
+		{api.RoleTreasuryManager, api.ObjTreasury, api.ActUpdateAssertBudget}, // `p, treasury_manager, treasury, u_assert_budget`
+		{api.RoleEventManager, api.ObjEvent, api.ActCreateEvent},              // `p, event_manager, event, create_event`
 	}
 	_, err = enforcer.AddPolicies(defaultPolicies)
 	if err != nil {
@@ -138,6 +142,14 @@ func main() {
 		treasuryGroup := v1.Group("/treasury")
 		treasuryGroup.GET("/current", treasury.GetOrCreateCurrentAssetRecords)
 
+		// SeeDAO events routers
+		eventsGroup := v1.Group("/events")
+		eventsGroup.GET("/", event.List)
+		eventsGroup.GET("/:id", event.Detail)
+
+		// pre-signed s3 upload url
+		v1.GET("/url_for_uploading_s3", api.PreSignedUrlForS3)
+
 		// foo routers
 	}
 	// --> auth required
@@ -187,6 +199,20 @@ func main() {
 		// SeeDAO assets routers
 		treasuryGroup := authorizedGroup.Group("/treasury")
 		treasuryGroup.POST("/update_assets", treasury.UpdateAssets)
+
+		// SeeDAO events routers
+		eventsGroup := authorizedGroup.Group("/events")
+		eventsGroup.POST("/", event.Create)
+		eventsGroup.PUT("/:id", event.Update)
+		eventsGroup.DELETE("/:id", event.Delete)
+
+		// my events
+		authorizedGroup.GET("/my_events", event.MyList)
+
+		// permission routers
+		permissionGroup := authorizedGroup.Group("/permission")
+		permissionGroup.POST("/grant_role", permission.GrantRole)
+		permissionGroup.POST("/revoke_role", permission.RevokeRole)
 
 		// foo routers
 	}
