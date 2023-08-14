@@ -2,7 +2,6 @@ package city_hall
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -58,11 +57,6 @@ func getCityHallProject(db *gorm.DB, cityHallUsers []string) (*model.Project, er
 
 func Info(ctx *gin.Context) {
 	_, enforcer, db, _ := api.ForContext(ctx)
-
-	fmt.Printf("all roles: %+v\n", enforcer.GetAllRoles())
-	fmt.Printf("all policies: %+v\n", enforcer.GetPolicy())
-	res, err := enforcer.GetUsersForRole("hall")
-	fmt.Printf("all users under hall: %+v\n", res)
 	configuredCityHallUser, err := enforcer.GetUsersForRole(api.CityHallRoleName)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall permission error")))

@@ -151,8 +151,8 @@ func main() {
 		// pre-signed s3 upload url
 		v1.GET("/url_for_uploading_s3", api.PreSignedUrlForS3)
 
-		cityhallGroup := v1.Group("/cityhall")
-		cityhallGroup.GET("/info", city_hall.Info)
+		cityHallGroup := v1.Group("/cityhall")
+		cityHallGroup.GET("/info", city_hall.Info)
 
 		// foo routers
 	}
