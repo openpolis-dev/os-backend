@@ -218,6 +218,11 @@ func main() {
 		permissionGroup.POST("/grant_role", permission.GrantRole)
 		permissionGroup.POST("/revoke_role", permission.RevokeRole)
 
+		// city hall
+		cityHallGroup := authorizedGroup.Group("/cityhall")
+		cityHallGroup.POST("/update_budget", city_hall.UpdateBudget)
+		cityHallGroup.POST("/update_members", city_hall.UpdateMember)
+
 		// foo routers
 	}
 
