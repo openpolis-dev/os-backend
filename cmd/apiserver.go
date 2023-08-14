@@ -11,6 +11,7 @@ import (
 	"github.com/samber/lo"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/api/application"
+	"github.com/theseed-labs/os-backend/internal/api/city_hall"
 	"github.com/theseed-labs/os-backend/internal/api/event"
 	"github.com/theseed-labs/os-backend/internal/api/guild"
 	"github.com/theseed-labs/os-backend/internal/api/permission"
@@ -149,6 +150,9 @@ func main() {
 
 		// pre-signed s3 upload url
 		v1.GET("/url_for_uploading_s3", api.PreSignedUrlForS3)
+
+		cityhallGroup := v1.Group("/cityhall")
+		cityhallGroup.GET("/info", city_hall.Info)
 
 		// foo routers
 	}

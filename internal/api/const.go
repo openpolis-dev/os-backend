@@ -4,6 +4,8 @@ const DefaultPageSize = 10
 
 const EventDeleteMagicWorld = "4taoist2"
 
+const CityHallRoleName = "hall"
+
 var ApplicationUploadTemplateHeader = map[string]string{
 	"zh": "钱包地址,登记积分,登记Token,事项内容,备注",
 	"en": "Address,Add Points,Add Token,Content,Note",

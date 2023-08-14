@@ -11,6 +11,12 @@ import (
 
 type ProjectStatus string
 
+type SpecialProjectType string
+
+const (
+	SpecialProjectCityHall SpecialProjectType = "city_hall"
+)
+
 const (
 	ProjectStatusOpen         ProjectStatus = "open"
 	ProjectStatusPendingClose               = "pending_close"
@@ -25,6 +31,9 @@ type Project struct {
 	Sponsors  []string      `json:"sponsors" gorm:"serializer:json"`
 	Members   []string      `json:"members" gorm:"serializer:json"`
 	Proposals []string      `json:"proposals" gorm:"serializer:json"`
+
+	IsSpecial   bool               `json:"is_special"`
+	SpecialType SpecialProjectType `json:"special_type"`
 
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
@@ -44,7 +53,7 @@ func (*projectModel) Detail(db *gorm.DB, id uint) (*Project, error) {
 }
 
 func (*projectModel) List(db *gorm.DB, status string, page *gormfind.Page) (data []*Project, total int64, err error) {
-	querySeg := db.Table("projects")
+	querySeg := db.Table("projects").Where("is_special = false")
 	if status != "" {
 		querySeg.Where("status = ?", status)
 	}
