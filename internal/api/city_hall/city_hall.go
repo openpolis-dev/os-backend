@@ -57,7 +57,7 @@ func getCityHallProject(db *gorm.DB, cityHallUsers []string) (*model.Project, er
 
 func Info(ctx *gin.Context) {
 	_, enforcer, db, _ := api.ForContext(ctx)
-	configuredCityHallUser, err := enforcer.GetUsersForRole(api.CityHallRoleName)
+	configuredCityHallUser, err := enforcer.GetUsersForRole(api.RoleHall)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall permission error")))
 		return
