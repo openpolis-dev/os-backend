@@ -131,6 +131,10 @@ func UpdateBudget(ctx *gin.Context) {
 	}
 
 	budget := model.ProjectBudget{}
+	if req.AssetName == "" || req.AssetType == "" || req.TotalAmount == decimal.Zero {
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("all fields in request should be filled")))
+		return
+	}
 	err = db.Where(&model.ProjectBudget{
 		ProjectID: cityHallProject.ID,
 		AssetName: req.AssetName,
