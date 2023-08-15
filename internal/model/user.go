@@ -9,7 +9,7 @@ import (
 
 type User struct {
 	ID             uint   `json:"id" gorm:"primaryKey"`
-	Wallet         string `json:"wallet" gorm:"type:varchar(256);index"`
+	Wallet         string `json:"wallet" gorm:"type:varchar(256);uniqueIndex"`
 	Name           string `json:"name"`
 	Avatar         string `json:"avatar"`
 	Email          string `json:"email"`
