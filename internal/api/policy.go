@@ -8,6 +8,10 @@ const (
 
 	RoleGuildSponsorPrefix = "guild_sponsor_"
 	//RoleGuildMemberPrefix  = "guild_member_"
+
+	RoleTreasuryManager = "treasury_manager"
+
+	RoleEventManager = "event_manager"
 )
 
 const (
@@ -18,7 +22,9 @@ const (
 	ObjProjPrefix  = "proj_"
 	ObjGuildPrefix = "guild_"
 
-	ObjSeeDAO = "seedao"
+	ObjTreasury = "treasury"
+
+	ObjEvent = "event"
 )
 
 const (
@@ -33,11 +39,15 @@ const (
 	ActAuditApplication  = "audit_app"
 
 	ActUpdateAssertBudget = "u_assert_budget"
+
+	ActCreateEvent = "create_event"
 )
 
 // default policies
 //
 // `p, hall, *, *` : hall can do anything
+// `p, treasury_manager, treasury, u_assert_budget`
+// `p, event_manager, event, create_event`
 
 // dynamic add policies
 //
@@ -51,6 +61,10 @@ const (
 //
 // `g, 0xc1ee7cb74583d1509362467443c44f1fca981283, proj_sponsor_1`
 // `g, 0xce36c17896adfc975bc1f00e7614c61db05ed376, proj_member_1`
+//
+// `g, 0x...123, treasury_manager`
+//
+// `g, 0x...123, event_manager`
 
 // default roles
 //
@@ -98,5 +112,8 @@ project/guild member: !! project/guild member has no permissions !!
 	(0x..., proj_and_guild, audit_app) 审核项目和工会的申请
 
 
-	(0x..., seedao, u_assert_budget)   修改 SeedAO 的资产预算
+	(0x..., treasury, u_assert_budget)   修改 SeedAO 的资产预算
+
+
+	(0x..., event, create_event)  创建/更新活动
 */

@@ -1,0 +1,99 @@
+package permission
+
+import (
+	"net/http"
+	"strings"
+
+	"github.com/gin-gonic/gin"
+	"github.com/samber/lo"
+	"github.com/theseed-labs/os-backend/internal/api"
+)
+
+type GrantRoleReq struct {
+	Grants []role `json:"grants"`
+}
+
+type role struct {
+	Wallet string `json:"wallet"`
+	Role   string `json:"role"`
+}
+
+// GrantRole `POST /grant_role`
+func GrantRole(ctx *gin.Context) {
+	user, enforcer, _, _ := api.ForContext(ctx)
+	ok, err := enforcer.HasRoleForUser(user.Wallet, api.RoleHall)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		return
+	}
+	if !ok {
+		ctx.JSON(http.StatusForbidden, api.Forbidden())
+		return
+	}
+
+	req := GrantRoleReq{}
+	err = ctx.BindJSON(&req)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
+		return
+	}
+
+	policies := lo.Map(req.Grants, func(r role, _ int) []string {
+		// g, 0xc13..1283 event_manager
+		return []string{strings.ToLower(r.Wallet), r.Role}
+	})
+	_, err = enforcer.AddGroupingPolicies(policies)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		return
+	}
+	err = enforcer.SavePolicy()
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, api.Success(nil))
+}
+
+type RevokeRoleReq struct {
+	Revokes []role `json:"revokes"`
+}
+
+// RevokeRole `POST /revoke_role`
+func RevokeRole(ctx *gin.Context) {
+	user, enforcer, _, _ := api.ForContext(ctx)
+	ok, err := enforcer.HasRoleForUser(user.Wallet, api.RoleHall)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		return
+	}
+	if !ok {
+		ctx.JSON(http.StatusForbidden, api.Forbidden())
+		return
+	}
+
+	req := RevokeRoleReq{}
+	err = ctx.BindJSON(&req)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
+		return
+	}
+
+	policies := lo.Map(req.Revokes, func(r role, _ int) []string {
+		// g, 0xc13..1283 event_manager
+		return []string{strings.ToLower(r.Wallet), r.Role}
+	})
+	_, err = enforcer.RemoveGroupingPolicies(policies)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		return
+	}
+	err = enforcer.SavePolicy()
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, api.Success(nil))
+}

@@ -55,8 +55,8 @@ type Application struct {
 
 	// Entity means this application's refer, which maybe project or guild.
 	// And the field EntityId is the db record ID for Project or Guild table
-	EntityType string `json:"entity_type"`
-	EntityId   uint   `json:"entity_id"`
+	EntityType string `json:"entity_type" gorm:"index"`
+	EntityId   uint   `json:"entity_id" gorm:"index"`
 }
 
 type ApplicationAuditLog struct {
@@ -303,6 +303,10 @@ func doAuditApplicationInTransaction(tx *gorm.DB, operatorWallet string, applica
 					return []string{sponsor, fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, project.ID)}
 				})
 				_, err = enforcer.RemoveGroupingPolicies(oldSponsorGroupingPolicies)
+				if err != nil {
+					return err
+				}
+				err = enforcer.SavePolicy()
 				if err != nil {
 					return err
 				}

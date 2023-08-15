@@ -129,8 +129,24 @@ func ParseAndConvertPageParam(ctx *gin.Context) *gormfind.Page {
 	sortField := ctx.Query("sort_field")
 	sortOrder := ctx.Query("sort_order")
 
+	if sortField == "" {
+		sortField = "created_at"
+	}
+
+	if sortOrder == "" {
+		sortOrder = "desc"
+	}
+
 	page, _ := strconv.Atoi(pageParam)
 	size, _ := strconv.Atoi(sizeParam)
+
+	if page == 0 {
+		page = 1
+	}
+
+	if size == 0 {
+		size = DefaultPageSize
+	}
 
 	return &gormfind.Page{
 		Page:      page,

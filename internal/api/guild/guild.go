@@ -412,6 +412,13 @@ func UpdateStaffs(ctx *gin.Context) {
 				ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 				return
 			}
+			err = enforcer.SavePolicy()
+			if err != nil {
+				tx.Rollback()
+
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+				return
+			}
 		}
 
 		if req.Members != nil && len(req.Members) != 0 {
@@ -471,6 +478,13 @@ func UpdateStaffs(ctx *gin.Context) {
 				return []string{sponsor, fmt.Sprintf("%s%d", api.RoleGuildSponsorPrefix, guild.ID)}
 			})
 			_, err = enforcer.RemoveGroupingPolicies(oldSponsorGroupingPolicies)
+			if err != nil {
+				tx.Rollback()
+
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+				return
+			}
+			err = enforcer.SavePolicy()
 			if err != nil {
 				tx.Rollback()
 

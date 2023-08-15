@@ -11,6 +11,12 @@ import (
 
 type ProjectStatus string
 
+type SpecialProjectType string
+
+const (
+	SpecialProjectCityHall SpecialProjectType = "city_hall"
+)
+
 const (
 	ProjectStatusOpen         ProjectStatus = "open"
 	ProjectStatusPendingClose               = "pending_close"
@@ -21,12 +27,15 @@ type Project struct {
 	ID        uint          `json:"id" gorm:"primaryKey"`
 	Logo      string        `json:"logo"`
 	Name      string        `json:"name"`
-	Status    ProjectStatus `json:"status"` // Status may have those values: open/pending_close/closed
+	Status    ProjectStatus `json:"status" gorm:"index"` // Status may have those values: open/pending_close/closed
 	Sponsors  []string      `json:"sponsors" gorm:"serializer:json"`
 	Members   []string      `json:"members" gorm:"serializer:json"`
 	Proposals []string      `json:"proposals" gorm:"serializer:json"`
 
-	CreatedAt time.Time `json:"created_at"`
+	IsSpecial   bool               `json:"is_special" gorm:"index"`
+	SpecialType SpecialProjectType `json:"special_type" gorm:"index"`
+
+	CreatedAt time.Time `json:"created_at" gorm:"index"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
@@ -44,7 +53,7 @@ func (*projectModel) Detail(db *gorm.DB, id uint) (*Project, error) {
 }
 
 func (*projectModel) List(db *gorm.DB, status string, page *gormfind.Page) (data []*Project, total int64, err error) {
-	querySeg := db.Table("projects")
+	querySeg := db.Table("projects").Where("is_special = false")
 	if status != "" {
 		querySeg.Where("status = ?", status)
 	}

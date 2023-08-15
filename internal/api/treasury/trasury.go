@@ -25,7 +25,7 @@ func GetOrCreateCurrentAssetRecords(ctx *gin.Context) {
 func UpdateAssets(ctx *gin.Context) {
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
-	ok, err := enforcer.Enforce(user.Wallet, api.ObjSeeDAO, api.ActUpdateAssertBudget)
+	ok, err := enforcer.Enforce(user.Wallet, api.ObjTreasury, api.ActUpdateAssertBudget)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
