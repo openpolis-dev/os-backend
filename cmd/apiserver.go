@@ -11,6 +11,7 @@ import (
 	"github.com/samber/lo"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/api/application"
+	"github.com/theseed-labs/os-backend/internal/api/city_hall"
 	"github.com/theseed-labs/os-backend/internal/api/event"
 	"github.com/theseed-labs/os-backend/internal/api/guild"
 	"github.com/theseed-labs/os-backend/internal/api/permission"
@@ -150,6 +151,9 @@ func main() {
 		// pre-signed s3 upload url
 		v1.GET("/url_for_uploading_s3", api.PreSignedUrlForS3)
 
+		cityHallGroup := v1.Group("/cityhall")
+		cityHallGroup.GET("/info", city_hall.Info)
+
 		// foo routers
 	}
 	// --> auth required
@@ -213,6 +217,11 @@ func main() {
 		permissionGroup := authorizedGroup.Group("/permission")
 		permissionGroup.POST("/grant_role", permission.GrantRole)
 		permissionGroup.POST("/revoke_role", permission.RevokeRole)
+
+		// city hall
+		cityHallGroup := authorizedGroup.Group("/cityhall")
+		cityHallGroup.POST("/update_budget", city_hall.UpdateBudget)
+		cityHallGroup.POST("/update_members", city_hall.UpdateMember)
 
 		// foo routers
 	}

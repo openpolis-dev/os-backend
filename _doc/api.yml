@@ -903,7 +903,7 @@ paths:
     post:
       security:
         - bearerAuth: [ ]
-      tags: [event]
+      tags: [ event ]
       summary: create event
       requestBody:
         content:
@@ -955,7 +955,7 @@ paths:
 
   /events/{id}:
     get:
-      tags: [event]
+      tags: [ event ]
       summary: get detail of single event
       responses:
         '200':
@@ -965,7 +965,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/EventResponse"
     put:
-      tags: [event]
+      tags: [ event ]
       security:
         - bearerAuth: [ ]
       summary: update single non started event
@@ -993,7 +993,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/EventResponse"
     delete:
-      tags: [event]
+      tags: [ event ]
       security:
         - bearerAuth: [ ]
       description: |
@@ -1023,7 +1023,107 @@ paths:
             entity name for this image, which can help to improvement the file structure in S3
       responses:
         '200':
-          description: pre signed URL from S3 that can be used to upload file
+          description: pre signed URL from S3 that can be used to upload
+
+
+  /cityhall/info:
+    get:
+      tags: [ cityhall ]
+      description: show basic info of cityhall, like project detail response
+      responses:
+        '200':
+          description: ok
+          content:
+            'application/json':
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: number
+                  msg:
+                    type: string
+                  data:
+                    type: object
+                    properties:
+                      project:
+                        $ref: '#/components/schemas/Project'
+                      budgets:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/BudgetRecord"
+
+  /cityhall/update_budget:
+    post:
+      security:
+        - bearerAuth: [ ]
+      tags: [cityhall]
+      description: |
+        update cityhall budget, the remain amount will be updated with amount already used
+      requestBody:
+        content:
+          'application/json':
+            schema:
+              type: object
+              properties:
+                asset_name:
+                  type: string
+                  required: true
+                  description: asset name
+                asset_type:
+                  type: string
+                  required: true
+                  description: asset type, credit or token
+                total_amount:
+                  type: string
+                  required: true
+                  description: total amount of the new budget
+      responses:
+        '200':
+          description: budget has been set successfully
+
+
+  /cityhall/update_members:
+    post:
+      security:
+        - bearerAuth: [ ]
+      tags: [cityhall]
+      requestBody:
+        content:
+          'application/json':
+            schema:
+              type: object
+              properties:
+                'add':
+                  type: array
+                  description: wallet list that should be added as city hall member
+                  items:
+                    type: string
+                'remove':
+                  type: array
+                  description: wallet list that should be added as city hall member
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: member updated successfully, and the new city hall data is returned
+          content:
+            'application/json':
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: number
+                  msg:
+                    type: string
+                  data:
+                    type: object
+                    properties:
+                      project:
+                        $ref: '#/components/schemas/Project'
+                      budgets:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/BudgetRecord"
 
 
 
