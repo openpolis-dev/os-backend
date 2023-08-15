@@ -2,13 +2,14 @@ package city_hall
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/casbin/casbin/v2"
 	"github.com/gin-gonic/gin"
-	"github.com/samber/lo"
+	"github.com/rs/zerolog/log"
 	"github.com/shopspring/decimal"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/model"
@@ -178,6 +179,7 @@ func UpdateBudget(ctx *gin.Context) {
 
 func UpdateMember(ctx *gin.Context) {
 	user, enforcer, db, _ := api.ForContext(ctx)
+	log.Debug().Msgf("update city hall request form user %s", user.Wallet)
 	cityHallProject, err := getOrCreateCityHallProject(db, enforcer)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall record error")))
@@ -187,47 +189,114 @@ func UpdateMember(ctx *gin.Context) {
 	//  check permission
 	ok, err := enforcer.HasRoleForUser(user.Wallet, api.RoleHall)
 	if err != nil {
+		log.Error().Msgf("check permission error %+v", err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
 
 	if !ok {
+		log.Warn().Msgf("permission deny for user %s", user.Wallet)
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
 
 	req := CityHallUpdateMemberReq{}
 	err = ctx.BindJSON(&req)
+	log.Debug().Msgf("city hall update member form user %s", user.Wallet)
 
 	sponsorsMap := make(map[string]bool)
 	for _, userAddr := range cityHallProject.Sponsors {
 		sponsorsMap[userAddr] = true
 	}
 
+	///////////////////////////////
+	// Update grouping policy
+	///////////////////////////////
+
+	// Add member to policy
+	var addHallGroupingPolicy [][]string
+	var addProjectGroupingPolicy [][]string
 	for _, memberAddr := range req.AddMember {
 		sponsorsMap[memberAddr] = true
+		addHallGroupingPolicy = append(addHallGroupingPolicy, []string{strings.ToLower(memberAddr), api.RoleHall})
+		for _, projectAct := range api.AllProjectActions {
+			addProjectGroupingPolicy = append(addProjectGroupingPolicy, []string{
+				fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, cityHallProject.ID),
+				fmt.Sprintf("%s%d", api.ObjProjPrefix, cityHallProject.ID),
+				projectAct,
+			})
+		}
 	}
 
+	// Add user to hall and project group
+	if len(addHallGroupingPolicy) > 0 {
+		log.Debug().Msgf("add hall group policy: %+v", addHallGroupingPolicy)
+		_, err = enforcer.AddGroupingPolicies(addHallGroupingPolicy)
+		if err != nil {
+			log.Error().Msgf("add hall grouping policy error %+v, policy: %+v", err, addHallGroupingPolicy)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+			return
+		}
+	}
+
+	if len(addProjectGroupingPolicy) > 0 {
+		log.Debug().Msgf("add project group policy: %+v", addProjectGroupingPolicy)
+		_, err = enforcer.AddGroupingPolicies(addProjectGroupingPolicy)
+		if err != nil {
+			log.Error().Msgf("add project grouping policy error %+v, policy: %+v", err, addProjectGroupingPolicy)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+			return
+		}
+	}
+
+	// Remove member from policy group
+	var removeHallGroupingPolicy [][]string
+	var removeProjectGroupingPolicy [][]string
 	for _, memberAddr := range req.RemoveMember {
 		sponsorsMap[memberAddr] = false
+		removeHallGroupingPolicy = append(removeHallGroupingPolicy, []string{strings.ToLower(memberAddr), api.RoleHall})
+		removeProjectGroupingPolicy = append(removeProjectGroupingPolicy, []string{
+			strings.ToLower(memberAddr),
+			fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, cityHallProject.ID),
+		})
 	}
 
-	newSponsorsList := []string{}
+	// Remove user from hall and project group
+	if len(removeHallGroupingPolicy) > 0 {
+		log.Debug().Msgf("remove hall group policy: %+v", removeHallGroupingPolicy)
+		_, err = enforcer.RemoveGroupingPolicies(removeHallGroupingPolicy)
+		if err != nil {
+			log.Error().Msgf("remove hall grouping policy error %+v, policy: %+v", err, removeHallGroupingPolicy)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+			return
+		}
+	}
+
+	if len(removeProjectGroupingPolicy) > 0 {
+		log.Debug().Msgf("remove project group policy: %+v", removeProjectGroupingPolicy)
+		_, err = enforcer.RemoveGroupingPolicies(removeProjectGroupingPolicy)
+		if err != nil {
+			log.Error().Msgf("remove project grouping policy error %+v, policy: %+v", err, removeProjectGroupingPolicy)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+			return
+		}
+	}
+
+	// Save policy
+	err = enforcer.SavePolicy()
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		return
+	}
+
+	// Update sponsors record in DB
+	var newSponsorsList []string
 	for memberAddr, confirmedSponsors := range sponsorsMap {
 		if confirmedSponsors {
 			newSponsorsList = append(newSponsorsList, memberAddr)
 		}
 	}
 
-	groupPolicies := lo.Map[string, []string](newSponsorsList, func(user string, _ int) []string {
-		return []string{strings.ToLower(user), api.RoleHall}
-	})
-	_, err = enforcer.AddGroupingPolicies(groupPolicies) // update hall users
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
-		return
-	}
-	err = enforcer.SavePolicy()
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
