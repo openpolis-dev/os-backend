@@ -43,8 +43,6 @@ const (
 	ActCreateEvent = "create_event"
 )
 
-var AllProjectActions = []string{ActModify, ActCreateApplication, ActUpdateMember, ActUpdateBudget}
-
 // default policies
 //
 // `p, hall, *, *` : hall can do anything
