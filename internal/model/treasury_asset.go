@@ -245,15 +245,22 @@ func monthToQuarterIndex(m time.Month) int {
 	return 0
 }
 
-func getCurrentQuarterNum() string {
-	year, month, _ := time.Now().Date()
+func getQuarterNumForTime(t time.Time) string {
+	year, month, _ := t.Date()
 	quarterIdx := monthToQuarterIndex(month)
 
+	// December is assigned to next year's S1
+	// TODO: Need the confirmation from community
+	if month == time.December {
+		year += 1
+	}
+
+	// TODO: Change season name to S1/2/3/4 instead of 01/2/3/4 to avoid confusion
 	return fmt.Sprintf("%d%02d", year, quarterIdx)
 }
 
-func getCurrentQuarterTimeRange() (string, string) {
-	year, month, _ := time.Now().Date()
+func getQuarterTimeRangeForTime(t time.Time) (string, string) {
+	year, month, _ := t.Date()
 	quarterIdx := monthToQuarterIndex(month)
 	if quarterIdx == 0 {
 		panic(fmt.Errorf("unknown month: %d", month))
@@ -265,4 +272,12 @@ func getCurrentQuarterTimeRange() (string, string) {
 	} else {
 		return fmt.Sprintf("%d-%d-01", year, startMon), fmt.Sprintf("%d-%d-01", year, endMon)
 	}
+}
+
+func getCurrentQuarterNum() string {
+	return getQuarterNumForTime(time.Now())
+}
+
+func getCurrentQuarterTimeRange() (string, string) {
+	return getQuarterTimeRangeForTime(time.Now())
 }
