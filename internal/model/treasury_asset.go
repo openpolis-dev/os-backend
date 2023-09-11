@@ -233,13 +233,13 @@ func (*treasuryAssetHelper) ChangeCQTreasuryAssetValue(db *gorm.DB, budgetType B
 
 func monthToQuarterIndex(m time.Month) int {
 	switch m {
-	case time.January, time.February, time.March:
+	case time.December, time.January, time.February:
 		return 1
-	case time.April, time.May, time.June:
+	case time.March, time.April, time.May:
 		return 2
-	case time.July, time.August, time.September:
+	case time.June, time.July, time.August:
 		return 3
-	case time.October, time.November, time.December:
+	case time.September, time.October, time.November:
 		return 4
 	}
 	return 0
