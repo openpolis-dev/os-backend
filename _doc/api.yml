@@ -1125,6 +1125,39 @@ paths:
                         items:
                           $ref: "#/components/schemas/BudgetRecord"
 
+  /permission/grant_role:
+    post:
+      description: grant role for specified wallets
+      requestBody:
+        content:
+          "application/json":
+            schema:
+              type: object
+              properties:
+                grants:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/RoleRequest'
+      responses:
+        '200':
+          description: role granted to wallet
+
+  /permission/revoke_role:
+    post:
+      description: grant role for specified wallets
+      requestBody:
+        content:
+          "application/json":
+            schema:
+              type: object
+              properties:
+                revokes:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/RoleRequest'
+      responses:
+        '200':
+          description: role revoked to wallet
 
 
 components:
@@ -1578,5 +1611,15 @@ components:
         metadata:
           type: object
           description: various metadata of this event
+
+    RoleRequest:
+      type: object
+      properties:
+        wallet:
+          type: string
+        role:
+          type: string
+
+
 
 
