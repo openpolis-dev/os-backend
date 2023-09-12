@@ -28,6 +28,12 @@ func quarterNumberStr(year, quarterIdx int) string {
 	return fmt.Sprintf("%d%02d", year, quarterIdx)
 }
 
+func validateStartEndDateForQuarterRange(gmt8TimeStr, expectedStartDate, expectedEndDate string) {
+	startDate, endDate := ExportedGetQuarterTimeRangeForTime(newTimeFromGMTp8TimeStr(gmt8TimeStr))
+	Expect(startDate).To(Equal(expectedStartDate))
+	Expect(endDate).To(Equal(expectedEndDate))
+}
+
 var _ = Describe("TreasuryAsset", func() {
 	BeforeEach(func() {
 
@@ -87,6 +93,34 @@ var _ = Describe("TreasuryAsset", func() {
 		})
 
 		When("calculates quarter time range", func() {
+			It("should return correct start datetime for every start day of month", func() {
+				validateStartEndDateForQuarterRange("2023-01-01 00:00:00", "2022-12-01", "2023-03-01")
+				validateStartEndDateForQuarterRange("2023-02-01 00:00:00", "2022-12-01", "2023-03-01")
+				validateStartEndDateForQuarterRange("2023-03-01 00:00:00", "2023-03-01", "2023-06-01")
+				validateStartEndDateForQuarterRange("2023-04-01 00:00:00", "2023-03-01", "2023-06-01")
+				validateStartEndDateForQuarterRange("2023-05-01 00:00:00", "2023-03-01", "2023-06-01")
+				validateStartEndDateForQuarterRange("2023-06-01 00:00:00", "2023-06-01", "2023-09-01")
+				validateStartEndDateForQuarterRange("2023-07-01 00:00:00", "2023-06-01", "2023-09-01")
+				validateStartEndDateForQuarterRange("2023-08-01 00:00:00", "2023-06-01", "2023-09-01")
+				validateStartEndDateForQuarterRange("2023-09-01 00:00:00", "2023-09-01", "2023-12-01")
+				validateStartEndDateForQuarterRange("2023-10-01 00:00:00", "2023-09-01", "2023-12-01")
+				validateStartEndDateForQuarterRange("2023-11-01 00:00:00", "2023-09-01", "2023-12-01")
+				validateStartEndDateForQuarterRange("2023-12-01 00:00:00", "2023-12-01", "2024-03-01")
+			})
+			It("should return correct start datetime for every end day of month", func() {
+				validateStartEndDateForQuarterRange("2023-01-31 23:59:59", "2022-12-01", "2023-03-01")
+				validateStartEndDateForQuarterRange("2023-02-28 23:59:59", "2022-12-01", "2023-03-01")
+				validateStartEndDateForQuarterRange("2023-03-31 23:59:59", "2023-03-01", "2023-06-01")
+				validateStartEndDateForQuarterRange("2023-04-30 23:59:59", "2023-03-01", "2023-06-01")
+				validateStartEndDateForQuarterRange("2023-05-31 23:59:59", "2023-03-01", "2023-06-01")
+				validateStartEndDateForQuarterRange("2023-06-30 23:59:59", "2023-06-01", "2023-09-01")
+				validateStartEndDateForQuarterRange("2023-07-31 23:59:59", "2023-06-01", "2023-09-01")
+				validateStartEndDateForQuarterRange("2023-08-31 23:59:59", "2023-06-01", "2023-09-01")
+				validateStartEndDateForQuarterRange("2023-09-30 23:59:59", "2023-09-01", "2023-12-01")
+				validateStartEndDateForQuarterRange("2023-10-31 23:59:59", "2023-09-01", "2023-12-01")
+				validateStartEndDateForQuarterRange("2023-11-30 23:59:59", "2023-09-01", "2023-12-01")
+				validateStartEndDateForQuarterRange("2023-12-31 23:59:59", "2023-12-01", "2024-03-01")
+			})
 		})
 	})
 })

@@ -265,12 +265,25 @@ func getQuarterTimeRangeForTime(t time.Time) (string, string) {
 	if quarterIdx == 0 {
 		panic(fmt.Errorf("unknown month: %d", month))
 	}
-	startMon := (quarterIdx-1)*3 + 1
+
+	// Mapping between quarter index and start end month:
+	// 1: 12.1 (last year) - 3.1
+	// 2: 3.1 - 6.1
+	// 3: 6.1 - 9.1
+	// 4: 9.1 - 12.1
+	startMon := (quarterIdx - 1) * 3
 	endMon := startMon + 3
-	if quarterIdx == 4 {
-		return fmt.Sprintf("%d-%d-01", year, startMon), fmt.Sprintf("%d-01-01", year+1)
+
+	if quarterIdx == 1 {
+		// The period is cross year, need some more processing
+		if month == 12 {
+			// month equals to 12 means this is the last month, and there is no need to extract 1 from the year
+			return fmt.Sprintf("%d-12-01", year), fmt.Sprintf("%d-%02d-01", year+1, endMon)
+		} else {
+			return fmt.Sprintf("%d-12-01", year-1), fmt.Sprintf("%d-%02d-01", year, endMon)
+		}
 	} else {
-		return fmt.Sprintf("%d-%d-01", year, startMon), fmt.Sprintf("%d-%d-01", year, endMon)
+		return fmt.Sprintf("%d-%02d-01", year, startMon), fmt.Sprintf("%d-%02d-01", year, endMon)
 	}
 }
 
