@@ -187,15 +187,15 @@ func Create(ctx *gin.Context) {
 	}
 
 	// send notification
-	notificator := api.ForContextOnlyNotificator(ctx)
+	push := api.ForContextOnlyPush(ctx)
 	staffs := append(sponsors, members...)
-	go func(notificator sdk.Notificator, staffs []string, projectID uint, projectName string) {
+	go func(push *sdk.Push, staffs []string, projectID uint, projectName string) {
 		title, body, data := api.GenerateProjectStaffAddNotificationParams(projectID, projectName)
-		err := notificator.PushTo(staffs, title, body, data)
+		err := push.PushToWallets(staffs, title, body, data)
 		if err != nil {
 			log.Error().Msgf("push to %v failed: %s", staffs, err)
 		}
-	}(notificator, staffs, proj.ID, proj.Name)
+	}(push, staffs, proj.ID, proj.Name)
 
 	ctx.JSON(http.StatusOK, api.Success(nil))
 }
@@ -678,15 +678,15 @@ func UpdateStaffs(ctx *gin.Context) {
 		tx.Commit()
 
 		// send notification
-		notificator := api.ForContextOnlyNotificator(ctx)
+		push := api.ForContextOnlyPush(ctx)
 		staffs := append(sponsors, members...)
-		go func(notificator sdk.Notificator, staffs []string, projectID uint, projectName string) {
+		go func(push *sdk.Push, staffs []string, projectID uint, projectName string) {
 			title, body, data := api.GenerateProjectStaffAddNotificationParams(projectID, projectName)
-			err := notificator.PushTo(staffs, title, body, data)
+			err := push.PushToWallets(staffs, title, body, data)
 			if err != nil {
 				log.Error().Msgf("push to %+v failed: %s", staffs, err)
 			}
-		}(notificator, staffs, proj.ID, proj.Name)
+		}(push, staffs, proj.ID, proj.Name)
 	} else if req.Action == "remove" {
 		tx := db.Begin()
 
@@ -748,15 +748,15 @@ func UpdateStaffs(ctx *gin.Context) {
 		tx.Commit()
 
 		// send notification
-		notificator := api.ForContextOnlyNotificator(ctx)
+		push := api.ForContextOnlyPush(ctx)
 		staffs := append(sponsors, members...)
-		go func(notificator sdk.Notificator, staffs []string, projectID uint, projectName string) {
+		go func(push *sdk.Push, staffs []string, projectID uint, projectName string) {
 			title, body, data := api.GenerateProjectStaffRemoveNotificationParams(projectID, projectName)
-			err := notificator.PushTo(staffs, title, body, data)
+			err := push.PushToWallets(staffs, title, body, data)
 			if err != nil {
 				log.Error().Msgf("push to %+v failed: %s", staffs, err)
 			}
-		}(notificator, staffs, proj.ID, proj.Name)
+		}(push, staffs, proj.ID, proj.Name)
 	}
 
 	// ------ ------ ------ ------ ------ ------ ------ ------ ------

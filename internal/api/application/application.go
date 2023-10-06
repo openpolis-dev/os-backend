@@ -338,9 +338,9 @@ func BatchProcess(ctx *gin.Context) {
 		return
 	}
 
-	notificator := api.ForContextOnlyNotificator(ctx)
+	push := api.ForContextOnlyPush(ctx)
 
-	err = model.BatchAuditApplication(db, user.Wallet, &applications, model.AuditActionProcess, "", enforcer, notificator)
+	err = model.BatchAuditApplication(db, user.Wallet, &applications, model.AuditActionProcess, "", enforcer, push)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, api.Reply{
 			Code: -1,
@@ -373,8 +373,8 @@ func BatchApprove(ctx *gin.Context) {
 		return
 	}
 
-	notificator := api.ForContextOnlyNotificator(ctx)
-	err = model.BatchAuditApplication(db, user.Wallet, &applications, model.AuditActionApprove, "", enforcer, notificator)
+	push := api.ForContextOnlyPush(ctx)
+	err = model.BatchAuditApplication(db, user.Wallet, &applications, model.AuditActionApprove, "", enforcer, push)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, api.Reply{
 			Code: -1,
@@ -408,8 +408,8 @@ func BatchReject(ctx *gin.Context) {
 		return
 	}
 
-	notificator := api.ForContextOnlyNotificator(ctx)
-	err = model.BatchAuditApplication(db, user.Wallet, &applications, model.AuditActionReject, "", enforcer, notificator)
+	push := api.ForContextOnlyPush(ctx)
+	err = model.BatchAuditApplication(db, user.Wallet, &applications, model.AuditActionReject, "", enforcer, push)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, api.Reply{
 			Code: -1,
@@ -451,8 +451,8 @@ func BatchComplete(ctx *gin.Context) {
 		return
 	}
 
-	notificator := api.ForContextOnlyNotificator(ctx)
-	err = model.BatchAuditApplication(db, user.Wallet, &applications, model.AuditActionComplete, reqBody.Message, enforcer, notificator)
+	push := api.ForContextOnlyPush(ctx)
+	err = model.BatchAuditApplication(db, user.Wallet, &applications, model.AuditActionComplete, reqBody.Message, enforcer, push)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, api.Reply{
 			Code: -1,
@@ -512,7 +512,7 @@ func auditApplication(ctx *gin.Context, application *model.Application, auditAct
 	getRecordOrReturnNotFound(ctx, application)
 
 	user, enforcer, db, _ := api.ForContext(ctx)
-	notificator := api.ForContextOnlyNotificator(ctx)
+	push := api.ForContextOnlyPush(ctx)
 
 	//  check permission: `(0x..., proj_and_guild, audit_app)`
 	ok, err := enforcer.Enforce(user.Wallet, api.ObjProjAndGuild, api.ActAuditApplication)
@@ -526,7 +526,7 @@ func auditApplication(ctx *gin.Context, application *model.Application, auditAct
 	}
 
 	if application.ValidateAuditAction(auditAction) {
-		err = model.AuditApplication(db, user.Wallet, application, auditAction, auditMsg, enforcer, notificator)
+		err = model.AuditApplication(db, user.Wallet, application, auditAction, auditMsg, enforcer, push)
 		if err != nil {
 			ctx.JSON(http.StatusBadRequest, api.Reply{
 				Code: -1,

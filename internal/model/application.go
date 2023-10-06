@@ -109,7 +109,7 @@ func (app *Application) nextStateAfterAction(action AuditActionType) Application
 }
 
 // AuditApplication applies audit action on application and create related audit log in transaction
-func AuditApplication(db *gorm.DB, operatorWallet string, application *Application, action AuditActionType, extraMsg string, enforcer *casbin.Enforcer, notificator sdk.Notificator) error {
+func AuditApplication(db *gorm.DB, operatorWallet string, application *Application, action AuditActionType, extraMsg string, enforcer *casbin.Enforcer, push *sdk.Push) error {
 	// Check application record, verify whether the action can be applied on the application
 	if !application.ValidateAuditAction(action) {
 		// TODO: Define the error message as project constant
@@ -136,13 +136,13 @@ func AuditApplication(db *gorm.DB, operatorWallet string, application *Applicati
 	}
 
 	return db.Transaction(func(tx *gorm.DB) error {
-		return doAuditApplicationInTransaction(tx, operatorWallet, application, action, extraMsg, enforcer, notificator)
+		return doAuditApplicationInTransaction(tx, operatorWallet, application, action, extraMsg, enforcer, push)
 	})
 }
 
 // BatchAuditApplication audits multiple applications in same transaction.
 // Note: if any error occurred during the transaction the whole transaction will not be performed.
-func BatchAuditApplication(db *gorm.DB, operatorWallet string, applications *[]Application, action AuditActionType, extraMsg string, enforcer *casbin.Enforcer, notificator sdk.Notificator) error {
+func BatchAuditApplication(db *gorm.DB, operatorWallet string, applications *[]Application, action AuditActionType, extraMsg string, enforcer *casbin.Enforcer, push *sdk.Push) error {
 	for _, application := range *applications {
 		if !application.ValidateAuditAction(action) {
 			// TODO: Define the error message as project constant
@@ -157,7 +157,7 @@ func BatchAuditApplication(db *gorm.DB, operatorWallet string, applications *[]A
 
 	return db.Transaction(func(tx *gorm.DB) error {
 		for _, application := range *applications {
-			err = doAuditApplicationInTransaction(tx, operatorWallet, &application, action, extraMsg, enforcer, notificator)
+			err = doAuditApplicationInTransaction(tx, operatorWallet, &application, action, extraMsg, enforcer, push)
 			if err != nil {
 				return err
 			}
@@ -166,7 +166,7 @@ func BatchAuditApplication(db *gorm.DB, operatorWallet string, applications *[]A
 	})
 }
 
-func doAuditApplicationInTransaction(tx *gorm.DB, operatorWallet string, application *Application, action AuditActionType, extraMsg string, enforcer *casbin.Enforcer, notificator sdk.Notificator) error {
+func doAuditApplicationInTransaction(tx *gorm.DB, operatorWallet string, application *Application, action AuditActionType, extraMsg string, enforcer *casbin.Enforcer, push *sdk.Push) error {
 	nextState := application.nextStateAfterAction(action)
 
 	// Create audit log for application
@@ -342,14 +342,14 @@ func doAuditApplicationInTransaction(tx *gorm.DB, operatorWallet string, applica
 				}
 
 				// send notification in separated coroutines if passed in notificator
-				if notificator != nil {
-					go func(notificator sdk.Notificator, staffs []string, assertName string, amount string) {
+				if push != nil {
+					go func(push *sdk.Push, staffs []string, assertName string, amount string) {
 						title, body, data := api.GenerateObtainAssertNotificationParams(assertName, amount)
-						err := notificator.PushTo(staffs, title, body, data)
+						err := push.PushToWallets(staffs, title, body, data)
 						if err != nil {
 							log.Error().Msgf("push to %+v failed: %s", staffs, err)
 						}
-					}(notificator, []string{strings.ToLower(detailedData.TargetUserWallet)}, assetRecord.AssetName, assetRecord.Amount.String())
+					}(push, []string{strings.ToLower(detailedData.TargetUserWallet)}, assetRecord.AssetName, assetRecord.Amount.String())
 				}
 			}
 		}

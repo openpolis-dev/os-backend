@@ -31,8 +31,8 @@ func main() {
 	flag.Parse()
 	cfg := config.LoadConfig(*cfgPath)
 
-	// setup notificator
-	notificator := sdk.NewNotificator(cfg.Notification.AppID, cfg.Notification.AppKey)
+	// setup push sdk
+	push := &sdk.Push{BaseURI: cfg.Push.BaseURI}
 
 	// setup permission system
 	adapter, err := gormadapter.NewAdapter(cfg.Casbin.DriverName, cfg.DataSource.Dsn, true)
@@ -96,7 +96,7 @@ func main() {
 		ctx.Set(middleware.DBKey, db)
 		ctx.Set(middleware.CfgKey, cfg)
 		ctx.Set(middleware.EnforcerKey, enforcer)
-		ctx.Set(middleware.NotificatorKey, notificator)
+		ctx.Set(middleware.PushKey, push)
 
 		// <-- before
 		ctx.Next()

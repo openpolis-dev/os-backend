@@ -1,56 +1,57 @@
 package sdk
 
 import (
-	"context"
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"net/http"
 
-	"github.com/OneSignal/onesignal-go-api"
 	"github.com/rs/zerolog/log"
 )
 
-type Notificator interface {
-	PushTo(ids []string, title *onesignal.StringMap, body *onesignal.StringMap, data map[string]any) error
-	//PushGroup(groups []string, title string, body string, data map[string]any) error
-	//PushAll(title string, body string, data map[string]any) error
-	//
-	//SmsTo(phones []string, title string, body string) error
-	//EmailTo(emails []string, title string, body string) error
+type Push struct {
+	BaseURI string
 }
 
-type Notification struct {
-	pusher *onesignal.APIClient
-	appID  string
-	apiKey string
+// ------ ------ ------ ------ ------ ------ ------ ------ ------
+// ------ ------ ------ ------ ------ ------ ------ ------ ------
+
+type PushToWalletsReq struct {
+	Wallets []string    `json:"wallets"`
+	Data    PushReqData `json:"data"`
 }
 
-func NewNotificator(apiID string, apiKey string) Notificator {
-	configuration := onesignal.NewConfiguration()
-	onesignalNotificator := onesignal.NewAPIClient(configuration)
-	return &Notification{onesignalNotificator, apiID, apiKey}
+type PushReqData struct {
+	Title   map[string]string `json:"title"`
+	Body    map[string]string `json:"body"`
+	Payload map[string]string `json:"payload"`
 }
 
-func (n *Notification) PushTo(ids []string, title *onesignal.StringMap, body *onesignal.StringMap, data map[string]any) error {
-	notification := onesignal.NewNotification(n.appID)
-	// push to all user
-	//notification.SetIncludedSegments([]string{"Subscribed Users"})
-	// push to a single user
-	notification.SetIncludeExternalUserIds(ids)
-	//
-	notification.SetIsIos(true)
-	notification.SetIsAndroid(true)
-	// set title and body
-	notification.Headings = *onesignal.NewNullableStringMap(title)
-	notification.Contents = *onesignal.NewNullableStringMap(body)
-	// set data
-	notification.SetData(data)
-
-	appAuth := context.WithValue(context.Background(), onesignal.AppAuth, n.apiKey)
-	resp, r, err := n.pusher.DefaultApi.CreateNotification(appAuth).Notification(*notification).Execute()
+func (p *Push) PushToWallets(ids []string, title map[string]string, body map[string]string, payload map[string]string) error {
+	req := PushToWalletsReq{
+		Wallets: ids,
+		Data: PushReqData{
+			Title:   title,
+			Body:    body,
+			Payload: payload,
+		},
+	}
+	data, err := json.Marshal(req)
 	if err != nil {
-		log.Error().Msgf("Error when calling `DefaultApi.CreateNotification``: %v\n Full HTTP response: %+v\n", err, r)
 		return err
 	}
-	// response from `CreateNotification`: CreateNotificationSuccessResponse
-	log.Debug().Msgf("Response from `DefaultApi.CreateNotification`: %+v\n", resp)
+
+	r, err := http.Post(fmt.Sprintf("%s/v1/push_to_wallets", p.BaseURI), "application/json", bytes.NewReader(data))
+	if err != nil {
+		log.Error().Msgf("Error when calling '/v1/push_to_wallets': %v", err)
+		return err
+	}
+
+	if r.StatusCode != http.StatusOK {
+		log.Error().Msgf("Error when calling '/v1/push_to_wallets', http code: %d", r.StatusCode)
+		return fmt.Errorf("call push api failed with http code: %d", r.StatusCode)
+	}
+	_ = r.Body.Close()
 
 	return nil
 }
