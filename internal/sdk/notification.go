@@ -11,6 +11,7 @@ import (
 
 type Push struct {
 	BaseURI string
+	Token   string
 }
 
 // ------ ------ ------ ------ ------ ------ ------ ------ ------
@@ -56,7 +57,15 @@ func (p *Push) doReq(path string, reqParam any) error {
 		return err
 	}
 
-	r, err := http.Post(fmt.Sprintf("%s%s", p.BaseURI, path), "application/json", bytes.NewReader(data))
+	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s%s", p.BaseURI, path), bytes.NewReader(data))
+	if err != nil {
+		log.Error().Msgf("Error when calling '%s', error: %v", path, err)
+		return err
+	}
+
+	req.Header.Add("Token", p.Token)
+
+	r, err := http.DefaultClient.Do(req)
 	if err != nil {
 		log.Error().Msgf("Error when calling '%s', error: %v", path, err)
 		return err

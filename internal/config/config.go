@@ -42,6 +42,7 @@ type (
 	}
 	push struct {
 		BaseURI string `json:"baseURI" yaml:"baseURI"`
+		Token   string `json:"token" yaml:"token"`
 	}
 	awsConfig struct {
 		AccessKey  string `json:"accessKey" yaml:"accessKey"`

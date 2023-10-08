@@ -33,7 +33,7 @@ func main() {
 	cfg := config.LoadConfig(*cfgPath)
 
 	// setup push sdk
-	pushSDK := &sdk.Push{BaseURI: cfg.Push.BaseURI}
+	pushSDK := &sdk.Push{BaseURI: cfg.Push.BaseURI, Token: cfg.Push.Token}
 
 	// setup permission system
 	adapter, err := gormadapter.NewAdapter(cfg.Casbin.DriverName, cfg.DataSource.Dsn, true)
