@@ -225,9 +225,9 @@ func main() {
 		cityHallGroup.POST("/update_members", city_hall.UpdateMember)
 
 		// push routers
-		//pushGroup := authorizedGroup.Group("/push")
-		authorizedGroup.POST("/push", push.Create)
-		authorizedGroup.GET("/push", push.List)
+		pushGroup := authorizedGroup.Group("/push")
+		pushGroup.POST("/", push.Create)
+		pushGroup.GET("/", push.List)
 
 		// foo routers
 	}
