@@ -30,9 +30,11 @@ const (
 }
 */
 func GenerateProjectStaffAddNotificationParams(projectID uint, projectName string) (title map[string]string, body map[string]string, payload map[string]string) {
+	title = make(map[string]string)
 	title[LanguageEN] = "Project notification"
 	title[LanguageZH] = "项目提示"
 
+	body = make(map[string]string)
 	body[LanguageEN] = fmt.Sprintf("You have been added to %s project", projectName)
 	body[LanguageZH] = fmt.Sprintf("你已被添加为 %s 项目的成员", projectName)
 
@@ -46,9 +48,11 @@ func GenerateProjectStaffAddNotificationParams(projectID uint, projectName strin
 
 // GenerateProjectStaffRemoveNotificationParams generate params for project's staff removed.
 func GenerateProjectStaffRemoveNotificationParams(projectID uint, projectName string) (title map[string]string, body map[string]string, payload map[string]string) {
+	title = make(map[string]string)
 	title[LanguageEN] = "Project notification"
 	title[LanguageZH] = "项目提示"
 
+	body = make(map[string]string)
 	body[LanguageEN] = fmt.Sprintf("You have been removed by %s project", projectName)
 	body[LanguageZH] = fmt.Sprintf("你已被 %s 项目移除", projectName)
 
@@ -68,9 +72,11 @@ func GenerateProjectStaffRemoveNotificationParams(projectID uint, projectName st
 }
 */
 func GenerateGuildStaffAddNotificationParams(guildID uint, guildName string) (title map[string]string, body map[string]string, payload map[string]string) {
+	title = make(map[string]string)
 	title[LanguageEN] = "Guild notification"
 	title[LanguageZH] = "公会提示"
 
+	body = make(map[string]string)
 	body[LanguageEN] = fmt.Sprintf("You have been added to %s guild", guildName)
 	body[LanguageZH] = fmt.Sprintf("你已被添加为 %s 公会的成员", guildName)
 
@@ -84,9 +90,11 @@ func GenerateGuildStaffAddNotificationParams(guildID uint, guildName string) (ti
 
 // GenerateGuildStaffRemoveNotificationParams generate params for guild's staff removed.
 func GenerateGuildStaffRemoveNotificationParams(guildID uint, guildName string) (title map[string]string, body map[string]string, payload map[string]string) {
+	title = make(map[string]string)
 	title[LanguageEN] = "Guild notification"
 	title[LanguageZH] = "公会提示"
 
+	body = make(map[string]string)
 	body[LanguageEN] = fmt.Sprintf("You have been removed by %s guild", guildName)
 	body[LanguageZH] = fmt.Sprintf("你已被 %s 公会移除", guildName)
 
@@ -107,9 +115,11 @@ func GenerateGuildStaffRemoveNotificationParams(guildID uint, guildName string) 
 }
 */
 func GenerateObtainAssertNotificationParams(assertName string, amount string) (title map[string]string, body map[string]string, payload map[string]string) {
+	title = make(map[string]string)
 	title[LanguageEN] = "Personal assets"
 	title[LanguageZH] = "个人资产"
 
+	title = make(map[string]string)
 	body[LanguageEN] = fmt.Sprintf("%s %s received", amount, assertName)
 	body[LanguageZH] = fmt.Sprintf("已收到 %s %s", amount, assertName)
 
