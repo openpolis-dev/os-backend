@@ -16,6 +16,7 @@ import (
 	"github.com/theseed-labs/os-backend/internal/api/guild"
 	"github.com/theseed-labs/os-backend/internal/api/permission"
 	"github.com/theseed-labs/os-backend/internal/api/project"
+	"github.com/theseed-labs/os-backend/internal/api/push"
 	"github.com/theseed-labs/os-backend/internal/api/treasury"
 	"github.com/theseed-labs/os-backend/internal/api/user"
 	"github.com/theseed-labs/os-backend/internal/config"
@@ -32,7 +33,7 @@ func main() {
 	cfg := config.LoadConfig(*cfgPath)
 
 	// setup push sdk
-	push := &sdk.Push{BaseURI: cfg.Push.BaseURI}
+	pushSDK := &sdk.Push{BaseURI: cfg.Push.BaseURI}
 
 	// setup permission system
 	adapter, err := gormadapter.NewAdapter(cfg.Casbin.DriverName, cfg.DataSource.Dsn, true)
@@ -96,7 +97,7 @@ func main() {
 		ctx.Set(middleware.DBKey, db)
 		ctx.Set(middleware.CfgKey, cfg)
 		ctx.Set(middleware.EnforcerKey, enforcer)
-		ctx.Set(middleware.PushKey, push)
+		ctx.Set(middleware.PushKey, pushSDK)
 
 		// <-- before
 		ctx.Next()
@@ -222,6 +223,11 @@ func main() {
 		cityHallGroup := authorizedGroup.Group("/cityhall")
 		cityHallGroup.POST("/update_budget", city_hall.UpdateBudget)
 		cityHallGroup.POST("/update_members", city_hall.UpdateMember)
+
+		// push routers
+		//pushGroup := authorizedGroup.Group("/push")
+		authorizedGroup.POST("/push", push.Create)
+		authorizedGroup.GET("/push", push.List)
 
 		// foo routers
 	}

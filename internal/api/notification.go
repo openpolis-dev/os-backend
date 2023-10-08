@@ -18,15 +18,15 @@ const (
 	NotificationTypeGuildStaffRemove = "guild_staff_remove"
 
 	NotificationTypeObtainAssert = "obtain_assert"
+
+	NotificationTypeCustom = "custom"
 )
 
 // GenerateProjectStaffAddNotificationParams generate params for project's staff added.
 /*
 {
  "type": "proj_staff_add",
- "data": {
-  	"proj_id": 1
- }
+ "proj_id": 1
 }
 */
 func GenerateProjectStaffAddNotificationParams(projectID uint, projectName string) (title map[string]string, body map[string]string, payload map[string]string) {
@@ -64,9 +64,7 @@ func GenerateProjectStaffRemoveNotificationParams(projectID uint, projectName st
 /*
 {
  "type": "guild_staff_add",
- "data": {
-  	"guild_id": 1
- }
+ "guild_id": 1
 }
 */
 func GenerateGuildStaffAddNotificationParams(guildID uint, guildName string) (title map[string]string, body map[string]string, payload map[string]string) {
@@ -104,10 +102,8 @@ func GenerateGuildStaffRemoveNotificationParams(guildID uint, guildName string) 
 /*
 {
  "type": "receive_assert",
- "data": {
-  	"name": "Points",
-	"amount": 120
- }
+ "name": "Points",
+ "amount": 120
 }
 */
 func GenerateObtainAssertNotificationParams(assertName string, amount string) (title map[string]string, body map[string]string, payload map[string]string) {
@@ -121,6 +117,22 @@ func GenerateObtainAssertNotificationParams(assertName string, amount string) (t
 		"type":          NotificationTypeObtainAssert,
 		"assert_name":   assertName,
 		"assert_amount": amount,
+	}
+
+	return
+}
+
+// GenerateCustomNotificationParams generate params for custom.
+/*
+{
+ "type": "custom",
+ "jump_url": "https://xx.com/yy",
+}
+*/
+func GenerateCustomNotificationParams(jumpUrl string) (payload map[string]string) {
+	payload = map[string]string{
+		"type":     NotificationTypeCustom,
+		"jump_url": jumpUrl,
 	}
 
 	return

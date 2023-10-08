@@ -25,6 +25,8 @@ const (
 	ObjTreasury = "treasury"
 
 	ObjEvent = "event"
+
+	ObjPush = "push"
 )
 
 const (
@@ -41,6 +43,8 @@ const (
 	ActUpdateAssertBudget = "u_assert_budget"
 
 	ActCreateEvent = "create_event"
+
+	ActCreatePush = "create_push"
 )
 
 // default policies
@@ -116,4 +120,6 @@ project/guild member: !! project/guild member has no permissions !!
 
 
 	(0x..., event, create_event)  创建/更新活动
+
+	(0x..., push, create_push)  创建推送
 */

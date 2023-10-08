@@ -28,7 +28,7 @@ type PushReqData struct {
 }
 
 func (p *Push) PushToWallets(ids []string, title map[string]string, body map[string]string, payload map[string]string) error {
-	req := PushToWalletsReq{
+	req := &PushToWalletsReq{
 		Wallets: ids,
 		Data: PushReqData{
 			Title:   title,
@@ -36,38 +36,37 @@ func (p *Push) PushToWallets(ids []string, title map[string]string, body map[str
 			Payload: payload,
 		},
 	}
-	data, err := json.Marshal(req)
+
+	return p.doReq("/v1/push_to_wallets", req)
+}
+
+func (p *Push) PushAll(title map[string]string, body map[string]string, payload map[string]string) error {
+	req := &PushReqData{
+		Title:   title,
+		Body:    body,
+		Payload: payload,
+	}
+
+	return p.doReq("/v1/push_to_all", req)
+}
+
+func (p *Push) doReq(path string, reqParam any) error {
+	data, err := json.Marshal(reqParam)
 	if err != nil {
 		return err
 	}
 
-	r, err := http.Post(fmt.Sprintf("%s/v1/push_to_wallets", p.BaseURI), "application/json", bytes.NewReader(data))
+	r, err := http.Post(fmt.Sprintf("%s%s", p.BaseURI, path), "application/json", bytes.NewReader(data))
 	if err != nil {
-		log.Error().Msgf("Error when calling '/v1/push_to_wallets': %v", err)
+		log.Error().Msgf("Error when calling '%s', error: %v", path, err)
 		return err
 	}
 
 	if r.StatusCode != http.StatusOK {
-		log.Error().Msgf("Error when calling '/v1/push_to_wallets', http code: %d", r.StatusCode)
+		log.Error().Msgf("Error when calling '%s', http code: %d", path, r.StatusCode)
 		return fmt.Errorf("call push api failed with http code: %d", r.StatusCode)
 	}
 	_ = r.Body.Close()
 
 	return nil
 }
-
-//func (n *Notification) PushGroup(groups []string, title string, body string, data map[string]any) error {
-//	panic("implement me")
-//}
-//
-//func (n *Notification) PushAll(title string, body string, data map[string]any) error {
-//	panic("implement me")
-//}
-//
-//func (n *Notification) SmsTo(phones []string, title string, body string) error {
-//	panic("implement me")
-//}
-//
-//func (n *Notification) EmailTo(emails []string, title string, body string) error {
-//	panic("implement me")
-//}
