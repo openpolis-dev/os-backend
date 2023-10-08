@@ -2,10 +2,10 @@ package push
 
 import (
 	"net/http"
-
-	"github.com/rs/zerolog/log"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/rs/zerolog/log"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk"
@@ -51,7 +51,7 @@ func Create(ctx *gin.Context) {
 		Title:         req.Title,
 		Content:       req.Content,
 		JumpURL:       req.JumpURL,
-		//PushDate:      req.PushDate,
+		PushDate:      time.Now(),
 		//Status: 0,
 	}
 	err = model.PushModel.CreateOrUpdate(db, &push)
