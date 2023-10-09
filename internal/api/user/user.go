@@ -234,6 +234,7 @@ func Detail(ctx *gin.Context) {
 type UpdateReq struct {
 	Name           string `json:"name"`
 	Avatar         string `json:"avatar"`
+	Bio            string `json:"bio"`
 	Email          string `json:"email"`
 	Wechat         string `json:"wechat"`
 	DiscordProfile string `json:"discord_profile"`
@@ -265,6 +266,7 @@ func Update(ctx *gin.Context) {
 
 	// update user info
 	u.Name = req.Name
+	u.Bio = req.Bio
 	u.Email = req.Email
 	u.Wechat = req.Wechat
 	u.DiscordProfile = req.DiscordProfile
