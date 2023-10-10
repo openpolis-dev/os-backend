@@ -83,6 +83,12 @@ func main() {
 		panic(err)
 	}
 
+	// setup Spp API client
+	err = sdk.InitSppClient(cfg.ExternalServices.SeedaoSppBase)
+	if err != nil {
+		panic(err)
+	}
+
 	r := gin.Default()
 	r.Use(gzip.Gzip(gzip.DefaultCompression))
 

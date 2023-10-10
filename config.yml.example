@@ -27,3 +27,6 @@ awsConfig:
   secretKey: "aws-secret-key"
   region: "aws-region"
   bucketName: "aws-bucket"
+
+ExternalServices:
+  SeedaoSppBase: "http://localhost:3000"

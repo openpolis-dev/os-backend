@@ -14,6 +14,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/gin-gonic/gin"
+	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	"github.com/spruceid/siwe-go"
 	"github.com/theseed-labs/os-backend/internal/api"
@@ -286,6 +287,13 @@ func Update(ctx *gin.Context) {
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
+	}
+
+	sppClient := sdk.GetSppClient()
+	sppUpdatePayload := u.BuildSppUpdateProfilePayload(user.Wallet)
+	err = sppClient.UpdateProfile(user.Wallet, sppUpdatePayload)
+	if err != nil {
+		log.Error().Msgf("update user %s info to spp error, update req data: %+v", user.Wallet, req)
 	}
 
 	ctx.JSON(http.StatusOK, api.Success(nil))

@@ -3,6 +3,7 @@ package model
 import (
 	"time"
 
+	"github.com/theseed-labs/os-backend/internal/sdk"
 	"github.com/xiaosongfu/gormfind"
 	"gorm.io/gorm"
 )
@@ -58,4 +59,51 @@ func (*userModel) TryGetUsername(db *gorm.DB, wallet string) (string, error) {
 	} else {
 		return "", nil
 	}
+}
+
+func (u *User) BuildSppUpdateProfilePayload(wallet string) *sdk.SppUpdateProfileRequest {
+	sppReq := &sdk.SppUpdateProfileRequest{
+		Wallet:         wallet,
+		Nickname:       u.Name,
+		Bio:            u.Bio,
+		Avatar:         u.Avatar,
+		Email:          u.Email,
+		SocialAccounts: []sdk.ProfileSocialAccount{},
+	}
+
+	if u.Wechat != "" {
+		sppReq.SocialAccounts = append(sppReq.SocialAccounts, sdk.ProfileSocialAccount{
+			Network:  "wechat",
+			Identity: u.Wechat,
+			Verified: false,
+		})
+	}
+	if u.DiscordProfile != "" {
+		sppReq.SocialAccounts = append(sppReq.SocialAccounts, sdk.ProfileSocialAccount{
+			Network:  "discord",
+			Identity: u.DiscordProfile,
+			Verified: false,
+		})
+	}
+
+	if u.TwitterProfile != "" {
+		sppReq.SocialAccounts = append(sppReq.SocialAccounts, sdk.ProfileSocialAccount{
+			Network:  "twitter",
+			Identity: u.TwitterProfile,
+			Verified: false,
+		})
+	}
+	if u.Mirror != "" {
+		sppReq.SocialAccounts = append(sppReq.SocialAccounts, sdk.ProfileSocialAccount{
+			Network:  "mirror",
+			Identity: u.Mirror,
+			Verified: false,
+		})
+	}
+
+	if u.GoogleProfile != "" && u.Email == "" {
+		u.Email = u.GoogleProfile
+	}
+
+	return sppReq
 }
