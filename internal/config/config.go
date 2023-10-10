@@ -12,13 +12,14 @@ import (
 )
 
 type Config struct {
-	DataSource  dataSource  `json:"dataSource" yaml:"dataSource"`
-	Jwt         jwt         `json:"jwt" yaml:"jwt"`
-	Auth        auth        `json:"auth" yaml:"auth"`
-	PreviewMode previewMode `json:"previewMode" yaml:"previewMode"`
-	Casbin      casbin      `json:"casbin" yaml:"casbin"`
-	Push        push        `json:"push" yaml:"push"`
-	AwsConfig   awsConfig   `json:"awsConfig" yaml:"awsConfig"`
+	DataSource       dataSource      `json:"dataSource" yaml:"dataSource"`
+	Jwt              jwt             `json:"jwt" yaml:"jwt"`
+	Auth             auth            `json:"auth" yaml:"auth"`
+	PreviewMode      previewMode     `json:"previewMode" yaml:"previewMode"`
+	Casbin           casbin          `json:"casbin" yaml:"casbin"`
+	Push             push            `json:"push" yaml:"push"`
+	AwsConfig        awsConfig       `json:"awsConfig" yaml:"awsConfig"`
+	ExternalServices externalService `json:"externalServices" yaml:"externalServices"`
 }
 
 type (
@@ -49,6 +50,9 @@ type (
 		SecretKey  string `json:"secretKey" yaml:"secretKey"`
 		Region     string `json:"region" yaml:"region"`
 		BucketName string `json:"bucketName" yaml:"bucketName"`
+	}
+	externalService struct {
+		SeedaoSppBase string `json:"SeedaoSppBase" yaml:"SeedaoSppBase"`
 	}
 )
 
