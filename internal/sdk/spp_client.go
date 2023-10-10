@@ -50,7 +50,7 @@ func GetSppClient() *SppClient {
 func (c *SppClient) UpdateProfile(wallet string, sppUpdateObject *SppUpdateProfileRequest) error {
 	_wallet := strings.ToLower(wallet)
 	endpoint := fmt.Sprintf("%s/profile/%s", c.ApiBase, _wallet)
-	log.Error().Msgf("TTT: update spp profile, endpoint %s, req data: %+v", endpoint, sppUpdateObject)
+	log.Debug().Msgf("update spp profile, endpoint %s, req data: %+v", endpoint, sppUpdateObject)
 	payload, err := json.Marshal(sppUpdateObject)
 	if err != nil {
 		return err

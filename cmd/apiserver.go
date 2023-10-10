@@ -8,6 +8,7 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
+	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/api/application"
@@ -31,6 +32,7 @@ func main() {
 	casbinModelConfPath := flag.String("casbin-model", "rbac_model.conf", "casbin model conf file path, should be conf format")
 	flag.Parse()
 	cfg := config.LoadConfig(*cfgPath)
+	log.Debug().Msgf("application configuration: %+v", cfg)
 
 	// setup push sdk
 	pushSDK := &sdk.Push{BaseURI: cfg.Push.BaseURI, Token: cfg.Push.Token}
