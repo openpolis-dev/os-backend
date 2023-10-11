@@ -17,7 +17,6 @@ type ProfileSocialAccount struct {
 }
 
 type SppUpdateProfileRequest struct {
-	Wallet   string `json:"wallet"`
 	Nickname string `json:"nickname"`
 	Bio      string `json:"bio"`
 	SnsName  string `json:"sns_name"`
