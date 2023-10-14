@@ -33,17 +33,17 @@ var _ = Describe("Project", func() {
 			err := model.ProjectModel.CreateOrUpdate(db, &projectRecord)
 			Expect(err).To(BeNil())
 
-			openPrjs, prjCnt, err := model.ProjectModel.List(db, string(model.ProjectStatusOpen), nil)
+			openPrjs, prjCnt, err := model.ProjectModel.List(db, string(model.ProjectStatusOpen), nil, false)
 			Expect(err).To(BeNil())
 			Expect(prjCnt).To(BeEquivalentTo(1))
 			Expect(len(openPrjs)).To(Equal(1))
 
-			pendingClosePrjs, prjCnt, err := model.ProjectModel.List(db, string(model.ProjectStatusPendingClose), nil)
+			pendingClosePrjs, prjCnt, err := model.ProjectModel.List(db, string(model.ProjectStatusPendingClose), nil, false)
 			Expect(err).To(BeNil())
 			Expect(prjCnt).To(BeEquivalentTo(0))
 			Expect(len(pendingClosePrjs)).To(Equal(0))
 
-			closedPrjs, prjCnt, err := model.ProjectModel.List(db, string(model.ProjectStatusClosed), nil)
+			closedPrjs, prjCnt, err := model.ProjectModel.List(db, string(model.ProjectStatusClosed), nil, false)
 			Expect(err).To(BeNil())
 			Expect(prjCnt).To(BeEquivalentTo(0))
 			Expect(len(closedPrjs)).To(Equal(0))

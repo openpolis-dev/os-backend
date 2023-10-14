@@ -369,7 +369,10 @@ func List(ctx *gin.Context) {
 	status := ctx.Query("status")
 	page := api.ParseAndConvertPageParam(ctx)
 
-	projects, total, err := model.ProjectModel.List(db, status, page)
+	showSpecialProjectsParam := ctx.Query("show_special")
+	showSpecialProjectFlag := strings.EqualFold(showSpecialProjectsParam, "true")
+
+	projects, total, err := model.ProjectModel.List(db, status, page, showSpecialProjectFlag)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return

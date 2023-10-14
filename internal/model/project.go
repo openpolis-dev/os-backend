@@ -52,8 +52,11 @@ func (*projectModel) Detail(db *gorm.DB, id uint) (*Project, error) {
 	return gormfind.Row[Project](querySeg)
 }
 
-func (*projectModel) List(db *gorm.DB, status string, page *gormfind.Page) (data []*Project, total int64, err error) {
-	querySeg := db.Table("projects").Where("is_special = false")
+func (*projectModel) List(db *gorm.DB, status string, page *gormfind.Page, showSpecialProjectFlag bool) (data []*Project, total int64, err error) {
+	querySeg := db.Table("projects")
+	if !showSpecialProjectFlag {
+		querySeg = querySeg.Where("is_special = false")
+	}
 	if status != "" {
 		querySeg.Where("status = ?", status)
 	}
