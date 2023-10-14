@@ -119,7 +119,7 @@ func GenerateObtainAssertNotificationParams(assertName string, amount string) (t
 	title[LanguageEN] = "Personal assets"
 	title[LanguageZH] = "个人资产"
 
-	title = make(map[string]string)
+	body = make(map[string]string)
 	body[LanguageEN] = fmt.Sprintf("%s %s received", amount, assertName)
 	body[LanguageZH] = fmt.Sprintf("已收到 %s %s", amount, assertName)
 
