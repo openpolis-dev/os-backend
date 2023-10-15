@@ -3,7 +3,7 @@ module github.com/theseed-labs/os-backend
 go 1.20
 
 require (
-	github.com/OneSignal/onesignal-go-api v1.0.4
+	github.com/xuri/excelize/v2 v2.8.0
 	github.com/aws/aws-sdk-go v1.44.294
 	github.com/casbin/casbin/v2 v2.71.1
 	github.com/casbin/gorm-adapter/v3 v3.18.0

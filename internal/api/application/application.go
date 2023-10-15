@@ -14,10 +14,12 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/model"
+	"github.com/xuri/excelize/v2"
 	"gorm.io/gorm"
 )
 
@@ -261,6 +263,46 @@ func Download(ctx *gin.Context) {
 		}
 
 		ctx.DataFromReader(http.StatusOK, int64(contentLength), "encoding/csv", r, extraHeaders)
+	} else if fileFormat == "xlsx" {
+		fileName := "export_list.xlsx"
+
+		// create excel stream writer
+		f := excelize.NewFile()
+		streamWriter, err := f.NewStreamWriter("Sheet1")
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		}
+
+		// write first row
+		cell, _ := excelize.CoordinatesToCellName(1, 1)
+		title := lo.Map(csvHeaderList, func(item string, _ int) any { return item })
+		if err := streamWriter.SetRow(cell, title); err != nil {
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		}
+
+		rowId := 2
+		for _, row := range rcds {
+			cell, _ := excelize.CoordinatesToCellName(1, rowId)
+			err = streamWriter.SetRow(cell, row.ToXlsx())
+			if err != nil {
+				log.Error().Msgf("write excel row[%d] failed: %s", rowId, err)
+			}
+			rowId += 1
+		}
+
+		ctx.Header("Content-Disposition", `attachment; filename="`+fileName+`"`)
+
+		// 刷流
+		if err = streamWriter.Flush(); err != nil {
+			log.Error().Msgf("flush writer [%s] failed: %s", fileName, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		}
+
+		// 写流
+		err = f.Write(ctx.Writer)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		}
 	} else if fileFormat == "json" {
 		tmpFile, err := os.CreateTemp(os.TempDir(), "application-list-*.json")
 		defer os.Remove(tmpFile.Name())
