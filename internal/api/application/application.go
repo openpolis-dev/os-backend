@@ -264,7 +264,7 @@ func Download(ctx *gin.Context) {
 
 		ctx.DataFromReader(http.StatusOK, int64(contentLength), "encoding/csv", r, extraHeaders)
 	} else if fileFormat == "xlsx" {
-		fileName := "export_list.xlsx"
+		fileName := "applications-list.xlsx"
 
 		// create excel stream writer
 		f := excelize.NewFile()
@@ -292,13 +292,13 @@ func Download(ctx *gin.Context) {
 
 		ctx.Header("Content-Disposition", `attachment; filename="`+fileName+`"`)
 
-		// 刷流
+		// flush writer
 		if err = streamWriter.Flush(); err != nil {
 			log.Error().Msgf("flush writer [%s] failed: %s", fileName, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		}
 
-		// 写流
+		// write to response
 		err = f.Write(ctx.Writer)
 		if err != nil {
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
