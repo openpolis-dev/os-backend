@@ -193,7 +193,7 @@ func Download(ctx *gin.Context) {
 	fileFormat := ""
 	fileFormat = strings.ToLower(ctx.Query("format"))
 	if fileFormat == "" {
-		fileFormat = "csv"
+		fileFormat = "xlsx"
 	}
 
 	db := api.ForContextOnlyDB(ctx)
