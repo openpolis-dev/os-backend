@@ -293,7 +293,7 @@ func Update(ctx *gin.Context) {
 	sppUpdatePayload := u.BuildSppUpdateProfilePayload(user.Wallet)
 	err = sppClient.UpdateProfile(user.Wallet, sppUpdatePayload)
 	if err != nil {
-		log.Error().Msgf("update user %s info to spp error, update req data: %+v", user.Wallet, req)
+		log.Error().Msgf("update user %s info to spp error, update req data: %+v, error: %+v", user.Wallet, req, err)
 	}
 
 	ctx.JSON(http.StatusOK, api.Success(nil))
