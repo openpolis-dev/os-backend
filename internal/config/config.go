@@ -12,13 +12,14 @@ import (
 )
 
 type Config struct {
-	DataSource   dataSource   `json:"dataSource" yaml:"dataSource"`
-	Jwt          jwt          `json:"jwt" yaml:"jwt"`
-	Auth         auth         `json:"auth" yaml:"auth"`
-	PreviewMode  previewMode  `json:"previewMode" yaml:"previewMode"`
-	Casbin       casbin       `json:"casbin" yaml:"casbin"`
-	Notification notification `json:"notification" yaml:"notification"`
-	AwsConfig    awsConfig    `json:"awsConfig" yaml:"awsConfig"`
+	DataSource       dataSource      `json:"dataSource" yaml:"dataSource"`
+	Jwt              jwt             `json:"jwt" yaml:"jwt"`
+	Auth             auth            `json:"auth" yaml:"auth"`
+	PreviewMode      previewMode     `json:"previewMode" yaml:"previewMode"`
+	Casbin           casbin          `json:"casbin" yaml:"casbin"`
+	Push             push            `json:"push" yaml:"push"`
+	AwsConfig        awsConfig       `json:"awsConfig" yaml:"awsConfig"`
+	ExternalServices externalService `json:"externalServices" yaml:"externalServices"`
 }
 
 type (
@@ -40,16 +41,18 @@ type (
 		DriverName string   `json:"driverName" yaml:"driverName"`
 		SuperUsers []string `json:"superUsers" yaml:"superUsers"`
 	}
-	notification struct {
-		AppID  string `json:"appID" yaml:"appID"`
-		AppKey string `json:"appKey" yaml:"appKey"`
+	push struct {
+		BaseURI string `json:"baseURI" yaml:"baseURI"`
+		Token   string `json:"token" yaml:"token"`
 	}
-
 	awsConfig struct {
 		AccessKey  string `json:"accessKey" yaml:"accessKey"`
 		SecretKey  string `json:"secretKey" yaml:"secretKey"`
 		Region     string `json:"region" yaml:"region"`
 		BucketName string `json:"bucketName" yaml:"bucketName"`
+	}
+	externalService struct {
+		SeedaoSppBase string `json:"SeedaoSppBase" yaml:"SeedaoSppBase"`
 	}
 )
 

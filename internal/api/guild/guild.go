@@ -171,15 +171,15 @@ func Create(ctx *gin.Context) {
 	}
 
 	// send notification
-	notificator := api.ForContextOnlyNotificator(ctx)
+	push := api.ForContextOnlyPush(ctx)
 	staffs := append(sponsors, members...)
-	go func(notificator sdk.Notificator, staffs []string, guildID uint, guildName string) {
+	go func(push *sdk.Push, staffs []string, guildID uint, guildName string) {
 		title, body, data := api.GenerateGuildStaffAddNotificationParams(guildID, guildName)
-		err := notificator.PushTo(staffs, title, body, data)
+		err := push.PushToWallets(staffs, title, body, data)
 		if err != nil {
 			log.Error().Msgf("push to %v failed: %s", staffs, err)
 		}
-	}(notificator, staffs, guild.ID, guild.Name)
+	}(push, staffs, guild.ID, guild.Name)
 
 	ctx.JSON(http.StatusOK, api.Success(nil))
 }
@@ -449,15 +449,15 @@ func UpdateStaffs(ctx *gin.Context) {
 		tx.Commit()
 
 		// send notification
-		notificator := api.ForContextOnlyNotificator(ctx)
+		push := api.ForContextOnlyPush(ctx)
 		staffs := append(sponsors, members...)
-		go func(notificator sdk.Notificator, staffs []string, guildID uint, guildName string) {
+		go func(push *sdk.Push, staffs []string, guildID uint, guildName string) {
 			title, body, data := api.GenerateGuildStaffAddNotificationParams(guildID, guildName)
-			err := notificator.PushTo(staffs, title, body, data)
+			err := push.PushToWallets(staffs, title, body, data)
 			if err != nil {
 				log.Error().Msgf("push to %+v failed: %s", staffs, err)
 			}
-		}(notificator, staffs, guild.ID, guild.Name)
+		}(push, staffs, guild.ID, guild.Name)
 	} else if req.Action == "remove" {
 		tx := db.Begin()
 
@@ -519,15 +519,15 @@ func UpdateStaffs(ctx *gin.Context) {
 		tx.Commit()
 
 		// send notification
-		notificator := api.ForContextOnlyNotificator(ctx)
+		push := api.ForContextOnlyPush(ctx)
 		staffs := append(sponsors, members...)
-		go func(notificator sdk.Notificator, staffs []string, guildID uint, guildName string) {
+		go func(push *sdk.Push, staffs []string, guildID uint, guildName string) {
 			title, body, data := api.GenerateGuildStaffRemoveNotificationParams(guildID, guildName)
-			err := notificator.PushTo(staffs, title, body, data)
+			err := push.PushToWallets(staffs, title, body, data)
 			if err != nil {
 				log.Error().Msgf("push to %+v failed: %s", staffs, err)
 			}
-		}(notificator, staffs, guild.ID, guild.Name)
+		}(push, staffs, guild.ID, guild.Name)
 	}
 
 	// ------ ------ ------ ------ ------ ------ ------ ------ ------

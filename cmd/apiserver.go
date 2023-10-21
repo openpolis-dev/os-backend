@@ -8,6 +8,7 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
+	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/api/application"
@@ -16,6 +17,7 @@ import (
 	"github.com/theseed-labs/os-backend/internal/api/guild"
 	"github.com/theseed-labs/os-backend/internal/api/permission"
 	"github.com/theseed-labs/os-backend/internal/api/project"
+	"github.com/theseed-labs/os-backend/internal/api/push"
 	"github.com/theseed-labs/os-backend/internal/api/treasury"
 	"github.com/theseed-labs/os-backend/internal/api/user"
 	"github.com/theseed-labs/os-backend/internal/config"
@@ -30,9 +32,10 @@ func main() {
 	casbinModelConfPath := flag.String("casbin-model", "rbac_model.conf", "casbin model conf file path, should be conf format")
 	flag.Parse()
 	cfg := config.LoadConfig(*cfgPath)
+	log.Debug().Msgf("application configuration: %+v", cfg)
 
-	// setup notificator
-	notificator := sdk.NewNotificator(cfg.Notification.AppID, cfg.Notification.AppKey)
+	// setup push sdk
+	pushSDK := &sdk.Push{BaseURI: cfg.Push.BaseURI, Token: cfg.Push.Token}
 
 	// setup permission system
 	adapter, err := gormadapter.NewAdapter(cfg.Casbin.DriverName, cfg.DataSource.Dsn, true)
@@ -82,6 +85,12 @@ func main() {
 		panic(err)
 	}
 
+	// setup Spp API client
+	err = sdk.InitSppClient(cfg.ExternalServices.SeedaoSppBase)
+	if err != nil {
+		panic(err)
+	}
+
 	r := gin.Default()
 	r.Use(gzip.Gzip(gzip.DefaultCompression))
 
@@ -96,7 +105,7 @@ func main() {
 		ctx.Set(middleware.DBKey, db)
 		ctx.Set(middleware.CfgKey, cfg)
 		ctx.Set(middleware.EnforcerKey, enforcer)
-		ctx.Set(middleware.NotificatorKey, notificator)
+		ctx.Set(middleware.PushKey, pushSDK)
 
 		// <-- before
 		ctx.Next()
@@ -222,6 +231,11 @@ func main() {
 		cityHallGroup := authorizedGroup.Group("/cityhall")
 		cityHallGroup.POST("/update_budget", city_hall.UpdateBudget)
 		cityHallGroup.POST("/update_members", city_hall.UpdateMember)
+
+		// push routers
+		pushGroup := authorizedGroup.Group("/push")
+		pushGroup.POST("/", push.Create)
+		pushGroup.GET("/", push.List)
 
 		// foo routers
 	}

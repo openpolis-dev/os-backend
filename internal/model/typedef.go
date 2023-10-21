@@ -157,6 +157,30 @@ func (r *FrontendApplicationRecord) ToCSV() []string {
 	}
 }
 
+func (r *FrontendApplicationRecord) ToXlsx() []any {
+	var createdAtStr string
+	var err error
+	createdAtStr, err = ConvertTimeToTzString(r.CreatedAt, ExportApplicationTimeZone, ExportApplicationTimeFormat)
+	if err != nil {
+		createdAtStr = r.CreatedAt.Format(time.RFC3339)
+	}
+
+	return []any{
+		createdAtStr,
+		r.TargetUserWallet,
+		r.CreditAmount,
+		r.TokenAmount,
+		r.DetailedType,
+		r.BudgetSource,
+		r.Comment,
+		r.Status,
+		r.SubmitterName,
+		r.SubmitterWallet,
+		r.ReviewerName,
+		r.ReviewerWallet,
+	}
+}
+
 // jointAppProjectFields saves query fields of join query of application and project
 const jointAppProjectFields = `applications.id,
 applications.type,

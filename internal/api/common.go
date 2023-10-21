@@ -88,9 +88,9 @@ func ForContextOnlyDB(ctx *gin.Context) (db *gorm.DB) {
 	return
 }
 
-// ForContextOnlyNotificator read `Notificator` from `Context`
-func ForContextOnlyNotificator(ctx *gin.Context) (notificator sdk.Notificator) {
-	notificator, _ = ctx.Value(middleware.NotificatorKey).(sdk.Notificator)
+// ForContextOnlyPush read `Push` from `Context`
+func ForContextOnlyPush(ctx *gin.Context) (push *sdk.Push) {
+	push, _ = ctx.Value(middleware.PushKey).(*sdk.Push)
 
 	return
 }
@@ -99,14 +99,6 @@ func ForContextOnlyNotificator(ctx *gin.Context) (notificator sdk.Notificator) {
 func ForContextUserAndDB(ctx *gin.Context) (user *middleware.CurUser, db *gorm.DB) {
 	user, _ = ctx.Value(middleware.CurUserKey).(*middleware.CurUser)
 	db, _ = ctx.Value(middleware.DBKey).(*gorm.DB)
-
-	return
-}
-
-// ForContextUserAndNotificator read `Notificator` from `Context`
-func ForContextUserAndNotificator(ctx *gin.Context) (user *middleware.CurUser, notificator sdk.Notificator) {
-	user, _ = ctx.Value(middleware.CurUserKey).(*middleware.CurUser)
-	notificator, _ = ctx.Value(middleware.NotificatorKey).(sdk.Notificator)
 
 	return
 }

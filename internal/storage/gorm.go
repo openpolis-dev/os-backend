@@ -43,6 +43,7 @@ func InitGormDB(dsn string) {
 		&model.TreasuryDetailedRecord{},
 		&model.TreasuryAuditLog{},
 		&model.Event{},
+		&model.Push{},
 	)
 	if err != nil {
 		panic("failed to migrate tables")

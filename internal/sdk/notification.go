@@ -1,72 +1,81 @@
 package sdk
 
 import (
-	"context"
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"net/http"
 
-	"github.com/OneSignal/onesignal-go-api"
 	"github.com/rs/zerolog/log"
 )
 
-type Notificator interface {
-	PushTo(ids []string, title *onesignal.StringMap, body *onesignal.StringMap, data map[string]any) error
-	//PushGroup(groups []string, title string, body string, data map[string]any) error
-	//PushAll(title string, body string, data map[string]any) error
-	//
-	//SmsTo(phones []string, title string, body string) error
-	//EmailTo(emails []string, title string, body string) error
+type Push struct {
+	BaseURI string
+	Token   string
 }
 
-type Notification struct {
-	pusher *onesignal.APIClient
-	appID  string
-	apiKey string
+// ------ ------ ------ ------ ------ ------ ------ ------ ------
+// ------ ------ ------ ------ ------ ------ ------ ------ ------
+
+type PushToWalletsReq struct {
+	Wallets []string    `json:"wallets"`
+	Data    PushReqData `json:"data"`
 }
 
-func NewNotificator(apiID string, apiKey string) Notificator {
-	configuration := onesignal.NewConfiguration()
-	onesignalNotificator := onesignal.NewAPIClient(configuration)
-	return &Notification{onesignalNotificator, apiID, apiKey}
+type PushReqData struct {
+	Title   map[string]string `json:"title"`
+	Body    map[string]string `json:"body"`
+	Payload map[string]string `json:"payload"`
 }
 
-func (n *Notification) PushTo(ids []string, title *onesignal.StringMap, body *onesignal.StringMap, data map[string]any) error {
-	notification := onesignal.NewNotification(n.appID)
-	// push to all user
-	//notification.SetIncludedSegments([]string{"Subscribed Users"})
-	// push to a single user
-	notification.SetIncludeExternalUserIds(ids)
-	//
-	notification.SetIsIos(true)
-	notification.SetIsAndroid(true)
-	// set title and body
-	notification.Headings = *onesignal.NewNullableStringMap(title)
-	notification.Contents = *onesignal.NewNullableStringMap(body)
-	// set data
-	notification.SetData(data)
+func (p *Push) PushToWallets(ids []string, title map[string]string, body map[string]string, payload map[string]string) error {
+	req := &PushToWalletsReq{
+		Wallets: ids,
+		Data: PushReqData{
+			Title:   title,
+			Body:    body,
+			Payload: payload,
+		},
+	}
 
-	appAuth := context.WithValue(context.Background(), onesignal.AppAuth, n.apiKey)
-	resp, r, err := n.pusher.DefaultApi.CreateNotification(appAuth).Notification(*notification).Execute()
+	return p.doReq("/v1/push_to_wallets", req)
+}
+
+func (p *Push) PushAll(title map[string]string, body map[string]string, payload map[string]string) error {
+	req := &PushReqData{
+		Title:   title,
+		Body:    body,
+		Payload: payload,
+	}
+
+	return p.doReq("/v1/push_to_all", req)
+}
+
+func (p *Push) doReq(path string, reqParam any) error {
+	data, err := json.Marshal(reqParam)
 	if err != nil {
-		log.Error().Msgf("Error when calling `DefaultApi.CreateNotification``: %v\n Full HTTP response: %+v\n", err, r)
 		return err
 	}
-	// response from `CreateNotification`: CreateNotificationSuccessResponse
-	log.Debug().Msgf("Response from `DefaultApi.CreateNotification`: %+v\n", resp)
+
+	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s%s", p.BaseURI, path), bytes.NewReader(data))
+	if err != nil {
+		log.Error().Msgf("Error when calling '%s', error: %v", path, err)
+		return err
+	}
+
+	req.Header.Add("Token", p.Token)
+
+	r, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Error().Msgf("Error when calling '%s', error: %v", path, err)
+		return err
+	}
+
+	if r.StatusCode != http.StatusOK {
+		log.Error().Msgf("Error when calling '%s', http code: %d", path, r.StatusCode)
+		return fmt.Errorf("call push api failed with http code: %d", r.StatusCode)
+	}
+	_ = r.Body.Close()
 
 	return nil
 }
-
-//func (n *Notification) PushGroup(groups []string, title string, body string, data map[string]any) error {
-//	panic("implement me")
-//}
-//
-//func (n *Notification) PushAll(title string, body string, data map[string]any) error {
-//	panic("implement me")
-//}
-//
-//func (n *Notification) SmsTo(phones []string, title string, body string) error {
-//	panic("implement me")
-//}
-//
-//func (n *Notification) EmailTo(emails []string, title string, body string) error {
-//	panic("implement me")
-//}

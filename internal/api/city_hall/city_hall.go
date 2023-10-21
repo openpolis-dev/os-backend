@@ -205,7 +205,7 @@ func UpdateMember(ctx *gin.Context) {
 
 	sponsorsMap := make(map[string]bool)
 	for _, userAddr := range cityHallProject.Sponsors {
-		sponsorsMap[userAddr] = true
+		sponsorsMap[strings.ToLower(userAddr)] = true
 	}
 
 	///////////////////////////////
@@ -215,7 +215,7 @@ func UpdateMember(ctx *gin.Context) {
 	// Add member to policy
 	var addHallGroupingPolicy [][]string
 	for _, memberAddr := range req.AddMember {
-		sponsorsMap[memberAddr] = true
+		sponsorsMap[strings.ToLower(memberAddr)] = true
 		addHallGroupingPolicy = append(addHallGroupingPolicy, []string{strings.ToLower(memberAddr), api.RoleHall})
 	}
 
@@ -233,7 +233,7 @@ func UpdateMember(ctx *gin.Context) {
 	// Remove member from policy group
 	var removeHallGroupingPolicy [][]string
 	for _, memberAddr := range req.RemoveMember {
-		sponsorsMap[memberAddr] = false
+		sponsorsMap[strings.ToLower(memberAddr)] = false
 		removeHallGroupingPolicy = append(removeHallGroupingPolicy, []string{strings.ToLower(memberAddr), api.RoleHall})
 	}
 

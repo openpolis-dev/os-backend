@@ -14,10 +14,12 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/model"
+	"github.com/xuri/excelize/v2"
 	"gorm.io/gorm"
 )
 
@@ -191,7 +193,7 @@ func Download(ctx *gin.Context) {
 	fileFormat := ""
 	fileFormat = strings.ToLower(ctx.Query("format"))
 	if fileFormat == "" {
-		fileFormat = "csv"
+		fileFormat = "xlsx"
 	}
 
 	db := api.ForContextOnlyDB(ctx)
@@ -261,6 +263,46 @@ func Download(ctx *gin.Context) {
 		}
 
 		ctx.DataFromReader(http.StatusOK, int64(contentLength), "encoding/csv", r, extraHeaders)
+	} else if fileFormat == "xlsx" {
+		fileName := "applications-list.xlsx"
+
+		// create excel stream writer
+		f := excelize.NewFile()
+		streamWriter, err := f.NewStreamWriter("Sheet1")
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		}
+
+		// write first row
+		cell, _ := excelize.CoordinatesToCellName(1, 1)
+		title := lo.Map(csvHeaderList, func(item string, _ int) any { return item })
+		if err := streamWriter.SetRow(cell, title); err != nil {
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		}
+
+		rowId := 2
+		for _, row := range rcds {
+			cell, _ := excelize.CoordinatesToCellName(1, rowId)
+			err = streamWriter.SetRow(cell, row.ToXlsx())
+			if err != nil {
+				log.Error().Msgf("write excel row[%d] failed: %s", rowId, err)
+			}
+			rowId += 1
+		}
+
+		ctx.Header("Content-Disposition", `attachment; filename="`+fileName+`"`)
+
+		// flush writer
+		if err = streamWriter.Flush(); err != nil {
+			log.Error().Msgf("flush writer [%s] failed: %s", fileName, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		}
+
+		// write to response
+		err = f.Write(ctx.Writer)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		}
 	} else if fileFormat == "json" {
 		tmpFile, err := os.CreateTemp(os.TempDir(), "application-list-*.json")
 		defer os.Remove(tmpFile.Name())
@@ -338,9 +380,9 @@ func BatchProcess(ctx *gin.Context) {
 		return
 	}
 
-	notificator := api.ForContextOnlyNotificator(ctx)
+	push := api.ForContextOnlyPush(ctx)
 
-	err = model.BatchAuditApplication(db, user.Wallet, &applications, model.AuditActionProcess, "", enforcer, notificator)
+	err = model.BatchAuditApplication(db, user.Wallet, &applications, model.AuditActionProcess, "", enforcer, push)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, api.Reply{
 			Code: -1,
@@ -373,8 +415,8 @@ func BatchApprove(ctx *gin.Context) {
 		return
 	}
 
-	notificator := api.ForContextOnlyNotificator(ctx)
-	err = model.BatchAuditApplication(db, user.Wallet, &applications, model.AuditActionApprove, "", enforcer, notificator)
+	push := api.ForContextOnlyPush(ctx)
+	err = model.BatchAuditApplication(db, user.Wallet, &applications, model.AuditActionApprove, "", enforcer, push)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, api.Reply{
 			Code: -1,
@@ -408,8 +450,8 @@ func BatchReject(ctx *gin.Context) {
 		return
 	}
 
-	notificator := api.ForContextOnlyNotificator(ctx)
-	err = model.BatchAuditApplication(db, user.Wallet, &applications, model.AuditActionReject, "", enforcer, notificator)
+	push := api.ForContextOnlyPush(ctx)
+	err = model.BatchAuditApplication(db, user.Wallet, &applications, model.AuditActionReject, "", enforcer, push)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, api.Reply{
 			Code: -1,
@@ -451,8 +493,8 @@ func BatchComplete(ctx *gin.Context) {
 		return
 	}
 
-	notificator := api.ForContextOnlyNotificator(ctx)
-	err = model.BatchAuditApplication(db, user.Wallet, &applications, model.AuditActionComplete, reqBody.Message, enforcer, notificator)
+	push := api.ForContextOnlyPush(ctx)
+	err = model.BatchAuditApplication(db, user.Wallet, &applications, model.AuditActionComplete, reqBody.Message, enforcer, push)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, api.Reply{
 			Code: -1,
@@ -512,7 +554,7 @@ func auditApplication(ctx *gin.Context, application *model.Application, auditAct
 	getRecordOrReturnNotFound(ctx, application)
 
 	user, enforcer, db, _ := api.ForContext(ctx)
-	notificator := api.ForContextOnlyNotificator(ctx)
+	push := api.ForContextOnlyPush(ctx)
 
 	//  check permission: `(0x..., proj_and_guild, audit_app)`
 	ok, err := enforcer.Enforce(user.Wallet, api.ObjProjAndGuild, api.ActAuditApplication)
@@ -526,7 +568,7 @@ func auditApplication(ctx *gin.Context, application *model.Application, auditAct
 	}
 
 	if application.ValidateAuditAction(auditAction) {
-		err = model.AuditApplication(db, user.Wallet, application, auditAction, auditMsg, enforcer, notificator)
+		err = model.AuditApplication(db, user.Wallet, application, auditAction, auditMsg, enforcer, push)
 		if err != nil {
 			ctx.JSON(http.StatusBadRequest, api.Reply{
 				Code: -1,
