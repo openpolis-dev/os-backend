@@ -1160,6 +1160,7 @@ paths:
           description: role revoked to wallet
 
 
+
 components:
   securitySchemes:
 
