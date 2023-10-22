@@ -57,6 +57,10 @@ type Application struct {
 	// And the field EntityId is the db record ID for Project or Guild table
 	EntityType string `json:"entity_type" gorm:"index"`
 	EntityId   uint   `json:"entity_id" gorm:"index"`
+
+	// Save season name in application table
+	// Note: this may be changed to using separated Season table for saving some extra info
+	SeasonName string `json:"season_name" gorm:"index"`
 }
 
 type ApplicationAuditLog struct {
