@@ -43,12 +43,12 @@ func DiscordMemberCount(ctx *gin.Context) {
 	if time.Now().Unix()-dataWrapper.updateTime > cfg.PublicData.Discord.CacheInSeconds {
 		log.Debug().Msgf("querying guild info...")
 
-		guild, err := dataWrapper.discord.Guild(cfg.PublicData.Discord.GuildID)
+		guild, err := dataWrapper.discord.GuildWithCounts(cfg.PublicData.Discord.GuildID)
 		if err != nil {
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 			return
 		}
-		log.Debug().Msgf("%+v", dataWrapper.data)
+		//log.Debug().Msgf("%+v", guild)
 
 		dataWrapper.data = &discordMemberCountReply{
 			ID:                       guild.ID,
