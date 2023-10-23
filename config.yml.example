@@ -30,3 +30,9 @@ awsConfig:
 
 externalServices:
   SeedaoSppBase: "http://localhost:3000"
+
+publicData:
+  discord:
+    token: "MTAyODY2MDEzNDg3MzkzOTk3OA.GWQkKP.x5l48Rrl1aCBaW7TVzXdGQwsxA9SguQPtSIGT8"
+    guildID: "959000582973194280"
+    cacheInSeconds: 60 # unit is seconds

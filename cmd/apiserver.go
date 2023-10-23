@@ -17,6 +17,7 @@ import (
 	"github.com/theseed-labs/os-backend/internal/api/guild"
 	"github.com/theseed-labs/os-backend/internal/api/permission"
 	"github.com/theseed-labs/os-backend/internal/api/project"
+	"github.com/theseed-labs/os-backend/internal/api/publicdata"
 	"github.com/theseed-labs/os-backend/internal/api/push"
 	"github.com/theseed-labs/os-backend/internal/api/treasury"
 	"github.com/theseed-labs/os-backend/internal/api/user"
@@ -162,6 +163,10 @@ func main() {
 
 		cityHallGroup := v1.Group("/cityhall")
 		cityHallGroup.GET("/info", city_hall.Info)
+
+		// public data
+		publicData := v1.Group("/public_data")
+		publicData.GET("/discord_member_count", publicdata.DiscordMemberCount)
 
 		// foo routers
 	}

@@ -20,6 +20,7 @@ type Config struct {
 	Push             push            `json:"push" yaml:"push"`
 	AwsConfig        awsConfig       `json:"awsConfig" yaml:"awsConfig"`
 	ExternalServices externalService `json:"externalServices" yaml:"externalServices"`
+	PublicData       publicData      `json:"publicData" yaml:"publicData"`
 }
 
 type (
@@ -53,6 +54,13 @@ type (
 	}
 	externalService struct {
 		SeedaoSppBase string `json:"SeedaoSppBase" yaml:"SeedaoSppBase"`
+	}
+	publicData struct {
+		Discord struct {
+			Token          string `json:"token" yaml:"token"`
+			GuildID        string `json:"guildID" yaml:"guildID"`
+			CacheInSeconds int64  `json:"cacheInSeconds" yaml:"cacheInSeconds"`
+		} `json:"discord" yaml:"discord"`
 	}
 )
 
