@@ -26,6 +26,8 @@ func DiscordMemberCount(ctx *gin.Context) {
 
 	// get Mutex lock
 	dataWrapper.lock.Lock()
+	// unlock Mutex
+	defer dataWrapper.lock.Unlock()
 
 	var err error
 	if dataWrapper.discord == nil {
@@ -56,9 +58,6 @@ func DiscordMemberCount(ctx *gin.Context) {
 		}
 		dataWrapper.updateTime = time.Now().Unix()
 	}
-
-	// unlock Mutex
-	dataWrapper.lock.Unlock()
 
 	ctx.JSON(http.StatusOK, api.Success(dataWrapper.data))
 }
