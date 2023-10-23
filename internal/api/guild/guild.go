@@ -22,6 +22,7 @@ type (
 	CreateReq struct {
 		LogoStr string `json:"logo"` // base64 encoded logo image, will be uploaded to AWS S3 and saved URL in db record
 		Name    string `json:"name"`
+		Intro   string `json:"intro"`
 
 		Sponsors  []string `json:"sponsors"`
 		Members   []string `json:"members"`
@@ -88,9 +89,11 @@ func Create(ctx *gin.Context) {
 	// save guild
 	guild := model.Guild{
 		Name:      req.Name,
+		Intro:     req.Intro,
 		Sponsors:  sponsors,
 		Members:   members,
 		Proposals: req.Proposals,
+		Creator:   user.Wallet,
 	}
 	err = model.GuildModel.CreateOrUpdate(tx, &guild)
 	if err != nil {

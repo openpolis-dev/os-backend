@@ -13,9 +13,12 @@ type Guild struct {
 	ID        uint     `json:"id" gorm:"primaryKey"`
 	Logo      string   `json:"logo"`
 	Name      string   `json:"name"`
+	Intro     string   `json:"intro"`
 	Sponsors  []string `json:"sponsors" gorm:"serializer:json"`
 	Members   []string `json:"members" gorm:"serializer:json"`
 	Proposals []string `json:"proposals" gorm:"serializer:json"`
+
+	Creator string `json:"creator"`
 
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
