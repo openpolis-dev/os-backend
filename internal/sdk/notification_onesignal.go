@@ -22,13 +22,12 @@ func NewOneSignal(appId string, appKey string) Pusher {
 
 func (o *OneSignal) PushToWallets(ids []string, title map[string]string, body map[string]string, payload map[string]any) error {
 	notification := onesignal.NewNotification(o.appId)
-	// push to all user
-	//notification.SetIncludedSegments([]string{"Subscribed Users"})
 	// push to a single user
 	notification.SetIncludeExternalUserIds(ids)
-	////
-	//notification.SetIsIos(true)
-	//notification.SetIsAndroid(true)
+	// configure push platform
+	notification.SetIsIos(false)
+	notification.SetIsAndroid(false)
+	notification.SetIsAnyWeb(true)
 	// set title and body
 	notification.Headings = *onesignal.NewNullableStringMap(o.titleAdaptor(title))
 	notification.Contents = *onesignal.NewNullableStringMap(o.bodyAdaptor(body))
@@ -50,12 +49,11 @@ func (o *OneSignal) PushToWallets(ids []string, title map[string]string, body ma
 func (o *OneSignal) PushAll(title map[string]string, body map[string]string, payload map[string]any) error {
 	notification := onesignal.NewNotification(o.appId)
 	// push to all user
-	notification.SetIncludedSegments([]string{"Subscribed Users"})
-	// push to a single user
-	//notification.SetIncludeExternalUserIds(ids)
-	////
-	//notification.SetIsIos(true)
-	//notification.SetIsAndroid(true)
+	notification.SetIncludedSegments([]string{"Active Subscriptions"})
+	// configure push platform
+	notification.SetIsIos(false)
+	notification.SetIsAndroid(false)
+	notification.SetIsAnyWeb(true)
 	// set title and body
 	notification.Headings = *onesignal.NewNullableStringMap(o.titleAdaptor(title))
 	notification.Contents = *onesignal.NewNullableStringMap(o.bodyAdaptor(body))
