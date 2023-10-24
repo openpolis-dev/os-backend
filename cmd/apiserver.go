@@ -36,7 +36,8 @@ func main() {
 	log.Debug().Msgf("application configuration: %+v", cfg)
 
 	// setup push sdk
-	pushSDK := &sdk.Push{BaseURI: cfg.Push.BaseURI, Token: cfg.Push.Token}
+	//pushSDK := sdk.NewFCM(cfg.Push.BaseURI, cfg.Push.Token)
+	pushSDK := sdk.NewOneSignal(cfg.Push.OneSignalAppId, cfg.Push.OneSignalAppKey)
 
 	// setup permission system
 	adapter, err := gormadapter.NewAdapter(cfg.Casbin.DriverName, cfg.DataSource.Dsn, true)
