@@ -239,11 +239,15 @@ func Detail(ctx *gin.Context) {
 		u = &model.User{Wallet: user.Wallet}
 	}
 
-	seepassResp.Wallet = user.Wallet
-	seepassResp.Nickname = u.Name
-	seepassResp.Avatar = u.Avatar
-	seepassResp.Bio = u.Bio
-	seepassResp.Email = u.Email
+	seepassResp = &sdk.SeepassResponse{
+		Roles:    make([]string, 0),
+		Wallet:   user.Wallet,
+		Nickname: u.Name,
+		Avatar:   u.Avatar,
+		Bio:      u.Bio,
+		Email:    u.Email,
+	}
+
 	seepassResp.Scr.Amount = "0"
 
 	// TODO: Move the hardcoded data to some const data or configuraiton service
