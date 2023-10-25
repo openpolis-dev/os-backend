@@ -10,6 +10,50 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+type SeepassResponse struct {
+	Sns      string      `json:"sns"`
+	Wallet   string      `json:"wallet"`
+	Avatar   interface{} `json:"avatar"`
+	Email    interface{} `json:"email"`
+	Nickname interface{} `json:"nickname"`
+	Bio      interface{} `json:"bio"`
+	Roles    []string    `json:"roles"`
+
+	Scr struct {
+		Amount       string `json:"amount"`
+		ContractAddr string `json:"contract_addr"`
+	} `json:"scr"`
+
+	Level struct {
+		CurrentLv      string `json:"current_lv"`
+		NextLv         string `json:"next_lv"`
+		ScrToNextLv    string `json:"scr_to_next_lv"`
+		UpgradePercent string `json:"upgrade_percent"`
+	} `json:"level"`
+
+	Seed []struct {
+		TokenId      string `json:"token_id"`
+		ContractAddr string `json:"contract_addr"`
+		ContractType string `json:"contract_type"`
+		ImageUri     string `json:"image_uri"`
+		TokenAmount  string `json:"token_amount"`
+	} `json:"seed"`
+
+	Sbt []struct {
+		TokenId        string `json:"token_id"`
+		ContractAddr   string `json:"contract_addr"`
+		ContractType   string `json:"contract_type"`
+		ImageUri       string `json:"image_uri"`
+		TokenAmount    string `json:"token_amount"`
+		CollectionName string `json:"collection_name"`
+		Name           string `json:"name"`
+		Symbol         string `json:"symbol"`
+		Metadata       string `json:"metadata"`
+	} `json:"sbt"`
+
+	SocialAccounts []interface{} `json:"social_accounts"`
+}
+
 type ProfileSocialAccount struct {
 	Network  string `json:"network"`
 	Identity string `json:"identity"`
@@ -44,6 +88,27 @@ func InitSppClient(apiBase string) error {
 
 func GetSppClient() *SppClient {
 	return sppClient
+}
+
+func (c *SppClient) GetSeepassData(wallet string) (*SeepassResponse, error) {
+	_wallet := strings.ToLower(wallet)
+	endpoint := fmt.Sprintf("%s/seepass/%s", c.ApiBase, _wallet)
+	log.Debug().Msgf("get SeePASS data, endpoint %s", endpoint)
+
+	resp, err := http.Get(endpoint)
+	if err != nil {
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+
+	seepassData := SeepassResponse{}
+	err = json.NewDecoder(resp.Body).Decode(&seepassData)
+	if err != nil {
+		return nil, nil
+	}
+
+	return &seepassData, nil
 }
 
 func (c *SppClient) UpdateProfile(wallet string, sppUpdateObject *SppUpdateProfileRequest) error {
