@@ -290,7 +290,7 @@ func Update(ctx *gin.Context) {
 	}
 
 	sppClient := sdk.GetSppClient()
-	sppUpdatePayload := u.BuildSppUpdateProfilePayload(user.Wallet)
+	sppUpdatePayload := u.BuildSppUpdateProfilePayload()
 	err = sppClient.UpdateProfile(user.Wallet, sppUpdatePayload)
 	if err != nil {
 		log.Error().Msgf("update user %s info to spp error, update req data: %+v, error: %+v", user.Wallet, req, err)
