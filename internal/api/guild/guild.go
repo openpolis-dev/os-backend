@@ -23,6 +23,7 @@ type (
 		LogoStr string `json:"logo"` // base64 encoded logo image, will be uploaded to AWS S3 and saved URL in db record
 		Name    string `json:"name"`
 		Intro   string `json:"intro"`
+		Desc    string `json:"desc"`
 
 		Sponsors  []string `json:"sponsors"`
 		Members   []string `json:"members"`
@@ -90,6 +91,7 @@ func Create(ctx *gin.Context) {
 	guild := model.Guild{
 		Name:      req.Name,
 		Intro:     req.Intro,
+		Desc:      req.Desc,
 		Sponsors:  sponsors,
 		Members:   members,
 		Proposals: req.Proposals,

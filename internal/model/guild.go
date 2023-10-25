@@ -14,6 +14,7 @@ type Guild struct {
 	Logo      string   `json:"logo"`
 	Name      string   `json:"name"`
 	Intro     string   `json:"intro"`
+	Desc      string   `json:"desc"`
 	Sponsors  []string `json:"sponsors" gorm:"serializer:json"`
 	Members   []string `json:"members" gorm:"serializer:json"`
 	Proposals []string `json:"proposals" gorm:"serializer:json"`

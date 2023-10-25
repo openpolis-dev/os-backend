@@ -28,6 +28,7 @@ type Project struct {
 	Logo      string        `json:"logo"`
 	Name      string        `json:"name"`
 	Intro     string        `json:"intro"`
+	Desc      string        `json:"desc"`
 	Status    ProjectStatus `json:"status" gorm:"index"` // Status may have those values: open/pending_close/closed
 	Sponsors  []string      `json:"sponsors" gorm:"serializer:json"`
 	Members   []string      `json:"members" gorm:"serializer:json"`

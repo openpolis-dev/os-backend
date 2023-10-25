@@ -26,6 +26,7 @@ type (
 		LogoStr string `json:"logo"` // base64 encoded image string
 		Name    string `json:"name"`
 		Intro   string `json:"intro"`
+		Desc    string `json:"desc"`
 
 		Sponsors  []string `json:"sponsors"`
 		Members   []string `json:"members"`
@@ -93,6 +94,7 @@ func Create(ctx *gin.Context) {
 	proj := model.Project{
 		Name:      req.Name,
 		Intro:     req.Intro,
+		Desc:      req.Desc,
 		Status:    model.ProjectStatusOpen,
 		Sponsors:  sponsors,
 		Members:   members,
