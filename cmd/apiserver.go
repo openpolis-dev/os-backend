@@ -166,7 +166,9 @@ func main() {
 
 		// public data
 		publicData := v1.Group("/public_data")
-		publicData.GET("/discord_member_count", publicdata.DiscordMemberCount)
+		publicData.GET("/discord_member_count", publicdata.DiscordData)
+		publicData.GET("/contract/seed", publicdata.SeedData)
+		publicData.GET("/contract/scr", publicdata.SCRData)
 
 		// foo routers
 	}
