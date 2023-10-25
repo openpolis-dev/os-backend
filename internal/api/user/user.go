@@ -218,7 +218,17 @@ func Logout(ctx *gin.Context) {
 
 // Detail `GET /me`
 func Detail(ctx *gin.Context) {
+	// TODO: Get data from seepass API, and return data from DB if seepass returns 404
 	user, db := api.ForContextUserAndDB(ctx)
+
+	sppClient := sdk.GetSppClient()
+	seepassResp, err := sppClient.GetSeepassData(user.Wallet)
+	if err == nil {
+		ctx.JSON(http.StatusOK, seepassResp)
+		return
+	}
+
+	log.Warn().Msgf("query seepass data error, wallet: %s, error: %+v", user.Wallet, err)
 
 	u, err := model.UserModel.Detail(db, user.Wallet)
 	if err != nil {
@@ -229,7 +239,20 @@ func Detail(ctx *gin.Context) {
 		u = &model.User{Wallet: user.Wallet}
 	}
 
-	ctx.JSON(http.StatusOK, api.Success(u))
+	seepassResp.Wallet = user.Wallet
+	seepassResp.Nickname = u.Name
+	seepassResp.Avatar = u.Avatar
+	seepassResp.Bio = u.Bio
+	seepassResp.Email = u.Email
+	seepassResp.Scr.Amount = "0"
+
+	// TODO: Move the hardcoded data to some const data or configuraiton service
+	seepassResp.Level.CurrentLv = "0"
+	seepassResp.Level.NextLv = "1"
+	seepassResp.Level.ScrToNextLv = "5000"
+	seepassResp.Level.UpgradePercent = "0"
+
+	ctx.JSON(http.StatusOK, seepassResp)
 }
 
 type UpdateReq struct {
