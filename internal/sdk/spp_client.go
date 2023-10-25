@@ -92,7 +92,7 @@ func GetSppClient() *SppClient {
 
 func (c *SppClient) GetSeepassData(wallet string) (*SeepassResponse, error) {
 	_wallet := strings.ToLower(wallet)
-	endpoint := fmt.Sprintf("%s/profile/%s", c.ApiBase, _wallet)
+	endpoint := fmt.Sprintf("%s/seepass/%s", c.ApiBase, _wallet)
 	log.Debug().Msgf("get SeePASS data, endpoint %s", endpoint)
 
 	resp, err := http.Get(endpoint)
