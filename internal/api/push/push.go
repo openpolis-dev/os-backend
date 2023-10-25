@@ -62,13 +62,13 @@ func Create(ctx *gin.Context) {
 
 	// send push
 	pushSDK := api.ForContextOnlyPush(ctx)
-	go func(pushSDK *sdk.Push, title, body map[string]string, jumpURL string) {
-		data := api.GenerateCustomNotificationParams(jumpURL)
+	go func(pushSDK sdk.Pusher, title, body map[string]string, jumpURL string) {
+		data := sdk.GenerateCustomNotificationParams(jumpURL)
 		err := pushSDK.PushAll(title, body, data)
 		if err != nil {
 			log.Error().Msgf("push to all failed: %s", err)
 		}
-	}(pushSDK, map[string]string{api.LanguageZH: req.Title, api.LanguageEN: req.Title}, map[string]string{api.LanguageZH: req.Content, api.LanguageEN: req.Content}, req.JumpURL)
+	}(pushSDK, map[string]string{sdk.LanguageZH: req.Title, sdk.LanguageEN: req.Title}, map[string]string{sdk.LanguageZH: req.Content, sdk.LanguageEN: req.Content}, req.JumpURL)
 
 	ctx.JSON(http.StatusOK, api.Success(nil))
 }

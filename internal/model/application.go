@@ -113,7 +113,7 @@ func (app *Application) nextStateAfterAction(action AuditActionType) Application
 }
 
 // AuditApplication applies audit action on application and create related audit log in transaction
-func AuditApplication(db *gorm.DB, operatorWallet string, application *Application, action AuditActionType, extraMsg string, enforcer *casbin.Enforcer, push *sdk.Push) error {
+func AuditApplication(db *gorm.DB, operatorWallet string, application *Application, action AuditActionType, extraMsg string, enforcer *casbin.Enforcer, push sdk.Pusher) error {
 	// Check application record, verify whether the action can be applied on the application
 	if !application.ValidateAuditAction(action) {
 		// TODO: Define the error message as project constant
@@ -146,7 +146,7 @@ func AuditApplication(db *gorm.DB, operatorWallet string, application *Applicati
 
 // BatchAuditApplication audits multiple applications in same transaction.
 // Note: if any error occurred during the transaction the whole transaction will not be performed.
-func BatchAuditApplication(db *gorm.DB, operatorWallet string, applications *[]Application, action AuditActionType, extraMsg string, enforcer *casbin.Enforcer, push *sdk.Push) error {
+func BatchAuditApplication(db *gorm.DB, operatorWallet string, applications *[]Application, action AuditActionType, extraMsg string, enforcer *casbin.Enforcer, push sdk.Pusher) error {
 	for _, application := range *applications {
 		if !application.ValidateAuditAction(action) {
 			// TODO: Define the error message as project constant
@@ -170,7 +170,7 @@ func BatchAuditApplication(db *gorm.DB, operatorWallet string, applications *[]A
 	})
 }
 
-func doAuditApplicationInTransaction(tx *gorm.DB, operatorWallet string, application *Application, action AuditActionType, extraMsg string, enforcer *casbin.Enforcer, push *sdk.Push) error {
+func doAuditApplicationInTransaction(tx *gorm.DB, operatorWallet string, application *Application, action AuditActionType, extraMsg string, enforcer *casbin.Enforcer, push sdk.Pusher) error {
 	nextState := application.nextStateAfterAction(action)
 
 	// Create audit log for application
@@ -347,8 +347,8 @@ func doAuditApplicationInTransaction(tx *gorm.DB, operatorWallet string, applica
 
 				// send notification in separated coroutines if passed in notificator
 				if push != nil {
-					go func(push *sdk.Push, staffs []string, assertName string, amount string) {
-						title, body, data := api.GenerateObtainAssertNotificationParams(assertName, amount)
+					go func(push sdk.Pusher, staffs []string, assertName string, amount string) {
+						title, body, data := sdk.GenerateObtainAssertNotificationParams(assertName, amount)
 						err := push.PushToWallets(staffs, title, body, data)
 						if err != nil {
 							log.Error().Msgf("push to %+v failed: %s", staffs, err)

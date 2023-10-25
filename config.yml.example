@@ -21,6 +21,8 @@ casbin:
 push:
     baseURI: "http://localhost:8088"
     token: "api-token"
+    oneSignalAppId: "app-id"
+    oneSignalAppKey: "app-key"
 
 awsConfig:
   accessKey: "aws-access-key"

@@ -45,6 +45,9 @@ type (
 	push struct {
 		BaseURI string `json:"baseURI" yaml:"baseURI"`
 		Token   string `json:"token" yaml:"token"`
+
+		OneSignalAppId  string `json:"oneSignalAppId" yaml:"oneSignalAppId"`
+		OneSignalAppKey string `json:"oneSignalAppKey" yaml:"oneSignalAppKey"`
 	}
 	awsConfig struct {
 		AccessKey  string `json:"accessKey" yaml:"accessKey"`

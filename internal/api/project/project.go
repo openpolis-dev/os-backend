@@ -194,8 +194,8 @@ func Create(ctx *gin.Context) {
 	// send notification
 	push := api.ForContextOnlyPush(ctx)
 	staffs := append(sponsors, members...)
-	go func(push *sdk.Push, staffs []string, projectID uint, projectName string) {
-		title, body, data := api.GenerateProjectStaffAddNotificationParams(projectID, projectName)
+	go func(push sdk.Pusher, staffs []string, projectID uint, projectName string) {
+		title, body, data := sdk.GenerateProjectStaffAddNotificationParams(projectID, projectName)
 		err := push.PushToWallets(staffs, title, body, data)
 		if err != nil {
 			log.Error().Msgf("push to %v failed: %s", staffs, err)
@@ -688,8 +688,8 @@ func UpdateStaffs(ctx *gin.Context) {
 		// send notification
 		push := api.ForContextOnlyPush(ctx)
 		staffs := append(sponsors, members...)
-		go func(push *sdk.Push, staffs []string, projectID uint, projectName string) {
-			title, body, data := api.GenerateProjectStaffAddNotificationParams(projectID, projectName)
+		go func(push sdk.Pusher, staffs []string, projectID uint, projectName string) {
+			title, body, data := sdk.GenerateProjectStaffAddNotificationParams(projectID, projectName)
 			err := push.PushToWallets(staffs, title, body, data)
 			if err != nil {
 				log.Error().Msgf("push to %+v failed: %s", staffs, err)
@@ -758,8 +758,8 @@ func UpdateStaffs(ctx *gin.Context) {
 		// send notification
 		push := api.ForContextOnlyPush(ctx)
 		staffs := append(sponsors, members...)
-		go func(push *sdk.Push, staffs []string, projectID uint, projectName string) {
-			title, body, data := api.GenerateProjectStaffRemoveNotificationParams(projectID, projectName)
+		go func(push sdk.Pusher, staffs []string, projectID uint, projectName string) {
+			title, body, data := sdk.GenerateProjectStaffRemoveNotificationParams(projectID, projectName)
 			err := push.PushToWallets(staffs, title, body, data)
 			if err != nil {
 				log.Error().Msgf("push to %+v failed: %s", staffs, err)
