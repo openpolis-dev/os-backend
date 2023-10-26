@@ -256,7 +256,7 @@ func Detail(ctx *gin.Context) {
 	seepassResp.Level.ScrToNextLv = "5000"
 	seepassResp.Level.UpgradePercent = "0"
 
-	ctx.JSON(http.StatusOK, seepassResp)
+	ctx.JSON(http.StatusOK, api.Success(seepassResp))
 }
 
 type UpdateReq struct {
