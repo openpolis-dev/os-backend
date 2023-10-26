@@ -48,7 +48,7 @@ type SeepassResponse struct {
 		CollectionName string `json:"collection_name"`
 		Name           string `json:"name"`
 		Symbol         string `json:"symbol"`
-		Metadata       string `json:"metadata"`
+		Metadata       any    `json:"metadata"`
 	} `json:"sbt"`
 
 	SocialAccounts []interface{} `json:"social_accounts"`
@@ -105,7 +105,7 @@ func (c *SppClient) GetSeepassData(wallet string) (*SeepassResponse, error) {
 	seepassData := SeepassResponse{}
 	err = json.NewDecoder(resp.Body).Decode(&seepassData)
 	if err != nil {
-		return nil, nil
+		return nil, err
 	}
 
 	return &seepassData, nil
