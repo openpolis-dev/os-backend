@@ -47,12 +47,6 @@ type (
 		model.Project
 		Budgets []*model.ProjectBudget `json:"budgets"`
 	}
-	UpdateSponsorsReq struct {
-		Sponsors []string `json:"sponsors"`
-	}
-	UpdateMembersReq struct {
-		Members []string `json:"members"`
-	}
 	UpdateBudgetReq struct {
 		Id          uint            `json:"id"`
 		AssetName   string          `json:"asset_name"`
@@ -61,6 +55,14 @@ type (
 )
 
 // Create `POST /projects`
+//
+//	@Summary		Create a project with passed in data
+//	@Description	This api create a project record with passed in data
+//	@Router			/projects [post]
+//	@Tags			project
+//	@Param			request	body		CreateReq	true	"new project request data"
+//
+//	@Success		201		{string}	string		""
 func Create(ctx *gin.Context) {
 	req := CreateReq{}
 	err := ctx.BindJSON(&req)
@@ -206,6 +208,15 @@ func Create(ctx *gin.Context) {
 }
 
 // Update `PUT /projects/:id`
+//
+//	@Summary		Update project information
+//	@Description	This api update a project record with passed in data
+//	@Router			/projects/:id [put]
+//	@Tags			project
+//	@Param			id		path		string		true	"id of the project"
+//	@Param			request	body		UpdateReq	true	"update project info"
+//
+//	@Success		200		{string}	string		""
 func Update(ctx *gin.Context) {
 	idParam := ctx.Param("id")
 	id, err := strconv.Atoi(idParam)
@@ -269,6 +280,14 @@ func Update(ctx *gin.Context) {
 
 // Close
 // POST /project/:id/close
+//
+//	@Summary		Close a project
+//	@Description	This api close specified project, admin permission is required for this operation
+//	@Router			/projects/:id/close [post]
+//	@Tags			project
+//	@Param			id	path		number	true	"project ID"
+//
+//	@Success		200	{string}	string	"ok"
 func Close(ctx *gin.Context) {
 	idParam := ctx.Param("id")
 	id, err := strconv.Atoi(idParam)
@@ -335,6 +354,12 @@ func Close(ctx *gin.Context) {
 }
 
 // Detail `GET /project/:id`
+//
+//	@Summary	show detail of a project
+//	@Router		/projects/:id [get]
+//	@Tags		project
+//
+//	@Success	200	{object}	DetailReply
 func Detail(ctx *gin.Context) {
 	idParam := ctx.Param("id")
 	id, err := strconv.Atoi(idParam)
@@ -369,11 +394,17 @@ func Detail(ctx *gin.Context) {
 
 // List `GET /projects?status=open&page=1&size=10&sort_field=created_at&sort_order=desc`
 //
-//	@Summary		List projects based on query params
+//	@Summary		List all projects match the query params
 //	@Description	This api parses passed in pagination query params,
+//	@Router			/projects [get]
 //	@Tags			project
-//	@Param			enumstring query string false "status of project" Enum(open pending_close closed)
-//	@Router			/v1/unavailable [post]
+//	@Param			status		query		string	false	"status of project"	Enum(open pending_close closed)
+//	@Param			page		query		string	false	"which page"
+//	@Param			size		query		string	false	"size of each page"
+//	@Param			sort_field	query		string	false	"sort by which field"
+//	@Param			sort_order	query		string	false	"order of sort"	Enum(asc desc)
+//
+//	@Success		200			{object}	api.ListReplyData
 func List(ctx *gin.Context) {
 	db := api.ForContextOnlyDB(ctx)
 
@@ -710,6 +741,14 @@ func UpdateBudget(ctx *gin.Context) {
 // ------ Project Proposals ------ ------
 
 // AddRelatedProposal `POST /projects/:id/add_related_proposal?proposalIDs=1&proposalIDs=2`
+//
+//	@Summary		Add related proposals to the project
+//	@Router			/projects/:id/add_related_proposal [post]
+//	@Tags			project
+//	@Param			id	path	number	true	"project ID"
+//	@Param			proposalIDs	query	[]string	true	"proposal ID list"
+//
+//	@Success		200		{string}	string		"ok"
 func AddRelatedProposal(ctx *gin.Context) {
 	idParam := ctx.Param("id")
 	id, err := strconv.Atoi(idParam)
