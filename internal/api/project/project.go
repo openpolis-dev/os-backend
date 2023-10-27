@@ -372,6 +372,12 @@ func Detail(ctx *gin.Context) {
 }
 
 // List `GET /projects?status=open&page=1&size=10&sort_field=created_at&sort_order=desc`
+//
+//	@Summary		List projects based on query params
+//	@Description	This api parses passed in pagination query params,
+//	@Tags			project
+//	@Param			enumstring query string false "status of project" Enum(open pending_close closed)
+//	@Router			/v1/unavailable [post]
 func List(ctx *gin.Context) {
 	db := api.ForContextOnlyDB(ctx)
 
