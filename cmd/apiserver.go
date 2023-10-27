@@ -27,6 +27,11 @@ import (
 	"github.com/theseed-labs/os-backend/internal/storage"
 )
 
+//	@title:			OS Backend API service
+//	@version:		1.0
+//	@license.name:	MIT
+//	@host:			https://test-api.seedao.tech
+
 func main() {
 	// read config data
 	cfgPath := flag.String("config", "config.yml", "Configuration file path, should be yaml or json format")
