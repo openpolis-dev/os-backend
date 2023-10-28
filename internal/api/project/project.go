@@ -42,6 +42,8 @@ type (
 	UpdateReq struct {
 		LogoStr string `json:"logo"`
 		Name    string `json:"name"`
+		Intro   string `json:"intro"`
+		Desc    string `json:"desc"`
 	}
 	DetailReply struct {
 		model.Project
@@ -258,6 +260,8 @@ func Update(ctx *gin.Context) {
 	// update logo and name
 	proj.Logo = logoUrl
 	proj.Name = req.Name
+	proj.Intro = req.Intro
+	proj.Desc = req.Desc
 	err = model.ProjectModel.CreateOrUpdate(db, proj)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
