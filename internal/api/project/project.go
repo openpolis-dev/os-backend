@@ -49,12 +49,6 @@ type (
 		model.Project
 		Budgets []*model.ProjectBudget `json:"budgets"`
 	}
-	UpdateSponsorsReq struct {
-		Sponsors []string `json:"sponsors"`
-	}
-	UpdateMembersReq struct {
-		Members []string `json:"members"`
-	}
 	UpdateBudgetReq struct {
 		Id          uint            `json:"id"`
 		AssetName   string          `json:"asset_name"`
@@ -63,6 +57,14 @@ type (
 )
 
 // Create `POST /projects`
+//
+//	@Summary		Create a project with passed in data
+//	@Description	This api create a project record with passed in data
+//	@Router			/projects [post]
+//	@Tags			project
+//	@Param			request	body		CreateReq	true	"new project request data"
+//
+//	@Success		201		{string}	string		""
 func Create(ctx *gin.Context) {
 	req := CreateReq{}
 	err := ctx.BindJSON(&req)
@@ -208,6 +210,15 @@ func Create(ctx *gin.Context) {
 }
 
 // Update `PUT /projects/:id`
+//
+//	@Summary		Update project information
+//	@Description	This api update a project record with passed in data
+//	@Router			/projects/:id [put]
+//	@Tags			project
+//	@Param			id		path		string		true	"id of the project"
+//	@Param			request	body		UpdateReq	true	"update project info"
+//
+//	@Success		200		{string}	string		""
 func Update(ctx *gin.Context) {
 	idParam := ctx.Param("id")
 	id, err := strconv.Atoi(idParam)
@@ -273,6 +284,14 @@ func Update(ctx *gin.Context) {
 
 // Close
 // POST /project/:id/close
+//
+//	@Summary		Close a project
+//	@Description	This api close specified project, admin permission is required for this operation
+//	@Router			/projects/:id/close [post]
+//	@Tags			project
+//	@Param			id	path		number	true	"project ID"
+//
+//	@Success		200	{string}	string	"ok"
 func Close(ctx *gin.Context) {
 	idParam := ctx.Param("id")
 	id, err := strconv.Atoi(idParam)
@@ -339,6 +358,12 @@ func Close(ctx *gin.Context) {
 }
 
 // Detail `GET /project/:id`
+//
+//	@Summary	show detail of a project
+//	@Router		/projects/:id [get]
+//	@Tags		project
+//
+//	@Success	200	{object}	DetailReply
 func Detail(ctx *gin.Context) {
 	idParam := ctx.Param("id")
 	id, err := strconv.Atoi(idParam)
@@ -372,6 +397,18 @@ func Detail(ctx *gin.Context) {
 }
 
 // List `GET /projects?status=open&page=1&size=10&sort_field=created_at&sort_order=desc`
+//
+//	@Summary		List all projects match the query params
+//	@Description	This api parses passed in pagination query params,
+//	@Router			/projects [get]
+//	@Tags			project
+//	@Param			status		query		string	false	"status of project"	Enum(open pending_close closed)
+//	@Param			page		query		string	false	"which page"
+//	@Param			size		query		string	false	"size of each page"
+//	@Param			sort_field	query		string	false	"sort by which field"
+//	@Param			sort_order	query		string	false	"order of sort"	Enum(asc desc)
+//
+//	@Success		200			{object}	api.ListReplyData
 func List(ctx *gin.Context) {
 	db := api.ForContextOnlyDB(ctx)
 
@@ -414,143 +451,6 @@ func MyProjects(ctx *gin.Context) {
 		Rows:  projects,
 	}))
 }
-
-// ------ ------ ------ ------ ------ ------ ------ ------ ------
-// ------ Project Sponsors/Members ------ ------
-
-//// UpdateSponsors `POST /projects/:id/update_sponsors`
-//func UpdateSponsors(ctx *gin.Context) {
-//	idParam := ctx.Param("id")
-//	id, err := strconv.Atoi(idParam)
-//	if err != nil {
-//		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
-//		return
-//	}
-//
-//	req := UpdateSponsorsReq{}
-//	err = ctx.BindJSON(&req)
-//	if err != nil {
-//		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
-//		return
-//	}
-//
-//	user, enforcer, db, _ := api.ForContext(ctx)
-//	//  check permission
-//	ok, err := enforcer.Enforce(user.Wallet, fmt.Sprintf("%s%d", api.ObjProjPrefix, id), api.ActUpdateSponsor)
-//	if err != nil {
-//		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
-//		return
-//	}
-//	if !ok {
-//		ctx.JSON(http.StatusForbidden, api.Forbidden())
-//		return
-//	}
-//
-//	proj, err := model.ProjectModel.Detail(db, uint(id))
-//	if err != nil {
-//		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
-//		return
-//	}
-//
-//	// remove roles for old sponsors
-//	oldSponsorGroupingPolicies := lo.Map(proj.Sponsors, func(sponsor string, _ int) []string {
-//		// g, 0xc13..1283 proj_sponsor_1
-//		return []string{sponsor, fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, proj.ID)}
-//	})
-//	_, err = enforcer.RemoveGroupingPolicies(oldSponsorGroupingPolicies)
-//	if err != nil {
-//		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
-//		return
-//	}
-//
-//	// update project sponsors
-//	proj.Sponsors = req.Sponsors
-//	err = model.ProjectModel.CreateOrUpdate(db, proj)
-//	if err != nil {
-//		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
-//		return
-//	}
-//
-//	// add roles for new sponsors
-//	newSponsorGroupingPolicies := lo.Map(req.Sponsors, func(sponsor string, _ int) []string {
-//		// g, 0xc13..1283 proj_sponsor_1
-//		return []string{strings.ToLower(sponsor), fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, proj.ID)}
-//	})
-//	_, err = enforcer.AddGroupingPolicies(newSponsorGroupingPolicies)
-//	if err != nil {
-//		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
-//		return
-//	}
-//
-//	ctx.JSON(http.StatusOK, api.Success(nil))
-//}
-//
-//// UpdateMembers `POST /projects/:id/update_members`
-//func UpdateMembers(ctx *gin.Context) {
-//	idParam := ctx.Param("id")
-//	id, err := strconv.Atoi(idParam)
-//	if err != nil {
-//		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
-//		return
-//	}
-//
-//	req := UpdateMembersReq{}
-//	err = ctx.BindJSON(&req)
-//	if err != nil {
-//		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
-//		return
-//	}
-//
-//	user, enforcer, db, _ := api.ForContext(ctx)
-//	//  check permission
-//	ok, err := enforcer.Enforce(user.Wallet, fmt.Sprintf("%s%d", api.ObjProjPrefix, id), api.ActUpdateMember)
-//	if err != nil {
-//		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
-//		return
-//	}
-//	if !ok {
-//		ctx.JSON(http.StatusForbidden, api.Forbidden())
-//		return
-//	}
-//
-//	proj, err := model.ProjectModel.Detail(db, uint(id))
-//	if err != nil {
-//		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
-//		return
-//	}
-//
-//	//// remove roles for old members
-//	//oldMemberGroupingPolicies := lo.Map(proj.Members, func(member string, _ int) []string {
-//	//	// g, 0xc13..1283 proj_member_1
-//	//	return []string{member, fmt.Sprintf("%s%d", api.RoleProjMemberPrefix, proj.ID)}
-//	//})
-//	//_, err = enforcer.RemoveGroupingPolicies(oldMemberGroupingPolicies)
-//	//if err != nil {
-//	//	ctx.JSON(http.StatusInternalServerError, err)
-//	//	return
-//	//}
-//
-//	// update project members
-//	proj.Members = req.Members
-//	err = model.ProjectModel.CreateOrUpdate(db, proj)
-//	if err != nil {
-//		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
-//		return
-//	}
-//
-//	//// add roles for new members
-//	//newMemberGroupingPolicies := lo.Map(req.Members, func(member string, _ int) []string {
-//	//	// g, 0xc13..1283 proj_member_1
-//	//	return []string{strings.ToLower(member), fmt.Sprintf("%s%d", api.RoleProjMemberPrefix, proj.ID)}
-//	//})
-//	//_, err = enforcer.AddGroupingPolicies(newMemberGroupingPolicies)
-//	//if err != nil {
-//	//	ctx.JSON(http.StatusInternalServerError, err)
-//	//	return
-//	//}
-//
-//	ctx.JSON(http.StatusOK, api.Success(nil))
-//}
 
 type UpdateStaffsReq struct {
 	Action   string   `json:"action"` // `add` or `remove`
@@ -845,6 +745,14 @@ func UpdateBudget(ctx *gin.Context) {
 // ------ Project Proposals ------ ------
 
 // AddRelatedProposal `POST /projects/:id/add_related_proposal?proposalIDs=1&proposalIDs=2`
+//
+//	@Summary		Add related proposals to the project
+//	@Router			/projects/:id/add_related_proposal [post]
+//	@Tags			project
+//	@Param			id	path	number	true	"project ID"
+//	@Param			proposalIDs	query	[]string	true	"proposal ID list"
+//
+//	@Success		200		{string}	string		"ok"
 func AddRelatedProposal(ctx *gin.Context) {
 	idParam := ctx.Param("id")
 	id, err := strconv.Atoi(idParam)
