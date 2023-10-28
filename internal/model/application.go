@@ -58,9 +58,9 @@ type Application struct {
 	EntityType string `json:"entity_type" gorm:"index"`
 	EntityId   uint   `json:"entity_id" gorm:"index"`
 
-	// Save season name in application table
-	// Note: this may be changed to using separated Season table for saving some extra info
-	SeasonName string `json:"season_name" gorm:"index"`
+	// Season information of application
+	SeasonId int    `json:"season_id"`
+	Season   Season `json:"season"`
 }
 
 type ApplicationAuditLog struct {
