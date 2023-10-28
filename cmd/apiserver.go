@@ -11,6 +11,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	"github.com/theseed-labs/os-backend/internal/api"
+	"github.com/theseed-labs/os-backend/internal/api/app_bundle"
 	"github.com/theseed-labs/os-backend/internal/api/application"
 	"github.com/theseed-labs/os-backend/internal/api/city_hall"
 	"github.com/theseed-labs/os-backend/internal/api/event"
@@ -211,6 +212,10 @@ func main() {
 		applicationGroup.POST("/:id/reject", application.Reject)
 		applicationGroup.POST("/:id/complete", application.Complete)
 		applicationGroup.POST("/:id/process", application.Process)
+
+		appBundleGroup := authorizedGroup.Group("/app_bundles")
+		appBundleGroup.GET("/", app_bundle.ListAppBundle)
+		appBundleGroup.POST("/", app_bundle.CreateAppBundle)
 
 		authorizedGroup.POST("/apps_approve", application.BatchApprove)
 		authorizedGroup.POST("/apps_reject", application.BatchReject)
