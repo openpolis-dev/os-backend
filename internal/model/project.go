@@ -62,7 +62,7 @@ func (*projectModel) List(db *gorm.DB, status string, page *gormfind.Page, showS
 		querySeg = querySeg.Where("is_special = false")
 	}
 	if status != "" {
-		querySeg.Where("status = ?", status)
+		querySeg = querySeg.Where("status = ?", status)
 	}
 
 	total, err = gormfind.Count(querySeg)
