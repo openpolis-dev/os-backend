@@ -39,6 +39,8 @@ type (
 	UpdateReq struct {
 		LogoStr string `json:"logo"`
 		Name    string `json:"name"`
+		Intro   string `json:"intro"`
+		Desc    string `json:"desc"`
 	}
 	DetailReply struct {
 		model.Guild
@@ -237,6 +239,8 @@ func Update(ctx *gin.Context) {
 	// update name
 	guild.Logo = logoUrl
 	guild.Name = req.Name
+	guild.Intro = req.Intro
+	guild.Desc = req.Desc
 	err = model.GuildModel.CreateOrUpdate(db, guild)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
