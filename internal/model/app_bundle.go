@@ -1,6 +1,11 @@
 package model
 
-import "time"
+import (
+	"time"
+
+	"github.com/xiaosongfu/gormfind"
+	"gorm.io/gorm"
+)
 
 type AppBundle struct {
 	ID uint `gorm:"primaryKey"`
@@ -48,4 +53,23 @@ type AppBundleAuditLog struct {
 
 	// ExtraData saves some additional data for the operation, e.g. reject reason
 	ExtraData string `json:"extra_data"`
+}
+
+func ListAppBundles(db *gorm.DB, state string, page *gormfind.Page) (rcds []*AppBundle, total int64, err error) {
+	querySeg := db.Model(&AppBundle{})
+	if state != "" {
+		querySeg = querySeg.Where("state = ?", state)
+	}
+
+	total, err = gormfind.Count(querySeg)
+	if err != nil {
+		return
+	}
+
+	rcds, err = gormfind.Rows[AppBundle](querySeg, page)
+	if err != nil {
+		return
+	}
+
+	return
 }
