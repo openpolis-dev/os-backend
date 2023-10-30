@@ -87,6 +87,10 @@ func main() {
 	// setup database
 	storage.InitGormDB(cfg.DataSource.Dsn)
 	db := storage.GetGormDB()
+	err = storage.SeedDbRecords(db)
+	if err != nil {
+		panic(err)
+	}
 
 	// setup S3 uploader manager
 	err = sdk.InitAwsClient(cfg.AwsConfig.AccessKey, cfg.AwsConfig.SecretKey, cfg.AwsConfig.Region, cfg.AwsConfig.BucketName)
