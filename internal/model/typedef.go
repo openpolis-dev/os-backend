@@ -2,6 +2,7 @@ package model
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -181,23 +182,6 @@ func (r *FrontendApplicationRecord) ToXlsx() []any {
 	}
 }
 
-// jointAppProjectFields saves query fields of join query of application and project
-const jointAppProjectFields = `applications.id,
-applications.type,
-applications.applicant,
-applications.state,
-applications.reject_reason,
-applications.complete_message,
-applications.created_at,
-applications.updated_at,
-applications.entity_type,
-applications.entity_id,
-applications.detailed_data,
-applications.detailed_type,
-applications.comment,
-projects.name as prj_name,
-projects.id as prj_id`
-
 // jointAppEntityRslt saves results returned by application and project join query
 type jointAppEntityRslt struct {
 	Application *Application `gorm:"embedded"`
@@ -237,7 +221,7 @@ func (r *jointAppEntityRslt) ToFrontedApplicationRecord(db *gorm.DB) *FrontendAp
 		Where(&ApplicationAuditLog{ApplicationID: r.Application.ID}).
 		Where("operation IN ?", []string{AuditActionApprove, AuditActionReject}).First(&auditlog).Error
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			// No record found, skip
 		} else {
 			return nil
