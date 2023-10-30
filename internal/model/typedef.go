@@ -182,7 +182,7 @@ func (r *FrontendApplicationRecord) ToXlsx() []any {
 	}
 }
 
-// jointAppEntityRslt saves results returned by application and project join query
+// jointAppEntityRslt saves applications records by guild and project join query
 type jointAppEntityRslt struct {
 	Application *Application `gorm:"embedded"`
 	EntityName  string       `json:"entity_name"`
@@ -280,4 +280,25 @@ type NewApplicationRequest struct {
 	TokenAmount      decimal.Decimal `json:"token_amount"`
 	DetailedType     string          `json:"detailed_type"`
 	Comment          string          `json:"comment"`
+}
+
+// App Bundle related types and logic
+
+type ListAppBundleQueryParams struct {
+	Page      int    `form:"page"`
+	Size      int    `form:"size"`
+	SortField string `form:"sort_field"`
+	SortOrder string `form:"sort_order"`
+	State     string `form:"state"`
+	Entity    string `form:"entity"`
+	EntityId  string `form:"entity_id"`
+	StartDate string `form:"start_date"`
+	EndDate   string `form:"end_date"`
+	Applicant string `form:"applicant"`
+}
+
+// jointAppBundleEntityRslt saves app bundles records by guild and project join query
+type jointAppBundleEntityRslt struct {
+	AppBundles *AppBundle `gorm:"embedded"`
+	EntityName string     `json:"entity_name"`
 }
