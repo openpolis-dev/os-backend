@@ -3,10 +3,11 @@ package model
 import "time"
 
 type Season struct {
-	ID uint `json:"id" gorm:"primaryKey"`
+	ID uint `gorm:"primaryKey"`
 
-	Name string `json:"name" gorm:"uniq"`
+	Name string `gorm:"uniqueIndex"`
 
-	StartAt time.Time
+	// TODO: This field do not contains timezone info, need to review code about this
+	StartAt time.Time `gorm:"index"`
 	EndAt   time.Time
 }

@@ -297,8 +297,17 @@ type ListAppBundleQueryParams struct {
 	Applicant string `form:"applicant"`
 }
 
-// jointAppBundleEntityRslt saves app bundles records by guild and project join query
-type jointAppBundleEntityRslt struct {
-	AppBundles *AppBundle `gorm:"embedded"`
+// JointAppBundleEntityRslt saves app bundles records by guild and project join query
+type JointAppBundleEntityRslt struct {
+	AppBundle  *AppBundle `gorm:"embedded"`
 	EntityName string     `json:"entity_name"`
+}
+
+// NewAppBundleRequest saves new application bundle request data, the records inside uses NewApplicationRequest directly
+// The only type in newAppBundle is newApplication is newReward
+type NewAppBundleRequest struct {
+	Entity   string                   `json:"entity"`
+	EntityId uint                     `json:"entity_id"`
+	Comment  string                   `json:"comment"`
+	Records  []*NewApplicationRequest `json:"records"`
 }

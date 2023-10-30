@@ -59,8 +59,10 @@ type Application struct {
 	EntityId   uint   `json:"entity_id" gorm:"index"`
 
 	// Season information of application
-	SeasonId int    `json:"season_id"`
-	Season   Season `json:"season"`
+	SeasonId uint    `json:"season_id"`
+	Season   *Season `json:"season"`
+
+	BundleId uint `json:"bundle_id"`
 }
 
 type ApplicationAuditLog struct {
