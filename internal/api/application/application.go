@@ -17,6 +17,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
+	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/xuri/excelize/v2"
@@ -228,8 +229,8 @@ func Download(ctx *gin.Context) {
 	}
 
 	lang := api.GetLangFromQuery(ctx, "en")
-	headerStr := api.ApplicationDownloadHeader[lang]
-	if header, found := api.ApplicationDownloadHeader[lang]; found {
+	headerStr := internal.ApplicationDownloadHeader[lang]
+	if header, found := internal.ApplicationDownloadHeader[lang]; found {
 		headerStr = header
 	}
 
@@ -328,8 +329,8 @@ func Download(ctx *gin.Context) {
 
 func DownloadUploadTemplate(ctx *gin.Context) {
 	lang := api.GetLangFromQuery(ctx, "en")
-	headerStr := api.ApplicationUploadTemplateHeader[lang]
-	if header, found := api.ApplicationUploadTemplateHeader[lang]; found {
+	headerStr := internal.ApplicationUploadTemplateHeader[lang]
+	if header, found := internal.ApplicationUploadTemplateHeader[lang]; found {
 		headerStr = header
 	}
 

@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/samber/lo"
-	"github.com/theseed-labs/os-backend/internal/api"
+	"github.com/theseed-labs/os-backend/internal"
 	"gorm.io/gorm"
 )
 
@@ -161,7 +161,7 @@ func GenerateFrontendApplicationRecords(db *gorm.DB, queryParams *ListApplicatio
 	}
 
 	if queryParams.Size == 0 {
-		queryParams.Size = api.DefaultPageSize
+		queryParams.Size = internal.DefaultPageSize
 	}
 
 	if queryParams.Page == 0 {
@@ -203,7 +203,7 @@ func GenerateFrontendApplicationRecords(db *gorm.DB, queryParams *ListApplicatio
 	return rslt, total, nil
 }
 
-func QueryAppBundleRecords(db *gorm.DB, queryParams *ListAppBundleQueryParams) ([]jointAppBundleEntityRslt, int64, error) {
+func QueryAppBundleRecords(db *gorm.DB, queryParams *ListAppBundleQueryParams) ([]JointAppBundleEntityRslt, int64, error) {
 	clearedEntity := strings.ToLower(strings.TrimSpace(queryParams.Entity))
 	clearedState := strings.ToLower(strings.TrimSpace(queryParams.State))
 
@@ -262,7 +262,7 @@ func QueryAppBundleRecords(db *gorm.DB, queryParams *ListAppBundleQueryParams) (
 	}
 
 	if queryParams.Size == 0 {
-		queryParams.Size = api.DefaultPageSize
+		queryParams.Size = internal.DefaultPageSize
 	}
 
 	if queryParams.Page == 0 {
@@ -278,7 +278,7 @@ func QueryAppBundleRecords(db *gorm.DB, queryParams *ListAppBundleQueryParams) (
 	total := db.Raw(querySQL+whereClause, whereParams).Scan(&[]map[string]any{}).RowsAffected
 
 	// TODO: This is the mysql style, need to find way to get db schema here and implement pg way
-	whereClause += fmt.Sprintf("\nORDER BY applications.%s %s LIMIT @offset, @limit", queryParams.SortField, queryParams.SortOrder)
+	whereClause += fmt.Sprintf("\nORDER BY app_bundles.%s %s LIMIT @offset, @limit", queryParams.SortField, queryParams.SortOrder)
 	whereParams["offset"] = (queryParams.Page - 1) * queryParams.Size
 	whereParams["limit"] = queryParams.Size
 
@@ -287,7 +287,7 @@ func QueryAppBundleRecords(db *gorm.DB, queryParams *ListAppBundleQueryParams) (
 	})
 	fmt.Printf("TTT: sql: %+s\n", sql)
 
-	var rcds []jointAppBundleEntityRslt
+	var rcds []JointAppBundleEntityRslt
 	err := db.Raw(querySQL+whereClause, whereParams).Find(&rcds).Error
 	if err != nil {
 		return nil, 0, err
@@ -303,4 +303,12 @@ func ConvertTimeToTzString(t time.Time, timeLoc string, timeFormat string) (stri
 	}
 	locTime := t.In(loc) // convert to UTC+8 timezone
 	return locTime.Format(timeFormat), nil
+}
+
+func SetDefaultMapValue[K comparable, V any](origMap map[K]V, key K, value V) {
+	_, ok := origMap[key]
+	if !ok {
+		origMap[key] = value
+		fmt.Println("Key", key, "does not exist in the map")
+	}
 }
