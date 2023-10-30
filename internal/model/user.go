@@ -61,7 +61,7 @@ func (*userModel) TryGetUsername(db *gorm.DB, wallet string) (string, error) {
 	}
 }
 
-func (u *User) BuildSppUpdateProfilePayload(wallet string) *sdk.SppUpdateProfileRequest {
+func (u *User) BuildSppUpdateProfilePayload() *sdk.SppUpdateProfileRequest {
 	sppReq := &sdk.SppUpdateProfileRequest{
 		Nickname:       u.Name,
 		Bio:            u.Bio,
