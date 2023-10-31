@@ -314,6 +314,38 @@ paths:
       summary: List all application bundles match the query params
       tags:
       - app_bundle
+  /app_bundles/:id/approve:
+    post:
+      parameters:
+      - description: app bundle ID
+        in: path
+        name: id
+        required: true
+        type: number
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: Approve app bundle and associated applications
+      tags:
+      - app_bundle
+  /app_bundles/:id/reject:
+    post:
+      parameters:
+      - description: app bundle ID
+        in: path
+        name: id
+        required: true
+        type: number
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: Reject app bundle and associated applications
+      tags:
+      - app_bundle
   /projects:
     get:
       description: This api parses passed in pagination query params,

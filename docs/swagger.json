@@ -84,6 +84,56 @@
                 }
             }
         },
+        "/app_bundles/:id/approve": {
+            "post": {
+                "tags": [
+                    "app_bundle"
+                ],
+                "summary": "Approve app bundle and associated applications",
+                "parameters": [
+                    {
+                        "type": "number",
+                        "description": "app bundle ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/app_bundles/:id/reject": {
+            "post": {
+                "tags": [
+                    "app_bundle"
+                ],
+                "summary": "Reject app bundle and associated applications",
+                "parameters": [
+                    {
+                        "type": "number",
+                        "description": "app bundle ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/projects": {
             "get": {
                 "description": "This api parses passed in pagination query params,",

@@ -46,16 +46,16 @@ func BuildResponseFromDatabaseSearchResult() {
 // ListAppBundle returns application bundles with passed in query types
 // TODO: Update query params
 //
-//	@Summary		List all application bundles match the query params
-//	@Router			/app_bundles [get]
-//	@Tags			app_bundle
-//	@Param			status		query		string	false	"status of application bundle"	Enum(open approved rejected processing completed)
-//	@Param			page		query		string	false	"which page"
-//	@Param			size		query		string	false	"size of each page"
-//	@Param			sort_field	query		string	false	"sort by which field"
-//	@Param			sort_order	query		string	false	"order of sort"	Enum(asc desc)
+//	@Summary	List all application bundles match the query params
+//	@Router		/app_bundles [get]
+//	@Tags		app_bundle
+//	@Param		status		query		string	false	"status of application bundle"	Enum(open approved rejected processing completed)
+//	@Param		page		query		string	false	"which page"
+//	@Param		size		query		string	false	"size of each page"
+//	@Param		sort_field	query		string	false	"sort by which field"
+//	@Param		sort_order	query		string	false	"order of sort"	Enum(asc desc)
 //
-//	@Success		200			{object}	AppBundleResponseRecord
+//	@Success	200			{object}	AppBundleResponseRecord
 func ListAppBundle(ctx *gin.Context) {
 	var err error
 	db := api.ForContextOnlyDB(ctx)
@@ -141,12 +141,12 @@ func ListAppBundle(ctx *gin.Context) {
 
 // CreateAppBundle returns application bundles with passed in query types
 //
-//	@Summary		List all application bundles match the query params
-//	@Router			/app_bundles [post]
-//	@Tags			app_bundle
-//	@Param			request body model.NewAppBundleRequest true "New application bundle request"
+//	@Summary	List all application bundles match the query params
+//	@Router		/app_bundles [post]
+//	@Tags		app_bundle
+//	@Param		request	body		model.NewAppBundleRequest	true	"New application bundle request"
 //
-//	@Success		201			{string}	AppBundleResponseRecord
+//	@Success	201		{string}	AppBundleResponseRecord
 func CreateAppBundle(ctx *gin.Context) {
 	var newAppBundleReq model.NewAppBundleRequest
 	if err := ctx.BindJSON(&newAppBundleReq); err != nil {
@@ -253,11 +253,27 @@ func CreateAppBundle(ctx *gin.Context) {
 	ctx.JSON(http.StatusCreated, api.Success(nil))
 }
 
+// ApproveAppBundle approve appBundle and associated applications
+//
+//	@Summary	Approve app bundle and associated applications
+//	@Router		/app_bundles/:id/approve [post]
+//	@Tags		app_bundle
+//	@Param		id	path		number	true	"app bundle ID"
+//
+//	@Success	200	{string}	nil
 func ApproveAppBundle(ctx *gin.Context) {
 	updateAppBundleToNewState(ctx, model.ApplicationStateApproved)
 	ctx.JSON(http.StatusOK, api.Success(nil))
 }
 
+// RejectAppBundle reject appBundle and associated applications
+//
+//	@Summary	Reject app bundle and associated applications
+//	@Router		/app_bundles/:id/reject [post]
+//	@Tags		app_bundle
+//	@Param		id	path		number	true	"app bundle ID"
+//
+//	@Success	200	{string}	nil
 func RejectAppBundle(ctx *gin.Context) {
 	updateAppBundleToNewState(ctx, model.ApplicationStateRejected)
 	ctx.JSON(http.StatusOK, api.Success(nil))

@@ -28,13 +28,15 @@ import (
 	"github.com/theseed-labs/os-backend/internal/middleware"
 	"github.com/theseed-labs/os-backend/internal/sdk"
 	"github.com/theseed-labs/os-backend/internal/storage"
+
+	_ "github.com/theseed-labs/os-backend/docs"
 )
 
 //	@title			OS Backend API service
 //	@version		1.0
 //	@license.name	MIT
 //	@host			https://test-api.seedao.tech
-//	@basePath			/v1
+//	@basePath		/v1
 
 func main() {
 	// read config data

@@ -746,13 +746,13 @@ func UpdateBudget(ctx *gin.Context) {
 
 // AddRelatedProposal `POST /projects/:id/add_related_proposal?proposalIDs=1&proposalIDs=2`
 //
-//	@Summary		Add related proposals to the project
-//	@Router			/projects/:id/add_related_proposal [post]
-//	@Tags			project
-//	@Param			id	path	number	true	"project ID"
-//	@Param			proposalIDs	query	[]string	true	"proposal ID list"
+//	@Summary	Add related proposals to the project
+//	@Router		/projects/:id/add_related_proposal [post]
+//	@Tags		project
+//	@Param		id			path		number		true	"project ID"
+//	@Param		proposalIDs	query		[]string	true	"proposal ID list"
 //
-//	@Success		200		{string}	string		"ok"
+//	@Success	200			{string}	string		"ok"
 func AddRelatedProposal(ctx *gin.Context) {
 	idParam := ctx.Param("id")
 	id, err := strconv.Atoi(idParam)

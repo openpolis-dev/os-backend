@@ -13,7 +13,8 @@ build: $(OUTPUT_BINS)
 docs: ${DOCS_FILES}
 
 ${DOCS_FILES}: $(GO_INTERNAL_SRC) $(GO_CMD_SRC)
-	swag init -g ../../cmd/apiserver.go -d internal/api,internal/model --parseDependency --parseInternal
+	swag fmt
+	swag init -g ../../cmd/apiserver.go -d internal/api,internal/model --parseDependency
 
 internal/models/%.pb.go: proto/%.proto
 	protoc --proto_path=proto --go_out=internal/models --go_opt=paths=source_relative $<
