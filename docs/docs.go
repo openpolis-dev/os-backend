@@ -326,6 +326,19 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/seasons/": {
+            "get": {
+                "summary": "returns all seasons currently existing in database",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.Season"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -573,6 +586,24 @@ const docTemplate = `{
             "x-enum-varnames": [
                 "ProjectStatusOpen"
             ]
+        },
+        "model.Season": {
+            "type": "object",
+            "properties": {
+                "endAt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "startAt": {
+                    "description": "TODO: This field do not contains timezone info, need to review code about this",
+                    "type": "string"
+                }
+            }
         },
         "model.SpecialProjectType": {
             "type": "string",

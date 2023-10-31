@@ -22,6 +22,7 @@ import (
 	"github.com/theseed-labs/os-backend/internal/api/project"
 	"github.com/theseed-labs/os-backend/internal/api/publicdata"
 	"github.com/theseed-labs/os-backend/internal/api/push"
+	"github.com/theseed-labs/os-backend/internal/api/season"
 	"github.com/theseed-labs/os-backend/internal/api/treasury"
 	"github.com/theseed-labs/os-backend/internal/api/user"
 	"github.com/theseed-labs/os-backend/internal/config"
@@ -186,6 +187,10 @@ func main() {
 		publicData.GET("/contract/seed", publicdata.SeedData)
 		publicData.GET("/contract/scr", publicdata.SCRData)
 
+		// season data
+		seasonsData := v1.Group("/seasons")
+		seasonsData.GET("/", season.List)
+
 		// foo routers
 	}
 	// --> auth required
@@ -225,6 +230,7 @@ func main() {
 		appBundleGroup.POST("/:id/approve", app_bundle.ApproveAppBundle)
 		appBundleGroup.POST("/:id/reject", app_bundle.RejectAppBundle)
 
+		// batch application routers
 		authorizedGroup.POST("/apps_approve", application.BatchApprove)
 		authorizedGroup.POST("/apps_reject", application.BatchReject)
 		authorizedGroup.POST("/apps_process", application.BatchProcess)

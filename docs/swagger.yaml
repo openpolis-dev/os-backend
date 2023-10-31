@@ -162,6 +162,19 @@ definitions:
     type: string
     x-enum-varnames:
     - ProjectStatusOpen
+  model.Season:
+    properties:
+      endAt:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      startAt:
+        description: 'TODO: This field do not contains timezone info, need to review
+          code about this'
+        type: string
+    type: object
   model.SpecialProjectType:
     enum:
     - city_hall
@@ -469,4 +482,12 @@ paths:
       summary: Close a project
       tags:
       - project
+  /seasons/:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Season'
+      summary: returns all seasons currently existing in database
 swagger: "2.0"
