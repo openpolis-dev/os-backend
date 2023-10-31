@@ -32,9 +32,11 @@ definitions:
           type:
             type: string
         type: object
+      id:
+        type: integer
       records:
         items:
-          $ref: '#/definitions/model.Application'
+          $ref: '#/definitions/model.FrontendApplicationRecord'
         type: array
       reviewer:
         type: string
@@ -47,81 +49,54 @@ definitions:
       submitter:
         type: string
     type: object
-  model.Application:
-    properties:
-      applicant:
-        description: Member send this application
-        type: string
-      bundle_id:
-        type: integer
-      comment:
-        description: Comment saves some user entered data
-        type: string
-      complete_message:
-        description: CompleteMessage saves
-        type: string
-      created_at:
-        type: string
-      detailed_data:
-        description: |-
-          DetailedData saves application detailed data
-          Currently the design is using this struct to save serialized detailed data for all applications.
-          The data will be deserialized to specified struct before using
-        items:
-          type: integer
-        type: array
-      detailed_type:
-        description: DetailedType means a sub category of this application
-        type: string
-      entity_id:
-        type: integer
-      entity_type:
-        description: |-
-          Entity means this application's refer, which maybe project or guild.
-          And the field EntityId is the db record ID for Project or Guild table
-        type: string
-      id:
-        description: unique ID for this request
-        type: integer
-      reject_reason:
-        description: Saves the reject reason if this application state is rejected
-        type: string
-      season:
-        $ref: '#/definitions/model.Season'
-      season_id:
-        description: Season information of application
-        type: integer
-      state:
-        allOf:
-        - $ref: '#/definitions/model.ApplicationState'
-        description: Application state, which contains open/approved/rejected/processing/completed
-      type:
-        allOf:
-        - $ref: '#/definitions/model.ApplicationType'
-        description: application type
-      updated_at:
-        type: string
-    type: object
   model.ApplicationState:
     enum:
     - open
     type: string
     x-enum-varnames:
     - ApplicationStateOpen
-  model.ApplicationType:
-    enum:
-    - CLOSE_PROJECT
-    - NEW_REWARD
-    type: string
-    x-enum-varnames:
-    - ApplicationCloseProject
-    - ApplicationNewReward
   model.BudgetType:
     enum:
     - credit
     type: string
     x-enum-varnames:
     - BudgetTypeCredit
+  model.FrontendApplicationRecord:
+    properties:
+      amount:
+        type: string
+      application_id:
+        type: integer
+      asset_name:
+        type: string
+      budget_source:
+        description: the data is from name field of project or guild
+        type: string
+      comment:
+        type: string
+      created_at:
+        type: string
+      detailed_type:
+        type: string
+      entity_name:
+        description: name field value from specified entity table
+        type: string
+      reviewer_name:
+        type: string
+      reviewer_wallet:
+        type: string
+      status:
+        description: application status
+        type: string
+      submitter_name:
+        type: string
+      submitter_wallet:
+        type: string
+      target_user_wallet:
+        type: string
+      transaction_ids:
+        type: string
+    type: object
   model.NewAppBundleRequest:
     properties:
       comment:
@@ -137,11 +112,11 @@ definitions:
     type: object
   model.NewApplicationRequest:
     properties:
-      comment:
-        type: string
-      credit_amount:
+      amount:
         type: number
-      credit_asset_name:
+      asset_name:
+        type: string
+      comment:
         type: string
       detailed_type:
         type: string
@@ -150,10 +125,6 @@ definitions:
       entity_id:
         type: integer
       target_user_wallet:
-        type: string
-      token_amount:
-        type: number
-      token_asset_name:
         type: string
       type:
         type: string
@@ -191,19 +162,6 @@ definitions:
     type: string
     x-enum-varnames:
     - ProjectStatusOpen
-  model.Season:
-    properties:
-      endAt:
-        type: string
-      id:
-        type: integer
-      name:
-        type: string
-      startAt:
-        description: 'TODO: This field do not contains timezone info, need to review
-          code about this'
-        type: string
-    type: object
   model.SpecialProjectType:
     enum:
     - city_hall

@@ -328,10 +328,13 @@ const docTemplate = `{
                         }
                     }
                 },
+                "id": {
+                    "type": "integer"
+                },
                 "records": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.Application"
+                        "$ref": "#/definitions/model.FrontendApplicationRecord"
                     }
                 },
                 "reviewer": {
@@ -351,81 +354,6 @@ const docTemplate = `{
                 }
             }
         },
-        "model.Application": {
-            "type": "object",
-            "properties": {
-                "applicant": {
-                    "description": "Member send this application",
-                    "type": "string"
-                },
-                "bundle_id": {
-                    "type": "integer"
-                },
-                "comment": {
-                    "description": "Comment saves some user entered data",
-                    "type": "string"
-                },
-                "complete_message": {
-                    "description": "CompleteMessage saves",
-                    "type": "string"
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "detailed_data": {
-                    "description": "DetailedData saves application detailed data\nCurrently the design is using this struct to save serialized detailed data for all applications.\nThe data will be deserialized to specified struct before using",
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "detailed_type": {
-                    "description": "DetailedType means a sub category of this application",
-                    "type": "string"
-                },
-                "entity_id": {
-                    "type": "integer"
-                },
-                "entity_type": {
-                    "description": "Entity means this application's refer, which maybe project or guild.\nAnd the field EntityId is the db record ID for Project or Guild table",
-                    "type": "string"
-                },
-                "id": {
-                    "description": "unique ID for this request",
-                    "type": "integer"
-                },
-                "reject_reason": {
-                    "description": "Saves the reject reason if this application state is rejected",
-                    "type": "string"
-                },
-                "season": {
-                    "$ref": "#/definitions/model.Season"
-                },
-                "season_id": {
-                    "description": "Season information of application",
-                    "type": "integer"
-                },
-                "state": {
-                    "description": "Application state, which contains open/approved/rejected/processing/completed",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/model.ApplicationState"
-                        }
-                    ]
-                },
-                "type": {
-                    "description": "application type",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/model.ApplicationType"
-                        }
-                    ]
-                },
-                "updated_at": {
-                    "type": "string"
-                }
-            }
-        },
         "model.ApplicationState": {
             "type": "string",
             "enum": [
@@ -433,17 +361,6 @@ const docTemplate = `{
             ],
             "x-enum-varnames": [
                 "ApplicationStateOpen"
-            ]
-        },
-        "model.ApplicationType": {
-            "type": "string",
-            "enum": [
-                "CLOSE_PROJECT",
-                "NEW_REWARD"
-            ],
-            "x-enum-varnames": [
-                "ApplicationCloseProject",
-                "ApplicationNewReward"
             ]
         },
         "model.BudgetType": {
@@ -454,6 +371,59 @@ const docTemplate = `{
             "x-enum-varnames": [
                 "BudgetTypeCredit"
             ]
+        },
+        "model.FrontendApplicationRecord": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "string"
+                },
+                "application_id": {
+                    "type": "integer"
+                },
+                "asset_name": {
+                    "type": "string"
+                },
+                "budget_source": {
+                    "description": "the data is from name field of project or guild",
+                    "type": "string"
+                },
+                "comment": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "detailed_type": {
+                    "type": "string"
+                },
+                "entity_name": {
+                    "description": "name field value from specified entity table",
+                    "type": "string"
+                },
+                "reviewer_name": {
+                    "type": "string"
+                },
+                "reviewer_wallet": {
+                    "type": "string"
+                },
+                "status": {
+                    "description": "application status",
+                    "type": "string"
+                },
+                "submitter_name": {
+                    "type": "string"
+                },
+                "submitter_wallet": {
+                    "type": "string"
+                },
+                "target_user_wallet": {
+                    "type": "string"
+                },
+                "transaction_ids": {
+                    "type": "string"
+                }
+            }
         },
         "model.NewAppBundleRequest": {
             "type": "object",
@@ -478,13 +448,13 @@ const docTemplate = `{
         "model.NewApplicationRequest": {
             "type": "object",
             "properties": {
-                "comment": {
-                    "type": "string"
-                },
-                "credit_amount": {
+                "amount": {
                     "type": "number"
                 },
-                "credit_asset_name": {
+                "asset_name": {
+                    "type": "string"
+                },
+                "comment": {
                     "type": "string"
                 },
                 "detailed_type": {
@@ -497,12 +467,6 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "target_user_wallet": {
-                    "type": "string"
-                },
-                "token_amount": {
-                    "type": "number"
-                },
-                "token_asset_name": {
                     "type": "string"
                 },
                 "type": {
@@ -559,24 +523,6 @@ const docTemplate = `{
             "x-enum-varnames": [
                 "ProjectStatusOpen"
             ]
-        },
-        "model.Season": {
-            "type": "object",
-            "properties": {
-                "endAt": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "startAt": {
-                    "description": "TODO: This field do not contains timezone info, need to review code about this",
-                    "type": "string"
-                }
-            }
         },
         "model.SpecialProjectType": {
             "type": "string",
