@@ -121,8 +121,8 @@ type FrontendApplicationRecord struct {
 	EntityName       string    `json:"entity_name"` // name field value from specified entity table
 	CreatedAt        time.Time `json:"created_at"`
 	TargetUserWallet string    `json:"target_user_wallet"`
-	TokenAmount      string    `json:"token_amount"`
-	CreditAmount     string    `json:"credit_amount"`
+	AssetName        string    `json:"asset_name"`
+	Amount           string    `json:"amount"`
 	BudgetSource     string    `json:"budget_source"` // the data is from name field of project or guild
 	Status           string    `json:"status"`        // application status
 	DetailedType     string    `json:"detailed_type"`
@@ -145,8 +145,8 @@ func (r *FrontendApplicationRecord) ToCSV() []string {
 	return []string{
 		createdAtStr,
 		r.TargetUserWallet,
-		r.CreditAmount,
-		r.TokenAmount,
+		r.AssetName,
+		r.Amount,
 		r.DetailedType,
 		r.BudgetSource,
 		r.Comment,
@@ -169,8 +169,8 @@ func (r *FrontendApplicationRecord) ToXlsx() []any {
 	return []any{
 		createdAtStr,
 		r.TargetUserWallet,
-		r.CreditAmount,
-		r.TokenAmount,
+		r.AssetName,
+		r.Amount,
 		r.DetailedType,
 		r.BudgetSource,
 		r.Comment,
@@ -189,8 +189,8 @@ type jointAppEntityRslt struct {
 }
 
 func (r *jointAppEntityRslt) ToFrontedApplicationRecord(db *gorm.DB) *FrontendApplicationRecord {
-	var tokenAmount decimal.Decimal
-	var creditAmount decimal.Decimal
+	var assetName string
+	var assetAmount decimal.Decimal
 	var targetUserWallet string
 	if r.Application.Type == ApplicationNewReward {
 		detailedData := NewRewardApplicationDetailedData{}
@@ -199,8 +199,10 @@ func (r *jointAppEntityRslt) ToFrontedApplicationRecord(db *gorm.DB) *FrontendAp
 			return nil
 		}
 
-		tokenAmount, _ = detailedData.AmountOfAssetType(BudgetTypeToken)
-		creditAmount, _ = detailedData.AmountOfAssetType(BudgetTypeCredit)
+		for name, rewardRecord := range detailedData.Assets {
+			assetName = name
+			assetAmount = rewardRecord.Amount
+		}
 
 		targetUserWallet = detailedData.TargetUserWallet
 	}
@@ -239,8 +241,8 @@ func (r *jointAppEntityRslt) ToFrontedApplicationRecord(db *gorm.DB) *FrontendAp
 		EntityName:       r.Application.EntityType,
 		CreatedAt:        r.Application.CreatedAt,
 		TargetUserWallet: targetUserWallet,
-		TokenAmount:      tokenAmount.String(),
-		CreditAmount:     creditAmount.String(),
+		AssetName:        assetName,
+		Amount:           assetAmount.String(),
 		BudgetSource:     r.EntityName,
 		Status:           string(r.Application.State),
 		DetailedType:     r.Application.DetailedType,
