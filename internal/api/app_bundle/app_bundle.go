@@ -140,6 +140,7 @@ func ListAppBundle(ctx *gin.Context) {
 //	@Summary		List all application bundles match the query params
 //	@Router			/app_bundles [post]
 //	@Tags			app_bundle
+//	@Param			request body model.NewAppBundleRequest true "New application bundle request"
 //
 //	@Success		201			{string}	AppBundleResponseRecord
 func CreateAppBundle(ctx *gin.Context) {
@@ -252,4 +253,12 @@ func CreateAppBundle(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusCreated, api.Success(nil))
+}
+
+func ApproveAppBundle(ctx *gin.Context) {
+
+}
+
+func RejectAppBundle(ctx *gin.Context) {
+
 }

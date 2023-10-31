@@ -1,0 +1,482 @@
+basePath: /v1
+definitions:
+  api.ListReplyData:
+    properties:
+      page:
+        type: integer
+      rows: {}
+      size:
+        type: integer
+      total:
+        type: integer
+    type: object
+  app_bundle.AppBundleResponseRecord:
+    properties:
+      assets:
+        items:
+          properties:
+            amount:
+              type: string
+            name:
+              type: string
+          type: object
+        type: array
+      comment:
+        type: string
+      entity:
+        properties:
+          id:
+            type: integer
+          name:
+            type: string
+          type:
+            type: string
+        type: object
+      records:
+        items:
+          $ref: '#/definitions/model.Application'
+        type: array
+      reviewer:
+        type: string
+      season_name:
+        type: string
+      state:
+        $ref: '#/definitions/model.ApplicationState'
+      submit_date:
+        type: string
+      submitter:
+        type: string
+    type: object
+  model.Application:
+    properties:
+      applicant:
+        description: Member send this application
+        type: string
+      bundle_id:
+        type: integer
+      comment:
+        description: Comment saves some user entered data
+        type: string
+      complete_message:
+        description: CompleteMessage saves
+        type: string
+      created_at:
+        type: string
+      detailed_data:
+        description: |-
+          DetailedData saves application detailed data
+          Currently the design is using this struct to save serialized detailed data for all applications.
+          The data will be deserialized to specified struct before using
+        items:
+          type: integer
+        type: array
+      detailed_type:
+        description: DetailedType means a sub category of this application
+        type: string
+      entity_id:
+        type: integer
+      entity_type:
+        description: |-
+          Entity means this application's refer, which maybe project or guild.
+          And the field EntityId is the db record ID for Project or Guild table
+        type: string
+      id:
+        description: unique ID for this request
+        type: integer
+      reject_reason:
+        description: Saves the reject reason if this application state is rejected
+        type: string
+      season:
+        $ref: '#/definitions/model.Season'
+      season_id:
+        description: Season information of application
+        type: integer
+      state:
+        allOf:
+        - $ref: '#/definitions/model.ApplicationState'
+        description: Application state, which contains open/approved/rejected/processing/completed
+      type:
+        allOf:
+        - $ref: '#/definitions/model.ApplicationType'
+        description: application type
+      updated_at:
+        type: string
+    type: object
+  model.ApplicationState:
+    enum:
+    - open
+    type: string
+    x-enum-varnames:
+    - ApplicationStateOpen
+  model.ApplicationType:
+    enum:
+    - CLOSE_PROJECT
+    - NEW_REWARD
+    type: string
+    x-enum-varnames:
+    - ApplicationCloseProject
+    - ApplicationNewReward
+  model.BudgetType:
+    enum:
+    - credit
+    type: string
+    x-enum-varnames:
+    - BudgetTypeCredit
+  model.NewAppBundleRequest:
+    properties:
+      comment:
+        type: string
+      entity:
+        type: string
+      entity_id:
+        type: integer
+      records:
+        items:
+          $ref: '#/definitions/model.NewApplicationRequest'
+        type: array
+    type: object
+  model.NewApplicationRequest:
+    properties:
+      comment:
+        type: string
+      credit_amount:
+        type: number
+      credit_asset_name:
+        type: string
+      detailed_type:
+        type: string
+      entity:
+        type: string
+      entity_id:
+        type: integer
+      target_user_wallet:
+        type: string
+      token_amount:
+        type: number
+      token_asset_name:
+        type: string
+      type:
+        type: string
+    type: object
+  model.ProjectBudget:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      project_id:
+        description: project_id
+        type: integer
+      remain_amount:
+        description: remain_amount
+        type: number
+      total_amount:
+        description: total_amount = used_amount + remain_amount
+        type: number
+      type:
+        allOf:
+        - $ref: '#/definitions/model.BudgetType'
+        description: budget type, credit or token
+      updated_at:
+        type: string
+      used_amount:
+        description: used_amount
+        type: number
+    type: object
+  model.ProjectStatus:
+    enum:
+    - open
+    type: string
+    x-enum-varnames:
+    - ProjectStatusOpen
+  model.Season:
+    properties:
+      endAt:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      startAt:
+        description: 'TODO: This field do not contains timezone info, need to review
+          code about this'
+        type: string
+    type: object
+  model.SpecialProjectType:
+    enum:
+    - city_hall
+    type: string
+    x-enum-varnames:
+    - SpecialProjectCityHall
+  project.BudgetParam:
+    properties:
+      budget_type:
+        $ref: '#/definitions/model.BudgetType'
+      name:
+        type: string
+      total_amount:
+        type: number
+    type: object
+  project.CreateReq:
+    properties:
+      budgets:
+        items:
+          $ref: '#/definitions/project.BudgetParam'
+        type: array
+      desc:
+        type: string
+      intro:
+        type: string
+      logo:
+        description: base64 encoded image string
+        type: string
+      members:
+        items:
+          type: string
+        type: array
+      name:
+        type: string
+      proposals:
+        items:
+          type: string
+        type: array
+      sponsors:
+        items:
+          type: string
+        type: array
+    type: object
+  project.DetailReply:
+    properties:
+      budgets:
+        items:
+          $ref: '#/definitions/model.ProjectBudget'
+        type: array
+      created_at:
+        type: string
+      creator:
+        type: string
+      desc:
+        type: string
+      id:
+        type: integer
+      intro:
+        type: string
+      is_special:
+        type: boolean
+      logo:
+        type: string
+      members:
+        items:
+          type: string
+        type: array
+      name:
+        type: string
+      proposals:
+        items:
+          type: string
+        type: array
+      special_type:
+        $ref: '#/definitions/model.SpecialProjectType'
+      sponsors:
+        items:
+          type: string
+        type: array
+      status:
+        allOf:
+        - $ref: '#/definitions/model.ProjectStatus'
+        description: 'Status may have those values: open/pending_close/closed'
+      updated_at:
+        type: string
+    type: object
+  project.UpdateReq:
+    properties:
+      desc:
+        type: string
+      intro:
+        type: string
+      logo:
+        type: string
+      name:
+        type: string
+    type: object
+host: https://test-api.seedao.tech
+info:
+  contact: {}
+  license:
+    name: MIT
+  title: OS Backend API service
+  version: "1.0"
+paths:
+  /app_bundles:
+    get:
+      parameters:
+      - description: status of application bundle
+        in: query
+        name: status
+        type: string
+      - description: which page
+        in: query
+        name: page
+        type: string
+      - description: size of each page
+        in: query
+        name: size
+        type: string
+      - description: sort by which field
+        in: query
+        name: sort_field
+        type: string
+      - description: order of sort
+        in: query
+        name: sort_order
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/app_bundle.AppBundleResponseRecord'
+      summary: List all application bundles match the query params
+      tags:
+      - app_bundle
+    post:
+      parameters:
+      - description: New application bundle request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.NewAppBundleRequest'
+      responses:
+        "201":
+          description: Created
+          schema:
+            type: string
+      summary: List all application bundles match the query params
+      tags:
+      - app_bundle
+  /projects:
+    get:
+      description: This api parses passed in pagination query params,
+      parameters:
+      - description: status of project
+        in: query
+        name: status
+        type: string
+      - description: which page
+        in: query
+        name: page
+        type: string
+      - description: size of each page
+        in: query
+        name: size
+        type: string
+      - description: sort by which field
+        in: query
+        name: sort_field
+        type: string
+      - description: order of sort
+        in: query
+        name: sort_order
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.ListReplyData'
+      summary: List all projects match the query params
+      tags:
+      - project
+    post:
+      description: This api create a project record with passed in data
+      parameters:
+      - description: new project request data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/project.CreateReq'
+      responses:
+        "201":
+          description: Created
+          schema:
+            type: string
+      summary: Create a project with passed in data
+      tags:
+      - project
+  /projects/:id:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/project.DetailReply'
+      summary: show detail of a project
+      tags:
+      - project
+    put:
+      description: This api update a project record with passed in data
+      parameters:
+      - description: id of the project
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: update project info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/project.UpdateReq'
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: Update project information
+      tags:
+      - project
+  /projects/:id/add_related_proposal:
+    post:
+      parameters:
+      - description: project ID
+        in: path
+        name: id
+        required: true
+        type: number
+      - collectionFormat: csv
+        description: proposal ID list
+        in: query
+        items:
+          type: string
+        name: proposalIDs
+        required: true
+        type: array
+      responses:
+        "200":
+          description: ok
+          schema:
+            type: string
+      summary: Add related proposals to the project
+      tags:
+      - project
+  /projects/:id/close:
+    post:
+      description: This api close specified project, admin permission is required
+        for this operation
+      parameters:
+      - description: project ID
+        in: path
+        name: id
+        required: true
+        type: number
+      responses:
+        "200":
+          description: ok
+          schema:
+            type: string
+      summary: Close a project
+      tags:
+      - project
+swagger: "2.0"

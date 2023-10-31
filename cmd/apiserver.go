@@ -10,6 +10,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/api/app_bundle"
 	"github.com/theseed-labs/os-backend/internal/api/application"
@@ -226,6 +228,8 @@ func main() {
 		appBundleGroup := authorizedGroup.Group("/app_bundles")
 		appBundleGroup.GET("/", app_bundle.ListAppBundle)
 		appBundleGroup.POST("/", app_bundle.CreateAppBundle)
+		appBundleGroup.POST("/:id/approve", app_bundle.ApproveAppBundle)
+		appBundleGroup.POST("/:id/reject", app_bundle.RejectAppBundle)
 
 		authorizedGroup.POST("/apps_approve", application.BatchApprove)
 		authorizedGroup.POST("/apps_reject", application.BatchReject)
@@ -263,8 +267,7 @@ func main() {
 		// foo routers
 	}
 
-	r.StaticFile("/_doc/apispec", "./_doc/api.html")
-	r.StaticFile("/_doc/api.yml", "./_doc/api.yml")
+	r.GET("/_docs/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	_ = r.Run()
 }
