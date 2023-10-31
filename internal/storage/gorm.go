@@ -58,11 +58,27 @@ func InitGormDB(dsn string) {
 func SeedDbRecords(db *gorm.DB) error {
 	prjTz := time.FixedZone("UTF+8", int((8 * time.Hour).Seconds()))
 	seasons := []model.Season{
-		{Name: "S0", StartAt: time.Date(1970, 1, 1, 0, 0, 0, 0, prjTz)},
-		{Name: "S1", StartAt: time.Date(2023, 3, 1, 0, 0, 0, 0, prjTz)},
-		{Name: "S2", StartAt: time.Date(2023, 6, 1, 0, 0, 0, 0, prjTz)},
-		{Name: "S3", StartAt: time.Date(2023, 9, 1, 0, 0, 0, 0, prjTz)},
-		{Name: "S4", StartAt: time.Date(2023, 12, 1, 0, 0, 0, 0, prjTz)},
+		{
+			Name:    "S0",
+			StartAt: time.Date(1970, 1, 1, 0, 0, 0, 0, prjTz),
+			EndAt:   time.Date(2023, 2, 28, 0, 0, 0, 0, prjTz),
+		}, {
+			Name:    "S1",
+			StartAt: time.Date(2023, 3, 1, 0, 0, 0, 0, prjTz),
+			EndAt:   time.Date(2023, 5, 30, 0, 0, 0, 0, prjTz),
+		}, {
+			Name:    "S2",
+			StartAt: time.Date(2023, 6, 1, 0, 0, 0, 0, prjTz),
+			EndAt:   time.Date(2023, 8, 31, 0, 0, 0, 0, prjTz),
+		}, {
+			Name:    "S3",
+			StartAt: time.Date(2023, 9, 1, 0, 0, 0, 0, prjTz),
+			EndAt:   time.Date(2023, 11, 30, 0, 0, 0, 0, prjTz),
+		}, {
+			Name:    "S4",
+			StartAt: time.Date(2023, 12, 1, 0, 0, 0, 0, prjTz),
+			EndAt:   time.Date(2024, 2, 28, 0, 0, 0, 0, prjTz),
+		},
 	}
 	err := db.Clauses(clause.OnConflict{
 		UpdateAll: true,
