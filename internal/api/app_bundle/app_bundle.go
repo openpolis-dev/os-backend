@@ -74,6 +74,7 @@ func ListAppBundle(ctx *gin.Context) {
 		var appRcds []*model.Application
 		err = db.Model(&model.Application{}).
 			Where("bundle_id = ?", jointAppBundleEntityRcd.AppBundle.ID).
+			Where("state = ?", model.ApplicationStateOpen).
 			Find(&appRcds).
 			Error
 		if err != nil {
@@ -197,15 +198,9 @@ func CreateAppBundle(ctx *gin.Context) {
 			rewardDetailedData := model.NewRewardApplicationDetailedData{
 				TargetUserWallet: appRcd.TargetUserWallet,
 				Assets: map[string]model.NewRewardAssetRecord{
-					appRcd.CreditAssetName: {
-						AssetType: model.BudgetTypeCredit,
-						AssetName: appRcd.CreditAssetName,
-						Amount:    appRcd.CreditAmount,
-					},
-					appRcd.TokenAssetName: {
-						AssetType: model.BudgetTypeToken,
-						AssetName: appRcd.TokenAssetName,
-						Amount:    appRcd.TokenAmount,
+					appRcd.AssetName: {
+						AssetName: appRcd.AssetName,
+						Amount:    appRcd.Amount,
 					},
 				},
 			}

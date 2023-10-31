@@ -274,10 +274,8 @@ type NewApplicationRequest struct {
 	Entity           string          `json:"entity"`
 	EntityId         uint            `json:"entity_id"`
 	TargetUserWallet string          `json:"target_user_wallet"`
-	CreditAssetName  string          `json:"credit_asset_name"`
-	CreditAmount     decimal.Decimal `json:"credit_amount"`
-	TokenAssetName   string          `json:"token_asset_name"`
-	TokenAmount      decimal.Decimal `json:"token_amount"`
+	AssetName        string          `json:"asset_name"`
+	Amount           decimal.Decimal `json:"amount"`
 	DetailedType     string          `json:"detailed_type"`
 	Comment          string          `json:"comment"`
 }
