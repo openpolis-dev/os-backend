@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 )
@@ -301,6 +302,16 @@ type ListAppBundleQueryParams struct {
 type JointAppBundleEntityRslt struct {
 	AppBundle  *AppBundle `gorm:"embedded"`
 	EntityName string     `json:"entity_name"`
+}
+
+func (r *JointAppBundleEntityRslt) ToFrontendApplicationRecordList(db *gorm.DB) []*FrontendApplicationRecord {
+	return lo.Map(r.AppBundle.AppRecords, func(appRcd *Application, _ int) *FrontendApplicationRecord {
+		appEntityRcd := jointAppEntityRslt{
+			Application: appRcd,
+			EntityName:  r.EntityName,
+		}
+		return appEntityRcd.ToFrontedApplicationRecord(db)
+	})
 }
 
 // NewAppBundleRequest saves new application bundle request data, the records inside uses NewApplicationRequest directly

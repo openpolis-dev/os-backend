@@ -18,9 +18,10 @@ import (
 )
 
 type AppBundleResponseRecord struct {
-	SeasonName string               `json:"season_name"`
-	Records    []*model.Application `json:"records"`
-	Entity     struct {
+	SeasonName string                             `json:"season_name"`
+	Records    []*model.FrontendApplicationRecord `json:"records"`
+
+	Entity struct {
 		Id   uint   `json:"id"`
 		Name string `json:"name"`
 		Type string `json:"type"`
@@ -99,7 +100,7 @@ func ListAppBundle(ctx *gin.Context) {
 
 		return AppBundleResponseRecord{
 			SeasonName: jointAppBundleEntityRcd.AppBundle.Season.Name,
-			Records:    jointAppBundleEntityRcd.AppBundle.AppRecords,
+			Records:    jointAppBundleEntityRcd.ToFrontendApplicationRecordList(db),
 			Entity: struct {
 				Id   uint   `json:"id"`
 				Name string `json:"name"`
