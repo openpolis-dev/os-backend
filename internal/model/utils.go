@@ -205,7 +205,6 @@ func GenerateFrontendApplicationRecords(db *gorm.DB, queryParams *ListApplicatio
 
 func QueryAppBundleRecords(db *gorm.DB, queryParams *ListAppBundleQueryParams) ([]JointAppBundleEntityRslt, int64, error) {
 	clearedEntity := strings.ToLower(strings.TrimSpace(queryParams.Entity))
-	clearedState := strings.ToLower(strings.TrimSpace(queryParams.State))
 
 	if clearedEntity != "" {
 		if !lo.Contains([]string{"project", "guild"}, clearedEntity) {
@@ -214,26 +213,18 @@ func QueryAppBundleRecords(db *gorm.DB, queryParams *ListAppBundleQueryParams) (
 	}
 
 	querySQL := QueryAppBundlesWithEntityNameBaseSQL
-	whereClause := "\n"
-	whereParams := map[string]any{}
+	whereClause := "\nWHERE app_bundles.state = @state"
+	whereParams := map[string]any{"state": ApplicationState("open")}
 
 	// TODO: Dup logic start
 	if clearedEntity != "" {
-		whereClause += " AND applications.entity_type = @entity_type"
+		whereClause += " AND app_bundles.entity_type = @entity_type"
 		whereParams["entity_type"] = clearedEntity
 	}
 
 	if queryParams.Applicant != "" {
-		whereClause += " AND applications.applicant = @applicant"
+		whereClause += " AND app_bundles.applicant = @applicant"
 		whereParams["applicant"] = queryParams.Applicant
-	}
-
-	if queryParams.State != "" {
-		if !lo.Contains([]string{"open", "approved", "rejected", "processing", "completed"}, clearedState) {
-			return nil, 0, fmt.Errorf("unknown state %s", queryParams.State)
-		}
-		whereClause += " AND applications.state = @state"
-		whereParams["state"] = ApplicationState(clearedState)
 	}
 
 	if queryParams.StartDate != "" && queryParams.EndDate != "" {
@@ -247,13 +238,13 @@ func QueryAppBundleRecords(db *gorm.DB, queryParams *ListAppBundleQueryParams) (
 			return nil, 0, err
 		}
 
-		whereClause += " AND applications.created_at >= @start_date AND applications.created_at <= @end_date"
+		whereClause += " AND app_bundles.created_at >= @start_date AND app_bundles.created_at <= @end_date"
 		whereParams["start_date"] = startDate
 		whereParams["end_date"] = endDate
 	}
 
 	if len(strings.TrimSpace(queryParams.EntityId)) != 0 {
-		whereClause += " AND applications.entity_id = @entity_id"
+		whereClause += " AND app_bundles.entity_id = @entity_id"
 		whereParams["entity_id"] = strings.TrimSpace(queryParams.EntityId)
 	}
 
@@ -309,6 +300,5 @@ func SetDefaultMapValue[K comparable, V any](origMap map[K]V, key K, value V) {
 	_, ok := origMap[key]
 	if !ok {
 		origMap[key] = value
-		fmt.Println("Key", key, "does not exist in the map")
 	}
 }

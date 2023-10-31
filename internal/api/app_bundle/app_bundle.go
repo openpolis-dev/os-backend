@@ -2,6 +2,7 @@ package app_bundle
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -18,6 +19,7 @@ import (
 )
 
 type AppBundleResponseRecord struct {
+	ID         uint                               `json:"id"`
 	SeasonName string                             `json:"season_name"`
 	Records    []*model.FrontendApplicationRecord `json:"records"`
 
@@ -75,7 +77,6 @@ func ListAppBundle(ctx *gin.Context) {
 		var appRcds []*model.Application
 		err = db.Model(&model.Application{}).
 			Where("bundle_id = ?", jointAppBundleEntityRcd.AppBundle.ID).
-			Where("state = ?", model.ApplicationStateOpen).
 			Find(&appRcds).
 			Error
 		if err != nil {
@@ -99,8 +100,9 @@ func ListAppBundle(ctx *gin.Context) {
 		}
 
 		return AppBundleResponseRecord{
+			ID:         jointAppBundleEntityRcd.AppBundle.ID,
 			SeasonName: jointAppBundleEntityRcd.AppBundle.Season.Name,
-			Records:    jointAppBundleEntityRcd.ToFrontendApplicationRecordList(db),
+			Records:    model.ToFrontendApplicationRecordList(db, appRcds, jointAppBundleEntityRcd.EntityName),
 			Entity: struct {
 				Id   uint   `json:"id"`
 				Name string `json:"name"`
@@ -252,9 +254,88 @@ func CreateAppBundle(ctx *gin.Context) {
 }
 
 func ApproveAppBundle(ctx *gin.Context) {
-
+	updateAppBundleToNewState(ctx, model.ApplicationStateApproved)
+	ctx.JSON(http.StatusOK, api.Success(nil))
 }
 
 func RejectAppBundle(ctx *gin.Context) {
+	updateAppBundleToNewState(ctx, model.ApplicationStateRejected)
+	ctx.JSON(http.StatusOK, api.Success(nil))
+}
 
+func getRecordOrReturnNotFound(ctx *gin.Context, appBundle *model.AppBundle) {
+	id := ctx.Param("id")
+	db := api.ForContextOnlyDB(ctx)
+	tx := db.Preload("AppRecords").First(&appBundle, id)
+	log.Error().Msgf("App record: %+v", appBundle)
+
+	if errors.Is(tx.Error, gorm.ErrRecordNotFound) {
+		ctx.JSON(http.StatusNotFound, api.Reply{
+			Code: -1,
+			Msg:  fmt.Sprintf("application with id %s not found", id),
+		})
+		return
+	}
+}
+
+func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState) {
+	db := api.ForContextOnlyDB(ctx)
+	appBundleRcd := &model.AppBundle{}
+	getRecordOrReturnNotFound(ctx, appBundleRcd)
+
+	if appBundleRcd.State != model.ApplicationStateOpen {
+		ctx.JSON(http.StatusBadRequest, api.Reply{
+			Code: -1,
+			Msg:  fmt.Sprintf("app bundle %+v has non processable state", appBundleRcd),
+		})
+		return
+	}
+
+	user, enforcer, db, _ := api.ForContext(ctx)
+	ok, err := enforcer.Enforce(user.Wallet, api.ObjProjAndGuild, api.ActAuditApplication)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		return
+	}
+	if !ok {
+		ctx.JSON(http.StatusForbidden, api.Forbidden())
+		return
+	}
+
+	err = db.Transaction(func(tx *gorm.DB) error {
+		appBundleRcd.State = newState
+		err = tx.Save(&appBundleRcd).Error
+		if err != nil {
+			return err
+		}
+
+		err = tx.Model(model.AppBundleAuditLog{}).Create(&model.AppBundleAuditLog{
+			AppBundleId: appBundleRcd.ID,
+			AppBundle:   *appBundleRcd,
+			LogTs:       time.Now().In(internal.ProjectTimezone),
+			Operation:   model.AuditActionApprove,
+			Operator:    user.Wallet,
+			PreState:    "",
+			PostState:   model.ApplicationStateOpen,
+			ExtraData:   "",
+		}).Error
+		if err != nil {
+			return err
+		}
+		log.Error().Msgf("Records: %+v", appBundleRcd.AppRecords)
+		for _, appRcd := range appBundleRcd.AppRecords {
+			appRcd.State = newState
+			err = tx.Save(&appRcd).Error
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		return
+	}
 }

@@ -304,11 +304,11 @@ type JointAppBundleEntityRslt struct {
 	EntityName string     `json:"entity_name"`
 }
 
-func (r *JointAppBundleEntityRslt) ToFrontendApplicationRecordList(db *gorm.DB) []*FrontendApplicationRecord {
-	return lo.Map(r.AppBundle.AppRecords, func(appRcd *Application, _ int) *FrontendApplicationRecord {
+func ToFrontendApplicationRecordList(db *gorm.DB, appRcds []*Application, entityName string) []*FrontendApplicationRecord {
+	return lo.Map(appRcds, func(appRcd *Application, _ int) *FrontendApplicationRecord {
 		appEntityRcd := jointAppEntityRslt{
 			Application: appRcd,
-			EntityName:  r.EntityName,
+			EntityName:  entityName,
 		}
 		return appEntityRcd.ToFrontedApplicationRecord(db)
 	})
