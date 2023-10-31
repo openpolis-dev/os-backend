@@ -217,14 +217,6 @@ func main() {
 		// my guilds
 		authorizedGroup.GET("/my_guilds", guild.MyGuilds)
 
-		// application routers
-		applicationGroup := authorizedGroup.Group("/applications")
-		applicationGroup.POST("/", application.Create)
-		applicationGroup.POST("/:id/approve", application.Approve)
-		applicationGroup.POST("/:id/reject", application.Reject)
-		applicationGroup.POST("/:id/complete", application.Complete)
-		applicationGroup.POST("/:id/process", application.Process)
-
 		appBundleGroup := authorizedGroup.Group("/app_bundles")
 		appBundleGroup.GET("/", app_bundle.ListAppBundle)
 		appBundleGroup.POST("/", app_bundle.CreateAppBundle)
