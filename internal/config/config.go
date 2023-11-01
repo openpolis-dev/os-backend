@@ -70,6 +70,7 @@ type (
 		} `json:"contracts" yaml:"contracts"`
 		CacheInSeconds int64  `json:"cacheInSeconds" yaml:"cacheInSeconds"`
 		MainnetRPC     string `json:"mainnetRPC" yaml:"mainnetRPC"`
+		SppIndexerHost string `json:"sppIndexerHost" yaml:"sppIndexerHost"`
 	}
 )
 
