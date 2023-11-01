@@ -53,6 +53,12 @@ type Application struct {
 	// The data will be deserialized to specified struct before using
 	DetailedData datatypes.JSON `json:"detailed_data,omitempty"`
 
+	// In OS ver 2.0, a single application should only contain single asset record.
+	// The DetailedData field will be abandoned after v2.0
+	AssetName        string `json:"asset_name" gorm:"index"`
+	AssetAmount      string `json:"asset_amount"`
+	TargetUserWallet string `json:"target_user_wallet" gorm:"index"`
+
 	// Entity means this application's refer, which maybe project or guild.
 	// And the field EntityId is the db record ID for Project or Guild table
 	EntityType string `json:"entity_type" gorm:"index"`

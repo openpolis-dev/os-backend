@@ -215,17 +215,20 @@ func CreateAppBundle(ctx *gin.Context) {
 			}
 
 			return &model.Application{
-				Type:         model.ApplicationNewReward,
-				Applicant:    user.Wallet,
-				State:        model.ApplicationStateOpen,
-				CreatedAt:    time.Now().In(internal.ProjectTimezone),
-				UpdatedAt:    time.Now().In(internal.ProjectTimezone),
-				DetailedType: appRcd.DetailedType,
-				DetailedData: detailedDataBytes,
-				EntityType:   newAppBundleReq.Entity,
-				EntityId:     newAppBundleReq.EntityId,
-				SeasonId:     seasonRecord.ID,
-				Season:       seasonRecord,
+				Type:             model.ApplicationNewReward,
+				Applicant:        user.Wallet,
+				State:            model.ApplicationStateOpen,
+				CreatedAt:        time.Now().In(internal.ProjectTimezone),
+				UpdatedAt:        time.Now().In(internal.ProjectTimezone),
+				DetailedType:     appRcd.DetailedType,
+				DetailedData:     detailedDataBytes,
+				TargetUserWallet: appRcd.TargetUserWallet,
+				AssetName:        appRcd.AssetName,
+				AssetAmount:      appRcd.Amount.String(),
+				EntityType:       newAppBundleReq.Entity,
+				EntityId:         newAppBundleReq.EntityId,
+				SeasonId:         seasonRecord.ID,
+				Season:           seasonRecord,
 			}
 		})
 
