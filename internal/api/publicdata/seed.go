@@ -48,6 +48,7 @@ func SeedDataFromIndexer(ctx *gin.Context) {
 		if err != nil {
 			return nil, err
 		}
+		defer resp.Body.Close()
 		if resp.StatusCode != http.StatusOK {
 			return nil, errors.New("request SPP-Indexer failed")
 		}
@@ -55,7 +56,6 @@ func SeedDataFromIndexer(ctx *gin.Context) {
 		if err != nil {
 			return nil, err
 		}
-		_ = resp.Body.Close()
 
 		var totalSupply InsightReply
 		err = json.Unmarshal(body, &totalSupply)

@@ -182,6 +182,8 @@ func main() {
 		publicData.GET("/contract/seed", publicdata.SeedDataFromIndexer)
 		publicData.GET("/contract/scr", publicdata.SCRDataFromIndexer)
 		publicData.GET("/contract/node", publicdata.NodeDataFromIndexer)
+		publicData.GET("/bounty/list", publicdata.BountyList)
+		publicData.GET("/bounty/detail/:id", publicdata.BountyDetail)
 
 		// season data
 		seasonsData := v1.Group("/seasons")

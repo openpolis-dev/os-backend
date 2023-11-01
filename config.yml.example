@@ -44,3 +44,6 @@ publicData:
   cacheInSeconds: 60 # unit is seconds
   mainnetRPC: https://eth-mainnet.g.alchemy.com/v2/FU0ujCat3OQd5hIqpddJ94SngVaeSxad
   sppIndexerHost: http://localhost:3000
+  notion:
+    APIToken: secret_gnVFq5NWrDHY481DoMPwaCLuo6GDvGw7s31xOxdQNkR
+    bountyDatabaseID: 73d83a0a258d4ac5afa57a997114755a
