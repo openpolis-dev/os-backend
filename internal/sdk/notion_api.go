@@ -13,6 +13,10 @@ func NotionDatabase(databaseId, bearToken string, body []byte) ([]byte, error) {
 	return post(fmt.Sprintf("https://api.notion.com/v1/databases/%s/query", databaseId), bearToken, body)
 }
 
+func NotionPage(pageId, bearToken string) ([]byte, error) {
+	return get(fmt.Sprintf("https://api.notion.com/v1/pages/%s", pageId), bearToken)
+}
+
 func post(url, bearToken string, body []byte) ([]byte, error) {
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(body))
 	if err != nil {
@@ -23,6 +27,22 @@ func post(url, bearToken string, body []byte) ([]byte, error) {
 	req.Header.Set("Notion-Version", "2022-06-28")
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", bearToken))
 
+	return doHttp(req)
+}
+
+func get(url, bearToken string) ([]byte, error) {
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Notion-Version", "2022-06-28")
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", bearToken))
+
+	return doHttp(req)
+}
+
+func doHttp(req *http.Request) ([]byte, error) {
 	client := http.Client{Timeout: 15 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
