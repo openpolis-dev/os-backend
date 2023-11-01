@@ -42,8 +42,8 @@ type RefreshNonceReply struct {
 // @Accept json
 // @Produce json
 // @Param JsonBody body RefreshNonceReq true "request json body"
-// @Success 200 {object} Reply
-// @Router /v1/refresh_nonce [post]
+// @Success 200 {object} api.Reply{data=RefreshNonceReply}
+// @Router /user/refresh_nonce [post]
 func RefreshNonce(ctx *gin.Context) {
 	req := RefreshNonceReq{}
 	err := ctx.BindJSON(&req)
@@ -75,7 +75,7 @@ func RefreshNonce(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, api.Success(RefreshNonceReply{Nonce: nonce}))
+	ctx.JSON(http.StatusOK, api.Success(&RefreshNonceReply{Nonce: nonce}))
 }
 
 type RetrieveNonceReply struct {
@@ -91,8 +91,8 @@ type RetrieveNonceReply struct {
 // @Accept json
 // @Produce json
 // @Param wallet query string true "wallet address"
-// @Success 200 {object} Reply
-// @Router /v1/retrieve_nonce [get]
+// @Success 200 {object} api.Reply{data=RetrieveNonceReply}
+// @Router /user/retrieve_nonce [get]
 func RetrieveNonce(ctx *gin.Context) {
 	wallet := ctx.Query("wallet")
 
@@ -109,7 +109,7 @@ func RetrieveNonce(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, api.Success(RetrieveNonceReply{Nonce: userNonce.Nonce}))
+	ctx.JSON(http.StatusOK, api.Success(&RetrieveNonceReply{Nonce: userNonce.Nonce}))
 }
 
 type LoginReq struct {
@@ -133,8 +133,8 @@ type LoginReply struct {
 // @Accept json
 // @Produce json
 // @Param JsonBody body LoginReq true "request json body"
-// @Success 200 {object} Reply
-// @Router /v1/login [post]
+// @Success 200 {object} api.Reply{data=LoginReply}
+// @Router /user/login [post]
 func Login(ctx *gin.Context) {
 	req := LoginReq{}
 	err := ctx.BindJSON(&req)
@@ -225,7 +225,7 @@ func Login(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, api.Success(LoginReply{
+	ctx.JSON(http.StatusOK, api.Success(&LoginReply{
 		Token:    token,
 		TokenExp: tokenExp,
 		User:     user,
@@ -237,8 +237,8 @@ func Login(ctx *gin.Context) {
 // @Tags Auth
 // @Accept json
 // @Produce json
-// @Success 200 {object} Reply
-// @Router /v1/logout [post]
+// @Success 200 {object} api.Reply
+// @Router /user/logout [post]
 func Logout(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, api.Success(nil))
 }
@@ -251,8 +251,8 @@ func Logout(ctx *gin.Context) {
 // @Tags User
 // @Accept json
 // @Produce json
-// @Success 200 {object} Reply
-// @Router /v1/me [get]
+// @Success 200 {object} api.Reply{data=sdk.SeepassResponse}
+// @Router /user/me [get]
 func Detail(ctx *gin.Context) {
 	// TODO: Get data from seepass API, and return data from DB if seepass returns 404
 	user, db := api.ForContextUserAndDB(ctx)
@@ -313,8 +313,8 @@ type UpdateReq struct {
 // @Accept json
 // @Produce json
 // @Param JsonBody body UpdateReq true "request json body"
-// @Success 200 {object} Reply
-// @Router /v1/me [put]
+// @Success 200 {object} api.Reply
+// @Router /user/me [put]
 func Update(ctx *gin.Context) {
 	req := UpdateReq{}
 	err := ctx.BindJSON(&req)
@@ -378,8 +378,8 @@ func Update(ctx *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param wallets query []string true "wallets"
-// @Success 200 {object} Reply
-// @Router /v1/users [get]
+// @Success 200 {object} api.Reply{data=[]model.User}
+// @Router /user/users [get]
 func Users(ctx *gin.Context) {
 	wallets := ctx.QueryArray("wallets")
 	//// convert all wallet to lower case
@@ -421,8 +421,8 @@ func Users(ctx *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param casbin_subject query string true "casbin_subject"
-// @Success 200 {object} Reply
-// @Router /v1/casbin [get]
+// @Success 200 {object} api.Reply{data=string}
+// @Router /user/casbin [get]
 func GetFrontendPermission(ctx *gin.Context) {
 	enforcer := api.ForContextOnlyEnforcer(ctx)
 
