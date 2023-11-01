@@ -18,7 +18,14 @@ type role struct {
 	Role   string `json:"role"`
 }
 
-// GrantRole `POST /grant_role`
+// GrantRole role to user
+// @Summary Grant role to user
+// @Tags Permission
+// @Accept json
+// @Produce json
+// @Param grants body GrantRoleReq true "request json body"
+// @Success 200 {object} Reply
+// @Router /v1/grant_role [post]
 func GrantRole(ctx *gin.Context) {
 	user, enforcer, _, _ := api.ForContext(ctx)
 	ok, err := enforcer.HasRoleForUser(user.Wallet, api.RoleHall)
@@ -60,7 +67,14 @@ type RevokeRoleReq struct {
 	Revokes []role `json:"revokes"`
 }
 
-// RevokeRole `POST /revoke_role`
+// RevokeRole role from user
+// @Summary Revoke role from user
+// @Tags Permission
+// @Accept json
+// @Produce json
+// @Param revokes body RevokeRoleReq true "request json body"
+// @Success 200 {object} Reply
+// @Router /v1/revoke_role [post]
 func RevokeRole(ctx *gin.Context) {
 	user, enforcer, _, _ := api.ForContext(ctx)
 	ok, err := enforcer.HasRoleForUser(user.Wallet, api.RoleHall)
