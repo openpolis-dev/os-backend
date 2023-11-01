@@ -119,6 +119,7 @@ func (detailedData *NewRewardApplicationDetailedData) AmountOfAssetType(assetTyp
 // FrontendApplicationRecord defines struct for application record that returns to frontend invoker
 type FrontendApplicationRecord struct {
 	ApplicationID    uint      `json:"application_id"`
+	SeasonName       string    `json:"season_name"`
 	EntityName       string    `json:"entity_name"` // name field value from specified entity table
 	CreatedAt        time.Time `json:"created_at"`
 	TargetUserWallet string    `json:"target_user_wallet"`
@@ -237,8 +238,15 @@ func (r *jointAppEntityRslt) ToFrontedApplicationRecord(db *gorm.DB) *FrontendAp
 		}
 	}
 
+	var appSeasonRcd Season
+	err = db.Model(&Season{}).First(&appSeasonRcd, r.Application.SeasonId).Error
+	if err != nil {
+		return nil
+	}
+
 	return &FrontendApplicationRecord{
 		ApplicationID:    r.Application.ID,
+		SeasonName:       appSeasonRcd.Name,
 		EntityName:       r.Application.EntityType,
 		CreatedAt:        r.Application.CreatedAt,
 		TargetUserWallet: targetUserWallet,
