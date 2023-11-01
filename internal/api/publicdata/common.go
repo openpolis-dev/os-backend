@@ -68,3 +68,9 @@ func parseBigIntOnChainBalance(balance *big.Int, decimal int64) float64 {
 	r, _ := z.Float64()
 	return r
 }
+
+// ------ ------ ------ ------ ------ ------ ------ ------ ------
+
+type InsightReply struct {
+	TotalSupply string `json:"totalSupply"`
+}

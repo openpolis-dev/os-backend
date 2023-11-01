@@ -1,30 +1,68 @@
 package publicdata
 
 import (
-	"github.com/ethereum/go-ethereum/ethclient"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 	"github.com/theseed-labs/os-backend/internal/api"
-	"github.com/theseed-labs/os-backend/internal/sdk/contract"
 )
 
 type seed struct {
-	TotalSupply uint64 `json:"total_supply"`
+	TotalSupply string `json:"total_supply"`
 }
 
-var seedCache dataCache[ethclient.Client, seed]
+var seedCache dataCache[http.Client, seed]
 
-// SeedData
-// `GET /public_data/contract/seed`
-func SeedData(ctx *gin.Context) {
+//var seedCache dataCache[ethclient.Client, seed]
+//
+//func SeedDataFromChain(ctx *gin.Context) {
+//	_, cfg := api.ForContextDBAndConfig(ctx)
+//
+//	cacheLogic[ethclient.Client, seed](ctx, &seedCache, cfg.PublicData.CacheInSeconds, func() (*ethclient.Client, error) {
+//		return ethclient.Dial(cfg.PublicData.MainnetRPC)
+//	}, func() (*seed, error) {
+//		totalSupply, err := contract.SeedTotalSupply(scrCache.client, cfg.PublicData.Contracts.Seed)
+//		if err != nil {
+//			return nil, err
+//		}
+//		return &seed{TotalSupply: totalSupply.Uint64()}, nil
+//	})
+//}
+
+// SeedDataFromIndexer query SEED data from spp-indexer
+// @Summary query SEED data from spp-indexer
+// @Tags PublicData
+// @Success 200 {object} scr
+// @Router /public_data/contract/seed [get]
+func SeedDataFromIndexer(ctx *gin.Context) {
 	_, cfg := api.ForContextDBAndConfig(ctx)
 
-	cacheLogic[ethclient.Client, seed](ctx, &seedCache, cfg.PublicData.CacheInSeconds, func() (*ethclient.Client, error) {
-		return ethclient.Dial(cfg.PublicData.MainnetRPC)
+	cacheLogic[http.Client, seed](ctx, &seedCache, cfg.PublicData.CacheInSeconds, func() (*http.Client, error) {
+		return http.DefaultClient, nil
 	}, func() (*seed, error) {
-		totalSupply, err := contract.SeedTotalSupply(scrCache.client, cfg.PublicData.Contracts.Seed)
+		resp, err := seedCache.client.Get(fmt.Sprintf("%s/insight/erc721/total_supply/%s", cfg.PublicData.SppIndexerHost, cfg.PublicData.Contracts.Seed))
 		if err != nil {
 			return nil, err
 		}
-		return &seed{TotalSupply: totalSupply.Uint64()}, nil
+		if resp.StatusCode != http.StatusOK {
+			return nil, errors.New("request SPP-Indexer failed")
+		}
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+		_ = resp.Body.Close()
+
+		var totalSupply InsightReply
+		err = json.Unmarshal(body, &totalSupply)
+		if err != nil {
+			return nil, err
+		}
+
+		return &seed{TotalSupply: totalSupply.TotalSupply}, nil
 	})
 }

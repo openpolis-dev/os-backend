@@ -16,7 +16,12 @@ type discord struct {
 var discordCache dataCache[discordgo.Session, discord]
 
 // DiscordData returns the data of the discord server
-// `GET /public_data/discord_member_count`
+// @Summary DiscordData returns the data of the discord server
+// @Tags PublicData
+// @Accept json
+// @Produce json
+// @Success 200 {object} discord
+// @Router /public_data/discord_member_count [get]
 func DiscordData(ctx *gin.Context) {
 	_, cfg := api.ForContextDBAndConfig(ctx)
 
