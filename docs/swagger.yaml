@@ -1,0 +1,1491 @@
+basePath: /v1
+definitions:
+  api.ListReplyData:
+    properties:
+      page:
+        type: integer
+      rows: {}
+      size:
+        type: integer
+      total:
+        type: integer
+    type: object
+  api.Reply:
+    properties:
+      code:
+        type: integer
+      data: {}
+      msg:
+        type: string
+    type: object
+  guild.BudgetParam:
+    properties:
+      budget_type:
+        $ref: '#/definitions/model.BudgetType'
+      name:
+        type: string
+      total_amount:
+        type: number
+    type: object
+  guild.CreateReq:
+    properties:
+      budgets:
+        items:
+          $ref: '#/definitions/guild.BudgetParam'
+        type: array
+      desc:
+        type: string
+      intro:
+        type: string
+      logo:
+        description: base64 encoded logo image, will be uploaded to AWS S3 and saved
+          URL in db record
+        type: string
+      members:
+        items:
+          type: string
+        type: array
+      name:
+        type: string
+      proposals:
+        items:
+          type: string
+        type: array
+      sponsors:
+        items:
+          type: string
+        type: array
+    type: object
+  guild.DetailReply:
+    properties:
+      budgets:
+        items:
+          $ref: '#/definitions/model.GuildBudget'
+        type: array
+      created_at:
+        type: string
+      creator:
+        type: string
+      desc:
+        type: string
+      id:
+        type: integer
+      intro:
+        type: string
+      logo:
+        type: string
+      members:
+        items:
+          type: string
+        type: array
+      name:
+        type: string
+      proposals:
+        items:
+          type: string
+        type: array
+      sponsors:
+        items:
+          type: string
+        type: array
+      updated_at:
+        type: string
+    type: object
+  guild.UpdateBudgetReq:
+    properties:
+      asset_name:
+        type: string
+      id:
+        type: integer
+      total_amount:
+        type: number
+    type: object
+  guild.UpdateReq:
+    properties:
+      desc:
+        type: string
+      intro:
+        type: string
+      logo:
+        type: string
+      name:
+        type: string
+    type: object
+  guild.UpdateStaffsReq:
+    properties:
+      action:
+        description: '`add` or `remove`'
+        type: string
+      members:
+        items:
+          type: string
+        type: array
+      sponsors:
+        items:
+          type: string
+        type: array
+    type: object
+  model.BudgetType:
+    enum:
+    - credit
+    type: string
+    x-enum-varnames:
+    - BudgetTypeCredit
+  model.Guild:
+    properties:
+      created_at:
+        type: string
+      creator:
+        type: string
+      desc:
+        type: string
+      id:
+        type: integer
+      intro:
+        type: string
+      logo:
+        type: string
+      members:
+        items:
+          type: string
+        type: array
+      name:
+        type: string
+      proposals:
+        items:
+          type: string
+        type: array
+      sponsors:
+        items:
+          type: string
+        type: array
+      updated_at:
+        type: string
+    type: object
+  model.GuildBudget:
+    properties:
+      created_at:
+        type: string
+      guild_id:
+        description: guild_id
+        type: integer
+      id:
+        type: integer
+      name:
+        type: string
+      remain_amount:
+        description: remain_amount
+        type: number
+      total_amount:
+        description: total_amount
+        type: number
+      type:
+        allOf:
+        - $ref: '#/definitions/model.BudgetType'
+        description: budget type, credit or token
+      updated_at:
+        type: string
+      used_amount:
+        description: used_amount
+        type: number
+    type: object
+  model.Project:
+    properties:
+      created_at:
+        type: string
+      creator:
+        type: string
+      desc:
+        type: string
+      id:
+        type: integer
+      intro:
+        type: string
+      is_special:
+        type: boolean
+      logo:
+        type: string
+      members:
+        items:
+          type: string
+        type: array
+      name:
+        type: string
+      proposals:
+        items:
+          type: string
+        type: array
+      special_type:
+        $ref: '#/definitions/model.SpecialProjectType'
+      sponsors:
+        items:
+          type: string
+        type: array
+      status:
+        allOf:
+        - $ref: '#/definitions/model.ProjectStatus'
+        description: 'Status may have those values: open/pending_close/closed'
+      updated_at:
+        type: string
+    type: object
+  model.ProjectBudget:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      project_id:
+        description: project_id
+        type: integer
+      remain_amount:
+        description: remain_amount
+        type: number
+      total_amount:
+        description: total_amount = used_amount + remain_amount
+        type: number
+      type:
+        allOf:
+        - $ref: '#/definitions/model.BudgetType'
+        description: budget type, credit or token
+      updated_at:
+        type: string
+      used_amount:
+        description: used_amount
+        type: number
+    type: object
+  model.ProjectStatus:
+    enum:
+    - open
+    type: string
+    x-enum-varnames:
+    - ProjectStatusOpen
+  model.Push:
+    properties:
+      content:
+        type: string
+      created_at:
+        type: string
+      creator_wallet:
+        type: string
+      id:
+        type: integer
+      jump_url:
+        description: TODO support multi type, custom(JumpURL), xx(yy,zz)
+        type: string
+      push_date:
+        type: string
+      status:
+        type: integer
+      title:
+        description: TODO support multi language
+        type: string
+      updated_at:
+        type: string
+    type: object
+  model.SpecialProjectType:
+    enum:
+    - city_hall
+    type: string
+    x-enum-varnames:
+    - SpecialProjectCityHall
+  model.User:
+    properties:
+      assets:
+        items:
+          $ref: '#/definitions/model.UserAssetRecord'
+        type: array
+      avatar:
+        type: string
+      bio:
+        type: string
+      created_at:
+        type: string
+      discord_profile:
+        type: string
+      email:
+        type: string
+      google_profile:
+        type: string
+      id:
+        type: integer
+      mirror:
+        type: string
+      name:
+        type: string
+      twitter_profile:
+        type: string
+      updated_at:
+        type: string
+      wallet:
+        type: string
+      wechat:
+        type: string
+    type: object
+  model.UserAssetRecord:
+    properties:
+      asset_name:
+        description: asset name
+        type: string
+      asset_type:
+        allOf:
+        - $ref: '#/definitions/model.BudgetType'
+        description: type of the asset, credit or token
+      created_at:
+        type: string
+      dealt_amount:
+        description: amount of asset that already dealt
+        type: number
+      id:
+        type: integer
+      processing_amount:
+        description: amount of asset that still need confirmation
+        type: number
+      updated_at:
+        type: string
+      user_wallet:
+        type: string
+    type: object
+  permission.GrantRoleReq:
+    properties:
+      grants:
+        items:
+          $ref: '#/definitions/permission.role'
+        type: array
+    type: object
+  permission.RevokeRoleReq:
+    properties:
+      revokes:
+        items:
+          $ref: '#/definitions/permission.role'
+        type: array
+    type: object
+  permission.role:
+    properties:
+      role:
+        type: string
+      wallet:
+        type: string
+    type: object
+  project.BudgetParam:
+    properties:
+      budget_type:
+        $ref: '#/definitions/model.BudgetType'
+      name:
+        type: string
+      total_amount:
+        type: number
+    type: object
+  project.CreateReq:
+    properties:
+      budgets:
+        items:
+          $ref: '#/definitions/project.BudgetParam'
+        type: array
+      desc:
+        type: string
+      intro:
+        type: string
+      logo:
+        description: base64 encoded image string
+        type: string
+      members:
+        items:
+          type: string
+        type: array
+      name:
+        type: string
+      proposals:
+        items:
+          type: string
+        type: array
+      sponsors:
+        items:
+          type: string
+        type: array
+    type: object
+  project.DetailReply:
+    properties:
+      budgets:
+        items:
+          $ref: '#/definitions/model.ProjectBudget'
+        type: array
+      created_at:
+        type: string
+      creator:
+        type: string
+      desc:
+        type: string
+      id:
+        type: integer
+      intro:
+        type: string
+      is_special:
+        type: boolean
+      logo:
+        type: string
+      members:
+        items:
+          type: string
+        type: array
+      name:
+        type: string
+      proposals:
+        items:
+          type: string
+        type: array
+      special_type:
+        $ref: '#/definitions/model.SpecialProjectType'
+      sponsors:
+        items:
+          type: string
+        type: array
+      status:
+        allOf:
+        - $ref: '#/definitions/model.ProjectStatus'
+        description: 'Status may have those values: open/pending_close/closed'
+      updated_at:
+        type: string
+    type: object
+  project.UpdateBudgetReq:
+    properties:
+      asset_name:
+        type: string
+      id:
+        type: integer
+      total_amount:
+        type: number
+    type: object
+  project.UpdateReq:
+    properties:
+      desc:
+        type: string
+      intro:
+        type: string
+      logo:
+        type: string
+      name:
+        type: string
+    type: object
+  project.UpdateStaffsReq:
+    properties:
+      action:
+        description: '`add` or `remove`'
+        type: string
+      members:
+        items:
+          type: string
+        type: array
+      sponsors:
+        items:
+          type: string
+        type: array
+    type: object
+  publicdata.discord:
+    properties:
+      approximate_member_count:
+        type: integer
+      approximate_presence_count:
+        type: integer
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  publicdata.node:
+    properties:
+      total_supply:
+        type: string
+    type: object
+  publicdata.scr:
+    properties:
+      total_supply:
+        type: string
+    type: object
+  push.CreateReq:
+    properties:
+      content:
+        type: string
+      jump_url:
+        type: string
+      title:
+        description: |-
+          TODO support multi language
+          Title   map[string]string `json:"title"`   // [zh]你好,[en]Hello
+          Content map[string]string `json:"content"` // [zh]你好,[en]Hello
+        type: string
+    type: object
+  sdk.SeepassResponse:
+    properties:
+      avatar: {}
+      bio: {}
+      email: {}
+      level:
+        properties:
+          current_lv:
+            type: string
+          next_lv:
+            type: string
+          scr_to_next_lv:
+            type: string
+          upgrade_percent:
+            type: string
+        type: object
+      nickname: {}
+      roles:
+        items:
+          type: string
+        type: array
+      sbt:
+        items:
+          properties:
+            collection_name:
+              type: string
+            contract_addr:
+              type: string
+            contract_type:
+              type: string
+            image_uri:
+              type: string
+            metadata: {}
+            name:
+              type: string
+            symbol:
+              type: string
+            token_amount:
+              type: string
+            token_id:
+              type: string
+          type: object
+        type: array
+      scr:
+        properties:
+          amount:
+            type: string
+          contract_addr:
+            type: string
+        type: object
+      seed:
+        items:
+          properties:
+            contract_addr:
+              type: string
+            contract_type:
+              type: string
+            image_uri:
+              type: string
+            token_amount:
+              type: string
+            token_id:
+              type: string
+          type: object
+        type: array
+      sns:
+        type: string
+      social_accounts:
+        items: {}
+        type: array
+      wallet:
+        type: string
+    type: object
+  user.LoginReply:
+    properties:
+      token:
+        type: string
+      token_exp:
+        description: 'time unit: seconds'
+        type: integer
+      user:
+        $ref: '#/definitions/model.User'
+    type: object
+  user.LoginReq:
+    properties:
+      domain:
+        type: string
+      is_eip191_prefix:
+        type: boolean
+      message:
+        type: string
+      signature:
+        type: string
+      wallet:
+        type: string
+      wallet_type:
+        type: string
+    required:
+    - domain
+    - message
+    - signature
+    - wallet
+    - wallet_type
+    type: object
+  user.RefreshNonceReply:
+    properties:
+      nonce:
+        type: string
+    type: object
+  user.RefreshNonceReq:
+    properties:
+      wallet:
+        type: string
+    type: object
+  user.RetrieveNonceReply:
+    properties:
+      nonce:
+        type: string
+    type: object
+  user.UpdateReq:
+    properties:
+      avatar:
+        type: string
+      bio:
+        type: string
+      discord_profile:
+        type: string
+      email:
+        type: string
+      google_profile:
+        type: string
+      mirror:
+        type: string
+      name:
+        type: string
+      twitter_profile:
+        type: string
+      wechat:
+        type: string
+    type: object
+info:
+  contact: {}
+  license:
+    name: MIT
+  title: OS Backend API service
+  version: "1.0"
+paths:
+  /guilds:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: 'page number, default: 1'
+        in: query
+        name: page
+        type: integer
+      - description: 'page size, default: 10'
+        in: query
+        name: size
+        type: integer
+      - description: 'sort field, default: created_at'
+        in: query
+        name: sort_field
+        type: string
+      - description: 'sort order, default: desc'
+        in: query
+        name: sort_order
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  allOf:
+                  - $ref: '#/definitions/api.ListReplyData'
+                  - properties:
+                      rows:
+                        $ref: '#/definitions/model.Guild'
+                    type: object
+              type: object
+      summary: List guilds
+      tags:
+      - Guild
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: request json body
+        in: body
+        name: JsonBody
+        required: true
+        schema:
+          $ref: '#/definitions/guild.CreateReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.Reply'
+      summary: Create a guild
+      tags:
+      - Guild
+  /guilds/{id}:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: guild id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  $ref: '#/definitions/guild.DetailReply'
+              type: object
+      summary: Get a guild detail
+      tags:
+      - Guild
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: guild id
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: request json body
+        in: body
+        name: JsonBody
+        required: true
+        schema:
+          $ref: '#/definitions/guild.UpdateReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.Reply'
+      summary: Update a guild
+      tags:
+      - Guild
+  /guilds/{id}/add_related_proposal:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: guild id
+        in: path
+        name: id
+        required: true
+        type: integer
+      - collectionFormat: csv
+        description: proposal ids
+        in: query
+        items:
+          type: integer
+        name: proposalIDs
+        required: true
+        type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.Reply'
+      summary: Add related proposals to guild
+      tags:
+      - Guild
+  /guilds/{id}/update_budget:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: guild id
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: request json body
+        in: body
+        name: JsonBody
+        required: true
+        schema:
+          $ref: '#/definitions/guild.UpdateBudgetReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.Reply'
+      summary: Update guild budget
+      tags:
+      - Guild
+  /guilds/{id}/update_staffs:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: guild id
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: request json body
+        in: body
+        name: JsonBody
+        required: true
+        schema:
+          $ref: '#/definitions/guild.UpdateStaffsReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.Reply'
+      summary: Update guild sponsors/members
+      tags:
+      - Guild
+  /guilds/my_guilds:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: 'page number, default: 1'
+        in: query
+        name: page
+        type: integer
+      - description: 'page size, default: 10'
+        in: query
+        name: size
+        type: integer
+      - description: 'sort field, default: created_at'
+        in: query
+        name: sort_field
+        type: string
+      - description: 'sort order, default: desc'
+        in: query
+        name: sort_order
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  allOf:
+                  - $ref: '#/definitions/api.ListReplyData'
+                  - properties:
+                      rows:
+                        $ref: '#/definitions/model.Guild'
+                    type: object
+              type: object
+      summary: list my guilds
+      tags:
+      - Guild
+  /permission/grant_role:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: request json body
+        in: body
+        name: grants
+        required: true
+        schema:
+          $ref: '#/definitions/permission.GrantRoleReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.Reply'
+      summary: Grant role to user
+      tags:
+      - Permission
+  /permission/revoke_role:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: request json body
+        in: body
+        name: revokes
+        required: true
+        schema:
+          $ref: '#/definitions/permission.RevokeRoleReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.Reply'
+      summary: Revoke role from user
+      tags:
+      - Permission
+  /projects:
+    get:
+      description: This api parses passed in pagination query params,
+      parameters:
+      - description: status of project
+        in: query
+        name: status
+        type: string
+      - description: which page
+        in: query
+        name: page
+        type: string
+      - description: size of each page
+        in: query
+        name: size
+        type: string
+      - description: sort by which field
+        in: query
+        name: sort_field
+        type: string
+      - description: order of sort
+        in: query
+        name: sort_order
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  allOf:
+                  - $ref: '#/definitions/api.ListReplyData'
+                  - properties:
+                      rows:
+                        $ref: '#/definitions/model.Project'
+                    type: object
+              type: object
+      summary: List all projects match the query params
+      tags:
+      - Project
+    post:
+      description: This api create a project record with passed in data
+      parameters:
+      - description: new project request data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/project.CreateReq'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.Reply'
+      summary: Create a project with passed in data
+      tags:
+      - Project
+  /projects/:id:
+    get:
+      parameters:
+      - description: guild id
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  $ref: '#/definitions/project.DetailReply'
+              type: object
+      summary: show detail of a project
+      tags:
+      - Project
+    put:
+      description: This api update a project record with passed in data
+      parameters:
+      - description: id of the project
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: update project info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/project.UpdateReq'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.Reply'
+      summary: Update project information
+      tags:
+      - Project
+  /projects/:id/add_related_proposal:
+    post:
+      parameters:
+      - description: project ID
+        in: path
+        name: id
+        required: true
+        type: number
+      - collectionFormat: csv
+        description: proposal ID list
+        in: query
+        items:
+          type: string
+        name: proposalIDs
+        required: true
+        type: array
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.Reply'
+      summary: Add related proposals to the project
+      tags:
+      - Project
+  /projects/:id/close:
+    post:
+      description: This api close specified project, admin permission is required
+        for this operation
+      parameters:
+      - description: project ID
+        in: path
+        name: id
+        required: true
+        type: number
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.Reply'
+      summary: Close a project
+      tags:
+      - Project
+  /projects/{id}/update_budget:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: project id
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: request json body
+        in: body
+        name: JsonBody
+        required: true
+        schema:
+          $ref: '#/definitions/project.UpdateBudgetReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.Reply'
+      summary: Update project budget
+      tags:
+      - Project
+  /projects/{id}/update_staffs:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: project id
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: request json body
+        in: body
+        name: JsonBody
+        required: true
+        schema:
+          $ref: '#/definitions/project.UpdateStaffsReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.Reply'
+      summary: update project sponsors and members
+      tags:
+      - Project
+  /projects/my_projects:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: 'page number, default: 1'
+        in: query
+        name: page
+        type: integer
+      - description: 'page size, default: 10'
+        in: query
+        name: size
+        type: integer
+      - description: 'sort field, default: created_at'
+        in: query
+        name: sort_field
+        type: string
+      - description: 'sort order, default: desc'
+        in: query
+        name: sort_order
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  allOf:
+                  - $ref: '#/definitions/api.ListReplyData'
+                  - properties:
+                      rows:
+                        $ref: '#/definitions/model.Project'
+                    type: object
+              type: object
+      summary: list my projects
+      tags:
+      - Project
+  /public_data/contract/node:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  $ref: '#/definitions/publicdata.node'
+              type: object
+      summary: query NODE data from spp-indexer
+      tags:
+      - PublicData
+  /public_data/contract/scr:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  $ref: '#/definitions/publicdata.scr'
+              type: object
+      summary: query CR data from spp-indexer
+      tags:
+      - PublicData
+  /public_data/contract/seed:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  $ref: '#/definitions/publicdata.scr'
+              type: object
+      summary: query SEED data from spp-indexer
+      tags:
+      - PublicData
+  /public_data/discord_member_count:
+    get:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  $ref: '#/definitions/publicdata.discord'
+              type: object
+      summary: DiscordData returns the data of the discord server
+      tags:
+      - PublicData
+  /push:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: status
+        in: query
+        name: status
+        type: integer
+      - description: page
+        in: query
+        name: page
+        type: integer
+      - description: size
+        in: query
+        name: size
+        type: integer
+      - description: sort_field
+        in: query
+        name: sort_field
+        type: string
+      - description: sort_order
+        in: query
+        name: sort_order
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  allOf:
+                  - $ref: '#/definitions/api.ListReplyData'
+                  - properties:
+                      rows:
+                        $ref: '#/definitions/model.Push'
+                    type: object
+              type: object
+      summary: list push
+      tags:
+      - Push
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: request json body
+        in: body
+        name: push
+        required: true
+        schema:
+          $ref: '#/definitions/push.CreateReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.Reply'
+      summary: Create a push
+      tags:
+      - Push
+  /user/casbin:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: casbin_subject
+        in: query
+        name: casbin_subject
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  type: string
+              type: object
+      summary: Query frontend permission by user wallet
+      tags:
+      - Permission
+  /user/login:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: request json body
+        in: body
+        name: JsonBody
+        required: true
+        schema:
+          $ref: '#/definitions/user.LoginReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  $ref: '#/definitions/user.LoginReply'
+              type: object
+      summary: Login
+      tags:
+      - Auth
+  /user/logout:
+    post:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.Reply'
+      summary: Logout
+      tags:
+      - Auth
+  /user/me:
+    get:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  $ref: '#/definitions/sdk.SeepassResponse'
+              type: object
+      summary: Get user detail
+      tags:
+      - User
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: request json body
+        in: body
+        name: JsonBody
+        required: true
+        schema:
+          $ref: '#/definitions/user.UpdateReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.Reply'
+      summary: Update user info
+      tags:
+      - User
+  /user/refresh_nonce:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: request json body
+        in: body
+        name: JsonBody
+        required: true
+        schema:
+          $ref: '#/definitions/user.RefreshNonceReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  $ref: '#/definitions/user.RefreshNonceReply'
+              type: object
+      summary: Refresh nonce
+      tags:
+      - Auth
+  /user/retrieve_nonce:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: wallet address
+        in: query
+        name: wallet
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  $ref: '#/definitions/user.RetrieveNonceReply'
+              type: object
+      summary: Retrieve nonce
+      tags:
+      - Auth
+  /user/users:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - collectionFormat: csv
+        description: wallets
+        in: query
+        items:
+          type: string
+        name: wallets
+        required: true
+        type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/model.User'
+                  type: array
+              type: object
+      summary: Query multiple users by wallet array on batch
+      tags:
+      - User
+swagger: "2.0"
