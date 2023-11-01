@@ -321,6 +321,8 @@ func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState
 		return
 	}
 
+	push := api.ForContextOnlyPush(ctx)
+
 	err = db.Transaction(func(tx *gorm.DB) error {
 		appBundleRcd.State = newState
 		err = tx.Save(&appBundleRcd).Error
@@ -343,8 +345,7 @@ func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState
 		}
 		log.Error().Msgf("Records: %+v", appBundleRcd.AppRecords)
 		for _, appRcd := range appBundleRcd.AppRecords {
-			appRcd.State = newState
-			err = tx.Save(&appRcd).Error
+			err = model.AuditApplication(db, user.Wallet, appRcd, model.AuditActionApprove, "", enforcer, push)
 			if err != nil {
 				return err
 			}
