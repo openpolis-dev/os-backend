@@ -59,7 +59,14 @@ type (
 	}
 )
 
-// Create `POST /guilds`
+// Create a guild
+// @Summary Create a guild
+// @Tags Guild
+// @Accept json
+// @Produce json
+// @Param JsonBody body CreateReq true "request json body"
+// @Success 200
+// @Router /v1/guilds [post]
 func Create(ctx *gin.Context) {
 	req := CreateReq{}
 	err := ctx.BindJSON(&req)
@@ -191,7 +198,15 @@ func Create(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, api.Success(nil))
 }
 
-// Update `PUT /guilds/:id`
+// Update a guild
+// @Summary Update a guild
+// @Tags Guild
+// @Accept json
+// @Produce json
+// @Param id path int true "guild id"
+// @Param JsonBody body UpdateReq true "request json body"
+// @Success 200 {object} Reply
+// @Router /v1/guilds/{id} [put]
 func Update(ctx *gin.Context) {
 	idParam := ctx.Param("id")
 	id, err := strconv.Atoi(idParam)
@@ -250,7 +265,14 @@ func Update(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, api.Success(nil))
 }
 
-// Detail `GET /guilds/:id`
+// Detail get a guild detail
+// @Summary Get a guild detail
+// @Tags Guild
+// @Accept json
+// @Produce json
+// @Param id path int true "guild id"
+// @Success 200 {object} DetailReply
+// @Router /v1/guilds/{id} [get]
 func Detail(ctx *gin.Context) {
 	idParam := ctx.Param("id")
 	id, err := strconv.Atoi(idParam)
@@ -284,6 +306,16 @@ func Detail(ctx *gin.Context) {
 }
 
 // List `GET /guilds?page=1&size=10&sort_field=created_at&sort_order=desc`
+// @Summary List guilds
+// @Tags Guild
+// @Accept json
+// @Produce json
+// @Param page query int false "page number, default: 1"
+// @Param size query int false "page size, default: 10"
+// @Param sort_field query string false "sort field, default: created_at"
+// @Param sort_order query string false "sort order, default: desc"
+// @Success 200 {object} ListReplyData
+// @Router /v1/guilds [get]
 func List(ctx *gin.Context) {
 	db := api.ForContextOnlyDB(ctx)
 
@@ -303,7 +335,20 @@ func List(ctx *gin.Context) {
 	}))
 }
 
-// MyGuilds `GET /guilds/my?page=1&size=10&sort_field=created_at&sort_order=desc`
+// MyGuilds list my guilds
+//
+//	`GET /guilds/my?page=1&size=10&sort_field=created_at&sort_order=desc`
+//
+// @Summary List my guilds
+// @Tags Guild
+// @Accept json
+// @Produce json
+// @Param page query int false "page number, default: 1"
+// @Param size query int false "page size, default: 10"
+// @Param sort_field query string false "sort field, default: created_at"
+// @Param sort_order query string false "sort order, default: desc"
+// @Success 200 {object} ListReplyData
+// @Router /v1/guilds/my [get]
 func MyGuilds(ctx *gin.Context) {
 	user, db := api.ForContextUserAndDB(ctx)
 
@@ -332,7 +377,15 @@ type UpdateStaffsReq struct {
 	Members  []string `json:"members"`
 }
 
-// UpdateStaffs `POST /guilds/:id/update_staffs`
+// UpdateStaffs update guild sponsors/members
+// @Summary Update guild sponsors/members
+// @Tags Guild
+// @Accept json
+// @Produce json
+// @Param id path int true "guild id"
+// @Param JsonBody body UpdateStaffsReq true "request json body"
+// @Success 200{object} Reply
+// @Router /v1/guilds/{id}/update_staffs [post]
 func UpdateStaffs(ctx *gin.Context) {
 	idParam := ctx.Param("id")
 	id, err := strconv.Atoi(idParam)
@@ -547,7 +600,15 @@ func UpdateStaffs(ctx *gin.Context) {
 // ------ ------ ------ ------ ------ ------ ------ ------ ------
 // ------ Guild Budget ------ ------
 
-// UpdateBudget `POST /guilds/:id/update_budget`
+// UpdateBudget update guild budget
+// @Summary Update guild budget
+// @Tags Guild
+// @Accept json
+// @Produce json
+// @Param id path int true "guild id"
+// @Param JsonBody body UpdateBudgetReq true "request json body"
+// @Success 200 {object} Reply
+// @Router /v1/guilds/{id}/update_budget [post]
 func UpdateBudget(ctx *gin.Context) {
 	idParam := ctx.Param("id")
 	id, err := strconv.Atoi(idParam)
@@ -594,7 +655,18 @@ func UpdateBudget(ctx *gin.Context) {
 // ------ ------ ------ ------ ------ ------ ------ ------ ------
 // ------ Guild Proposals ------ ------
 
-// AddRelatedProposal `POST /guilds/:id/add_related_proposal?proposalIDs=1&proposalIDs=2`
+// AddRelatedProposal add related proposals to guild
+//
+//	`POST /guilds/:id/add_related_proposal?proposalIDs=1&proposalIDs=2`
+//
+// @Summary Add related proposals to guild
+// @Tags Guild
+// @Accept json
+// @Produce json
+// @Param id path int true "guild id"
+// @Param proposalIDs query []int true "proposal ids"
+// @Success 200 {object} Reply
+// @Router /v1/guilds/{id}/add_related_proposal [post]
 func AddRelatedProposal(ctx *gin.Context) {
 	idParam := ctx.Param("id")
 	id, err := strconv.Atoi(idParam)
