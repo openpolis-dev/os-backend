@@ -173,8 +173,8 @@ func GenerateFrontendApplicationRecords(db *gorm.DB, queryParams *ListApplicatio
 	}
 
 	if queryParams.UserWallet != "" {
-		whereClause += " AND LOWER(JSON_EXTRACT(applications.detailed_data, '$.user_wallet')) LIKE '%" +
-			strings.ToLower(strings.TrimSpace(queryParams.UserWallet)) + "%'"
+		whereClause += " AND applications.target_user_wallet = @target_user_wallet"
+		whereParams["target_user_wallet"] = strings.ToLower(strings.TrimSpace(queryParams.UserWallet))
 	}
 
 	// Calculate total count
