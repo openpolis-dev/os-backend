@@ -292,7 +292,7 @@ func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState
 	}
 
 	var appBundleRcds []model.AppBundle
-	err = db.Preload("AppRecords").First(&appBundleRcds, idList).Error
+	err = db.Preload("AppRecords").Find(&appBundleRcds, idList).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		ctx.JSON(http.StatusNotFound, api.Reply{
 			Code: -1,
@@ -327,6 +327,8 @@ func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState
 			appBundleRcd.State = newState
 			err = tx.Save(&appBundleRcd).Error
 			if err != nil {
+				log.Error().Msgf("save app bundle record error: %+v, app bundle: %+v", err, appBundleRcd)
+				tx.Rollback()
 				return err
 			}
 
@@ -341,13 +343,16 @@ func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState
 				ExtraData:   "",
 			}).Error
 			if err != nil {
+				log.Error().Msgf("create app bundle audit log record error: %+v, app bundle: %+v", err, appBundleRcd)
+				tx.Rollback()
 				return err
 			}
-			log.Error().Msgf("Records: %+v", appBundleRcd.AppRecords)
 			for _, appRcd := range appBundleRcd.AppRecords {
 				appRcd.State = newState
 				err = tx.Save(&appRcd).Error
 				if err != nil {
+					log.Error().Msgf("change application state error: %+v, application: %+v", err, appRcd)
+					tx.Rollback()
 					return err
 				}
 			}
