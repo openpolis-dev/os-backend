@@ -799,6 +799,25 @@ info:
   title: OS Backend API service
   version: "1.0"
 paths:
+  /app_bundle_approve:
+    post:
+      parameters:
+      - description: app bundle IDs
+        in: body
+        name: JsonBody
+        required: true
+        schema:
+          items:
+            type: string
+          type: array
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: Approve app bundle and associated applications
+      tags:
+      - app_bundle
   /app_bundles:
     get:
       parameters:
@@ -846,30 +865,17 @@ paths:
       summary: List all application bundles match the query params
       tags:
       - app_bundle
-  /app_bundles/:id/approve:
+  /app_bundles_reject:
     post:
       parameters:
-      - description: app bundle ID
-        in: path
-        name: id
+      - description: app bundle IDs
+        in: body
+        name: JsonBody
         required: true
-        type: number
-      responses:
-        "200":
-          description: OK
-          schema:
+        schema:
+          items:
             type: string
-      summary: Approve app bundle and associated applications
-      tags:
-      - app_bundle
-  /app_bundles/:id/reject:
-    post:
-      parameters:
-      - description: app bundle ID
-        in: path
-        name: id
-        required: true
-        type: number
+          type: array
       responses:
         "200":
           description: OK

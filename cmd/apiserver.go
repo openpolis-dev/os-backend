@@ -225,8 +225,9 @@ func main() {
 		appBundleGroup := authorizedGroup.Group("/app_bundles")
 		appBundleGroup.GET("/", app_bundle.ListAppBundle)
 		appBundleGroup.POST("/", app_bundle.CreateAppBundle)
-		appBundleGroup.POST("/:id/approve", app_bundle.ApproveAppBundle)
-		appBundleGroup.POST("/:id/reject", app_bundle.RejectAppBundle)
+
+		authorizedGroup.POST("/app_bundle_approve", app_bundle.ApproveAppBundles)
+		authorizedGroup.POST("/app_bundle_reject", app_bundle.RejectAppBundles)
 
 		// batch application routers
 		authorizedGroup.POST("/apps_approve", application.BatchApprove)

@@ -18,6 +18,36 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/app_bundle_approve": {
+            "post": {
+                "tags": [
+                    "app_bundle"
+                ],
+                "summary": "Approve app bundle and associated applications",
+                "parameters": [
+                    {
+                        "description": "app bundle IDs",
+                        "name": "JsonBody",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/app_bundles": {
             "get": {
                 "tags": [
@@ -91,32 +121,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/app_bundles/:id/approve": {
-            "post": {
-                "tags": [
-                    "app_bundle"
-                ],
-                "summary": "Approve app bundle and associated applications",
-                "parameters": [
-                    {
-                        "type": "number",
-                        "description": "app bundle ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
-        "/app_bundles/:id/reject": {
+        "/app_bundles_reject": {
             "post": {
                 "tags": [
                     "app_bundle"
@@ -124,11 +129,16 @@ const docTemplate = `{
                 "summary": "Reject app bundle and associated applications",
                 "parameters": [
                     {
-                        "type": "number",
-                        "description": "app bundle ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
+                        "description": "app bundle IDs",
+                        "name": "JsonBody",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
                     }
                 ],
                 "responses": {
