@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
@@ -234,6 +235,7 @@ func (r *jointAppEntityRslt) ToFrontedApplicationRecord(db *gorm.DB) *FrontendAp
 		reviewerWallet = auditlog.Operator
 		reviewerUsername, err = UserModel.TryGetUsername(db, reviewerWallet)
 		if err != nil {
+			log.Error().Msgf("Get username error: %+v", err)
 			return nil
 		}
 	}
@@ -241,6 +243,7 @@ func (r *jointAppEntityRslt) ToFrontedApplicationRecord(db *gorm.DB) *FrontendAp
 	var appSeasonRcd Season
 	err = db.Model(&Season{}).First(&appSeasonRcd, r.Application.SeasonId).Error
 	if err != nil {
+		log.Error().Msgf("Query season error: %+v", err)
 		return nil
 	}
 
