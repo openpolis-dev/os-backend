@@ -18,40 +18,40 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/app_bundles": {
+        "/guilds": {
             "get": {
-                "tags": [
-                    "app_bundle"
+                "consumes": [
+                    "application/json"
                 ],
-                "summary": "List all application bundles match the query params",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Guild"
+                ],
+                "summary": "List guilds",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "status of application bundle",
-                        "name": "status",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "which page",
+                        "type": "integer",
+                        "description": "page number, default: 1",
                         "name": "page",
                         "in": "query"
                     },
                     {
-                        "type": "string",
-                        "description": "size of each page",
+                        "type": "integer",
+                        "description": "page size, default: 10",
                         "name": "size",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "sort by which field",
+                        "description": "sort field, default: created_at",
                         "name": "sort_field",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "order of sort",
+                        "description": "sort order, default: desc",
                         "name": "sort_order",
                         "in": "query"
                     }
@@ -60,47 +60,155 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/app_bundle.AppBundleResponseRecord"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Reply"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "allOf": [
+                                                {
+                                                    "$ref": "#/definitions/api.ListReplyData"
+                                                },
+                                                {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "rows": {
+                                                            "$ref": "#/definitions/model.Guild"
+                                                        }
+                                                    }
+                                                }
+                                            ]
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     }
                 }
             },
             "post": {
-                "tags": [
-                    "app_bundle"
+                "consumes": [
+                    "application/json"
                 ],
-                "summary": "List all application bundles match the query params",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Guild"
+                ],
+                "summary": "Create a guild",
                 "parameters": [
                     {
-                        "description": "New application bundle request",
-                        "name": "request",
+                        "description": "request json body",
+                        "name": "JsonBody",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.NewAppBundleRequest"
+                            "$ref": "#/definitions/guild.CreateReq"
                         }
                     }
                 ],
                 "responses": {
-                    "201": {
-                        "description": "Created",
+                    "200": {
+                        "description": "OK",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/api.Reply"
                         }
                     }
                 }
             }
         },
-        "/app_bundles/:id/approve": {
-            "post": {
-                "tags": [
-                    "app_bundle"
+        "/guilds/my_guilds": {
+            "get": {
+                "consumes": [
+                    "application/json"
                 ],
-                "summary": "Approve app bundle and associated applications",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Guild"
+                ],
+                "summary": "list my guilds",
                 "parameters": [
                     {
-                        "type": "number",
-                        "description": "app bundle ID",
+                        "type": "integer",
+                        "description": "page number, default: 1",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "page size, default: 10",
+                        "name": "size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "sort field, default: created_at",
+                        "name": "sort_field",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "sort order, default: desc",
+                        "name": "sort_order",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Reply"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "allOf": [
+                                                {
+                                                    "$ref": "#/definitions/api.ListReplyData"
+                                                },
+                                                {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "rows": {
+                                                            "$ref": "#/definitions/model.Guild"
+                                                        }
+                                                    }
+                                                }
+                                            ]
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/guilds/{id}": {
+            "get": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Guild"
+                ],
+                "summary": "Get a guild detail",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "guild id",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -110,24 +218,91 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "string"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Reply"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/guild.DetailReply"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "put": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Guild"
+                ],
+                "summary": "Update a guild",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "guild id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "request json body",
+                        "name": "JsonBody",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/guild.UpdateReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.Reply"
                         }
                     }
                 }
             }
         },
-        "/app_bundles/:id/reject": {
+        "/guilds/{id}/add_related_proposal": {
             "post": {
-                "tags": [
-                    "app_bundle"
+                "consumes": [
+                    "application/json"
                 ],
-                "summary": "Reject app bundle and associated applications",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Guild"
+                ],
+                "summary": "Add related proposals to guild",
                 "parameters": [
                     {
-                        "type": "number",
-                        "description": "app bundle ID",
+                        "type": "integer",
+                        "description": "guild id",
                         "name": "id",
                         "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        },
+                        "collectionFormat": "csv",
+                        "description": "proposal ids",
+                        "name": "proposalIDs",
+                        "in": "query",
                         "required": true
                     }
                 ],
@@ -135,33 +310,153 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/api.Reply"
                         }
                     }
                 }
             }
         },
-        "/applications": {
-            "get": {
-                "summary": "lists all applications based on query params and return in JSON format",
+        "/guilds/{id}/update_budget": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Guild"
+                ],
+                "summary": "Update guild budget",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "guild id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "request json body",
+                        "name": "JsonBody",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/guild.UpdateBudgetReq"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/api.ListReplyData"
+                            "$ref": "#/definitions/api.Reply"
                         }
                     }
                 }
             }
         },
-        "/apps_applicants": {
-            "get": {
-                "summary": "List all applicants existing in applications table for filter",
+        "/guilds/{id}/update_staffs": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Guild"
+                ],
+                "summary": "Update guild sponsors/members",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "guild id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "request json body",
+                        "name": "JsonBody",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/guild.UpdateStaffsReq"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/application.ApplicantListResponse"
+                            "$ref": "#/definitions/api.Reply"
+                        }
+                    }
+                }
+            }
+        },
+        "/permission/grant_role": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Permission"
+                ],
+                "summary": "Grant role to user",
+                "parameters": [
+                    {
+                        "description": "request json body",
+                        "name": "grants",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/permission.GrantRoleReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.Reply"
+                        }
+                    }
+                }
+            }
+        },
+        "/permission/revoke_role": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Permission"
+                ],
+                "summary": "Revoke role from user",
+                "parameters": [
+                    {
+                        "description": "request json body",
+                        "name": "revokes",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/permission.RevokeRoleReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.Reply"
                         }
                     }
                 }
@@ -171,7 +466,7 @@ const docTemplate = `{
             "get": {
                 "description": "This api parses passed in pagination query params,",
                 "tags": [
-                    "project"
+                    "Project"
                 ],
                 "summary": "List all projects match the query params",
                 "parameters": [
@@ -210,7 +505,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/api.ListReplyData"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Reply"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "allOf": [
+                                                {
+                                                    "$ref": "#/definitions/api.ListReplyData"
+                                                },
+                                                {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "rows": {
+                                                            "$ref": "#/definitions/model.Project"
+                                                        }
+                                                    }
+                                                }
+                                            ]
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     }
                 }
@@ -218,7 +537,7 @@ const docTemplate = `{
             "post": {
                 "description": "This api create a project record with passed in data",
                 "tags": [
-                    "project"
+                    "Project"
                 ],
                 "summary": "Create a project with passed in data",
                 "parameters": [
@@ -233,10 +552,10 @@ const docTemplate = `{
                     }
                 ],
                 "responses": {
-                    "201": {
-                        "description": "Created",
+                    "200": {
+                        "description": "OK",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/api.Reply"
                         }
                     }
                 }
@@ -245,14 +564,35 @@ const docTemplate = `{
         "/projects/:id": {
             "get": {
                 "tags": [
-                    "project"
+                    "Project"
                 ],
                 "summary": "show detail of a project",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "guild id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/project.DetailReply"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Reply"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/project.DetailReply"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     }
                 }
@@ -260,7 +600,7 @@ const docTemplate = `{
             "put": {
                 "description": "This api update a project record with passed in data",
                 "tags": [
-                    "project"
+                    "Project"
                 ],
                 "summary": "Update project information",
                 "parameters": [
@@ -285,7 +625,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/api.Reply"
                         }
                     }
                 }
@@ -294,7 +634,7 @@ const docTemplate = `{
         "/projects/:id/add_related_proposal": {
             "post": {
                 "tags": [
-                    "project"
+                    "Project"
                 ],
                 "summary": "Add related proposals to the project",
                 "parameters": [
@@ -319,9 +659,9 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "ok",
+                        "description": "OK",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/api.Reply"
                         }
                     }
                 }
@@ -331,7 +671,7 @@ const docTemplate = `{
             "post": {
                 "description": "This api close specified project, admin permission is required for this operation",
                 "tags": [
-                    "project"
+                    "Project"
                 ],
                 "summary": "Close a project",
                 "parameters": [
@@ -345,22 +685,701 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "ok",
+                        "description": "OK",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/api.Reply"
                         }
                     }
                 }
             }
         },
-        "/seasons/": {
+        "/projects/my_projects": {
             "get": {
-                "summary": "returns all seasons currently existing in database",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Project"
+                ],
+                "summary": "list my projects",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "page number, default: 1",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "page size, default: 10",
+                        "name": "size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "sort field, default: created_at",
+                        "name": "sort_field",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "sort order, default: desc",
+                        "name": "sort_order",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/model.Season"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Reply"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "allOf": [
+                                                {
+                                                    "$ref": "#/definitions/api.ListReplyData"
+                                                },
+                                                {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "rows": {
+                                                            "$ref": "#/definitions/model.Project"
+                                                        }
+                                                    }
+                                                }
+                                            ]
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/projects/{id}/update_budget": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Project"
+                ],
+                "summary": "Update project budget",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "project id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "request json body",
+                        "name": "JsonBody",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/project.UpdateBudgetReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.Reply"
+                        }
+                    }
+                }
+            }
+        },
+        "/projects/{id}/update_staffs": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Project"
+                ],
+                "summary": "update project sponsors and members",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "project id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "request json body",
+                        "name": "JsonBody",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/project.UpdateStaffsReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.Reply"
+                        }
+                    }
+                }
+            }
+        },
+        "/public_data/contract/node": {
+            "get": {
+                "tags": [
+                    "PublicData"
+                ],
+                "summary": "query NODE data from spp-indexer",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Reply"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/publicdata.node"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/public_data/contract/scr": {
+            "get": {
+                "tags": [
+                    "PublicData"
+                ],
+                "summary": "query CR data from spp-indexer",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Reply"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/publicdata.scr"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/public_data/contract/seed": {
+            "get": {
+                "tags": [
+                    "PublicData"
+                ],
+                "summary": "query SEED data from spp-indexer",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Reply"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/publicdata.scr"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/public_data/discord_member_count": {
+            "get": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "PublicData"
+                ],
+                "summary": "DiscordData returns the data of the discord server",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Reply"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/publicdata.discord"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/push": {
+            "get": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Push"
+                ],
+                "summary": "list push",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "status",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "page",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "size",
+                        "name": "size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "sort_field",
+                        "name": "sort_field",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "sort_order",
+                        "name": "sort_order",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Reply"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "allOf": [
+                                                {
+                                                    "$ref": "#/definitions/api.ListReplyData"
+                                                },
+                                                {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "rows": {
+                                                            "$ref": "#/definitions/model.Push"
+                                                        }
+                                                    }
+                                                }
+                                            ]
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Push"
+                ],
+                "summary": "Create a push",
+                "parameters": [
+                    {
+                        "description": "request json body",
+                        "name": "push",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/push.CreateReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.Reply"
+                        }
+                    }
+                }
+            }
+        },
+        "/user/casbin": {
+            "get": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Permission"
+                ],
+                "summary": "Query frontend permission by user wallet",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "casbin_subject",
+                        "name": "casbin_subject",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Reply"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/user/login": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Login",
+                "parameters": [
+                    {
+                        "description": "request json body",
+                        "name": "JsonBody",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/user.LoginReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Reply"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/user.LoginReply"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/user/logout": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Logout",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.Reply"
+                        }
+                    }
+                }
+            }
+        },
+        "/user/me": {
+            "get": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "Get user detail",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Reply"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/sdk.SeepassResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "put": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "Update user info",
+                "parameters": [
+                    {
+                        "description": "request json body",
+                        "name": "JsonBody",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/user.UpdateReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.Reply"
+                        }
+                    }
+                }
+            }
+        },
+        "/user/refresh_nonce": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Refresh nonce",
+                "parameters": [
+                    {
+                        "description": "request json body",
+                        "name": "JsonBody",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/user.RefreshNonceReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Reply"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/user.RefreshNonceReply"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/user/retrieve_nonce": {
+            "get": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Retrieve nonce",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "wallet address",
+                        "name": "wallet",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Reply"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/user.RetrieveNonceReply"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/user/users": {
+            "get": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "Query multiple users by wallet array on batch",
+                "parameters": [
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "csv",
+                        "description": "wallets",
+                        "name": "wallets",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Reply"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/model.User"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     }
                 }
@@ -383,70 +1402,151 @@ const docTemplate = `{
                 }
             }
         },
-        "app_bundle.AppBundleResponseRecord": {
+        "api.Reply": {
             "type": "object",
             "properties": {
-                "assets": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "amount": {
-                                "type": "string"
-                            },
-                            "name": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                },
-                "comment": {
-                    "type": "string"
-                },
-                "entity": {
-                    "type": "object",
-                    "properties": {
-                        "id": {
-                            "type": "integer"
-                        },
-                        "name": {
-                            "type": "string"
-                        },
-                        "type": {
-                            "type": "string"
-                        }
-                    }
-                },
-                "id": {
+                "code": {
                     "type": "integer"
                 },
-                "records": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.FrontendApplicationRecord"
-                    }
-                },
-                "reviewer": {
-                    "type": "string"
-                },
-                "season_name": {
-                    "type": "string"
-                },
-                "state": {
-                    "$ref": "#/definitions/model.ApplicationState"
-                },
-                "submit_date": {
-                    "type": "string"
-                },
-                "submitter": {
+                "data": {},
+                "msg": {
                     "type": "string"
                 }
             }
         },
-        "application.ApplicantListResponse": {
+        "guild.BudgetParam": {
             "type": "object",
             "properties": {
-                "applicant": {
+                "budget_type": {
+                    "$ref": "#/definitions/model.BudgetType"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "total_amount": {
+                    "type": "number"
+                }
+            }
+        },
+        "guild.CreateReq": {
+            "type": "object",
+            "properties": {
+                "budgets": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/guild.BudgetParam"
+                    }
+                },
+                "desc": {
+                    "type": "string"
+                },
+                "intro": {
+                    "type": "string"
+                },
+                "logo": {
+                    "description": "base64 encoded logo image, will be uploaded to AWS S3 and saved URL in db record",
+                    "type": "string"
+                },
+                "members": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "proposals": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "sponsors": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "guild.DetailReply": {
+            "type": "object",
+            "properties": {
+                "budgets": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.GuildBudget"
+                    }
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "creator": {
+                    "type": "string"
+                },
+                "desc": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "intro": {
+                    "type": "string"
+                },
+                "logo": {
+                    "type": "string"
+                },
+                "members": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "proposals": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "sponsors": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "guild.UpdateBudgetReq": {
+            "type": "object",
+            "properties": {
+                "asset_name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "total_amount": {
+                    "type": "number"
+                }
+            }
+        },
+        "guild.UpdateReq": {
+            "type": "object",
+            "properties": {
+                "desc": {
+                    "type": "string"
+                },
+                "intro": {
+                    "type": "string"
+                },
+                "logo": {
                     "type": "string"
                 },
                 "name": {
@@ -454,14 +1554,26 @@ const docTemplate = `{
                 }
             }
         },
-        "model.ApplicationState": {
-            "type": "string",
-            "enum": [
-                "open"
-            ],
-            "x-enum-varnames": [
-                "ApplicationStateOpen"
-            ]
+        "guild.UpdateStaffsReq": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "description": "` + "`" + `add` + "`" + ` or ` + "`" + `remove` + "`" + `",
+                    "type": "string"
+                },
+                "members": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "sponsors": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
         },
         "model.BudgetType": {
             "type": "string",
@@ -472,107 +1584,151 @@ const docTemplate = `{
                 "BudgetTypeCredit"
             ]
         },
-        "model.FrontendApplicationRecord": {
+        "model.Guild": {
             "type": "object",
             "properties": {
-                "amount": {
-                    "type": "string"
-                },
-                "application_id": {
-                    "type": "integer"
-                },
-                "asset_name": {
-                    "type": "string"
-                },
-                "budget_source": {
-                    "description": "the data is from name field of project or guild",
-                    "type": "string"
-                },
-                "comment": {
-                    "type": "string"
-                },
                 "created_at": {
                     "type": "string"
                 },
-                "detailed_type": {
+                "creator": {
                     "type": "string"
                 },
-                "entity_name": {
-                    "description": "name field value from specified entity table",
+                "desc": {
                     "type": "string"
                 },
-                "reviewer_name": {
-                    "type": "string"
-                },
-                "reviewer_wallet": {
-                    "type": "string"
-                },
-                "season_name": {
-                    "type": "string"
-                },
-                "status": {
-                    "description": "application status",
-                    "type": "string"
-                },
-                "submitter_name": {
-                    "type": "string"
-                },
-                "submitter_wallet": {
-                    "type": "string"
-                },
-                "target_user_wallet": {
-                    "type": "string"
-                },
-                "transaction_ids": {
-                    "type": "string"
-                }
-            }
-        },
-        "model.NewAppBundleRequest": {
-            "type": "object",
-            "properties": {
-                "comment": {
-                    "type": "string"
-                },
-                "entity": {
-                    "type": "string"
-                },
-                "entity_id": {
+                "id": {
                     "type": "integer"
                 },
-                "records": {
+                "intro": {
+                    "type": "string"
+                },
+                "logo": {
+                    "type": "string"
+                },
+                "members": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.NewApplicationRequest"
+                        "type": "string"
                     }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "proposals": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "sponsors": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "updated_at": {
+                    "type": "string"
                 }
             }
         },
-        "model.NewApplicationRequest": {
+        "model.GuildBudget": {
             "type": "object",
             "properties": {
-                "amount": {
-                    "type": "number"
-                },
-                "asset_name": {
+                "created_at": {
                     "type": "string"
                 },
-                "comment": {
-                    "type": "string"
-                },
-                "detailed_type": {
-                    "type": "string"
-                },
-                "entity": {
-                    "type": "string"
-                },
-                "entity_id": {
+                "guild_id": {
+                    "description": "guild_id",
                     "type": "integer"
                 },
-                "target_user_wallet": {
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
                     "type": "string"
                 },
+                "remain_amount": {
+                    "description": "remain_amount",
+                    "type": "number"
+                },
+                "total_amount": {
+                    "description": "total_amount",
+                    "type": "number"
+                },
                 "type": {
+                    "description": "budget type, credit or token",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.BudgetType"
+                        }
+                    ]
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "used_amount": {
+                    "description": "used_amount",
+                    "type": "number"
+                }
+            }
+        },
+        "model.Project": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "creator": {
+                    "type": "string"
+                },
+                "desc": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "intro": {
+                    "type": "string"
+                },
+                "is_special": {
+                    "type": "boolean"
+                },
+                "logo": {
+                    "type": "string"
+                },
+                "members": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "proposals": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "special_type": {
+                    "$ref": "#/definitions/model.SpecialProjectType"
+                },
+                "sponsors": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "status": {
+                    "description": "Status may have those values: open/pending_close/closed",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.ProjectStatus"
+                        }
+                    ]
+                },
+                "updated_at": {
                     "type": "string"
                 }
             }
@@ -627,20 +1783,36 @@ const docTemplate = `{
                 "ProjectStatusOpen"
             ]
         },
-        "model.Season": {
+        "model.Push": {
             "type": "object",
             "properties": {
-                "endAt": {
+                "content": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "creator_wallet": {
                     "type": "string"
                 },
                 "id": {
                     "type": "integer"
                 },
-                "name": {
+                "jump_url": {
+                    "description": "TODO support multi type, custom(JumpURL), xx(yy,zz)",
                     "type": "string"
                 },
-                "startAt": {
-                    "description": "TODO: This field do not contains timezone info, need to review code about this",
+                "push_date": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "integer"
+                },
+                "title": {
+                    "description": "TODO support multi language",
+                    "type": "string"
+                },
+                "updated_at": {
                     "type": "string"
                 }
             }
@@ -653,6 +1825,126 @@ const docTemplate = `{
             "x-enum-varnames": [
                 "SpecialProjectCityHall"
             ]
+        },
+        "model.User": {
+            "type": "object",
+            "properties": {
+                "assets": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.UserAssetRecord"
+                    }
+                },
+                "avatar": {
+                    "type": "string"
+                },
+                "bio": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "discord_profile": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "google_profile": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "mirror": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "twitter_profile": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "wallet": {
+                    "type": "string"
+                },
+                "wechat": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.UserAssetRecord": {
+            "type": "object",
+            "properties": {
+                "asset_name": {
+                    "description": "asset name",
+                    "type": "string"
+                },
+                "asset_type": {
+                    "description": "type of the asset, credit or token",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.BudgetType"
+                        }
+                    ]
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "dealt_amount": {
+                    "description": "amount of asset that already dealt",
+                    "type": "number"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "processing_amount": {
+                    "description": "amount of asset that still need confirmation",
+                    "type": "number"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "user_wallet": {
+                    "type": "string"
+                }
+            }
+        },
+        "permission.GrantRoleReq": {
+            "type": "object",
+            "properties": {
+                "grants": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/permission.role"
+                    }
+                }
+            }
+        },
+        "permission.RevokeRoleReq": {
+            "type": "object",
+            "properties": {
+                "revokes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/permission.role"
+                    }
+                }
+            }
+        },
+        "permission.role": {
+            "type": "object",
+            "properties": {
+                "role": {
+                    "type": "string"
+                },
+                "wallet": {
+                    "type": "string"
+                }
+            }
         },
         "project.BudgetParam": {
             "type": "object",
@@ -777,6 +2069,20 @@ const docTemplate = `{
                 }
             }
         },
+        "project.UpdateBudgetReq": {
+            "type": "object",
+            "properties": {
+                "asset_name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "total_amount": {
+                    "type": "number"
+                }
+            }
+        },
         "project.UpdateReq": {
             "type": "object",
             "properties": {
@@ -793,6 +2099,285 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
+        },
+        "project.UpdateStaffsReq": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "description": "` + "`" + `add` + "`" + ` or ` + "`" + `remove` + "`" + `",
+                    "type": "string"
+                },
+                "members": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "sponsors": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "publicdata.discord": {
+            "type": "object",
+            "properties": {
+                "approximate_member_count": {
+                    "type": "integer"
+                },
+                "approximate_presence_count": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "publicdata.node": {
+            "type": "object",
+            "properties": {
+                "total_supply": {
+                    "type": "string"
+                }
+            }
+        },
+        "publicdata.scr": {
+            "type": "object",
+            "properties": {
+                "total_supply": {
+                    "type": "string"
+                }
+            }
+        },
+        "push.CreateReq": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "type": "string"
+                },
+                "jump_url": {
+                    "type": "string"
+                },
+                "title": {
+                    "description": "TODO support multi language\nTitle   map[string]string ` + "`" + `json:\"title\"` + "`" + `   // [zh]你好,[en]Hello\nContent map[string]string ` + "`" + `json:\"content\"` + "`" + ` // [zh]你好,[en]Hello",
+                    "type": "string"
+                }
+            }
+        },
+        "sdk.SeepassResponse": {
+            "type": "object",
+            "properties": {
+                "avatar": {},
+                "bio": {},
+                "email": {},
+                "level": {
+                    "type": "object",
+                    "properties": {
+                        "current_lv": {
+                            "type": "string"
+                        },
+                        "next_lv": {
+                            "type": "string"
+                        },
+                        "scr_to_next_lv": {
+                            "type": "string"
+                        },
+                        "upgrade_percent": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "nickname": {},
+                "roles": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "sbt": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "collection_name": {
+                                "type": "string"
+                            },
+                            "contract_addr": {
+                                "type": "string"
+                            },
+                            "contract_type": {
+                                "type": "string"
+                            },
+                            "image_uri": {
+                                "type": "string"
+                            },
+                            "metadata": {},
+                            "name": {
+                                "type": "string"
+                            },
+                            "symbol": {
+                                "type": "string"
+                            },
+                            "token_amount": {
+                                "type": "string"
+                            },
+                            "token_id": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "scr": {
+                    "type": "object",
+                    "properties": {
+                        "amount": {
+                            "type": "string"
+                        },
+                        "contract_addr": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "seed": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "contract_addr": {
+                                "type": "string"
+                            },
+                            "contract_type": {
+                                "type": "string"
+                            },
+                            "image_uri": {
+                                "type": "string"
+                            },
+                            "token_amount": {
+                                "type": "string"
+                            },
+                            "token_id": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "sns": {
+                    "type": "string"
+                },
+                "social_accounts": {
+                    "type": "array",
+                    "items": {}
+                },
+                "wallet": {
+                    "type": "string"
+                }
+            }
+        },
+        "user.LoginReply": {
+            "type": "object",
+            "properties": {
+                "token": {
+                    "type": "string"
+                },
+                "token_exp": {
+                    "description": "time unit: seconds",
+                    "type": "integer"
+                },
+                "user": {
+                    "$ref": "#/definitions/model.User"
+                }
+            }
+        },
+        "user.LoginReq": {
+            "type": "object",
+            "required": [
+                "domain",
+                "message",
+                "signature",
+                "wallet",
+                "wallet_type"
+            ],
+            "properties": {
+                "domain": {
+                    "type": "string"
+                },
+                "is_eip191_prefix": {
+                    "type": "boolean"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "signature": {
+                    "type": "string"
+                },
+                "wallet": {
+                    "type": "string"
+                },
+                "wallet_type": {
+                    "type": "string"
+                }
+            }
+        },
+        "user.RefreshNonceReply": {
+            "type": "object",
+            "properties": {
+                "nonce": {
+                    "type": "string"
+                }
+            }
+        },
+        "user.RefreshNonceReq": {
+            "type": "object",
+            "properties": {
+                "wallet": {
+                    "type": "string"
+                }
+            }
+        },
+        "user.RetrieveNonceReply": {
+            "type": "object",
+            "properties": {
+                "nonce": {
+                    "type": "string"
+                }
+            }
+        },
+        "user.UpdateReq": {
+            "type": "object",
+            "properties": {
+                "avatar": {
+                    "type": "string"
+                },
+                "bio": {
+                    "type": "string"
+                },
+                "discord_profile": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "google_profile": {
+                    "type": "string"
+                },
+                "mirror": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "twitter_profile": {
+                    "type": "string"
+                },
+                "wechat": {
+                    "type": "string"
+                }
+            }
         }
     }
 }`
@@ -800,7 +2385,7 @@ const docTemplate = `{
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
-	Host:             "https://test-api.seedao.tech",
+	Host:             "",
 	BasePath:         "/v1",
 	Schemes:          []string{},
 	Title:            "OS Backend API service",
