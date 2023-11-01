@@ -26,8 +26,10 @@ const QueryAppBundlesWithEntityNameBaseSQL = `SELECT app_bundles.*,
 CASE
    WHEN app_bundles.entity_type = 'project' THEN projects.name
    WHEN app_bundles.entity_type = 'guild' THEN guilds.name
-   ELSE NULL END AS entity_name
+   ELSE NULL END AS entity_name,
+seasons.name AS season_name
 FROM app_bundles
+   LEFT JOIN seasons ON app_bundles.season_id = seasons.id
    LEFT JOIN projects ON app_bundles.entity_type = 'project' AND app_bundles.entity_id = projects.id
    LEFT JOIN guilds ON app_bundles.entity_type = 'guild' AND app_bundles.entity_id = guilds.id`
 
