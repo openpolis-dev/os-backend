@@ -49,6 +49,13 @@ definitions:
       submitter:
         type: string
     type: object
+  application.ApplicantListResponse:
+    properties:
+      applicant:
+        type: string
+      name:
+        type: string
+    type: object
   model.ApplicationState:
     enum:
     - open
@@ -84,6 +91,8 @@ definitions:
       reviewer_name:
         type: string
       reviewer_wallet:
+        type: string
+      season_name:
         type: string
       status:
         description: application status
@@ -359,6 +368,22 @@ paths:
       summary: Reject app bundle and associated applications
       tags:
       - app_bundle
+  /applications:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.ListReplyData'
+      summary: lists all applications based on query params and return in JSON format
+  /apps_applicants:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/application.ApplicantListResponse'
+      summary: List all applicants existing in applications table for filter
   /projects:
     get:
       description: This api parses passed in pagination query params,

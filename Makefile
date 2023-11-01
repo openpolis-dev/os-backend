@@ -14,7 +14,7 @@ docs: ${DOCS_FILES}
 
 ${DOCS_FILES}: $(GO_INTERNAL_SRC) $(GO_CMD_SRC)
 	swag fmt
-	swag init -g ../../cmd/apiserver.go -d internal/api,internal/model --parseDependency
+	swag init -g ../../cmd/apiserver.go -d internal/api,internal/model --parseDependency --parseInternal
 
 internal/models/%.pb.go: proto/%.proto
 	protoc --proto_path=proto --go_out=internal/models --go_opt=paths=source_relative $<

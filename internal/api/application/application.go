@@ -26,15 +26,21 @@ type AuditRequestBody struct {
 	Message string `json:"message"`
 }
 
+type ApplicantListResponse struct {
+	Applicant string
+	Name      string
+}
+
 // ListApplicants list all applicants existing in applications table for filter
+//
+//	@summary	List all applicants existing in applications table for filter
+//	@router		/apps_applicants [get]
+//	@success	200	{object}	ApplicantListResponse
 func ListApplicants(ctx *gin.Context) {
 	var err error
 	db := api.ForContextOnlyDB(ctx)
 
-	var rslt []struct {
-		Applicant string
-		Name      string
-	}
+	var rslt []ApplicantListResponse
 
 	err = db.Model(&model.Application{}).
 		Distinct("wallet").
@@ -50,7 +56,10 @@ func ListApplicants(ctx *gin.Context) {
 }
 
 // List lists all applications based on query params and return in JSON format
-// GET /applications
+//
+//	@summary	lists all applications based on query params and return in JSON format
+//	@router		/applications [get]
+//	@success	200	{object}	api.ListReplyData
 func List(ctx *gin.Context) {
 	var err error
 	db := api.ForContextOnlyDB(ctx)

@@ -141,6 +141,32 @@ const docTemplate = `{
                 }
             }
         },
+        "/applications": {
+            "get": {
+                "summary": "lists all applications based on query params and return in JSON format",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.ListReplyData"
+                        }
+                    }
+                }
+            }
+        },
+        "/apps_applicants": {
+            "get": {
+                "summary": "List all applicants existing in applications table for filter",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/application.ApplicantListResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/projects": {
             "get": {
                 "description": "This api parses passed in pagination query params,",
@@ -417,6 +443,17 @@ const docTemplate = `{
                 }
             }
         },
+        "application.ApplicantListResponse": {
+            "type": "object",
+            "properties": {
+                "applicant": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
         "model.ApplicationState": {
             "type": "string",
             "enum": [
@@ -468,6 +505,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "reviewer_wallet": {
+                    "type": "string"
+                },
+                "season_name": {
                     "type": "string"
                 },
                 "status": {
