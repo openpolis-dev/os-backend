@@ -176,6 +176,7 @@ func main() {
 		publicData.GET("/contract/seed", publicdata.SeedDataFromIndexer)
 		publicData.GET("/contract/scr", publicdata.SCRDataFromIndexer)
 		publicData.GET("/contract/node", publicdata.NodeDataFromIndexer)
+		publicData.GET("/bounty_list", publicdata.BountyList)
 
 		// foo routers
 	}
