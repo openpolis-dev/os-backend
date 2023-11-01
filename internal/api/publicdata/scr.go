@@ -38,7 +38,7 @@ var scrCache dataCache[http.Client, scr]
 // SCRDataFromIndexer query SCR data from spp-indexer
 // @Summary query CR data from spp-indexer
 // @Tags PublicData
-// @Success 200 {object} scr
+// @Success 200 {object} api.Reply{data=scr}
 // @Router /public_data/contract/scr [get]
 func SCRDataFromIndexer(ctx *gin.Context) {
 	_, cfg := api.ForContextDBAndConfig(ctx)

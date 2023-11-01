@@ -29,8 +29,8 @@ type CreateReq struct {
 // @Accept json
 // @Produce json
 // @Param push body CreateReq true "request json body"
-// @Success 200 {object} Reply
-// @Router /v1/push [post]
+// @Success 200 {object} api.Reply
+// @Router /push [post]
 func Create(ctx *gin.Context) {
 	req := CreateReq{}
 	err := ctx.BindJSON(&req)
@@ -83,7 +83,7 @@ func Create(ctx *gin.Context) {
 //
 //	`GET /push?status=1&page=1&size=10&sort_field=created_at&sort_order=desc`
 //
-// @Summary List push
+// @Summary list push
 // @Tags Push
 // @Accept json
 // @Produce json
@@ -92,8 +92,8 @@ func Create(ctx *gin.Context) {
 // @Param size query int false "size"
 // @Param sort_field query string false "sort_field"
 // @Param sort_order query string false "sort_order"
-// @Success 200 {object} ListReplyData
-// @Router /v1/push [get]
+// @Success 200 {object} api.Reply{data=api.ListReplyData{rows=model.Push}}
+// @Router /push [get]
 func List(ctx *gin.Context) {
 	db := api.ForContextOnlyDB(ctx)
 
@@ -106,7 +106,7 @@ func List(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, api.Success(api.ListReplyData{
+	ctx.JSON(http.StatusOK, api.Success(&api.ListReplyData{
 		Page:  page.Page,
 		Size:  page.Size,
 		Total: total,

@@ -20,7 +20,7 @@ var discordCache dataCache[discordgo.Session, discord]
 // @Tags PublicData
 // @Accept json
 // @Produce json
-// @Success 200 {object} discord
+// @Success 200 {object} api.Reply{data=discord}
 // @Router /public_data/discord_member_count [get]
 func DiscordData(ctx *gin.Context) {
 	_, cfg := api.ForContextDBAndConfig(ctx)
