@@ -301,9 +301,28 @@ func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState
 	push := api.ForContextOnlyPush(ctx)
 
 	err = db.Transaction(func(tx *gorm.DB) error {
-		for _, appBundleRcd := range appBundleRcds {
-			appBundleRcd.State = newState
-			err = tx.Save(&appBundleRcd).Error
+		appBundleRcd.State = newState
+		err = tx.Save(&appBundleRcd).Error
+		if err != nil {
+			return err
+		}
+
+		err = tx.Model(model.AppBundleAuditLog{}).Create(&model.AppBundleAuditLog{
+			AppBundleId: appBundleRcd.ID,
+			AppBundle:   *appBundleRcd,
+			LogTs:       time.Now().In(internal.ProjectTimezone),
+			Operation:   model.AuditActionApprove,
+			Operator:    user.Wallet,
+			PreState:    "",
+			PostState:   model.ApplicationStateOpen,
+			ExtraData:   "",
+		}).Error
+		if err != nil {
+			return err
+		}
+		log.Error().Msgf("Records: %+v", appBundleRcd.AppRecords)
+		for _, appRcd := range appBundleRcd.AppRecords {
+			err = model.AuditApplication(db, user.Wallet, appRcd, model.AuditActionApprove, "", enforcer, push)
 			if err != nil {
 				log.Error().Msgf("save app bundle record error: %+v, app bundle: %+v", err, appBundleRcd)
 				tx.Rollback()
