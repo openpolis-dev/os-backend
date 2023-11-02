@@ -294,6 +294,7 @@ type ListAppBundleQueryParams struct {
 type JointAppBundleEntityRslt struct {
 	AppBundle  *AppBundle `gorm:"embedded"`
 	EntityName string     `json:"entity_name"`
+	SeasonName string     `json:"season_name"`
 }
 
 func ToFrontendApplicationRecordList(db *gorm.DB, appRcds []*Application, entityName string) []*FrontendApplicationRecord {

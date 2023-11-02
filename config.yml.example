@@ -40,6 +40,10 @@ publicData:
   contracts:
     scr: 0xc74DEE15a4700D5df797bDD3982EE649A3Bb8c6C
     seed: 0x30093266E34a816a53e302bE3e59a93B52792FD4
-    node: 0x3ebbd496acc9ecea3437434c4ae4919385ae35ef
+    node: 0x9d34D407D8586478b3e4c39BE633ED3D7be1c80C
   cacheInSeconds: 60 # unit is seconds
   mainnetRPC: https://eth-mainnet.g.alchemy.com/v2/FU0ujCat3OQd5hIqpddJ94SngVaeSxad
+  sppIndexerHost: http://localhost:3000
+  notion:
+    APIToken: secret_gnVFq5NWrDHY481DoMPwaCLuo6GDvGw7s31xOxdQNkR
+    bountyDatabaseID: 73d83a0a258d4ac5afa57a997114755a

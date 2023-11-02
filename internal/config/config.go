@@ -70,6 +70,11 @@ type (
 		} `json:"contracts" yaml:"contracts"`
 		CacheInSeconds int64  `json:"cacheInSeconds" yaml:"cacheInSeconds"`
 		MainnetRPC     string `json:"mainnetRPC" yaml:"mainnetRPC"`
+		SppIndexerHost string `json:"sppIndexerHost" yaml:"sppIndexerHost"`
+		Notion         struct {
+			APIToken         string `json:"APIToken" yaml:"APIToken"`
+			BountyDatabaseID string `json:"bountyDatabaseID" yaml:"bountyDatabaseID"`
+		} `json:"notion" yaml:"notion"`
 	}
 )
 

@@ -3,6 +3,9 @@ package main
 import (
 	"flag"
 
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
+
 	"github.com/casbin/casbin/v2"
 	gormadapter "github.com/casbin/gorm-adapter/v3"
 	"github.com/gin-contrib/cors"
@@ -10,8 +13,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
-	swaggerFiles "github.com/swaggo/files"
-	ginSwagger "github.com/swaggo/gin-swagger"
+	_ "github.com/theseed-labs/os-backend/docs"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/api/app_bundle"
 	"github.com/theseed-labs/os-backend/internal/api/application"
@@ -29,8 +31,6 @@ import (
 	"github.com/theseed-labs/os-backend/internal/middleware"
 	"github.com/theseed-labs/os-backend/internal/sdk"
 	"github.com/theseed-labs/os-backend/internal/storage"
-
-	_ "github.com/theseed-labs/os-backend/docs"
 )
 
 //	@title			OS Backend API service
@@ -134,11 +134,6 @@ func main() {
 	v1 := r.Group("/v1")
 	// --> no auth required
 	{
-		// preview mode
-		v1.GET("/preview_enable", user.PreviewEnable)
-		v1.PUT("/preview_toggle", user.PreviewToggle)
-		v1.POST("/preview_login", user.PreviewLogin)
-
 		// user routers
 		userGroup := v1.Group("/user")
 		userGroup.POST("/refresh_nonce", user.RefreshNonce)
@@ -184,8 +179,11 @@ func main() {
 		// public data
 		publicData := v1.Group("/public_data")
 		publicData.GET("/discord_member_count", publicdata.DiscordData)
-		publicData.GET("/contract/seed", publicdata.SeedData)
-		publicData.GET("/contract/scr", publicdata.SCRData)
+		publicData.GET("/contract/seed", publicdata.SeedDataFromIndexer)
+		publicData.GET("/contract/scr", publicdata.SCRDataFromIndexer)
+		publicData.GET("/contract/node", publicdata.NodeDataFromIndexer)
+		publicData.GET("/bounty/list", publicdata.BountyList)
+		publicData.GET("/bounty/detail/:id", publicdata.BountyDetail)
 
 		// season data
 		seasonsData := v1.Group("/seasons")
@@ -227,8 +225,9 @@ func main() {
 		appBundleGroup := authorizedGroup.Group("/app_bundles")
 		appBundleGroup.GET("/", app_bundle.ListAppBundle)
 		appBundleGroup.POST("/", app_bundle.CreateAppBundle)
-		appBundleGroup.POST("/:id/approve", app_bundle.ApproveAppBundle)
-		appBundleGroup.POST("/:id/reject", app_bundle.RejectAppBundle)
+
+		authorizedGroup.POST("/app_bundle_approve", app_bundle.ApproveAppBundles)
+		authorizedGroup.POST("/app_bundle_reject", app_bundle.RejectAppBundles)
 
 		// batch application routers
 		authorizedGroup.POST("/apps_approve", application.BatchApprove)
@@ -267,7 +266,7 @@ func main() {
 		// foo routers
 	}
 
-	r.GET("/_docs/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	_ = r.Run()
 }
