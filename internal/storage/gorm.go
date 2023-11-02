@@ -14,6 +14,7 @@ import (
 
 var gormDB *gorm.DB
 
+// InitGormDB inits gorm database connector
 func InitGormDB(dsn string) {
 	// default logger config: https://github.com/go-gorm/gorm/blob/master/logger/logger.go#L74
 	dbLogger := logger.New(log.New(os.Stdout, "\r\n", log.LstdFlags), logger.Config{
@@ -28,9 +29,12 @@ func InitGormDB(dsn string) {
 	if err != nil {
 		panic("failed to connect database")
 	}
+}
 
+// MigrateTables auto migrate models defined.
+func MigrateTables() {
 	// Migrate the schema
-	err = gormDB.AutoMigrate(
+	err := gormDB.AutoMigrate(
 		&model.User{},
 		&model.UserNonce{},
 		&model.UserAssetRecord{},
@@ -55,7 +59,7 @@ func InitGormDB(dsn string) {
 }
 
 // SeedDbRecords inits some const data records to database if not existing
-func SeedDbRecords(db *gorm.DB) error {
+func SeedDbRecords() {
 	prjTz := time.FixedZone("UTF+8", int((8 * time.Hour).Seconds()))
 	seasons := []model.Season{
 		{
@@ -80,14 +84,13 @@ func SeedDbRecords(db *gorm.DB) error {
 			EndAt:   time.Date(2024, 2, 28, 0, 0, 0, 0, prjTz),
 		},
 	}
-	err := db.Clauses(clause.OnConflict{
+	err := gormDB.Clauses(clause.OnConflict{
 		UpdateAll: true,
 	}).Create(&seasons).Error
 
 	if err != nil {
-		return err
+		panic("failed to seed database")
 	}
-	return nil
 }
 
 func GetGormDB() *gorm.DB {

@@ -91,8 +91,9 @@ func main() {
 
 	// setup database
 	storage.InitGormDB(cfg.DataSource.Dsn)
+	storage.MigrateTables()
+	storage.SeedDbRecords()
 	db := storage.GetGormDB()
-	err = storage.SeedDbRecords(db)
 	if err != nil {
 		panic(err)
 	}
