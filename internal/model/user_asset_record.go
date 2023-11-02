@@ -13,11 +13,12 @@ import (
 
 // UserAssetRecord saves single asset balance of specified user.
 // For each user and each asset, only one record is allowed in the database
+// TODO: Add uniqueIndex to (UserWallet, AssetName). Currently some DB version do not support it.
 type UserAssetRecord struct {
 	ID               uint            `json:"id" gorm:"primaryKey"`
-	UserWallet       string          `json:"user_wallet" gorm:"type:varchar(256) uniqueIndex:wallet_asset"`
+	UserWallet       string          `json:"user_wallet" gorm:"type:varchar(256)"`
 	AssetType        BudgetType      `json:"asset_type"`                                  // type of the asset, credit or token
-	AssetName        string          `json:"asset_name" gorm:"uniqueIndex:wallet_asset"`  // asset name
+	AssetName        string          `json:"asset_name" gorm:"type:varchar(64)"`          // asset name
 	DealtAmount      decimal.Decimal `json:"dealt_amount" sql:"type:decimal(20,8);"`      // amount of asset that already dealt
 	ProcessingAmount decimal.Decimal `json:"processing_amount" sql:"type:decimal(20,8);"` // amount of asset that still need confirmation
 	CreatedAt        time.Time       `json:"created_at"`
