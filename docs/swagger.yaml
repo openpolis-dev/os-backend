@@ -18,6 +18,52 @@ definitions:
       msg:
         type: string
     type: object
+  app_bundle.AppBundleResponseRecord:
+    properties:
+      assets:
+        items:
+          properties:
+            amount:
+              type: string
+            name:
+              type: string
+          type: object
+        type: array
+      comment:
+        type: string
+      entity:
+        properties:
+          id:
+            type: integer
+          name:
+            type: string
+          type:
+            type: string
+        type: object
+      id:
+        type: integer
+      records:
+        items:
+          $ref: '#/definitions/model.FrontendApplicationRecord'
+        type: array
+      reviewer:
+        type: string
+      season_name:
+        type: string
+      state:
+        $ref: '#/definitions/model.ApplicationState'
+      submit_date:
+        type: string
+      submitter:
+        type: string
+    type: object
+  application.ApplicantListResponse:
+    properties:
+      applicant:
+        type: string
+      name:
+        type: string
+    type: object
   guild.BudgetParam:
     properties:
       budget_type:
@@ -125,12 +171,56 @@ definitions:
           type: string
         type: array
     type: object
+  model.ApplicationState:
+    enum:
+    - open
+    type: string
+    x-enum-varnames:
+    - ApplicationStateOpen
   model.BudgetType:
     enum:
     - credit
     type: string
     x-enum-varnames:
     - BudgetTypeCredit
+  model.FrontendApplicationRecord:
+    properties:
+      amount:
+        type: string
+      application_id:
+        type: integer
+      asset_name:
+        type: string
+      budget_source:
+        description: the data is from name field of project or guild
+        type: string
+      comment:
+        type: string
+      created_at:
+        type: string
+      detailed_type:
+        type: string
+      entity_name:
+        description: name field value from specified entity table
+        type: string
+      reviewer_name:
+        type: string
+      reviewer_wallet:
+        type: string
+      season_name:
+        type: string
+      status:
+        description: application status
+        type: string
+      submitter_name:
+        type: string
+      submitter_wallet:
+        type: string
+      target_user_wallet:
+        type: string
+      transaction_ids:
+        type: string
+    type: object
   model.Guild:
     properties:
       created_at:
@@ -188,6 +278,38 @@ definitions:
       used_amount:
         description: used_amount
         type: number
+    type: object
+  model.NewAppBundleRequest:
+    properties:
+      comment:
+        type: string
+      entity:
+        type: string
+      entity_id:
+        type: integer
+      records:
+        items:
+          $ref: '#/definitions/model.NewApplicationRequest'
+        type: array
+    type: object
+  model.NewApplicationRequest:
+    properties:
+      amount:
+        type: number
+      asset_name:
+        type: string
+      comment:
+        type: string
+      detailed_type:
+        type: string
+      entity:
+        type: string
+      entity_id:
+        type: integer
+      target_user_wallet:
+        type: string
+      type:
+        type: string
     type: object
   model.Project:
     properties:
@@ -282,6 +404,19 @@ definitions:
         description: TODO support multi language
         type: string
       updated_at:
+        type: string
+    type: object
+  model.Season:
+    properties:
+      endAt:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      startAt:
+        description: 'TODO: This field do not contains timezone info, need to review
+          code about this'
         type: string
     type: object
   model.SpecialProjectType:
@@ -656,6 +791,7 @@ definitions:
       wechat:
         type: string
     type: object
+host: https://test-api.seedao.tech
 info:
   contact: {}
   license:
@@ -663,6 +799,117 @@ info:
   title: OS Backend API service
   version: "1.0"
 paths:
+  /app_bundle_approve:
+    post:
+      parameters:
+      - description: app bundle IDs
+        in: body
+        name: JsonBody
+        required: true
+        schema:
+          items:
+            type: string
+          type: array
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: Approve app bundle and associated applications
+      tags:
+      - app_bundle
+  /app_bundles:
+    get:
+      parameters:
+      - description: status of application bundle
+        in: query
+        name: status
+        type: string
+      - description: which page
+        in: query
+        name: page
+        type: string
+      - description: size of each page
+        in: query
+        name: size
+        type: string
+      - description: sort by which field
+        in: query
+        name: sort_field
+        type: string
+      - description: order of sort
+        in: query
+        name: sort_order
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/app_bundle.AppBundleResponseRecord'
+      summary: List all application bundles match the query params
+      tags:
+      - app_bundle
+    post:
+      parameters:
+      - description: New application bundle request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.NewAppBundleRequest'
+      responses:
+        "201":
+          description: Created
+          schema:
+            type: string
+      summary: List all application bundles match the query params
+      tags:
+      - app_bundle
+  /app_bundles_reject:
+    post:
+      parameters:
+      - description: app bundle IDs
+        in: body
+        name: JsonBody
+        required: true
+        schema:
+          items:
+            type: string
+          type: array
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: Reject app bundle and associated applications
+      tags:
+      - app_bundle
+  /applications:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  allOf:
+                  - $ref: '#/definitions/api.ListReplyData'
+                  - properties:
+                      rows:
+                        $ref: '#/definitions/model.FrontendApplicationRecord'
+                    type: object
+              type: object
+      summary: lists all applications based on query params and return in JSON format
+  /apps_applicants:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/application.ApplicantListResponse'
+      summary: List all applicants existing in applications table for filter
   /guilds:
     get:
       consumes:
@@ -1174,6 +1421,54 @@ paths:
       summary: list my projects
       tags:
       - Project
+  /public_data/bounty/detail/{id}:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: id
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.Reply'
+      summary: BountyDetail returns the detail of a bounty
+      tags:
+      - PublicData
+  /public_data/bounty/list:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: page
+        in: query
+        name: page
+        type: integer
+      - description: size
+        in: query
+        name: size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  $ref: '#/definitions/api.ListReplyData'
+              type: object
+      summary: BountyList returns the list of bounties
+      tags:
+      - PublicData
   /public_data/contract/node:
     get:
       responses:
@@ -1303,6 +1598,14 @@ paths:
       summary: Create a push
       tags:
       - Push
+  /seasons/:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Season'
+      summary: returns all seasons currently existing in database
   /user/casbin:
     get:
       consumes:
