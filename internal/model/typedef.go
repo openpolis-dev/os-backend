@@ -235,7 +235,7 @@ func (r *jointAppEntityRslt) ToFrontedApplicationRecord(db *gorm.DB) *FrontendAp
 		CreatedAt:        r.Application.CreatedAt,
 		TargetUserWallet: r.Application.TargetUserWallet,
 		AssetName:        r.Application.AssetName,
-		Amount:           r.Application.AssetAmount,
+		Amount:           r.Application.AssetAmount.String(),
 		BudgetSource:     r.EntityName,
 		Status:           string(r.Application.State),
 		DetailedType:     r.Application.DetailedType,

@@ -302,3 +302,7 @@ func SetDefaultMapValue[K comparable, V any](origMap map[K]V, key K, value V) {
 		origMap[key] = value
 	}
 }
+
+func FormatUserWallet(wallet string) string {
+	return strings.TrimSpace(strings.ToLower(wallet))
+}

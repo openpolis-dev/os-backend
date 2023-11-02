@@ -1,7 +1,6 @@
 package app_bundle
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -86,17 +85,8 @@ func ListAppBundle(ctx *gin.Context) {
 
 		// Summarize the assets in app bundle
 		for _, appRcd := range appRcds {
-			detailedData := model.NewRewardApplicationDetailedData{}
-			err := json.Unmarshal(appRcd.DetailedData, &detailedData)
-			if err != nil {
-				log.Error().Msgf("parse application detailed data error: %+v, detailed data: %q", err, appRcd.DetailedData)
-				return AppBundleResponseRecord{}
-			}
-
-			for assetName, assetRcd := range detailedData.Assets {
-				model.SetDefaultMapValue(assetSummary, assetName, decimal.Zero)
-				assetSummary[assetName] = assetSummary[assetName].Add(assetRcd.Amount)
-			}
+			model.SetDefaultMapValue(assetSummary, appRcd.AssetName, decimal.Zero)
+			assetSummary[appRcd.AssetName] = assetSummary[appRcd.AssetName].Add(appRcd.AssetAmount)
 		}
 
 		return AppBundleResponseRecord{
@@ -197,34 +187,17 @@ func CreateAppBundle(ctx *gin.Context) {
 			UpdatedAt:  time.Now().In(internal.ProjectTimezone),
 		}
 
-		appBundle.AppRecords = lo.Map(newAppBundleReq.Records, func(appRcd *model.NewApplicationRequest, index int) *model.Application {
-			rewardDetailedData := model.NewRewardApplicationDetailedData{
-				TargetUserWallet: appRcd.TargetUserWallet,
-				Assets: map[string]model.NewRewardAssetRecord{
-					appRcd.AssetName: {
-						AssetName: appRcd.AssetName,
-						Amount:    appRcd.Amount,
-					},
-				},
-			}
-
-			detailedDataBytes, err := json.Marshal(rewardDetailedData)
-			if err != nil {
-				log.Error().Msgf("serialize detailed data to json error: %+v, detailed data: %+v", err, rewardDetailedData)
-				return nil
-			}
-
+		appBundle.AppRecords = lo.Map(newAppBundleReq.Records, func(appRcdRequest *model.NewApplicationRequest, index int) *model.Application {
 			return &model.Application{
 				Type:             model.ApplicationNewReward,
 				Applicant:        user.Wallet,
 				State:            model.ApplicationStateOpen,
 				CreatedAt:        time.Now().In(internal.ProjectTimezone),
 				UpdatedAt:        time.Now().In(internal.ProjectTimezone),
-				DetailedType:     appRcd.DetailedType,
-				DetailedData:     detailedDataBytes,
-				TargetUserWallet: appRcd.TargetUserWallet,
-				AssetName:        appRcd.AssetName,
-				AssetAmount:      appRcd.Amount.String(),
+				DetailedType:     appRcdRequest.DetailedType,
+				TargetUserWallet: appRcdRequest.TargetUserWallet,
+				AssetName:        appRcdRequest.AssetName,
+				AssetAmount:      appRcdRequest.Amount,
 				EntityType:       newAppBundleReq.Entity,
 				EntityId:         newAppBundleReq.EntityId,
 				SeasonId:         seasonRecord.ID,
