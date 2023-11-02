@@ -301,31 +301,11 @@ func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState
 	push := api.ForContextOnlyPush(ctx)
 
 	err = db.Transaction(func(tx *gorm.DB) error {
-		appBundleRcd.State = newState
-		err = tx.Save(&appBundleRcd).Error
-		if err != nil {
-			return err
-		}
+		for _, appBundleRcd := range appBundleRcds {
 
-		err = tx.Model(model.AppBundleAuditLog{}).Create(&model.AppBundleAuditLog{
-			AppBundleId: appBundleRcd.ID,
-			AppBundle:   *appBundleRcd,
-			LogTs:       time.Now().In(internal.ProjectTimezone),
-			Operation:   model.AuditActionApprove,
-			Operator:    user.Wallet,
-			PreState:    "",
-			PostState:   model.ApplicationStateOpen,
-			ExtraData:   "",
-		}).Error
-		if err != nil {
-			return err
-		}
-		log.Error().Msgf("Records: %+v", appBundleRcd.AppRecords)
-		for _, appRcd := range appBundleRcd.AppRecords {
-			err = model.AuditApplication(db, user.Wallet, appRcd, model.AuditActionApprove, "", enforcer, push)
+			appBundleRcd.State = newState
+			err = tx.Save(&appBundleRcd).Error
 			if err != nil {
-				log.Error().Msgf("save app bundle record error: %+v, app bundle: %+v", err, appBundleRcd)
-				tx.Rollback()
 				return err
 			}
 
@@ -340,17 +320,40 @@ func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState
 				ExtraData:   "",
 			}).Error
 			if err != nil {
-				log.Error().Msgf("create app bundle audit log record error: %+v, app bundle: %+v", err, appBundleRcd)
-				tx.Rollback()
 				return err
 			}
+			log.Error().Msgf("Records: %+v", appBundleRcd.AppRecords)
 			for _, appRcd := range appBundleRcd.AppRecords {
-				appRcd.State = newState
-				err = tx.Save(&appRcd).Error
+				err = model.AuditApplication(db, user.Wallet, appRcd, model.AuditActionApprove, "", enforcer, push)
 				if err != nil {
-					log.Error().Msgf("change application state error: %+v, application: %+v", err, appRcd)
+					log.Error().Msgf("save app bundle record error: %+v, app bundle: %+v", err, appBundleRcd)
 					tx.Rollback()
 					return err
+				}
+
+				err = tx.Model(model.AppBundleAuditLog{}).Create(&model.AppBundleAuditLog{
+					AppBundleId: appBundleRcd.ID,
+					AppBundle:   appBundleRcd,
+					LogTs:       time.Now().In(internal.ProjectTimezone),
+					Operation:   model.AuditActionApprove,
+					Operator:    user.Wallet,
+					PreState:    "",
+					PostState:   model.ApplicationStateOpen,
+					ExtraData:   "",
+				}).Error
+				if err != nil {
+					log.Error().Msgf("create app bundle audit log record error: %+v, app bundle: %+v", err, appBundleRcd)
+					tx.Rollback()
+					return err
+				}
+				for _, appRcd := range appBundleRcd.AppRecords {
+					appRcd.State = newState
+					err = tx.Save(&appRcd).Error
+					if err != nil {
+						log.Error().Msgf("change application state error: %+v, application: %+v", err, appRcd)
+						tx.Rollback()
+						return err
+					}
 				}
 			}
 		}
