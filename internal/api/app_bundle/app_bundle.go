@@ -74,7 +74,7 @@ func ListAppBundle(ctx *gin.Context) {
 		assetSummary := make(map[string]decimal.Decimal)
 
 		var appRcds []*model.Application
-		err = db.Model(&model.Application{}).
+		err = db.Preload("Season").Model(&model.Application{}).
 			Where("bundle_id = ?", jointAppBundleEntityRcd.AppBundle.ID).
 			Find(&appRcds).
 			Error
@@ -91,7 +91,7 @@ func ListAppBundle(ctx *gin.Context) {
 
 		return AppBundleResponseRecord{
 			ID:         jointAppBundleEntityRcd.AppBundle.ID,
-			SeasonName: jointAppBundleEntityRcd.AppBundle.Season.Name,
+			SeasonName: jointAppBundleEntityRcd.SeasonName,
 			Records:    model.ToFrontendApplicationRecordList(db, appRcds, jointAppBundleEntityRcd.EntityName),
 			Entity: struct {
 				Id   uint   `json:"id"`
@@ -229,58 +229,62 @@ func CreateAppBundle(ctx *gin.Context) {
 	ctx.JSON(http.StatusCreated, api.Success(nil))
 }
 
-// ApproveAppBundle approve appBundle and associated applications
+// ApproveAppBundles approve appBundle and associated applications
 //
 //	@Summary	Approve app bundle and associated applications
-//	@Router		/app_bundles/:id/approve [post]
+//	@Router		/app_bundle_approve [post]
 //	@Tags		app_bundle
-//	@Param		id	path		number	true	"app bundle ID"
+//	@Param		JsonBody	body		[]string	true	"app bundle IDs"
 //
-//	@Success	200	{string}	nil
-func ApproveAppBundle(ctx *gin.Context) {
+//	@Success	200			{string}	nil
+func ApproveAppBundles(ctx *gin.Context) {
 	updateAppBundleToNewState(ctx, model.ApplicationStateApproved)
 	ctx.JSON(http.StatusOK, api.Success(nil))
 }
 
-// RejectAppBundle reject appBundle and associated applications
+// RejectAppBundles reject appBundle and associated applications
 //
 //	@Summary	Reject app bundle and associated applications
-//	@Router		/app_bundles/:id/reject [post]
+//	@Router		/app_bundles_reject [post]
 //	@Tags		app_bundle
-//	@Param		id	path		number	true	"app bundle ID"
+//	@Param		JsonBody	body		[]string	true	"app bundle IDs"
 //
-//	@Success	200	{string}	nil
-func RejectAppBundle(ctx *gin.Context) {
+//	@Success	200			{string}	nil
+func RejectAppBundles(ctx *gin.Context) {
 	updateAppBundleToNewState(ctx, model.ApplicationStateRejected)
 	ctx.JSON(http.StatusOK, api.Success(nil))
 }
 
-func getRecordOrReturnNotFound(ctx *gin.Context, appBundle *model.AppBundle) {
-	id := ctx.Param("id")
+func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState) {
 	db := api.ForContextOnlyDB(ctx)
-	tx := db.Preload("AppRecords").First(&appBundle, id)
-	log.Error().Msgf("App record: %+v", appBundle)
-
-	if errors.Is(tx.Error, gorm.ErrRecordNotFound) {
-		ctx.JSON(http.StatusNotFound, api.Reply{
+	var idList []int
+	err := ctx.Bind(&idList)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, api.Reply{
 			Code: -1,
-			Msg:  fmt.Sprintf("application with id %s not found", id),
+			Msg:  fmt.Sprintf("parse app bundle ids error"),
 		})
 		return
 	}
-}
 
-func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState) {
-	db := api.ForContextOnlyDB(ctx)
-	appBundleRcd := &model.AppBundle{}
-	getRecordOrReturnNotFound(ctx, appBundleRcd)
-
-	if appBundleRcd.State != model.ApplicationStateOpen {
-		ctx.JSON(http.StatusBadRequest, api.Reply{
+	var appBundleRcds []model.AppBundle
+	err = db.Preload("AppRecords").Find(&appBundleRcds, idList).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		ctx.JSON(http.StatusNotFound, api.Reply{
 			Code: -1,
-			Msg:  fmt.Sprintf("app bundle %+v has non processable state", appBundleRcd),
+			Msg:  fmt.Sprintf("application with id %+v not found", idList),
 		})
 		return
+	}
+
+	for _, r := range appBundleRcds {
+		if r.State != model.ApplicationStateOpen {
+			ctx.JSON(http.StatusBadRequest, api.Reply{
+				Code: -1,
+				Msg:  fmt.Sprintf("app bundle %+v has non processable state", r),
+			})
+			return
+		}
 	}
 
 	user, enforcer, db, _ := api.ForContext(ctx)
@@ -297,33 +301,40 @@ func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState
 	push := api.ForContextOnlyPush(ctx)
 
 	err = db.Transaction(func(tx *gorm.DB) error {
-		appBundleRcd.State = newState
-		err = tx.Save(&appBundleRcd).Error
-		if err != nil {
-			return err
-		}
-
-		err = tx.Model(model.AppBundleAuditLog{}).Create(&model.AppBundleAuditLog{
-			AppBundleId: appBundleRcd.ID,
-			AppBundle:   *appBundleRcd,
-			LogTs:       time.Now().In(internal.ProjectTimezone),
-			Operation:   model.AuditActionApprove,
-			Operator:    user.Wallet,
-			PreState:    "",
-			PostState:   model.ApplicationStateOpen,
-			ExtraData:   "",
-		}).Error
-		if err != nil {
-			return err
-		}
-		log.Error().Msgf("Records: %+v", appBundleRcd.AppRecords)
-		for _, appRcd := range appBundleRcd.AppRecords {
-			err = model.AuditApplication(db, user.Wallet, appRcd, model.AuditActionApprove, "", enforcer, push)
+		for _, appBundleRcd := range appBundleRcds {
+			appBundleRcd.State = newState
+			err = tx.Save(&appBundleRcd).Error
 			if err != nil {
+				log.Error().Msgf("save app bundle record error: %+v, app bundle: %+v", err, appBundleRcd)
+				tx.Rollback()
 				return err
 			}
-		}
 
+			err = tx.Model(model.AppBundleAuditLog{}).Create(&model.AppBundleAuditLog{
+				AppBundleId: appBundleRcd.ID,
+				AppBundle:   appBundleRcd,
+				LogTs:       time.Now().In(internal.ProjectTimezone),
+				Operation:   model.AuditActionApprove,
+				Operator:    user.Wallet,
+				PreState:    "",
+				PostState:   model.ApplicationStateOpen,
+				ExtraData:   "",
+			}).Error
+			if err != nil {
+				log.Error().Msgf("create app bundle audit log record error: %+v, app bundle: %+v", err, appBundleRcd)
+				tx.Rollback()
+				return err
+			}
+			for _, appRcd := range appBundleRcd.AppRecords {
+				appRcd.State = newState
+				err = tx.Save(&appRcd).Error
+				if err != nil {
+					log.Error().Msgf("change application state error: %+v, application: %+v", err, appRcd)
+					tx.Rollback()
+					return err
+				}
+			}
+		}
 		return nil
 	})
 
