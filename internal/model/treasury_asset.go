@@ -233,36 +233,64 @@ func (*treasuryAssetHelper) ChangeCQTreasuryAssetValue(db *gorm.DB, budgetType B
 
 func monthToQuarterIndex(m time.Month) int {
 	switch m {
-	case time.January, time.February, time.March:
+	case time.December, time.January, time.February:
 		return 1
-	case time.April, time.May, time.June:
+	case time.March, time.April, time.May:
 		return 2
-	case time.July, time.August, time.September:
+	case time.June, time.July, time.August:
 		return 3
-	case time.October, time.November, time.December:
+	case time.September, time.October, time.November:
 		return 4
 	}
 	return 0
 }
 
-func getCurrentQuarterNum() string {
-	year, month, _ := time.Now().Date()
+func getQuarterNumForTime(t time.Time) string {
+	year, month, _ := t.Date()
 	quarterIdx := monthToQuarterIndex(month)
 
+	// December is assigned to next year's S1
+	// TODO: Need the confirmation from community
+	if month == time.December {
+		year += 1
+	}
+
+	// TODO: Change season name to S1/2/3/4 instead of 01/2/3/4 to avoid confusion
 	return fmt.Sprintf("%d%02d", year, quarterIdx)
 }
 
-func getCurrentQuarterTimeRange() (string, string) {
-	year, month, _ := time.Now().Date()
+func getQuarterTimeRangeForTime(t time.Time) (string, string) {
+	year, month, _ := t.Date()
 	quarterIdx := monthToQuarterIndex(month)
 	if quarterIdx == 0 {
 		panic(fmt.Errorf("unknown month: %d", month))
 	}
-	startMon := (quarterIdx-1)*3 + 1
+
+	// Mapping between quarter index and start end month:
+	// 1: 12.1 (last year) - 3.1
+	// 2: 3.1 - 6.1
+	// 3: 6.1 - 9.1
+	// 4: 9.1 - 12.1
+	startMon := (quarterIdx - 1) * 3
 	endMon := startMon + 3
-	if quarterIdx == 4 {
-		return fmt.Sprintf("%d-%d-01", year, startMon), fmt.Sprintf("%d-01-01", year+1)
+
+	if quarterIdx == 1 {
+		// The period is cross year, need some more processing
+		if month == 12 {
+			// month equals to 12 means this is the last month, and there is no need to extract 1 from the year
+			return fmt.Sprintf("%d-12-01", year), fmt.Sprintf("%d-%02d-01", year+1, endMon)
+		} else {
+			return fmt.Sprintf("%d-12-01", year-1), fmt.Sprintf("%d-%02d-01", year, endMon)
+		}
 	} else {
-		return fmt.Sprintf("%d-%d-01", year, startMon), fmt.Sprintf("%d-%d-01", year, endMon)
+		return fmt.Sprintf("%d-%02d-01", year, startMon), fmt.Sprintf("%d-%02d-01", year, endMon)
 	}
+}
+
+func getCurrentQuarterNum() string {
+	return getQuarterNumForTime(time.Now())
+}
+
+func getCurrentQuarterTimeRange() (string, string) {
+	return getQuarterTimeRangeForTime(time.Now())
 }
