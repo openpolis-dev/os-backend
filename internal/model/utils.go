@@ -175,8 +175,8 @@ func GenerateFrontendApplicationRecords(db *gorm.DB, queryParams *ListApplicatio
 	}
 
 	if queryParams.UserWallet != "" {
-		whereClause += " AND LOWER(JSON_EXTRACT(applications.detailed_data, '$.user_wallet')) LIKE '%" +
-			strings.ToLower(strings.TrimSpace(queryParams.UserWallet)) + "%'"
+		whereClause += " AND applications.target_user_wallet = @target_user_wallet"
+		whereParams["target_user_wallet"] = strings.ToLower(strings.TrimSpace(queryParams.UserWallet))
 	}
 
 	// Calculate total count
@@ -303,4 +303,8 @@ func SetDefaultMapValue[K comparable, V any](origMap map[K]V, key K, value V) {
 	if !ok {
 		origMap[key] = value
 	}
+}
+
+func FormatUserWallet(wallet string) string {
+	return strings.TrimSpace(strings.ToLower(wallet))
 }

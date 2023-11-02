@@ -1,7 +1,6 @@
 package model
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -192,24 +191,6 @@ type jointAppEntityRslt struct {
 }
 
 func (r *jointAppEntityRslt) ToFrontedApplicationRecord(db *gorm.DB) *FrontendApplicationRecord {
-	var assetName string
-	var assetAmount decimal.Decimal
-	var targetUserWallet string
-	if r.Application.Type == ApplicationNewReward {
-		detailedData := NewRewardApplicationDetailedData{}
-		err := json.Unmarshal(r.Application.DetailedData, &detailedData)
-		if err != nil {
-			return nil
-		}
-
-		for name, rewardRecord := range detailedData.Assets {
-			assetName = name
-			assetAmount = rewardRecord.Amount
-		}
-
-		targetUserWallet = detailedData.TargetUserWallet
-	}
-
 	var submitterWallet string
 	var submitterUsername string
 	var reviewerWallet string
@@ -252,9 +233,9 @@ func (r *jointAppEntityRslt) ToFrontedApplicationRecord(db *gorm.DB) *FrontendAp
 		SeasonName:       appSeasonRcd.Name,
 		EntityName:       r.Application.EntityType,
 		CreatedAt:        r.Application.CreatedAt,
-		TargetUserWallet: targetUserWallet,
-		AssetName:        assetName,
-		Amount:           assetAmount.String(),
+		TargetUserWallet: r.Application.TargetUserWallet,
+		AssetName:        r.Application.AssetName,
+		Amount:           r.Application.AssetAmount.String(),
 		BudgetSource:     r.EntityName,
 		Status:           string(r.Application.State),
 		DetailedType:     r.Application.DetailedType,

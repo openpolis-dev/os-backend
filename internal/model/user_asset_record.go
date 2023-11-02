@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/shopspring/decimal"
+	"github.com/theseed-labs/os-backend/internal"
 	"github.com/xiaosongfu/gormfind"
 	"gorm.io/gorm"
 )
@@ -14,9 +15,9 @@ import (
 // For each user and each asset, only one record is allowed in the database
 type UserAssetRecord struct {
 	ID               uint            `json:"id" gorm:"primaryKey"`
-	UserWallet       string          `json:"user_wallet" gorm:"type:varchar(256)"`
+	UserWallet       string          `json:"user_wallet" gorm:"type:varchar(256) uniqueIndex:wallet_asset"`
 	AssetType        BudgetType      `json:"asset_type"`                                  // type of the asset, credit or token
-	AssetName        string          `json:"asset_name"`                                  // asset name
+	AssetName        string          `json:"asset_name" gorm:"uniqueIndex:wallet_asset"`  // asset name
 	DealtAmount      decimal.Decimal `json:"dealt_amount" sql:"type:decimal(20,8);"`      // amount of asset that already dealt
 	ProcessingAmount decimal.Decimal `json:"processing_amount" sql:"type:decimal(20,8);"` // amount of asset that still need confirmation
 	CreatedAt        time.Time       `json:"created_at"`
@@ -27,12 +28,15 @@ type userAssetRecordModel struct{}
 
 var UserAssetRecordModel userAssetRecordModel
 
-func (*userAssetRecordModel) FindWithUserWalletAndAssetProps(db *gorm.DB, userWallet string, assetType BudgetType, assetName string) ([]*UserAssetRecord, error) {
-	formattedUserWallet := strings.TrimSpace(strings.ToLower(userWallet))
+func (*userAssetRecordModel) FindWithUserWalletAndAssetProps(db *gorm.DB, userWallet string, assetName string) ([]*UserAssetRecord, error) {
+	formattedUserWallet := FormatUserWallet(userWallet)
 
 	// Create user record if not existing
 	var r User
-	userRslt := db.Where(User{Wallet: formattedUserWallet}).Attrs(User{CreatedAt: time.Now(), UpdatedAt: time.Now()}).FirstOrInit(&r)
+	userRslt := db.Where(User{Wallet: formattedUserWallet}).Attrs(User{
+		CreatedAt: time.Now().In(internal.ProjectTimezone),
+		UpdatedAt: time.Now().In(internal.ProjectTimezone),
+	}).FirstOrInit(&r)
 	if userRslt.Error != nil {
 		return nil, userRslt.Error
 	} else if userRslt.RowsAffected == 0 {
@@ -42,24 +46,23 @@ func (*userAssetRecordModel) FindWithUserWalletAndAssetProps(db *gorm.DB, userWa
 		}
 	}
 
-	querySeg := db.Where(&UserAssetRecord{UserWallet: formattedUserWallet, AssetType: assetType, AssetName: assetName})
+	querySeg := db.Where(&UserAssetRecord{UserWallet: formattedUserWallet, AssetName: assetName})
 	return gormfind.Rows[UserAssetRecord](querySeg, nil)
 }
 
-func (*userAssetRecordModel) CreateOrUpdate(db *gorm.DB, userWallet string, assetType BudgetType, assetName string, processingAmount, dealtAmount decimal.Decimal) error {
-	assetRecords, err := UserAssetRecordModel.FindWithUserWalletAndAssetProps(db, userWallet, assetType, assetName)
+func (*userAssetRecordModel) CreateOrUpdate(db *gorm.DB, userWallet string, assetName string, processingAmount, dealtAmount decimal.Decimal) error {
+	assetRecords, err := UserAssetRecordModel.FindWithUserWalletAndAssetProps(db, userWallet, assetName)
 	if err != nil {
 		return err
 	}
 
 	if len(assetRecords) > 1 {
-		return fmt.Errorf("user %s has more than one record for asset type %s.%s, please contract admin", userWallet, assetName, assetType)
+		return fmt.Errorf("user %s has more than one record for asset %s, please contract admin", userWallet, assetName)
 	}
 
 	if len(assetRecords) == 0 {
 		return db.Save(&UserAssetRecord{
 			UserWallet:       strings.TrimSpace(strings.ToLower(userWallet)),
-			AssetType:        assetType,
 			AssetName:        assetName,
 			DealtAmount:      dealtAmount,
 			ProcessingAmount: processingAmount,
@@ -72,14 +75,14 @@ func (*userAssetRecordModel) CreateOrUpdate(db *gorm.DB, userWallet string, asse
 }
 
 // Rollback extracts processing and dealt amount from records
-func (*userAssetRecordModel) Rollback(db *gorm.DB, userWallet string, assetType BudgetType, assetName string, processingAmount, dealtAmount decimal.Decimal) error {
-	assetRecords, err := UserAssetRecordModel.FindWithUserWalletAndAssetProps(db, userWallet, assetType, assetName)
+func (*userAssetRecordModel) Rollback(db *gorm.DB, userWallet string, assetName string, processingAmount, dealtAmount decimal.Decimal) error {
+	assetRecords, err := UserAssetRecordModel.FindWithUserWalletAndAssetProps(db, userWallet, assetName)
 	if err != nil {
 		return err
 	}
 
 	if (len(assetRecords) != 1) || (assetRecords[0].ProcessingAmount.Cmp(processingAmount) == 1) || (assetRecords[0].DealtAmount.Cmp(dealtAmount) == 1) {
-		return fmt.Errorf("user %s has invalid record for asset type %s, please contract admin", userWallet, assetType)
+		return fmt.Errorf("user %s has invalid record for asset %s, please contract admin", userWallet, assetName)
 	}
 
 	assetRecords[0].DealtAmount = assetRecords[0].DealtAmount.Sub(dealtAmount)
@@ -88,14 +91,14 @@ func (*userAssetRecordModel) Rollback(db *gorm.DB, userWallet string, assetType 
 	return db.Save(assetRecords).Error
 }
 
-func (*userAssetRecordModel) CompleteAssetTransaction(db *gorm.DB, userWallet string, assetType BudgetType, assetName string, amountToBeDealt decimal.Decimal) error {
-	assetRecords, err := UserAssetRecordModel.FindWithUserWalletAndAssetProps(db, userWallet, assetType, assetName)
+func (*userAssetRecordModel) CompleteAssetTransaction(db *gorm.DB, userWallet string, assetName string, amountToBeDealt decimal.Decimal) error {
+	assetRecords, err := UserAssetRecordModel.FindWithUserWalletAndAssetProps(db, userWallet, assetName)
 	if err != nil {
 		return err
 	}
 
 	if (len(assetRecords) != 1) || (assetRecords[0].ProcessingAmount.Cmp(amountToBeDealt) == -1) {
-		return fmt.Errorf("user %s has invalid record for asset type %s, please contract admin", userWallet, assetType)
+		return fmt.Errorf("user %s has invalid record for asset %s, please contract admin", userWallet, assetName)
 	}
 
 	assetRecords[0].DealtAmount = assetRecords[0].DealtAmount.Add(amountToBeDealt)

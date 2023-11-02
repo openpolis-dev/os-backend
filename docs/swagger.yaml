@@ -890,7 +890,17 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/api.ListReplyData'
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  allOf:
+                  - $ref: '#/definitions/api.ListReplyData'
+                  - properties:
+                      rows:
+                        $ref: '#/definitions/model.FrontendApplicationRecord'
+                    type: object
+              type: object
       summary: lists all applications based on query params and return in JSON format
   /apps_applicants:
     get:

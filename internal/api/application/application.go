@@ -59,7 +59,7 @@ func ListApplicants(ctx *gin.Context) {
 //
 //	@summary	lists all applications based on query params and return in JSON format
 //	@router		/applications [get]
-//	@success	200	{object}	api.ListReplyData
+//	@success	200	{object}	api.Reply{data=api.ListReplyData{rows=model.FrontendApplicationRecord}}
 func List(ctx *gin.Context) {
 	var err error
 	db := api.ForContextOnlyDB(ctx)
