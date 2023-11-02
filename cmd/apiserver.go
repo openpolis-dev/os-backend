@@ -15,6 +15,7 @@ import (
 	"github.com/samber/lo"
 	_ "github.com/theseed-labs/os-backend/docs"
 	"github.com/theseed-labs/os-backend/internal/api"
+	"github.com/theseed-labs/os-backend/internal/api/app_bundle"
 	"github.com/theseed-labs/os-backend/internal/api/application"
 	"github.com/theseed-labs/os-backend/internal/api/city_hall"
 	"github.com/theseed-labs/os-backend/internal/api/event"
@@ -23,6 +24,7 @@ import (
 	"github.com/theseed-labs/os-backend/internal/api/project"
 	"github.com/theseed-labs/os-backend/internal/api/publicdata"
 	"github.com/theseed-labs/os-backend/internal/api/push"
+	"github.com/theseed-labs/os-backend/internal/api/season"
 	"github.com/theseed-labs/os-backend/internal/api/treasury"
 	"github.com/theseed-labs/os-backend/internal/api/user"
 	"github.com/theseed-labs/os-backend/internal/config"
@@ -35,7 +37,7 @@ import (
 //	@version		1.0
 //	@license.name	MIT
 //	@host			https://test-api.seedao.tech
-//	@basePath			/v1
+//	@basePath		/v1
 
 func main() {
 	// read config data
@@ -90,6 +92,10 @@ func main() {
 	// setup database
 	storage.InitGormDB(cfg.DataSource.Dsn)
 	db := storage.GetGormDB()
+	err = storage.SeedDbRecords(db)
+	if err != nil {
+		panic(err)
+	}
 
 	// setup S3 uploader manager
 	err = sdk.InitAwsClient(cfg.AwsConfig.AccessKey, cfg.AwsConfig.SecretKey, cfg.AwsConfig.Region, cfg.AwsConfig.BucketName)
@@ -179,6 +185,10 @@ func main() {
 		publicData.GET("/bounty/list", publicdata.BountyList)
 		publicData.GET("/bounty/detail/:id", publicdata.BountyDetail)
 
+		// season data
+		seasonsData := v1.Group("/seasons")
+		seasonsData.GET("/", season.List)
+
 		// foo routers
 	}
 	// --> auth required
@@ -212,14 +222,14 @@ func main() {
 		// my guilds
 		authorizedGroup.GET("/my_guilds", guild.MyGuilds)
 
-		// application routers
-		applicationGroup := authorizedGroup.Group("/applications")
-		applicationGroup.POST("/", application.Create)
-		applicationGroup.POST("/:id/approve", application.Approve)
-		applicationGroup.POST("/:id/reject", application.Reject)
-		applicationGroup.POST("/:id/complete", application.Complete)
-		applicationGroup.POST("/:id/process", application.Process)
+		appBundleGroup := authorizedGroup.Group("/app_bundles")
+		appBundleGroup.GET("/", app_bundle.ListAppBundle)
+		appBundleGroup.POST("/", app_bundle.CreateAppBundle)
 
+		authorizedGroup.POST("/app_bundle_approve", app_bundle.ApproveAppBundles)
+		authorizedGroup.POST("/app_bundle_reject", app_bundle.RejectAppBundles)
+
+		// batch application routers
 		authorizedGroup.POST("/apps_approve", application.BatchApprove)
 		authorizedGroup.POST("/apps_reject", application.BatchReject)
 		authorizedGroup.POST("/apps_process", application.BatchProcess)
@@ -256,8 +266,6 @@ func main() {
 		// foo routers
 	}
 
-	r.StaticFile("/_doc/apispec", "./_doc/api.html")
-	r.StaticFile("/_doc/api.yml", "./_doc/api.yml")
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	_ = r.Run()

@@ -64,7 +64,7 @@ type (
 //	@Tags			Project
 //	@Param			request	body		CreateReq	true	"new project request data"
 //
-//	@Success 200 {object} api.Reply
+//	@Success		200		{object}	api.Reply
 func Create(ctx *gin.Context) {
 	req := CreateReq{}
 	err := ctx.BindJSON(&req)
@@ -218,7 +218,7 @@ func Create(ctx *gin.Context) {
 //	@Param			id		path		string		true	"id of the project"
 //	@Param			request	body		UpdateReq	true	"update project info"
 //
-//	@Success 200 {object} api.Reply
+//	@Success		200		{object}	api.Reply
 func Update(ctx *gin.Context) {
 	idParam := ctx.Param("id")
 	id, err := strconv.Atoi(idParam)
@@ -291,7 +291,7 @@ func Update(ctx *gin.Context) {
 //	@Tags			Project
 //	@Param			id	path		number	true	"project ID"
 //
-//	@Success 200 {object} api.Reply
+//	@Success		200	{object}	api.Reply
 func Close(ctx *gin.Context) {
 	idParam := ctx.Param("id")
 	id, err := strconv.Atoi(idParam)
@@ -361,10 +361,10 @@ func Close(ctx *gin.Context) {
 //
 //	@Summary	show detail of a project
 //	@Tags		Project
-//	@Param id path int true "guild id"
+//	@Param		id	path	int	true	"guild id"
 //	@Router		/projects/:id [get]
 //
-//	 @Success 200 {object} api.Reply{data=DetailReply}
+//	@Success	200	{object}	api.Reply{data=DetailReply}
 func Detail(ctx *gin.Context) {
 	idParam := ctx.Param("id")
 	id, err := strconv.Atoi(idParam)
@@ -409,7 +409,7 @@ func Detail(ctx *gin.Context) {
 //	@Param			sort_field	query		string	false	"sort by which field"
 //	@Param			sort_order	query		string	false	"order of sort"	Enum(asc desc)
 //
-// @Success 200 {object} api.Reply{data=api.ListReplyData{rows=model.Project}}
+//	@Success		200			{object}	api.Reply{data=api.ListReplyData{rows=model.Project}}
 func List(ctx *gin.Context) {
 	db := api.ForContextOnlyDB(ctx)
 
@@ -437,16 +437,16 @@ func List(ctx *gin.Context) {
 //
 //	`GET /projects/my_projects?page=1&size=10&sort_field=created_at&sort_order=desc`
 //
-// @Summary list my projects
-// @Tags Project
-// @Accept json
-// @Produce json
-// @Param page query int false "page number, default: 1"
-// @Param size query int false "page size, default: 10"
-// @Param sort_field query string false "sort field, default: created_at"
-// @Param sort_order query string false "sort order, default: desc"
-// @Success 200 {object} api.Reply{data=api.ListReplyData{rows=model.Project}}
-// @Router /projects/my_projects [get]
+//	@Summary	list my projects
+//	@Tags		Project
+//	@Accept		json
+//	@Produce	json
+//	@Param		page		query		int		false	"page number, default: 1"
+//	@Param		size		query		int		false	"page size, default: 10"
+//	@Param		sort_field	query		string	false	"sort field, default: created_at"
+//	@Param		sort_order	query		string	false	"sort order, default: desc"
+//	@Success	200			{object}	api.Reply{data=api.ListReplyData{rows=model.Project}}
+//	@Router		/projects/my_projects [get]
 func MyProjects(ctx *gin.Context) {
 	user, db := api.ForContextUserAndDB(ctx)
 
@@ -473,14 +473,15 @@ type UpdateStaffsReq struct {
 }
 
 // UpdateStaffs update project sponsors and members
-// @Summary update project sponsors and members
-// @Tags Project
-// @Accept json
-// @Produce json
-// @Param id path int true "project id"
-// @Param JsonBody body UpdateStaffsReq true "request json body"
-// @Success 200 {object} api.Reply
-// @Router /projects/{id}/update_staffs [post]
+//
+//	@Summary	update project sponsors and members
+//	@Tags		Project
+//	@Accept		json
+//	@Produce	json
+//	@Param		id			path		int				true	"project id"
+//	@Param		JsonBody	body		UpdateStaffsReq	true	"request json body"
+//	@Success	200			{object}	api.Reply
+//	@Router		/projects/{id}/update_staffs [post]
 func UpdateStaffs(ctx *gin.Context) {
 	idParam := ctx.Param("id")
 	id, err := strconv.Atoi(idParam)
@@ -702,14 +703,15 @@ func UpdateStaffs(ctx *gin.Context) {
 // ------ Project Budget ------ ------
 
 // UpdateBudget update project budget
-// @Summary Update project budget
-// @Tags Project
-// @Accept json
-// @Produce json
-// @Param id path int true "project id"
-// @Param JsonBody body UpdateBudgetReq true "request json body"
-// @Success 200 {object} api.Reply
-// @Router /projects/{id}/update_budget [post]
+//
+//	@Summary	Update project budget
+//	@Tags		Project
+//	@Accept		json
+//	@Produce	json
+//	@Param		id			path		int				true	"project id"
+//	@Param		JsonBody	body		UpdateBudgetReq	true	"request json body"
+//	@Success	200			{object}	api.Reply
+//	@Router		/projects/{id}/update_budget [post]
 func UpdateBudget(ctx *gin.Context) {
 	idParam := ctx.Param("id")
 	id, err := strconv.Atoi(idParam)
@@ -776,13 +778,13 @@ func UpdateBudget(ctx *gin.Context) {
 
 // AddRelatedProposal `POST /projects/:id/add_related_proposal?proposalIDs=1&proposalIDs=2`
 //
-//	@Summary		Add related proposals to the project
-//	@Router			/projects/:id/add_related_proposal [post]
-//	@Tags			Project
-//	@Param			id	path	number	true	"project ID"
-//	@Param			proposalIDs	query	[]string	true	"proposal ID list"
+//	@Summary	Add related proposals to the project
+//	@Router		/projects/:id/add_related_proposal [post]
+//	@Tags		Project
+//	@Param		id			path		number		true	"project ID"
+//	@Param		proposalIDs	query		[]string	true	"proposal ID list"
 //
-//	@Success 200 {object} api.Reply
+//	@Success	200			{object}	api.Reply
 func AddRelatedProposal(ctx *gin.Context) {
 	idParam := ctx.Param("id")
 	id, err := strconv.Atoi(idParam)

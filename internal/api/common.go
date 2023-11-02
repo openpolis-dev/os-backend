@@ -5,6 +5,7 @@ import (
 
 	"github.com/casbin/casbin/v2"
 	"github.com/gin-gonic/gin"
+	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/config"
 	"github.com/theseed-labs/os-backend/internal/middleware"
 	"github.com/theseed-labs/os-backend/internal/sdk"
@@ -137,7 +138,7 @@ func ParseAndConvertPageParam(ctx *gin.Context) *gormfind.Page {
 	}
 
 	if size == 0 {
-		size = DefaultPageSize
+		size = internal.DefaultPageSize
 	}
 
 	return &gormfind.Page{

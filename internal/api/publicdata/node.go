@@ -18,10 +18,10 @@ type node struct {
 var nodeCache dataCache[http.Client, node]
 
 // NodeDataFromIndexer query NODE data from spp-indexer
-// @Summary query NODE data from spp-indexer
-// @Tags PublicData
-// @Success 200 {object} api.Reply{data=node}
-// @Router /public_data/contract/node [get]
+//	@Summary	query NODE data from spp-indexer
+//	@Tags		PublicData
+//	@Success	200	{object}	api.Reply{data=node}
+//	@Router		/public_data/contract/node [get]
 func NodeDataFromIndexer(ctx *gin.Context) {
 	_, cfg := api.ForContextDBAndConfig(ctx)
 

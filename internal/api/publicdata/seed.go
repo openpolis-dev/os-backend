@@ -34,10 +34,10 @@ var seedCache dataCache[http.Client, seed]
 //}
 
 // SeedDataFromIndexer query SEED data from spp-indexer
-// @Summary query SEED data from spp-indexer
-// @Tags PublicData
-// @Success 200 {object} api.Reply{data=scr}
-// @Router /public_data/contract/seed [get]
+//	@Summary	query SEED data from spp-indexer
+//	@Tags		PublicData
+//	@Success	200	{object}	api.Reply{data=scr}
+//	@Router		/public_data/contract/seed [get]
 func SeedDataFromIndexer(ctx *gin.Context) {
 	_, cfg := api.ForContextDBAndConfig(ctx)
 

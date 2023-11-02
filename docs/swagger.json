@@ -8,8 +8,192 @@
         },
         "version": "1.0"
     },
+    "host": "https://test-api.seedao.tech",
     "basePath": "/v1",
     "paths": {
+        "/app_bundle_approve": {
+            "post": {
+                "tags": [
+                    "app_bundle"
+                ],
+                "summary": "Approve app bundle and associated applications",
+                "parameters": [
+                    {
+                        "description": "app bundle IDs",
+                        "name": "JsonBody",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/app_bundles": {
+            "get": {
+                "tags": [
+                    "app_bundle"
+                ],
+                "summary": "List all application bundles match the query params",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "status of application bundle",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "which page",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "size of each page",
+                        "name": "size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "sort by which field",
+                        "name": "sort_field",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "order of sort",
+                        "name": "sort_order",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/app_bundle.AppBundleResponseRecord"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "app_bundle"
+                ],
+                "summary": "List all application bundles match the query params",
+                "parameters": [
+                    {
+                        "description": "New application bundle request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.NewAppBundleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/app_bundles_reject": {
+            "post": {
+                "tags": [
+                    "app_bundle"
+                ],
+                "summary": "Reject app bundle and associated applications",
+                "parameters": [
+                    {
+                        "description": "app bundle IDs",
+                        "name": "JsonBody",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/applications": {
+            "get": {
+                "summary": "lists all applications based on query params and return in JSON format",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Reply"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "allOf": [
+                                                {
+                                                    "$ref": "#/definitions/api.ListReplyData"
+                                                },
+                                                {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "rows": {
+                                                            "$ref": "#/definitions/model.FrontendApplicationRecord"
+                                                        }
+                                                    }
+                                                }
+                                            ]
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/apps_applicants": {
+            "get": {
+                "summary": "List all applicants existing in applications table for filter",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/application.ApplicantListResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/guilds": {
             "get": {
                 "consumes": [
@@ -837,6 +1021,85 @@
                 }
             }
         },
+        "/public_data/bounty/detail/{id}": {
+            "get": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "PublicData"
+                ],
+                "summary": "BountyDetail returns the detail of a bounty",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.Reply"
+                        }
+                    }
+                }
+            }
+        },
+        "/public_data/bounty/list": {
+            "get": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "PublicData"
+                ],
+                "summary": "BountyList returns the list of bounties",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "page",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "size",
+                        "name": "size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Reply"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/api.ListReplyData"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/public_data/contract/node": {
             "get": {
                 "tags": [
@@ -1059,6 +1322,19 @@
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/api.Reply"
+                        }
+                    }
+                }
+            }
+        },
+        "/seasons/": {
+            "get": {
+                "summary": "returns all seasons currently existing in database",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.Season"
                         }
                     }
                 }
@@ -1406,6 +1682,77 @@
                 }
             }
         },
+        "app_bundle.AppBundleResponseRecord": {
+            "type": "object",
+            "properties": {
+                "assets": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "amount": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "comment": {
+                    "type": "string"
+                },
+                "entity": {
+                    "type": "object",
+                    "properties": {
+                        "id": {
+                            "type": "integer"
+                        },
+                        "name": {
+                            "type": "string"
+                        },
+                        "type": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "records": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.FrontendApplicationRecord"
+                    }
+                },
+                "reviewer": {
+                    "type": "string"
+                },
+                "season_name": {
+                    "type": "string"
+                },
+                "state": {
+                    "$ref": "#/definitions/model.ApplicationState"
+                },
+                "submit_date": {
+                    "type": "string"
+                },
+                "submitter": {
+                    "type": "string"
+                }
+            }
+        },
+        "application.ApplicantListResponse": {
+            "type": "object",
+            "properties": {
+                "applicant": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
         "guild.BudgetParam": {
             "type": "object",
             "properties": {
@@ -1567,6 +1914,15 @@
                 }
             }
         },
+        "model.ApplicationState": {
+            "type": "string",
+            "enum": [
+                "open"
+            ],
+            "x-enum-varnames": [
+                "ApplicationStateOpen"
+            ]
+        },
         "model.BudgetType": {
             "type": "string",
             "enum": [
@@ -1575,6 +1931,62 @@
             "x-enum-varnames": [
                 "BudgetTypeCredit"
             ]
+        },
+        "model.FrontendApplicationRecord": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "string"
+                },
+                "application_id": {
+                    "type": "integer"
+                },
+                "asset_name": {
+                    "type": "string"
+                },
+                "budget_source": {
+                    "description": "the data is from name field of project or guild",
+                    "type": "string"
+                },
+                "comment": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "detailed_type": {
+                    "type": "string"
+                },
+                "entity_name": {
+                    "description": "name field value from specified entity table",
+                    "type": "string"
+                },
+                "reviewer_name": {
+                    "type": "string"
+                },
+                "reviewer_wallet": {
+                    "type": "string"
+                },
+                "season_name": {
+                    "type": "string"
+                },
+                "status": {
+                    "description": "application status",
+                    "type": "string"
+                },
+                "submitter_name": {
+                    "type": "string"
+                },
+                "submitter_wallet": {
+                    "type": "string"
+                },
+                "target_user_wallet": {
+                    "type": "string"
+                },
+                "transaction_ids": {
+                    "type": "string"
+                }
+            }
         },
         "model.Guild": {
             "type": "object",
@@ -1661,6 +2073,55 @@
                 "used_amount": {
                     "description": "used_amount",
                     "type": "number"
+                }
+            }
+        },
+        "model.NewAppBundleRequest": {
+            "type": "object",
+            "properties": {
+                "comment": {
+                    "type": "string"
+                },
+                "entity": {
+                    "type": "string"
+                },
+                "entity_id": {
+                    "type": "integer"
+                },
+                "records": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.NewApplicationRequest"
+                    }
+                }
+            }
+        },
+        "model.NewApplicationRequest": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "number"
+                },
+                "asset_name": {
+                    "type": "string"
+                },
+                "comment": {
+                    "type": "string"
+                },
+                "detailed_type": {
+                    "type": "string"
+                },
+                "entity": {
+                    "type": "string"
+                },
+                "entity_id": {
+                    "type": "integer"
+                },
+                "target_user_wallet": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
                 }
             }
         },
@@ -1805,6 +2266,24 @@
                     "type": "string"
                 },
                 "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.Season": {
+            "type": "object",
+            "properties": {
+                "endAt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "startAt": {
+                    "description": "TODO: This field do not contains timezone info, need to review code about this",
                     "type": "string"
                 }
             }

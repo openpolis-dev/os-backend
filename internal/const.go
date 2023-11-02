@@ -1,8 +1,12 @@
-package api
+package internal
+
+import "time"
 
 const DefaultPageSize = 10
 
 const EventDeleteMagicWorld = "4taoist2"
+
+var ProjectTimezone = time.FixedZone("UTF+8", int((8 * time.Hour).Seconds()))
 
 var ApplicationUploadTemplateHeader = map[string]string{
 	"zh": "钱包地址,登记积分,登记Token,事项内容,备注",

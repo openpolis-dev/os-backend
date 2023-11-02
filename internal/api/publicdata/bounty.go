@@ -10,14 +10,14 @@ import (
 )
 
 // BountyList returns the list of bounties
-// @Summary BountyList returns the list of bounties
-// @Tags PublicData
-// @Accept json
-// @Produce json
-// @Param page query int false "page"
-// @Param size query int false "size"
-// @Router /public_data/bounty/list [get]
-// @Success 200 {object} api.Reply{data=api.ListReplyData}
+//	@Summary	BountyList returns the list of bounties
+//	@Tags		PublicData
+//	@Accept		json
+//	@Produce	json
+//	@Param		page	query	int	false	"page"
+//	@Param		size	query	int	false	"size"
+//	@Router		/public_data/bounty/list [get]
+//	@Success	200	{object}	api.Reply{data=api.ListReplyData}
 func BountyList(ctx *gin.Context) {
 	_, cfg := api.ForContextDBAndConfig(ctx)
 
@@ -69,13 +69,13 @@ func BountyList(ctx *gin.Context) {
 }
 
 // BountyDetail returns the detail of a bounty
-// @Summary BountyDetail returns the detail of a bounty
-// @Tags PublicData
-// @Accept json
-// @Produce json
-// @Param id path string true "id"
-// @Router /public_data/bounty/detail/{id} [get]
-// @Success 200 {object} api.Reply
+//	@Summary	BountyDetail returns the detail of a bounty
+//	@Tags		PublicData
+//	@Accept		json
+//	@Produce	json
+//	@Param		id	path	string	true	"id"
+//	@Router		/public_data/bounty/detail/{id} [get]
+//	@Success	200	{object}	api.Reply
 func BountyDetail(ctx *gin.Context) {
 	pageId := ctx.Param("id")
 

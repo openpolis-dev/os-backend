@@ -11,7 +11,7 @@ type AppBundle struct {
 	ID uint `gorm:"primaryKey"`
 
 	// Applications belongs to this bundle
-	AppRecords []Application `gorm:"foreignKey:ID;references:ID"`
+	AppRecords []*Application `gorm:"foreignKey:BundleId;references:ID"`
 
 	Comment string
 
@@ -24,8 +24,10 @@ type AppBundle struct {
 	EntityId   uint   `gorm:"index"`
 
 	// Season information of application
-	SeasonId int
+	SeasonId uint `gorm:"index"`
 	Season   Season
+
+	State ApplicationState `gorm:"inidex"`
 
 	CreatedAt time.Time `gorm:"autoCreateTime"`
 	UpdatedAt time.Time `gorm:"autoUpdateTime"`
