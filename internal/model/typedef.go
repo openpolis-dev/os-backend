@@ -289,6 +289,7 @@ type ListAppBundleQueryParams struct {
 	StartDate string `form:"start_date"`
 	EndDate   string `form:"end_date"`
 	Applicant string `form:"applicant"`
+	SeasonId  int    `form:"season_id"`
 }
 
 // JointAppBundleEntityRslt saves app bundles records by guild and project join query
