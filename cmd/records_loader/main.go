@@ -230,7 +230,7 @@ func saveToDatabase(db *gorm.DB, rcds []*DetailRecordSchema, seasonRcds []*model
 			application := model.Application{
 				Type:             model.ApplicationNewReward,
 				Applicant:        "",
-				State:            model.ApplicationStateOpen,
+				State:            model.ApplicationStateCompleted,
 				CreatedAt:        time.Now().In(internal.ProjectTimezone),
 				UpdatedAt:        time.Now().In(internal.ProjectTimezone),
 				DetailedType:     r.DetailedType,
