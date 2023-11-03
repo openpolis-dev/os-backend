@@ -35,6 +35,12 @@ type DetailRecordSchema struct {
 	ProposalLink string
 }
 
+type EntityProps struct {
+	Type string
+	Id   uint
+	Name string
+}
+
 func parseSeasonParams(db *gorm.DB, seasonParamValue string) ([]*model.Season, error) {
 	if seasonParamValue == "" {
 		currentSeason, err := service.GetCurrentSeason(db)
@@ -61,7 +67,7 @@ func parseSeasonParams(db *gorm.DB, seasonParamValue string) ([]*model.Season, e
 	}
 }
 
-func loadXslsFile(filePath string) ([]DetailRecordSchema, error) {
+func loadXslsFile(filePath string) ([]*DetailRecordSchema, error) {
 	f, err := excelize.OpenFile(filePath)
 	if err != nil {
 		return nil, err
@@ -84,7 +90,7 @@ func loadXslsFile(filePath string) ([]DetailRecordSchema, error) {
 	header := rows[1]
 	log.Error().Msgf("TTT: Table header: %+v, type: %+v", header, reflect.TypeOf(header))
 
-	detailRecords := lo.Map(rows[2:], func(r []string, _ int) DetailRecordSchema {
+	detailRecords := lo.Map(rows[2:], func(r []string, _ int) *DetailRecordSchema {
 		var dealDate time.Time
 		dealDate, err = time.Parse(DealDateLayoutFormat1, r[4])
 		if err != nil {
@@ -114,7 +120,7 @@ func loadXslsFile(filePath string) ([]DetailRecordSchema, error) {
 			proposalLink = r[9]
 		}
 
-		return DetailRecordSchema{
+		return &DetailRecordSchema{
 			SeasonName:   r[0],
 			Username:     r[1],
 			EntityName:   r[2],
@@ -131,19 +137,97 @@ func loadXslsFile(filePath string) ([]DetailRecordSchema, error) {
 	return detailRecords, nil
 }
 
-func saveToDatabase(db *gorm.DB, rcds []DetailRecordSchema, seasonRcds []*model.Season, cleanDbFlag bool) error {
-	seasonIds := lo.Map(seasonRcds, func(r *model.Season, _ int) uint {
-		return r.ID
-	})
+func saveToDatabase(db *gorm.DB, rcds []*DetailRecordSchema, seasonRcds []*model.Season, cleanDbFlag bool) error {
+	// Prepare season data
+	var seasonIds []uint
+	seasonNames := make(map[string]uint)
+
+	for _, r := range seasonRcds {
+		seasonIds = append(seasonIds, r.ID)
+		seasonNames[r.Name] = r.ID
+	}
 
 	// clear application and related audit log records with specified seasons if set cleanDbFlag to true
 	if cleanDbFlag {
-		//applications := db.Model(&model.Application{}).Where("season_id IN ?", seasonIds)
-		var auditLogs []model.ApplicationAuditLog
-		db.Model(&model.ApplicationAuditLog{}).Where("application_id IN (select ID from applications where season_id IN ?)", seasonIds).Find(&auditLogs)
-		log.Error().Msgf("TTT: got audit logs count: %d", len(auditLogs))
+		db.Model(&model.ApplicationAuditLog{}).Delete("application_id IN (select ID from applications where season_id IN ?)", seasonIds)
+		db.Model(&model.Application{}).Delete("season_id IN ?", seasonIds)
 	}
-	// Filter out records with specified seasons
+
+	// Collect all entities in database
+	var dbEntities []EntityProps
+	dbEntityMap := make(map[string]EntityProps)
+
+	db.Raw("? UNION ?",
+		db.Select("id, name, 'project' as 'entity_type'").Model(&model.Project{}),
+		db.Select("id, name, 'guild' as 'entity_type'").Model(&model.Guild{}),
+	).Find(&dbEntities)
+
+	// TODO: check whether there are records with same name but different entity_type
+	for _, entity := range dbEntities {
+		dbEntityMap[entity.Name] = entity
+	}
+
+	// Filter out xsls records with specified seasons
+	userWallets := make(map[string]bool)
+	var recordsWillBeImported []*DetailRecordSchema
+	entityInfo := make(map[string]EntityProps) // Entity data
+
+	missingEntity := make(map[string]bool)
+
+	for _, xslxRcd := range rcds {
+		if _, exists := seasonNames[xslxRcd.SeasonName]; exists {
+			userWallets[xslxRcd.UserWallet] = true
+			recordsWillBeImported = append(recordsWillBeImported, xslxRcd)
+			if dbEntityMap[xslxRcd.EntityName].Id == 0 {
+				missingEntity[xslxRcd.EntityName] = true
+			}
+
+			entityInfo[xslxRcd.EntityName] = dbEntityMap[xslxRcd.EntityName]
+		}
+	}
+
+	if len(missingEntity) > 0 {
+		panic(fmt.Errorf("some entites are missing in DB: %+v", missingEntity))
+	}
+
+	log.Error().Msgf("xsls entity map: %+v", entityInfo)
+
+	// Build DB tasks
+	//err := db.Transaction(func(tx *gorm.DB) error {
+	//	for wallet, _ := range userWallets {
+	//		err := tx.Model(model.User{}).Save(&model.User{Wallet: model.FormatUserWallet(wallet)}).Error
+	//		if err != nil {
+	//			log.Error().Msgf("find or create user error: %+v", err)
+	//			return err
+	//		}
+	//	}
+	//	return nil
+	//})
+	//
+	//if err != nil {
+	//	panic(err)
+	//}
+
+	//err = db.Transaction(func(tx *gorm.DB) error {
+	//	for _, r := range recordsWillBeImported {
+	//		seasonId, _ := seasonNames[r.SeasonName]
+	//
+	//		tx.Model(&model.Application{
+	//			Type:             model.ApplicationNewReward,
+	//			Applicant:        "",
+	//			State:            model.ApplicationStateOpen,
+	//			CreatedAt:        time.Now().In(internal.ProjectTimezone),
+	//			UpdatedAt:        time.Now().In(internal.ProjectTimezone),
+	//			DetailedType:     r.DetailedType,
+	//			TargetUserWallet: model.FormatUserWallet(r.UserWallet),
+	//			AssetName:        r.AssetName,
+	//			AssetAmount:      r.AssetAmount,
+	//			EntityType:       newAppBundleReq.Entity,
+	//			EntityId:         newAppBundleReq.EntityId,
+	//			SeasonId:         seasonId,
+	//		})
+	//	}
+	//})
 
 	return nil
 }
