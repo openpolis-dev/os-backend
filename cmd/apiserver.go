@@ -222,6 +222,11 @@ func main() {
 		// my guilds
 		authorizedGroup.GET("/my_guilds", guild.MyGuilds)
 
+		// application endpoints
+		// Note: Most NEW_REWARD applications has been moved to app_bundle part
+		applicationGroup := v1.Group("/applications")
+		applicationGroup.POST("/", application.Create)
+
 		appBundleGroup := authorizedGroup.Group("/app_bundles")
 		appBundleGroup.GET("/", app_bundle.ListAppBundle)
 		appBundleGroup.POST("/", app_bundle.CreateAppBundle)

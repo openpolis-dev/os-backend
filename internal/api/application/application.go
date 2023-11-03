@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
@@ -88,6 +89,91 @@ func List(ctx *gin.Context) {
 		Total: total,
 		Rows:  rcds,
 	}))
+}
+
+// Create handles creating one or more application records with passed in data, the passed in data must be an array
+// An audit log record will be created with application at same time with action open
+//
+//	@summary	create single application, for now only CLOSE_PROJECT type is allowed
+//	@router		/applications [post]
+//	@param		JsonBody	body		[]model.NewApplicationRequest	true	"new application request"
+//	@success	200			{string} ""
+func Create(ctx *gin.Context) {
+	var newApplicationReqs []model.NewApplicationRequest
+	if err := ctx.BindJSON(&newApplicationReqs); err != nil {
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, api.Reply{
+				Code: -1,
+				Msg:  fmt.Sprintf("passed in data error: %+v", err),
+			})
+		}
+		return
+	}
+
+	user, enforcer, db, _ := api.ForContext(ctx)
+
+	err := db.Transaction(func(tx *gorm.DB) error {
+		for _, req := range newApplicationReqs {
+			// TODO: Verify user wallet and project/guild existing
+
+			// Parse application type
+			appType, err := model.ParseApplicationType(req.Type)
+			if err != nil {
+				return fmt.Errorf("unknown application entity %s", req.Entity)
+			}
+
+			if appType == model.ApplicationNewReward {
+				return fmt.Errorf("NEW_REWARD application should be submitted via app_bundle")
+			}
+
+			if req.Entity != "guild" && req.Entity != "project" {
+				return fmt.Errorf("unknown application entity %s", req.Entity)
+			}
+
+			//  check permission: `(0x..., proj_1, create_app)` (0x..., guild_1, create_app)
+			obj := lo.
+				If(req.Entity == "project", fmt.Sprintf("%s%d", api.ObjProjPrefix, req.EntityId)).
+				ElseIf(req.Entity == "guild", fmt.Sprintf("%s%d", api.ObjGuildPrefix, req.EntityId)).
+				Else("")
+			ok, err := enforcer.Enforce(user.Wallet, obj, api.ActCreateApplication)
+			if err != nil {
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+				return err
+			}
+			if !ok {
+				ctx.JSON(http.StatusForbidden, api.Forbidden())
+				return err
+			}
+
+			app := &model.Application{
+				Type:         appType,
+				Applicant:    user.Wallet,
+				State:        model.ApplicationStateOpen,
+				EntityType:   req.Entity,
+				EntityId:     req.EntityId,
+				DetailedType: req.DetailedType,
+				Comment:      req.Comment,
+				CreatedAt:    time.Now(),
+				UpdatedAt:    time.Now(),
+			}
+
+			err = model.NewApplicationRecord(db, app)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, api.Reply{
+			Code: -1,
+			Msg:  fmt.Sprintf("creation application records error, %+v", err),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusCreated, api.Success(nil))
 }
 
 // Download get lists from passed in IDs and generate file and send to invoker
