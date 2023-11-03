@@ -25,14 +25,14 @@ func GetCurrentSeason(db *gorm.DB) (*model.Season, error) {
 	return &currSeason, nil
 }
 
-func GetSeasonByName(db *gorm.DB, seasonName string) (*model.Season, error) {
-	var currSeason model.Season
+func GetSeasonsByName(db *gorm.DB, seasonNameList []string) ([]*model.Season, error) {
+	var seasons []*model.Season
 	err := db.Model(&model.Season{}).
-		Where("name = ", seasonName).
-		First(&currSeason).Error
+		Where("name IN ?", seasonNameList).
+		Find(&seasons).Error
 
 	if err != nil {
 		return nil, err
 	}
-	return &currSeason, nil
+	return seasons, nil
 }
