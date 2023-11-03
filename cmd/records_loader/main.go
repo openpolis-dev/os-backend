@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"reflect"
 	"strings"
 	"time"
 
@@ -17,6 +16,8 @@ import (
 	"github.com/theseed-labs/os-backend/internal/storage"
 	"github.com/xuri/excelize/v2"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
+	"gorm.io/gorm/logger"
 )
 
 const DealDateLayoutFormat1 = "2006/1/2"
@@ -86,9 +87,6 @@ func loadXslsFile(filePath string) ([]*DetailRecordSchema, error) {
 		log.Error().Msgf("Failed to get rows from sheet '%s': %v", sheetName, err)
 		return nil, err
 	}
-
-	header := rows[1]
-	log.Error().Msgf("TTT: Table header: %+v, type: %+v", header, reflect.TypeOf(header))
 
 	detailRecords := lo.Map(rows[2:], func(r []string, _ int) *DetailRecordSchema {
 		var dealDate time.Time
@@ -190,46 +188,80 @@ func saveToDatabase(db *gorm.DB, rcds []*DetailRecordSchema, seasonRcds []*model
 		panic(fmt.Errorf("some entites are missing in DB: %+v", missingEntity))
 	}
 
-	log.Error().Msgf("xsls entity map: %+v", entityInfo)
+	// DB tasks
+	// Create user record if not existing
+	err := db.Transaction(func(tx *gorm.DB) error {
+		for wallet, _ := range userWallets {
+			err := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&model.User{Wallet: model.FormatUserWallet(wallet)}).Error
 
-	// Build DB tasks
-	//err := db.Transaction(func(tx *gorm.DB) error {
-	//	for wallet, _ := range userWallets {
-	//		err := tx.Model(model.User{}).Save(&model.User{Wallet: model.FormatUserWallet(wallet)}).Error
-	//		if err != nil {
-	//			log.Error().Msgf("find or create user error: %+v", err)
-	//			return err
-	//		}
-	//	}
-	//	return nil
-	//})
-	//
-	//if err != nil {
-	//	panic(err)
-	//}
+			if err != nil {
+				log.Error().Msgf("find or create user error: %+v", err)
+				return err
+			}
+		}
+		return nil
+	})
 
-	//err = db.Transaction(func(tx *gorm.DB) error {
-	//	for _, r := range recordsWillBeImported {
-	//		seasonId, _ := seasonNames[r.SeasonName]
-	//
-	//		tx.Model(&model.Application{
-	//			Type:             model.ApplicationNewReward,
-	//			Applicant:        "",
-	//			State:            model.ApplicationStateOpen,
-	//			CreatedAt:        time.Now().In(internal.ProjectTimezone),
-	//			UpdatedAt:        time.Now().In(internal.ProjectTimezone),
-	//			DetailedType:     r.DetailedType,
-	//			TargetUserWallet: model.FormatUserWallet(r.UserWallet),
-	//			AssetName:        r.AssetName,
-	//			AssetAmount:      r.AssetAmount,
-	//			EntityType:       newAppBundleReq.Entity,
-	//			EntityId:         newAppBundleReq.EntityId,
-	//			SeasonId:         seasonId,
-	//		})
-	//	}
-	//})
+	if err != nil {
+		panic(err)
+	}
 
-	return nil
+	appBundle := model.AppBundle{
+		Type:     "NEW_REWARD",
+		SeasonId: seasonIds[0],
+		State:    model.ApplicationStateApproved,
+	}
+	err = db.Save(&appBundle).Error
+	if err != nil {
+		panic(err)
+	}
+
+	return db.Transaction(func(tx *gorm.DB) error {
+		for i, r := range recordsWillBeImported {
+			if i%10 == 0 {
+				fmt.Printf("%d", i)
+			} else {
+				fmt.Print(".")
+			}
+
+			seasonId, _ := seasonNames[r.SeasonName]
+			entityInfo := entityInfo[r.EntityName]
+
+			application := model.Application{
+				Type:             model.ApplicationNewReward,
+				Applicant:        "",
+				State:            model.ApplicationStateOpen,
+				CreatedAt:        time.Now().In(internal.ProjectTimezone),
+				UpdatedAt:        time.Now().In(internal.ProjectTimezone),
+				DetailedType:     r.DetailedType,
+				TargetUserWallet: model.FormatUserWallet(r.UserWallet),
+				AssetName:        r.AssetName,
+				AssetAmount:      r.AssetAmount,
+				EntityType:       entityInfo.Type,
+				EntityId:         entityInfo.Id,
+				SeasonId:         seasonId,
+				BundleId:         appBundle.ID,
+			}
+
+			err = tx.Save(&application).Error
+			if err != nil {
+				return err
+			}
+
+			auditLogs := []*model.ApplicationAuditLog{
+				{ApplicationID: application.ID, LogTs: time.Now().In(internal.ProjectTimezone), PostState: model.ApplicationStateApproved},
+				{ApplicationID: application.ID, LogTs: time.Now().In(internal.ProjectTimezone), PreState: model.ApplicationStateOpen, PostState: model.ApplicationStateApproved},
+				{ApplicationID: application.ID, LogTs: time.Now().In(internal.ProjectTimezone), PreState: model.ApplicationStateApproved, PostState: model.ApplicationStateProcessing},
+				{ApplicationID: application.ID, LogTs: time.Now().In(internal.ProjectTimezone), PreState: model.ApplicationStateProcessing, PostState: model.ApplicationStateCompleted},
+			}
+
+			err = tx.Save(auditLogs).Error
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
 
 func main() {
@@ -256,6 +288,7 @@ func main() {
 	}
 	storage.InitGormDB(dbDsn)
 	db := storage.GetGormDB()
+	db.Logger = logger.Default.LogMode(logger.Silent)
 
 	// parse season data
 	seasons, err := parseSeasonParams(db, *seasonName)
@@ -270,6 +303,9 @@ func main() {
 	}
 
 	err = saveToDatabase(db, detailedRecords, seasons, *cleanDBFlag)
+	if err != nil {
+		panic(err)
+	}
 
 	// Your application logic goes here
 }
