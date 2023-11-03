@@ -37,9 +37,9 @@ type DetailRecordSchema struct {
 }
 
 type EntityProps struct {
-	Type string
-	Id   uint
-	Name string
+	EntityType string
+	Id         uint
+	Name       string
 }
 
 func parseSeasonParams(db *gorm.DB, seasonParamValue string) ([]*model.Season, error) {
@@ -136,6 +136,7 @@ func loadXslsFile(filePath string) ([]*DetailRecordSchema, error) {
 }
 
 func saveToDatabase(db *gorm.DB, rcds []*DetailRecordSchema, seasonRcds []*model.Season, cleanDbFlag bool) error {
+	var err error
 	// Prepare season data
 	var seasonIds []uint
 	seasonNames := make(map[string]uint)
@@ -147,8 +148,16 @@ func saveToDatabase(db *gorm.DB, rcds []*DetailRecordSchema, seasonRcds []*model
 
 	// clear application and related audit log records with specified seasons if set cleanDbFlag to true
 	if cleanDbFlag {
-		db.Model(&model.ApplicationAuditLog{}).Delete("application_id IN (select ID from applications where season_id IN ?)", seasonIds)
-		db.Model(&model.Application{}).Delete("season_id IN ?", seasonIds)
+		var appRcdIds []uint
+		db.Model(&model.Application{}).Where("season_id IN ?", seasonIds).Select("id").Find(&appRcdIds)
+		err = db.Model(&model.ApplicationAuditLog{}).Where("application_id IN ?", appRcdIds).Delete(&model.ApplicationAuditLog{}).Error
+		if err != nil {
+			panic(err)
+		}
+		err = db.Model(&model.Application{}).Where("season_id IN ?", seasonIds).Delete(&model.Application{}).Error
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	// Collect all entities in database
@@ -190,9 +199,9 @@ func saveToDatabase(db *gorm.DB, rcds []*DetailRecordSchema, seasonRcds []*model
 
 	// DB tasks
 	// Create user record if not existing
-	err := db.Transaction(func(tx *gorm.DB) error {
+	err = db.Transaction(func(tx *gorm.DB) error {
 		for wallet, _ := range userWallets {
-			err := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&model.User{Wallet: model.FormatUserWallet(wallet)}).Error
+			err = tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&model.User{Wallet: model.FormatUserWallet(wallet)}).Error
 
 			if err != nil {
 				log.Error().Msgf("find or create user error: %+v", err)
@@ -237,7 +246,7 @@ func saveToDatabase(db *gorm.DB, rcds []*DetailRecordSchema, seasonRcds []*model
 				TargetUserWallet: model.FormatUserWallet(r.UserWallet),
 				AssetName:        r.AssetName,
 				AssetAmount:      r.AssetAmount,
-				EntityType:       entityInfo.Type,
+				EntityType:       entityInfo.EntityType,
 				EntityId:         entityInfo.Id,
 				SeasonId:         seasonId,
 				BundleId:         appBundle.ID,
