@@ -264,7 +264,7 @@ func Detail(ctx *gin.Context) {
 	sppClient := sdk.GetSppClient()
 	seepassResp, err := sppClient.GetSeepassData(user.Wallet)
 	if err == nil {
-		ctx.JSON(http.StatusOK, seepassResp)
+		ctx.JSON(http.StatusOK, api.Success(seepassResp))
 		return
 	}
 
