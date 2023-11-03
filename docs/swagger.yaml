@@ -441,6 +441,8 @@ definitions:
         type: string
       email:
         type: string
+      github_profile:
+        type: string
       google_profile:
         type: string
       id:
@@ -779,6 +781,8 @@ definitions:
       discord_profile:
         type: string
       email:
+        type: string
+      github_profile:
         type: string
       google_profile:
         type: string

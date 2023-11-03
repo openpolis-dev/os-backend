@@ -2321,6 +2321,9 @@
                 "email": {
                     "type": "string"
                 },
+                "github_profile": {
+                    "type": "string"
+                },
                 "google_profile": {
                     "type": "string"
                 },
@@ -2831,6 +2834,9 @@
                     "type": "string"
                 },
                 "email": {
+                    "type": "string"
+                },
+                "github_profile": {
                     "type": "string"
                 },
                 "google_profile": {

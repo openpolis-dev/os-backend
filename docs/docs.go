@@ -2328,6 +2328,9 @@ const docTemplate = `{
                 "email": {
                     "type": "string"
                 },
+                "github_profile": {
+                    "type": "string"
+                },
                 "google_profile": {
                     "type": "string"
                 },
@@ -2838,6 +2841,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "email": {
+                    "type": "string"
+                },
+                "github_profile": {
                     "type": "string"
                 },
                 "google_profile": {
