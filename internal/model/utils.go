@@ -273,6 +273,11 @@ func QueryAppBundleRecords(db *gorm.DB, queryParams *ListAppBundleQueryParams) (
 	if queryParams.SortOrder == "" {
 		queryParams.SortOrder = "desc"
 	}
+
+	if queryParams.SeasonId != 0 {
+		whereClause += " AND app_bundles.season_id = @season_id"
+		whereParams["season_id"] = queryParams.SeasonId
+	}
 	// TODO: Dup logic end
 
 	// Calculate total count
