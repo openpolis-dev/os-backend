@@ -19,6 +19,7 @@ type User struct {
 	DiscordProfile string `json:"discord_profile"`
 	TwitterProfile string `json:"twitter_profile"`
 	GoogleProfile  string `json:"google_profile"`
+	GithubProfile  string `json:"github_profile"`
 
 	Mirror string `json:"mirror"`
 
@@ -102,6 +103,14 @@ func (u *User) BuildSppUpdateProfilePayload() *sdk.SppUpdateProfileRequest {
 
 	if u.GoogleProfile != "" && u.Email == "" {
 		u.Email = u.GoogleProfile
+	}
+
+	if u.GithubProfile != "" {
+		sppReq.SocialAccounts = append(sppReq.SocialAccounts, sdk.ProfileSocialAccount{
+			Network:  "github",
+			Identity: u.GithubProfile,
+			Verified: false,
+		})
 	}
 
 	return sppReq

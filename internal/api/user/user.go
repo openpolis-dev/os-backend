@@ -37,6 +37,7 @@ type RefreshNonceReply struct {
 }
 
 // RefreshNonce refresh nonce
+//
 //	@Summary	Refresh nonce
 //	@Tags		Auth
 //	@Accept		json
@@ -128,6 +129,7 @@ type LoginReply struct {
 }
 
 // Login user login
+//
 //	@Summary	Login
 //	@Tags		Auth
 //	@Accept		json
@@ -233,6 +235,7 @@ func Login(ctx *gin.Context) {
 }
 
 // Logout user logout
+//
 //	@Summary	Logout
 //	@Tags		Auth
 //	@Accept		json
@@ -247,6 +250,7 @@ func Logout(ctx *gin.Context) {
 // ------ User ------ ------
 
 // Detail get user detail
+//
 //	@Summary	Get user detail
 //	@Tags		User
 //	@Accept		json
@@ -304,10 +308,12 @@ type UpdateReq struct {
 	DiscordProfile string `json:"discord_profile"`
 	TwitterProfile string `json:"twitter_profile"`
 	GoogleProfile  string `json:"google_profile"`
+	GithubProfile  string `json:"github_profile"`
 	Mirror         string `json:"mirror"`
 }
 
 // Update `PUT /me`
+//
 //	@Summary	Update user info
 //	@Tags		User
 //	@Accept		json
@@ -343,6 +349,7 @@ func Update(ctx *gin.Context) {
 	u.DiscordProfile = req.DiscordProfile
 	u.TwitterProfile = req.TwitterProfile
 	u.GoogleProfile = req.GoogleProfile
+	u.GithubProfile = req.GoogleProfile
 	u.Mirror = req.Mirror
 
 	// Only upload image when data is b64 image string (start with `data:image`)
