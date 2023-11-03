@@ -42,6 +42,10 @@ func parseSeasonParams(db *gorm.DB, seasonParamValue string) ([]*model.Season, e
 			return nil, err
 		}
 		return []*model.Season{currentSeason}, nil
+	} else if strings.EqualFold(seasonParamValue, "all") {
+		var seasonRcds []*model.Season
+		err := db.Model(&model.Season{}).Find(&seasonRcds).Error
+		return seasonRcds, err
 	} else {
 		seasonNames := strings.Split(seasonParamValue, ",")
 		seasonRcds, err := service.GetSeasonsByName(db, seasonNames)
@@ -127,15 +131,17 @@ func loadXslsFile(filePath string) ([]DetailRecordSchema, error) {
 	return detailRecords, nil
 }
 
-func saveToDatabase(db *gorm.DB, rcds []DetailRecordSchema, seasonRcds []*model.Season, clearDbFlag bool) error {
+func saveToDatabase(db *gorm.DB, rcds []DetailRecordSchema, seasonRcds []*model.Season, cleanDbFlag bool) error {
 	seasonIds := lo.Map(seasonRcds, func(r *model.Season, _ int) uint {
 		return r.ID
 	})
-	// clear application and related audit log records with specified seasons if set clearDbFlag to true
-	if clearDbFlag {
+
+	// clear application and related audit log records with specified seasons if set cleanDbFlag to true
+	if cleanDbFlag {
 		//applications := db.Model(&model.Application{}).Where("season_id IN ?", seasonIds)
 		var auditLogs []model.ApplicationAuditLog
 		db.Model(&model.ApplicationAuditLog{}).Where("application_id IN (select ID from applications where season_id IN ?)", seasonIds).Find(&auditLogs)
+		log.Error().Msgf("TTT: got audit logs count: %d", len(auditLogs))
 	}
 	// Filter out records with specified seasons
 
@@ -145,7 +151,7 @@ func saveToDatabase(db *gorm.DB, rcds []DetailRecordSchema, seasonRcds []*model.
 func main() {
 	// Define the command-line flags
 	dsn := flag.String("dsn", "", "Database connect string")
-	seasonName := flag.String("season", "", "Specify seasons the application will import, multiple seasons can be split by comma. If not given, the current season will be used.")
+	seasonName := flag.String("season", "", "Specify seasons the application will import, multiple seasons can be split by comma. If not given, the current season will be used. And pass `all` for processing all season records")
 	cleanDBFlag := flag.Bool("clean-db", false, "Clean the database with specified seasons before importing.")
 	//logLevelFlag := flag.Int("v", 0, "Log level: 0 for no logs, 1 for normal logs, 2 for verbose logs, 3 for very verbose logs.")
 	//outputSQLFlag := flag.String("output-sql", "", "Specify the output SQL.")
