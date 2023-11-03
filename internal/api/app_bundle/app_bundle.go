@@ -343,15 +343,6 @@ func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState
 					tx.Rollback()
 					return err
 				}
-				for _, appRcd := range appBundleRcd.AppRecords {
-					appRcd.State = newState
-					err = tx.Save(&appRcd).Error
-					if err != nil {
-						log.Error().Msgf("change application state error: %+v, application: %+v", err, appRcd)
-						tx.Rollback()
-						return err
-					}
-				}
 			}
 		}
 		return nil
