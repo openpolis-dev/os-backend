@@ -321,7 +321,7 @@ func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState
 				return err
 			}
 			for _, appRcd := range appBundleRcd.AppRecords {
-				err = model.AuditApplication(db, user.Wallet, appRcd, model.AuditActionApprove, "", enforcer, push)
+				err = model.AuditApplication(tx, user.Wallet, appRcd, model.AuditActionApprove, "", enforcer, push)
 				if err != nil {
 					log.Error().Msgf("save app bundle record error: %+v, app bundle: %+v", err, appBundleRcd)
 					tx.Rollback()
