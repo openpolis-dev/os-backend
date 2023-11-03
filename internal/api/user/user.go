@@ -349,7 +349,7 @@ func Update(ctx *gin.Context) {
 	u.DiscordProfile = req.DiscordProfile
 	u.TwitterProfile = req.TwitterProfile
 	u.GoogleProfile = req.GoogleProfile
-	u.GithubProfile = req.GoogleProfile
+	u.GithubProfile = req.GithubProfile
 	u.Mirror = req.Mirror
 
 	// Only upload image when data is b64 image string (start with `data:image`)
