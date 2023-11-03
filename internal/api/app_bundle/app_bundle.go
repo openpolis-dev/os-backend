@@ -239,7 +239,6 @@ func CreateAppBundle(ctx *gin.Context) {
 //	@Success	200			{string}	nil
 func ApproveAppBundles(ctx *gin.Context) {
 	updateAppBundleToNewState(ctx, model.ApplicationStateApproved)
-	ctx.JSON(http.StatusOK, api.Success(nil))
 }
 
 // RejectAppBundles reject appBundle and associated applications
@@ -252,7 +251,6 @@ func ApproveAppBundles(ctx *gin.Context) {
 //	@Success	200			{string}	nil
 func RejectAppBundles(ctx *gin.Context) {
 	updateAppBundleToNewState(ctx, model.ApplicationStateRejected)
-	ctx.JSON(http.StatusOK, api.Success(nil))
 }
 
 func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState) {
@@ -322,7 +320,6 @@ func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState
 			if err != nil {
 				return err
 			}
-			log.Error().Msgf("Records: %+v", appBundleRcd.AppRecords)
 			for _, appRcd := range appBundleRcd.AppRecords {
 				err = model.AuditApplication(db, user.Wallet, appRcd, model.AuditActionApprove, "", enforcer, push)
 				if err != nil {
@@ -364,4 +361,6 @@ func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
+
+	ctx.JSON(http.StatusOK, api.Success(nil))
 }
