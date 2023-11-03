@@ -179,6 +179,11 @@ func GenerateFrontendApplicationRecords(db *gorm.DB, queryParams *ListApplicatio
 		whereParams["target_user_wallet"] = strings.ToLower(strings.TrimSpace(queryParams.UserWallet))
 	}
 
+	if queryParams.SeasonId != 0 {
+		whereClause += " AND applications.season_id = @season_id"
+		whereParams["season_id"] = queryParams.SeasonId
+	}
+
 	// Calculate total count
 	total := db.Raw(querySQL+whereClause, whereParams).Scan(&[]map[string]any{}).RowsAffected
 

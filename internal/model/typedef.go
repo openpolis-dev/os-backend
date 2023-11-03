@@ -84,6 +84,7 @@ type ListApplicationQueryParams struct {
 	EndDate    string `form:"end_date"`
 	Applicant  string `form:"applicant"`
 	UserWallet string `form:"user_wallet"`
+	SeasonId   int    `form:"season_id"`
 }
 
 type NewRewardAssetRecord struct {
