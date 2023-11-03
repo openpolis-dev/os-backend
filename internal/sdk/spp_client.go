@@ -102,6 +102,10 @@ func (c *SppClient) GetSeepassData(wallet string) (*SeepassResponse, error) {
 
 	defer resp.Body.Close()
 
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("got error response from seepass endpoint: status code: %d, resp: %+v", resp.StatusCode, resp)
+	}
+
 	seepassData := SeepassResponse{}
 	err = json.NewDecoder(resp.Body).Decode(&seepassData)
 	if err != nil {
