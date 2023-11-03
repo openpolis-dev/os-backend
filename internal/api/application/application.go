@@ -19,6 +19,7 @@ import (
 	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/model"
+	"github.com/theseed-labs/os-backend/internal/service"
 	"github.com/xuri/excelize/v2"
 	"gorm.io/gorm"
 )
@@ -145,16 +146,38 @@ func Create(ctx *gin.Context) {
 				return err
 			}
 
+			seasonRecord, err := service.GetCurrentSeason(db)
+			if err != nil {
+				return err
+			}
+
+			appBundle := model.AppBundle{
+				Submitter:  user.Wallet,
+				EntityType: req.Entity,
+				EntityId:   req.EntityId,
+				SeasonId:   seasonRecord.ID,
+				State:      model.ApplicationStateOpen,
+				CreatedAt:  time.Time{},
+				UpdatedAt:  time.Time{},
+				Type:       "CLOSE_PROJECT",
+			}
+			err = db.Save(&appBundle).Error
+			if err != nil {
+				return err
+			}
+
 			app := &model.Application{
 				Type:         appType,
 				Applicant:    user.Wallet,
 				State:        model.ApplicationStateOpen,
 				EntityType:   req.Entity,
 				EntityId:     req.EntityId,
+				SeasonId:     seasonRecord.ID,
 				DetailedType: req.DetailedType,
 				Comment:      req.Comment,
 				CreatedAt:    time.Now(),
 				UpdatedAt:    time.Now(),
+				BundleId:     appBundle.ID,
 			}
 
 			err = model.NewApplicationRecord(db, app)

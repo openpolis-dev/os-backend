@@ -27,7 +27,10 @@ type AppBundle struct {
 	SeasonId uint `gorm:"index"`
 	Season   Season
 
-	State ApplicationState `gorm:"inidex"`
+	State ApplicationState `gorm:"index"`
+
+	// For CLOSE_PROJECT request, an app bundle also will also be created to fit db foreign key
+	Type ApplicationType `json:"type"`
 
 	CreatedAt time.Time `gorm:"autoCreateTime"`
 	UpdatedAt time.Time `gorm:"autoUpdateTime"`

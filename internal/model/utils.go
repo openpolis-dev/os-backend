@@ -215,8 +215,11 @@ func QueryAppBundleRecords(db *gorm.DB, queryParams *ListAppBundleQueryParams) (
 	}
 
 	querySQL := QueryAppBundlesWithEntityNameBaseSQL
-	whereClause := "\nWHERE app_bundles.state = @state"
-	whereParams := map[string]any{"state": ApplicationState("open")}
+	whereClause := "\nWHERE app_bundles.state = @state AND app_bundles.type = @type"
+	whereParams := map[string]any{
+		"state": ApplicationState("open"),
+		"type":  "NEW_REWARD",
+	}
 
 	// TODO: Dup logic start
 	if clearedEntity != "" {

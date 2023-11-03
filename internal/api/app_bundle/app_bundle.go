@@ -185,6 +185,7 @@ func CreateAppBundle(ctx *gin.Context) {
 			State:      model.ApplicationStateOpen,
 			CreatedAt:  time.Now().In(internal.ProjectTimezone),
 			UpdatedAt:  time.Now().In(internal.ProjectTimezone),
+			Type:       "NEW_REWARD",
 		}
 
 		appBundle.AppRecords = lo.Map(newAppBundleReq.Records, func(appRcdRequest *model.NewApplicationRequest, index int) *model.Application {

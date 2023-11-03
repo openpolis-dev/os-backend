@@ -84,10 +84,7 @@ func SeedDbRecords(db *gorm.DB) error {
 		UpdateAll: true,
 	}).Create(&seasons).Error
 
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 func GetGormDB() *gorm.DB {
