@@ -224,7 +224,7 @@ func main() {
 
 		// application endpoints
 		// Note: Most NEW_REWARD applications has been moved to app_bundle part
-		applicationGroup := v1.Group("/applications")
+		applicationGroup := authorizedGroup.Group("/applications")
 		applicationGroup.POST("/", application.Create)
 
 		appBundleGroup := authorizedGroup.Group("/app_bundles")
