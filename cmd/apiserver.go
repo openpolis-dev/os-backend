@@ -182,8 +182,9 @@ func main() {
 		publicData.GET("/contract/seed", publicdata.SeedDataFromIndexer)
 		publicData.GET("/contract/scr", publicdata.SCRDataFromIndexer)
 		publicData.GET("/contract/node", publicdata.NodeDataFromIndexer)
-		publicData.GET("/bounty/list", publicdata.BountyList)
-		publicData.GET("/bounty/detail/:id", publicdata.BountyDetail)
+		publicData.GET("/notion/database/:id", publicdata.NotionDatabase)
+		publicData.GET("/notion/page/:id", publicdata.NotionPage)
+		publicData.GET("/notion/user/:id", publicdata.NotionUser)
 
 		// season data
 		seasonsData := v1.Group("/seasons")
