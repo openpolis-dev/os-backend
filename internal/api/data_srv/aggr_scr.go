@@ -22,6 +22,8 @@ where applications.type = 'NEW_REWARD'
   and applications.asset_name = 'SCR'
 GROUP by season_id, target_user_wallet`
 
+const MetaforoTotalCreditRatio = "0.05"
+
 // AggregatedSeasonCredit saves scores aggregated by seasons
 type AggregatedSeasonCredit struct {
 	SeasonId         uint
@@ -34,10 +36,10 @@ type AggregatedSeasonCredit struct {
 type UserCreditRecord struct {
 	TargetUserWallet string
 
-	SeasonsCredit  map[uint]AggregatedSeasonCredit
-	MetaforoCredit decimal.Decimal
+	SeasonsCredit map[uint]AggregatedSeasonCredit
 
-	SeedCount uint
+	SeedCount           uint
+	MetaforoActionCount int
 
 	ActivityCredit  decimal.Decimal // credits should be issued in current season, plus metaforo credit
 	EffectiveCredit decimal.Decimal // activity credit plus weighted pre-seasons credit
@@ -71,22 +73,26 @@ func AggrScr(ctx *gin.Context) {
 	// userCredits category all credits by user wallet
 	userCredits := make(map[string]UserCreditRecord)
 
+	// Fetch current season data from databse
 	currentSeason, err := service.GetCurrentSeason(db)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
+
+	// totalCreditInCurrentSeason saves total reward credits will be issued in current season,
+	// which will be used to calculate reward for each metaforo vote
 	totalCreditInCurrentSeason := decimal.Zero
 
-	// TODO: Get seed count for each wallet with specified time
+	// TODO: Get seed count for each wallet before specified time
 	for _, r := range aggregatedSeasonCredits {
 		model.SetDefaultMapValue(userCredits, r.TargetUserWallet, UserCreditRecord{
-			TargetUserWallet: r.TargetUserWallet,
-			SeasonsCredit:    make(map[uint]AggregatedSeasonCredit),
-			MetaforoCredit:   decimal.Zero,
-			SeedCount:        0,
-			ActivityCredit:   decimal.Zero,
-			EffectiveCredit:  decimal.Zero,
+			TargetUserWallet:    r.TargetUserWallet,
+			SeasonsCredit:       make(map[uint]AggregatedSeasonCredit),
+			SeedCount:           0,
+			MetaforoActionCount: 0,
+			ActivityCredit:      decimal.Zero,
+			EffectiveCredit:     decimal.Zero,
 		})
 
 		userCredits[r.TargetUserWallet].SeasonsCredit[r.SeasonIdx] = r
@@ -99,6 +105,9 @@ func AggrScr(ctx *gin.Context) {
 
 	var resp []NodeCalcResponse
 
+	currentSeasonTotalCredits := decimal.Zero
+	totalMetaforoActions := 0
+
 	// TODO: metaforo credit is not populated yet
 	for wallet, record := range userCredits {
 		var respSeasonsCredit []SeasonCreditResponse
@@ -110,7 +119,8 @@ func AggrScr(ctx *gin.Context) {
 			}
 
 			if seasonIdx == currentSeason.Idx {
-				record.ActivityCredit = record.MetaforoCredit.Add(seasonCredit.SeasonTotal)
+				record.ActivityCredit = seasonCredit.SeasonTotal
+				currentSeasonTotalCredits = currentSeasonTotalCredits.Add(seasonCredit.SeasonTotal)
 			}
 
 			record.EffectiveCredit = record.EffectiveCredit.Add(seasonCredit.SeasonTotal.Div(decimal.NewFromInt(2).Pow(decimal.NewFromInt(int64(currentSeason.Idx - seasonIdx)))))
@@ -124,6 +134,7 @@ func AggrScr(ctx *gin.Context) {
 		}
 
 		record.EffectiveCredit = record.EffectiveCredit.Add(record.ActivityCredit)
+		totalMetaforoActions += record.MetaforoActionCount
 
 		resp = append(resp, NodeCalcResponse{
 			Wallet:            wallet,
@@ -134,6 +145,17 @@ func AggrScr(ctx *gin.Context) {
 			SeedCount:         record.SeedCount,
 			EffectiveCredit:   record.EffectiveCredit.String(),
 		})
+	}
+
+	// TotalCurrentSeasonCredit * MetaforoCreditRatio / TotalMetaforoActions
+	metaforoActionCreditUnit := totalCreditInCurrentSeason.
+		Mul(decimal.RequireFromString(MetaforoTotalCreditRatio)).
+		Div(decimal.NewFromInt(totalMetaforoActions))
+
+	for wallet, record := range userCredits {
+
+		record.MetaforoActionCount
+
 	}
 
 	ctx.JSON(http.StatusOK, api.Success(&resp))
