@@ -98,7 +98,7 @@ func List(ctx *gin.Context) {
 //	@summary	create single application, for now only CLOSE_PROJECT type is allowed
 //	@router		/applications [post]
 //	@param		JsonBody	body		[]model.NewApplicationRequest	true	"new application request"
-//	@success	200			{string} ""
+//	@success	200			{string}	nil
 func Create(ctx *gin.Context) {
 	var newApplicationReqs []model.NewApplicationRequest
 	if err := ctx.BindJSON(&newApplicationReqs); err != nil {
