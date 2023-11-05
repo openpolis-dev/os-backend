@@ -130,5 +130,5 @@ func AggrScr(ctx *gin.Context) {
 		})
 	}
 
-	ctx.JSON(200, &resp)
+	ctx.JSON(http.StatusOK, api.Success(&resp))
 }
