@@ -102,13 +102,11 @@ func AggrScr(ctx *gin.Context) {
 		var respSeasonsCredit []SeasonCreditResponse
 		for seasonIdx, seasonCredit := range record.SeasonsCredit {
 			if seasonIdx > currentSeason.Idx {
-				log.Error().Msgf("greater season")
 				continue
 			}
 
 			if seasonIdx == currentSeason.Idx {
 				record.ActivityCredit = record.MetaforoCredit.Add(seasonCredit.SeasonTotal)
-				log.Error().Msgf("activity season credit %s", record.ActivityCredit)
 			}
 
 			record.EffectiveCredit = record.EffectiveCredit.Add(seasonCredit.SeasonTotal.Div(decimal.NewFromInt(2).Pow(decimal.NewFromInt(int64(currentSeason.Idx - seasonIdx)))))
