@@ -139,24 +139,24 @@ func AggrScr(ctx *gin.Context) {
 		resp = append(resp, NodeCalcResponse{
 			Wallet:            wallet,
 			SeasonsCredit:     respSeasonsCredit,
-			SeasonTotalCredit: seasonsTotal.Add(record.MetaforoCredit).String(),
+			SeasonTotalCredit: seasonsTotal.String(),
 			ActivityCredit:    record.ActivityCredit.String(),
-			MetaforoCredit:    record.MetaforoCredit.String(),
+			MetaforoCredit:    "0",
 			SeedCount:         record.SeedCount,
 			EffectiveCredit:   record.EffectiveCredit.String(),
 		})
 	}
 
-	// TotalCurrentSeasonCredit * MetaforoCreditRatio / TotalMetaforoActions
-	metaforoActionCreditUnit := totalCreditInCurrentSeason.
-		Mul(decimal.RequireFromString(MetaforoTotalCreditRatio)).
-		Div(decimal.NewFromInt(totalMetaforoActions))
-
-	for wallet, record := range userCredits {
-
-		record.MetaforoActionCount
-
-	}
+	//// TotalCurrentSeasonCredit * MetaforoCreditRatio / TotalMetaforoActions
+	//metaforoActionCreditUnit := totalCreditInCurrentSeason.
+	//	Mul(decimal.RequireFromString(MetaforoTotalCreditRatio)).
+	//	Div(decimal.NewFromInt(totalMetaforoActions))
+	//
+	//for wallet, record := range userCredits {
+	//
+	//	record.MetaforoActionCount
+	//
+	//}
 
 	ctx.JSON(http.StatusOK, api.Success(&resp))
 }
