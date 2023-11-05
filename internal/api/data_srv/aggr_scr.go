@@ -44,6 +44,7 @@ type UserCreditRecord struct {
 }
 
 type SeasonCreditResponse struct {
+	SeasonIdx  uint   `json:"season_idx"`
 	SeasonName string `json:"season_name"`
 	Total      string `json:"total"`
 }
@@ -65,7 +66,6 @@ func AggrScr(ctx *gin.Context) {
 	db := api.ForContextOnlyDB(ctx)
 	var aggregatedSeasonCredits []AggregatedSeasonCredit
 	db.Raw(dbQuery).Find(&aggregatedSeasonCredits)
-	//ctx.JSON(200, &aggregatedSeasonCredits)
 
 	// userCredits category all credits by user wallet
 	userCredits := make(map[string]UserCreditRecord)
@@ -77,6 +77,7 @@ func AggrScr(ctx *gin.Context) {
 	}
 	totalCreditInCurrentSeason := decimal.Zero
 
+	// TODO: Get seed count for each wallet with specified time
 	for _, r := range aggregatedSeasonCredits {
 		model.SetDefaultMapValue(userCredits, r.TargetUserWallet, UserCreditRecord{
 			TargetUserWallet: r.TargetUserWallet,
@@ -111,6 +112,7 @@ func AggrScr(ctx *gin.Context) {
 
 			record.EffectiveCredit = record.EffectiveCredit.Add(seasonCredit.SeasonTotal.Div(decimal.NewFromInt(2).Pow(decimal.NewFromInt(int64(currentSeason.Idx - seasonIdx)))))
 			respSeasonsCredit = append(respSeasonsCredit, SeasonCreditResponse{
+				SeasonIdx:  seasonCredit.SeasonIdx,
 				SeasonName: seasonCredit.SeasonName,
 				Total:      seasonCredit.SeasonTotal.String(),
 			})
