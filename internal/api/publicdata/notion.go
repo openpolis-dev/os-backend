@@ -45,7 +45,7 @@ func NotionDatabase(ctx *gin.Context) {
 	page := api.ParseAndConvertPageParam(ctx)
 	// [0, 10)
 	start := (page.Page - 1) * page.Size
-	end := page.Page*page.Size - 1
+	end := page.Page * page.Size
 
 	total := len(databaseData.Result)
 	if total < start {
@@ -58,7 +58,7 @@ func NotionDatabase(ctx *gin.Context) {
 		return
 	}
 	if total < end {
-		end = total - 1
+		end = total
 	}
 
 	ctx.JSON(http.StatusOK, api.Success(&api.ListReplyData{
