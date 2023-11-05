@@ -49,12 +49,13 @@ type SeasonCreditResponse struct {
 	Total      string `json:"total"`
 }
 type NodeCalcResponse struct {
-	Wallet          string                 `json:"wallet"`
-	SeasonsCredit   []SeasonCreditResponse `json:"seasons_credit"`
-	ActivityCredit  string                 `json:"activity_credit"`
-	MetaforoCredit  string                 `json:"metaforo_credit"`
-	SeedCount       uint                   `json:"seed_count"`
-	EffectiveCredit string                 `json:"effective_credit"`
+	Wallet            string                 `json:"wallet"`
+	SeasonsCredit     []SeasonCreditResponse `json:"seasons_credit"`
+	SeasonTotalCredit string                 `json:"season_total_credit"`
+	ActivityCredit    string                 `json:"activity_credit"`
+	MetaforoCredit    string                 `json:"metaforo_credit"`
+	SeedCount         uint                   `json:"seed_count"`
+	EffectiveCredit   string                 `json:"effective_credit"`
 }
 
 // AggrScr returns aggregated credit score and node calculation result
@@ -101,6 +102,8 @@ func AggrScr(ctx *gin.Context) {
 	// TODO: metaforo credit is not populated yet
 	for wallet, record := range userCredits {
 		var respSeasonsCredit []SeasonCreditResponse
+		seasonsTotal := decimal.Zero
+
 		for seasonIdx, seasonCredit := range record.SeasonsCredit {
 			if seasonIdx > currentSeason.Idx {
 				continue
@@ -116,17 +119,20 @@ func AggrScr(ctx *gin.Context) {
 				SeasonName: seasonCredit.SeasonName,
 				Total:      seasonCredit.SeasonTotal.String(),
 			})
+
+			seasonsTotal = seasonsTotal.Add(seasonCredit.SeasonTotal)
 		}
 
 		record.EffectiveCredit = record.EffectiveCredit.Add(record.ActivityCredit)
 
 		resp = append(resp, NodeCalcResponse{
-			Wallet:          wallet,
-			SeasonsCredit:   respSeasonsCredit,
-			ActivityCredit:  record.ActivityCredit.String(),
-			MetaforoCredit:  record.MetaforoCredit.String(),
-			SeedCount:       record.SeedCount,
-			EffectiveCredit: record.EffectiveCredit.String(),
+			Wallet:            wallet,
+			SeasonsCredit:     respSeasonsCredit,
+			SeasonTotalCredit: seasonsTotal.Add(record.MetaforoCredit).String(),
+			ActivityCredit:    record.ActivityCredit.String(),
+			MetaforoCredit:    record.MetaforoCredit.String(),
+			SeedCount:         record.SeedCount,
+			EffectiveCredit:   record.EffectiveCredit.String(),
 		})
 	}
 
