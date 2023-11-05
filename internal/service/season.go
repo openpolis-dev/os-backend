@@ -12,7 +12,7 @@ import (
 // The logic is finding out first record with start_at field earlier than current local time.
 // This query does not create season record if not existing since the data should be created in InitDB function
 func GetCurrentSeason(db *gorm.DB) (*model.Season, error) {
-	now := time.Now().In(internal.ProjectTimezone)
+	now := time.Now().In(internal.ProjectTimezone).Unix()
 	var currSeason model.Season
 	err := db.Model(&model.Season{}).
 		Where("start_at < ?", now).
