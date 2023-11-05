@@ -56,7 +56,8 @@ type (
 		BucketName string `json:"bucketName" yaml:"bucketName"`
 	}
 	externalService struct {
-		SeedaoSppBase string `json:"SeedaoSppBase" yaml:"SeedaoSppBase"`
+		SeedaoSppBase          string `json:"SeedaoSppBase" yaml:"SeedaoSppBase"`
+		SeedaoEventIndexerBase string `json:"SeedaoEventIndexerBase" yaml:"SeedaoEventIndexerBase"`
 	}
 	publicData struct {
 		Discord struct {

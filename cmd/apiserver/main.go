@@ -111,6 +111,12 @@ func main() {
 		panic(err)
 	}
 
+	// setup Indexer API Client
+	err = sdk.InitIndexerClient(cfg.ExternalServices.SeedaoEventIndexerBase)
+	if err != nil {
+		panic(err)
+	}
+
 	r := gin.Default()
 	r.Use(gzip.Gzip(gzip.DefaultCompression))
 

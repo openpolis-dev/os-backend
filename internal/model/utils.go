@@ -317,6 +317,14 @@ func SetDefaultMapValue[K comparable, V any](origMap map[K]V, key K, value V) {
 		origMap[key] = value
 	}
 }
+func GetMapValueOrDefault[K comparable, V any](origMap map[K]V, key K, defaultValue V) V {
+	_, ok := origMap[key]
+	if !ok {
+		return defaultValue
+	} else {
+		return origMap[key]
+	}
+}
 
 func FormatUserWallet(wallet string) string {
 	return strings.TrimSpace(strings.ToLower(wallet))

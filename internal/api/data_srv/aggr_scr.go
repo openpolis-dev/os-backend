@@ -2,12 +2,14 @@ package data_srv
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
 	"github.com/shopspring/decimal"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/model"
+	"github.com/theseed-labs/os-backend/internal/sdk"
 	"github.com/theseed-labs/os-backend/internal/service"
 )
 
@@ -56,8 +58,26 @@ type NodeCalcResponse struct {
 	SeasonTotalCredit string                 `json:"season_total_credit"`
 	ActivityCredit    string                 `json:"activity_credit"`
 	MetaforoCredit    string                 `json:"metaforo_credit"`
-	SeedCount         uint                   `json:"seed_count"`
+	SeedCount         int                    `json:"seed_count"`
 	EffectiveCredit   string                 `json:"effective_credit"`
+}
+
+func getSeedHolderData(endTs int64) map[string]int {
+	indexerClient := sdk.GetIndexerClient()
+	seedHolderData, err := indexerClient.GetSeedHolderInfo(endTs)
+	if err != nil {
+		log.Error().Msgf("query seed holder data error: %+v", err)
+		return nil
+	}
+
+	seedCount := make(map[string]int)
+
+	for _, holderInfo := range seedHolderData {
+		model.SetDefaultMapValue(seedCount, holderInfo.Owner, 0)
+		seedCount[strings.ToLower(holderInfo.Owner)] += 1
+	}
+
+	return seedCount
 }
 
 // AggrScr returns aggregated credit score and node calculation result
@@ -67,18 +87,21 @@ type NodeCalcResponse struct {
 //	@success	200	{object}	[]NodeCalcResponse
 func AggrScr(ctx *gin.Context) {
 	db := api.ForContextOnlyDB(ctx)
-	var aggregatedSeasonCredits []AggregatedSeasonCredit
-	db.Raw(dbQuery).Find(&aggregatedSeasonCredits)
 
-	// userCredits category all credits by user wallet
-	userCredits := make(map[string]UserCreditRecord)
-
-	// Fetch current season data from databse
+	// Fetch current season data from database
 	currentSeason, err := service.GetCurrentSeason(db)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
+
+	seedHolderCount := getSeedHolderData(currentSeason.EndAt)
+
+	var aggregatedSeasonCredits []AggregatedSeasonCredit
+	db.Raw(dbQuery).Find(&aggregatedSeasonCredits)
+
+	// userCredits category all credits by user wallet
+	userCredits := make(map[string]UserCreditRecord)
 
 	// totalCreditInCurrentSeason saves total reward credits will be issued in current season,
 	// which will be used to calculate reward for each metaforo vote
@@ -142,7 +165,7 @@ func AggrScr(ctx *gin.Context) {
 			SeasonTotalCredit: seasonsTotal.String(),
 			ActivityCredit:    record.ActivityCredit.String(),
 			MetaforoCredit:    "0",
-			SeedCount:         record.SeedCount,
+			SeedCount:         model.GetMapValueOrDefault(seedHolderCount, wallet, 0),
 			EffectiveCredit:   record.EffectiveCredit.String(),
 		})
 	}
