@@ -27,6 +27,7 @@ import (
 	"github.com/theseed-labs/os-backend/internal/api/season"
 	"github.com/theseed-labs/os-backend/internal/api/treasury"
 	"github.com/theseed-labs/os-backend/internal/api/user"
+	"github.com/theseed-labs/os-backend/internal/api/webhook"
 	"github.com/theseed-labs/os-backend/internal/config"
 	"github.com/theseed-labs/os-backend/internal/middleware"
 	"github.com/theseed-labs/os-backend/internal/sdk"
@@ -185,6 +186,10 @@ func main() {
 		publicData.GET("/notion/database/:id", publicdata.NotionDatabase)
 		publicData.GET("/notion/page/:id", publicdata.NotionPage)
 		publicData.GET("/notion/user/:id", publicdata.NotionUser)
+
+		// webhook routers
+		webhookGroup := v1.Group("/webhook")
+		webhookGroup.POST("/tally", webhook.Tally)
 
 		// season data
 		seasonsData := v1.Group("/seasons")
