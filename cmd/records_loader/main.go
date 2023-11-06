@@ -247,6 +247,7 @@ func saveToDatabase(db *gorm.DB, rcds []*DetailRecordSchema, seasonRcds []*model
 				AssetName:        r.AssetName,
 				AssetAmount:      r.AssetAmount,
 				EntityType:       entityInfo.EntityType,
+				Comment:          r.Comment,
 				EntityId:         entityInfo.Id,
 				SeasonId:         seasonId,
 				BundleId:         appBundle.ID,
