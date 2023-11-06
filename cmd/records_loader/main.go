@@ -23,6 +23,9 @@ import (
 const DealDateLayoutFormat1 = "2006/1/2"
 const DealDateLayoutFormat2 = "2006-01-02 15:04:05"
 
+const DetailSheetName = "明细"
+const SummarizedSheetName = "数据透视"
+
 type DetailRecordSchema struct {
 	SeasonName   string
 	Username     string
@@ -34,6 +37,12 @@ type DetailRecordSchema struct {
 	DetailedType string
 	Comment      string
 	ProposalLink string
+}
+
+type SummarizedRecordSchema struct {
+	Wallet        string
+	SeasonsCredit []decimal.Decimal
+	Total         decimal.Decimal
 }
 
 type EntityProps struct {
@@ -68,7 +77,7 @@ func parseSeasonParams(db *gorm.DB, seasonParamValue string) ([]*model.Season, e
 	}
 }
 
-func loadXslsFile(filePath string) ([]*DetailRecordSchema, error) {
+func loadRows(filePath string, sheetName string) ([][]string, error) {
 	f, err := excelize.OpenFile(filePath)
 	if err != nil {
 		return nil, err
@@ -81,10 +90,18 @@ func loadXslsFile(filePath string) ([]*DetailRecordSchema, error) {
 		}
 	}()
 
-	sheetName := "明细"
 	rows, err := f.GetRows(sheetName)
 	if err != nil {
 		log.Error().Msgf("Failed to get rows from sheet '%s': %v", sheetName, err)
+		return nil, err
+	}
+
+	return rows, nil
+}
+
+func loadDetailSheet(filePath string) ([]*DetailRecordSchema, error) {
+	rows, err := loadRows(filePath, DetailSheetName)
+	if err != nil {
 		return nil, err
 	}
 
@@ -133,6 +150,48 @@ func loadXslsFile(filePath string) ([]*DetailRecordSchema, error) {
 	})
 
 	return detailRecords, nil
+}
+
+func loadSummarizedSheet(filePath string) ([]*SummarizedRecordSchema, error) {
+	rows, err := loadRows(filePath, SummarizedSheetName)
+	if err != nil {
+		return nil, err
+	}
+	log.Debug().Msgf("summarized sheet rows length: %d", len(rows))
+
+	summarizedRcds := lo.Map(rows[4:], func(r []string, _ int) *SummarizedRecordSchema {
+		lineColumnCount := len(r)
+		var err error
+		var seasonCredits []decimal.Decimal
+
+		for _, creditStr := range r[1 : lineColumnCount-1] {
+			var credit decimal.Decimal
+			if creditStr == "" {
+				credit = decimal.Zero
+			} else {
+				credit, err = decimal.NewFromString(creditStr)
+				if err != nil {
+					log.Error().Msgf("parse credit %s error: %+v", creditStr, err)
+					return nil
+				}
+			}
+			seasonCredits = append(seasonCredits, credit)
+		}
+
+		totalCredit, err := decimal.NewFromString(r[lineColumnCount-1])
+		if err != nil {
+			log.Error().Msgf("parse total credit error: %+v", err)
+			return nil
+		}
+
+		return &SummarizedRecordSchema{
+			Wallet:        r[0],
+			SeasonsCredit: seasonCredits,
+			Total:         totalCredit,
+		}
+	})
+
+	return summarizedRcds, nil
 }
 
 func saveToDatabase(db *gorm.DB, rcds []*DetailRecordSchema, seasonRcds []*model.Season, cleanDbFlag bool) error {
@@ -277,10 +336,10 @@ func saveToDatabase(db *gorm.DB, rcds []*DetailRecordSchema, seasonRcds []*model
 func main() {
 	// Define the command-line flags
 	dsn := flag.String("dsn", "", "Database connect string")
+	mode := flag.String("mode", "load", "load data mode or verify data")
 	seasonName := flag.String("season", "", "Specify seasons the application will import, multiple seasons can be split by comma. If not given, the current season will be used. And pass `all` for processing all season records")
 	cleanDBFlag := flag.Bool("clean-db", false, "Clean the database with specified seasons before importing.")
 	//logLevelFlag := flag.Int("v", 0, "Log level: 0 for no logs, 1 for normal logs, 2 for verbose logs, 3 for very verbose logs.")
-	//outputSQLFlag := flag.String("output-sql", "", "Specify the output SQL.")
 	inputFile := flag.String("input", "summary.xsls", "Specify input xslx file")
 
 	// Parse the command-line flags
@@ -306,16 +365,53 @@ func main() {
 		panic(err)
 	}
 
-	// read and parse xslx file
-	detailedRecords, err := loadXslsFile(*inputFile)
-	if err != nil {
-		panic(err)
-	}
+	switch *mode {
+	case "load":
+		// Read and parse xslx file
+		// The sheet used for loading is sheet with DetailSheetName.
+		detailedRecords, err := loadDetailSheet(*inputFile)
+		if err != nil {
+			panic(err)
+		}
 
-	err = saveToDatabase(db, detailedRecords, seasons, *cleanDBFlag)
-	if err != nil {
-		panic(err)
-	}
+		err = saveToDatabase(db, detailedRecords, seasons, *cleanDBFlag)
+		if err != nil {
+			panic(err)
+		}
+	case "verify":
+		// verify uses first sheet
+		// Get summarized records from Excel worksheet
+		summarizedRecords, err := loadSummarizedSheet(*inputFile)
+		if err != nil {
+			panic(err)
+		}
+		totalSummaryMap := make(map[string]decimal.Decimal)
+		for _, record := range summarizedRecords {
+			totalSummaryMap[record.Wallet] = record.Total
+		}
 
-	// Your application logic goes here
+		// Calculated summarized records from parsed detail worksheet
+		detailedRecords, err := loadDetailSheet(*inputFile)
+		if err != nil {
+			panic(err)
+		}
+
+		aggrUserTotal := make(map[string]decimal.Decimal)
+
+		// aggregate detailed records
+		for _, detailedRcd := range detailedRecords {
+			model.SetDefaultMapValue(aggrUserTotal, detailedRcd.UserWallet, decimal.Zero)
+			aggrUserTotal[detailedRcd.UserWallet] = aggrUserTotal[detailedRcd.UserWallet].Add(detailedRcd.AssetAmount)
+		}
+
+		// Verify whether calculated result is same with Excel result
+		for wallet, amount := range aggrUserTotal {
+			if !totalSummaryMap[wallet].Equal(amount) {
+				log.Error().Msgf("record not equal, wallet: %s, excel amount: %s, calc amount: %s", wallet, totalSummaryMap[wallet], amount)
+			}
+		}
+
+	default:
+		panic(fmt.Errorf("unknown mode, should be `load` or `verify`"))
+	}
 }
