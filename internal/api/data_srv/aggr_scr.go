@@ -2,7 +2,6 @@ package data_srv
 
 import (
 	"net/http"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
@@ -87,7 +86,7 @@ func getSeedHolderData(endTs int64) map[string]int {
 
 	for _, holderInfo := range seedHolderData {
 		model.SetDefaultMapValue(seedCount, model.FormatUserWallet(holderInfo.Owner), 0)
-		seedCount[strings.ToLower(holderInfo.Owner)] += 1
+		seedCount[model.FormatUserWallet(holderInfo.Owner)] += 1
 	}
 
 	return seedCount
@@ -186,7 +185,6 @@ func AggrScr(ctx *gin.Context) {
 
 			userCredits[wallet] = creditRcd
 		}
-		log.Error().Msgf("TTT: data: %+v", userCredits[wallet])
 	}
 
 	// Calculate total metaforo votes
