@@ -225,7 +225,7 @@ func QueryAppBundleRecords(db *gorm.DB, queryParams *ListAppBundleQueryParams) (
 	if !lo.Contains([]string{"open", "approved", "rejected"}, clearState) {
 		return nil, 0, fmt.Errorf("unknown state %s", queryParams.State)
 	}
-	whereClause += " AND app_bundles.state = @state"
+	whereClause += " HAVING app_bundles.state = @state"
 	whereParams["state"] = ApplicationState(clearState)
 
 	if clearedEntity != "" {
