@@ -171,12 +171,12 @@ func AggrScr(ctx *gin.Context) {
 				creditRcd.SeasonsCredit = make(map[uint]AggregatedSeasonCredit)
 			}
 			creditRcd.SeasonsCredit[r.SeasonIdx] = r
+			creditRcd.TotalSeasonCredit = creditRcd.TotalSeasonCredit.Add(r.SeasonTotal)
 
 			// Sum total credits for current seasons, and set current season credit to user
 			if r.SeasonIdx == currentSeason.Idx {
 				totalCreditInCurrentSeason = totalCreditInCurrentSeason.Add(r.SeasonTotal)
 				creditRcd.CurrentSeasonCredit = r.SeasonTotal
-				creditRcd.TotalSeasonCredit = creditRcd.TotalSeasonCredit.Add(r.SeasonTotal)
 			}
 
 			// Add weighted season credit
