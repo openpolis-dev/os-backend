@@ -215,7 +215,7 @@ func AggrScr(ctx *gin.Context) {
 		resp = append(resp, NodeCalcResponse{
 			Wallet:            wallet,
 			SeasonsCredit:     seasonsCredit,
-			SeasonTotalCredit: record.TotalSeasonCredit.String(),
+			SeasonTotalCredit: record.TotalSeasonCredit.Add(metaforoVoteReward).String(),
 			ActivityCredit:    record.CurrentSeasonCredit.Add(metaforoVoteReward).String(),
 			MetaforoCredit:    metaforoVoteReward.String(),
 			SeedCount:         record.SeedCount,
