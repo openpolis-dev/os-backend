@@ -180,7 +180,9 @@ func AggrScr(ctx *gin.Context) {
 			}
 
 			// Add weighted season credit
-			creditRcd.WeightedPastSeasonsCredit = creditRcd.WeightedPastSeasonsCredit.Add(r.SeasonTotal.Mul(seasonCreditWeight(r.SeasonIdx, currentSeason.Idx)))
+			if r.SeasonIdx != currentSeason.Idx {
+				creditRcd.WeightedPastSeasonsCredit = creditRcd.WeightedPastSeasonsCredit.Add(r.SeasonTotal.Mul(seasonCreditWeight(r.SeasonIdx, currentSeason.Idx)))
+			}
 
 			userCredits[wallet] = creditRcd
 		}
