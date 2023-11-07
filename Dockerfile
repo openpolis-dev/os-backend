@@ -8,7 +8,7 @@ RUN go mod download
 
 COPY . .
 
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o /go/bin/apiserver ./cmd/apiserver.go
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o /go/bin/apiserver ./cmd/apiserver/main.go
 
 # Second stage: build the deliver image
 FROM alpine:latest
