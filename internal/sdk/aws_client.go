@@ -103,7 +103,7 @@ func (c *AwsClient) UploadUserAvatar(userWallet string, b64ImgSrcWithType string
 		return "", err
 	}
 
-	fileKey := fmt.Sprintf("user_avatars/%s.%s", userWallet, fileExt)
+	fileKey := fmt.Sprintf("user_avatars/%s_%d.%s", userWallet, time.Now().UnixMilli(), fileExt)
 
 	return c.uploadB64Image(imageData, contentType, fileKey)
 }
