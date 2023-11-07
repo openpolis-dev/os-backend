@@ -139,7 +139,7 @@ func loadDetailSheet(filePath string) ([]*DetailRecordSchema, error) {
 			SeasonName:   r[0],
 			Username:     r[1],
 			EntityName:   r[2],
-			UserWallet:   r[3],
+			UserWallet:   model.FormatUserWallet(r[3]),
 			DealDate:     dealDate.In(internal.ProjectTimezone),
 			AssetName:    r[5],
 			AssetAmount:  assetAmount,
@@ -185,7 +185,7 @@ func loadSummarizedSheet(filePath string) ([]*SummarizedRecordSchema, error) {
 		}
 
 		return &SummarizedRecordSchema{
-			Wallet:        r[0],
+			Wallet:        model.FormatUserWallet(r[0]),
 			SeasonsCredit: seasonCredits,
 			Total:         totalCredit,
 		}
@@ -400,14 +400,15 @@ func main() {
 
 		// aggregate detailed records
 		for _, detailedRcd := range detailedRecords {
-			model.SetDefaultMapValue(aggrUserTotal, detailedRcd.UserWallet, decimal.Zero)
-			aggrUserTotal[detailedRcd.UserWallet] = aggrUserTotal[detailedRcd.UserWallet].Add(detailedRcd.AssetAmount)
+			model.SetDefaultMapValue(aggrUserTotal, model.FormatUserWallet(detailedRcd.UserWallet), decimal.Zero)
+			aggrUserTotal[model.FormatUserWallet(detailedRcd.UserWallet)] = aggrUserTotal[detailedRcd.UserWallet].Add(detailedRcd.AssetAmount)
 		}
 
 		// Verify whether calculated result is same with Excel result
 		for wallet, amount := range aggrUserTotal {
-			if !totalSummaryMap[wallet].Equal(amount) {
-				log.Error().Msgf("record not equal, wallet: %s, excel amount: %s, calc amount: %s", wallet, totalSummaryMap[wallet], amount)
+			_wallet := model.FormatUserWallet(wallet)
+			if !totalSummaryMap[_wallet].Equal(amount) {
+				log.Error().Msgf("record not equal, wallet: %s, excel amount: %s, calc amount: %s", _wallet, totalSummaryMap[_wallet], amount)
 			}
 		}
 
