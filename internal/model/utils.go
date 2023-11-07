@@ -192,11 +192,6 @@ func GenerateFrontendApplicationRecords(db *gorm.DB, queryParams *ListApplicatio
 	whereParams["offset"] = (queryParams.Page - 1) * queryParams.Size
 	whereParams["limit"] = queryParams.Size
 
-	sql := db.ToSQL(func(tx *gorm.DB) *gorm.DB {
-		return tx.Raw(querySQL+whereClause, whereParams)
-	})
-	fmt.Printf("TTT: sql: %+s\n", sql)
-
 	var rcds []jointAppEntityRslt
 	err := db.Raw(querySQL+whereClause, whereParams).Find(&rcds).Error
 	if err != nil {
@@ -212,6 +207,7 @@ func GenerateFrontendApplicationRecords(db *gorm.DB, queryParams *ListApplicatio
 
 func QueryAppBundleRecords(db *gorm.DB, queryParams *ListAppBundleQueryParams) ([]JointAppBundleEntityRslt, int64, error) {
 	clearedEntity := strings.ToLower(strings.TrimSpace(queryParams.Entity))
+	clearState := strings.ToLower(strings.TrimSpace(queryParams.State))
 
 	if clearedEntity != "" {
 		if !lo.Contains([]string{"project", "guild"}, clearedEntity) {
@@ -220,13 +216,18 @@ func QueryAppBundleRecords(db *gorm.DB, queryParams *ListAppBundleQueryParams) (
 	}
 
 	querySQL := QueryAppBundlesWithEntityNameBaseSQL
-	whereClause := "\nWHERE app_bundles.state = @state AND app_bundles.type = @type"
+	whereClause := "\n"
 	whereParams := map[string]any{
-		"state": ApplicationState("open"),
-		"type":  "NEW_REWARD",
+		"type": "NEW_REWARD",
 	}
 
 	// TODO: Dup logic start
+	if !lo.Contains([]string{"open", "approved", "rejected"}, clearState) {
+		return nil, 0, fmt.Errorf("unknown state %s", queryParams.State)
+	}
+	whereClause += " AND app_bundles.state = @state"
+	whereParams["state"] = ApplicationState(clearState)
+
 	if clearedEntity != "" {
 		whereClause += " AND app_bundles.entity_type = @entity_type"
 		whereParams["entity_type"] = clearedEntity
@@ -287,11 +288,6 @@ func QueryAppBundleRecords(db *gorm.DB, queryParams *ListAppBundleQueryParams) (
 	whereClause += fmt.Sprintf("\nORDER BY app_bundles.%s %s LIMIT @offset, @limit", queryParams.SortField, queryParams.SortOrder)
 	whereParams["offset"] = (queryParams.Page - 1) * queryParams.Size
 	whereParams["limit"] = queryParams.Size
-
-	sql := db.ToSQL(func(tx *gorm.DB) *gorm.DB {
-		return tx.Raw(querySQL+whereClause, whereParams)
-	})
-	fmt.Printf("TTT: sql: %+s\n", sql)
 
 	var rcds []JointAppBundleEntityRslt
 	err := db.Raw(querySQL+whereClause, whereParams).Find(&rcds).Error

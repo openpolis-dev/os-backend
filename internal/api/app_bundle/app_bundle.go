@@ -53,6 +53,7 @@ func BuildResponseFromDatabaseSearchResult() {
 //	@Param		size		query		string	false	"size of each page"
 //	@Param		sort_field	query		string	false	"sort by which field"
 //	@Param		sort_order	query		string	false	"order of sort"	Enum(asc desc)
+//	@Param		state	query		string	true	"state of app bundle"	Enum(open approved rejected)
 //
 //	@Success	200			{object}	AppBundleResponseRecord
 func ListAppBundle(ctx *gin.Context) {
@@ -60,6 +61,13 @@ func ListAppBundle(ctx *gin.Context) {
 	db := api.ForContextOnlyDB(ctx)
 
 	queryParams := model.ListAppBundleQueryParams{}
+	if err := ctx.Bind(&queryParams); err != nil {
+		ctx.JSON(http.StatusBadRequest, api.Reply{
+			Code: -1,
+			Msg:  fmt.Sprintf("query params error: %+v", err),
+		})
+		return
+	}
 
 	appBundleRecords, total, err := model.QueryAppBundleRecords(db, &queryParams)
 	if err != nil {
