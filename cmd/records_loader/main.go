@@ -381,6 +381,7 @@ func main() {
 	case "verify":
 		// verify uses first sheet
 		// Get summarized records from Excel worksheet
+		log.Warn().Msgf("Note: Please verify the summary sheet name and structure")
 		summarizedRecords, err := loadSummarizedSheet(*inputFile)
 		if err != nil {
 			panic(err)
