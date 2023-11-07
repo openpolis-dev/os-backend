@@ -3,8 +3,8 @@ all: docs build
 .PHONY: docs clean test docker
 
 GO_INTERNAL_SRC = $(wildcard internal/*.go internal/*/*.go internal/*/*/*.go)
-GO_CMD_SRC = $(wildcard cmd/*.go)
-OUTPUT_BINS = $(patsubst cmd/%.go, bin/%, $(wildcard cmd/*))
+GO_CMD_SRC = $(wildcard cmd/*/*.go)
+OUTPUT_BINS = $(patsubst cmd/%, bin/%, $(wildcard cmd/*))
 
 PB_FILES = $(wildcard proto/*.proto)
 DOCS_FILES = docs/swagger.json
@@ -14,12 +14,12 @@ docs: ${DOCS_FILES}
 
 ${DOCS_FILES}: $(GO_INTERNAL_SRC) $(GO_CMD_SRC)
 	swag fmt
-	swag init -g ../../cmd/apiserver.go -d internal/api,internal/model,internal/sdk --parseDependency --parseInternal
+	swag init -g ../../cmd/apiserver/main.go -d internal/api,internal/model,internal/sdk --parseDependency --parseInternal
 
 internal/models/%.pb.go: proto/%.proto
 	protoc --proto_path=proto --go_out=internal/models --go_opt=paths=source_relative $<
 
-bin/%: ./cmd/%.go $(GO_INTERNAL_SRC)
+bin/%: ./cmd/%/main.go $(GO_INTERNAL_SRC) $(GO_CMD_SRC)
 	go build -o $@ ./$(shell dirname $<)
 
 docker:

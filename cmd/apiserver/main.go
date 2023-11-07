@@ -5,6 +5,7 @@ import (
 
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
+	"github.com/theseed-labs/os-backend/internal/api/data_srv"
 
 	"github.com/casbin/casbin/v2"
 	gormadapter "github.com/casbin/gorm-adapter/v3"
@@ -92,8 +93,9 @@ func main() {
 
 	// setup database
 	storage.InitGormDB(cfg.DataSource.Dsn)
+	storage.MigrateTables()
+	storage.SeedDbRecords()
 	db := storage.GetGormDB()
-	err = storage.SeedDbRecords(db)
 	if err != nil {
 		panic(err)
 	}
@@ -106,6 +108,12 @@ func main() {
 
 	// setup Spp API client
 	err = sdk.InitSppClient(cfg.ExternalServices.SeedaoSppBase)
+	if err != nil {
+		panic(err)
+	}
+
+	// setup Indexer API Client
+	err = sdk.InitIndexerClient(cfg.ExternalServices.SeedaoEventIndexerBase)
 	if err != nil {
 		panic(err)
 	}
@@ -194,6 +202,11 @@ func main() {
 		// season data
 		seasonsData := v1.Group("/seasons")
 		seasonsData.GET("/", season.List)
+
+		// some data service
+		// TODO: Move to authorized group
+		dataSrv := v1.Group("/data_srv")
+		dataSrv.GET("/aggr_scr", data_srv.AggrScr)
 
 		// foo routers
 	}

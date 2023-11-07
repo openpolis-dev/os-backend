@@ -64,6 +64,30 @@ definitions:
       name:
         type: string
     type: object
+  data_srv.NodeCalcResponse:
+    properties:
+      activity_credit:
+        type: string
+      effective_credit:
+        type: string
+      metaforo_credit:
+        type: string
+      seasons_credit:
+        items:
+          $ref: '#/definitions/data_srv.SeasonCreditResponse'
+        type: array
+      seed_count:
+        type: integer
+      wallet:
+        type: string
+    type: object
+  data_srv.SeasonCreditResponse:
+    properties:
+      season_name:
+        type: string
+      total:
+        type: string
+    type: object
   guild.BudgetParam:
     properties:
       budget_type:
@@ -411,6 +435,10 @@ definitions:
       endAt:
         type: string
       id:
+        type: integer
+      idx:
+        description: Numeric index for the season, will be used to calculate latest
+          credits in current season
         type: integer
       name:
         type: string
@@ -906,6 +934,22 @@ paths:
                     type: object
               type: object
       summary: lists all applications based on query params and return in JSON format
+    post:
+      parameters:
+      - description: new application request
+        in: body
+        name: JsonBody
+        required: true
+        schema:
+          items:
+            $ref: '#/definitions/model.NewApplicationRequest'
+          type: array
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: create single application, for now only CLOSE_PROJECT type is allowed
   /apps_applicants:
     get:
       responses:
@@ -914,6 +958,16 @@ paths:
           schema:
             $ref: '#/definitions/application.ApplicantListResponse'
       summary: List all applicants existing in applications table for filter
+  /data_srv/aggr_scr:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/data_srv.NodeCalcResponse'
+            type: array
+      summary: returns aggregated credit score and node calculation result
   /guilds:
     get:
       consumes:

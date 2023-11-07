@@ -14,6 +14,7 @@ import (
 
 var gormDB *gorm.DB
 
+// InitGormDB inits gorm database connector
 func InitGormDB(dsn string) {
 	// default logger config: https://github.com/go-gorm/gorm/blob/master/logger/logger.go#L74
 	dbLogger := logger.New(log.New(os.Stdout, "\r\n", log.LstdFlags), logger.Config{
@@ -28,9 +29,12 @@ func InitGormDB(dsn string) {
 	if err != nil {
 		panic("failed to connect database")
 	}
+}
 
+// MigrateTables auto migrate models defined.
+func MigrateTables() {
 	// Migrate the schema
-	err = gormDB.AutoMigrate(
+	err := gormDB.AutoMigrate(
 		&model.User{},
 		&model.UserNonce{},
 		&model.UserAssetRecord{},
@@ -55,36 +59,43 @@ func InitGormDB(dsn string) {
 }
 
 // SeedDbRecords inits some const data records to database if not existing
-func SeedDbRecords(db *gorm.DB) error {
+func SeedDbRecords() {
 	prjTz := time.FixedZone("UTF+8", int((8 * time.Hour).Seconds()))
 	seasons := []model.Season{
 		{
 			Name:    "S0",
-			StartAt: time.Date(1970, 1, 1, 0, 0, 0, 0, prjTz),
-			EndAt:   time.Date(2023, 2, 28, 0, 0, 0, 0, prjTz),
+			Idx:     0,
+			StartAt: time.Date(1970, 1, 1, 0, 0, 0, 0, prjTz).Unix(),
+			EndAt:   time.Date(2023, 2, 28, 0, 0, 0, 0, prjTz).Unix(),
 		}, {
 			Name:    "S1",
-			StartAt: time.Date(2023, 3, 1, 0, 0, 0, 0, prjTz),
-			EndAt:   time.Date(2023, 5, 30, 0, 0, 0, 0, prjTz),
+			Idx:     1,
+			StartAt: time.Date(2023, 3, 1, 0, 0, 0, 0, prjTz).Unix(),
+			EndAt:   time.Date(2023, 5, 30, 0, 0, 0, 0, prjTz).Unix(),
 		}, {
 			Name:    "S2",
-			StartAt: time.Date(2023, 6, 1, 0, 0, 0, 0, prjTz),
-			EndAt:   time.Date(2023, 8, 31, 0, 0, 0, 0, prjTz),
+			Idx:     2,
+			StartAt: time.Date(2023, 6, 1, 0, 0, 0, 0, prjTz).Unix(),
+			EndAt:   time.Date(2023, 8, 31, 0, 0, 0, 0, prjTz).Unix(),
 		}, {
 			Name:    "S3",
-			StartAt: time.Date(2023, 9, 1, 0, 0, 0, 0, prjTz),
-			EndAt:   time.Date(2023, 11, 30, 0, 0, 0, 0, prjTz),
+			Idx:     3,
+			StartAt: time.Date(2023, 9, 1, 0, 0, 0, 0, prjTz).Unix(),
+			EndAt:   time.Date(2023, 11, 30, 0, 0, 0, 0, prjTz).Unix(),
 		}, {
 			Name:    "S4",
-			StartAt: time.Date(2023, 12, 1, 0, 0, 0, 0, prjTz),
-			EndAt:   time.Date(2024, 2, 28, 0, 0, 0, 0, prjTz),
+			Idx:     4,
+			StartAt: time.Date(2023, 12, 1, 0, 0, 0, 0, prjTz).Unix(),
+			EndAt:   time.Date(2024, 2, 28, 0, 0, 0, 0, prjTz).Unix(),
 		},
 	}
-	err := db.Clauses(clause.OnConflict{
+	err := gormDB.Clauses(clause.OnConflict{
 		UpdateAll: true,
 	}).Create(&seasons).Error
 
-	return err
+	if err != nil {
+		panic("failed to seed database")
+	}
 }
 
 func GetGormDB() *gorm.DB {

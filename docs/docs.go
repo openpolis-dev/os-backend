@@ -186,6 +186,31 @@ const docTemplate = `{
                         }
                     }
                 }
+            },
+            "post": {
+                "summary": "create single application, for now only CLOSE_PROJECT type is allowed",
+                "parameters": [
+                    {
+                        "description": "new application request",
+                        "name": "JsonBody",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.NewApplicationRequest"
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
             }
         },
         "/apps_applicants": {
@@ -196,6 +221,22 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/application.ApplicantListResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/data_srv/aggr_scr": {
+            "get": {
+                "summary": "returns aggregated credit score and node calculation result",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/data_srv.NodeCalcResponse"
+                            }
                         }
                     }
                 }
@@ -1760,6 +1801,43 @@ const docTemplate = `{
                 }
             }
         },
+        "data_srv.NodeCalcResponse": {
+            "type": "object",
+            "properties": {
+                "activity_credit": {
+                    "type": "string"
+                },
+                "effective_credit": {
+                    "type": "string"
+                },
+                "metaforo_credit": {
+                    "type": "string"
+                },
+                "seasons_credit": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/data_srv.SeasonCreditResponse"
+                    }
+                },
+                "seed_count": {
+                    "type": "integer"
+                },
+                "wallet": {
+                    "type": "string"
+                }
+            }
+        },
+        "data_srv.SeasonCreditResponse": {
+            "type": "object",
+            "properties": {
+                "season_name": {
+                    "type": "string"
+                },
+                "total": {
+                    "type": "string"
+                }
+            }
+        },
         "guild.BudgetParam": {
             "type": "object",
             "properties": {
@@ -2284,6 +2362,10 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "id": {
+                    "type": "integer"
+                },
+                "idx": {
+                    "description": "Numeric index for the season, will be used to calculate latest credits in current season",
                     "type": "integer"
                 },
                 "name": {

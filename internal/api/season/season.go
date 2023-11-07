@@ -1,11 +1,11 @@
 package season
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/samber/lo"
-	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/model"
 )
@@ -37,8 +37,8 @@ func List(ctx *gin.Context) {
 		return &SeasonResponse{
 			ID:      seasonRcd.ID,
 			Name:    seasonRcd.Name,
-			StartAt: seasonRcd.StartAt.In(internal.ProjectTimezone).String(),
-			EndAt:   seasonRcd.EndAt.In(internal.ProjectTimezone).String(),
+			StartAt: fmt.Sprintf("%d", seasonRcd.StartAt),
+			EndAt:   fmt.Sprintf("%d", seasonRcd.EndAt),
 		}
 	})
 	ctx.JSON(http.StatusOK, api.Success(&resp))
