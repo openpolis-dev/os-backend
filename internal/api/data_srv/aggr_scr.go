@@ -51,18 +51,33 @@ type UserCreditRecord struct {
 	TotalSeasonCredit         decimal.Decimal // Sum of all seasons credit
 }
 
-// NodeCalcResponse saves result of credit calculations, here are the formula
+type NodeCalcResponse struct {
+	// Summarized credits data
+	SeasonName                   string `json:"season_name"`
+	SeasonTotalCreditWithoutMint string `json:"season_total_credit_without_mint"`
+	SeasonTotalMintCredit        string `json:"season_total_mint_credit"`
+
+	// Some flags
+	MintRewardConfirmed bool `json:"metaforo_confirmed"`
+	SeedSnapshoted      bool `json:"seed_snapshoted"`
+
+	// Credit detail records
+	Records []*CreditDetail `json:"records"`
+}
+
+// CreditDetail saves result of credit calculations, here are the formula
 // * SeasonsCredit: Individual credit record for each season
 // * SeasonTotalCredit: Sum all seasons credit directly
 // * MetaforoCredit: Credits gained by Metaforo vote, metaforoVoteUnit * voteCount
 // * ActivityCredit: Current season credit plus metaforo vote credit
 // * EffectiveCredit: Activity credit plus weighted post seasons credits
 // * SeedCount: Seed count fetched from indexer API
-type NodeCalcResponse struct {
+type CreditDetail struct {
 	Wallet            string                 `json:"wallet"`
 	SeasonsCredit     []SeasonCreditResponse `json:"seasons_credit"`
 	SeasonTotalCredit string                 `json:"season_total_credit"`
 	ActivityCredit    string                 `json:"activity_credit"`
+	MetaforoVoteCount string                 `json:"metaforo_vote_count"`
 	MetaforoCredit    string                 `json:"metaforo_credit"`
 	SeedCount         int                    `json:"seed_count"`
 	EffectiveCredit   string                 `json:"effective_credit"`
@@ -100,7 +115,7 @@ func seasonCreditWeight(seasonIdx, currSeasonIdx uint) decimal.Decimal {
 //
 //	@router		/data_srv/aggr_scr [get]
 //	@summary	returns aggregated credit score and node calculation result
-//	@success	200	{object}	[]NodeCalcResponse
+//	@success	200	{object}	[]CreditDetail
 func AggrScr(ctx *gin.Context) {
 	db := api.ForContextOnlyDB(ctx)
 
@@ -122,9 +137,9 @@ func AggrScr(ctx *gin.Context) {
 	// userCredits saves all credits by user wallet
 	userCredits := make(map[string]UserCreditRecord)
 
-	// totalCreditInCurrentSeason saves total reward credits will be issued in current season,
+	// totalSeasonCreditWithoutMint saves total credits (without mint) will be issued in current season,
 	// which will be used to calculate reward for each metaforo vote
-	totalCreditInCurrentSeason := decimal.Zero
+	totalSeasonCreditWithoutMint := decimal.Zero
 
 	// Category the records with user wallet, and calculate season total credits
 
@@ -174,7 +189,7 @@ func AggrScr(ctx *gin.Context) {
 
 			// Sum total credits for current seasons, and set current season credit to user
 			if r.SeasonIdx == currentSeason.Idx {
-				totalCreditInCurrentSeason = totalCreditInCurrentSeason.Add(r.SeasonTotal)
+				totalSeasonCreditWithoutMint = totalSeasonCreditWithoutMint.Add(r.SeasonTotal)
 				creditRcd.CurrentSeasonCredit = r.SeasonTotal
 			}
 
@@ -191,11 +206,12 @@ func AggrScr(ctx *gin.Context) {
 	totalMetaforoVotes := lo.Sum(lo.Values(metaforoVoteCount))
 
 	// TotalCurrentSeasonCredit * MetaforoCreditRatio / TotalMetaforoActions
-	metaforoVoteRewardUnit := totalCreditInCurrentSeason.Mul(decimal.RequireFromString(MetaforoTotalCreditRatio)).Div(decimal.NewFromInt(int64(totalMetaforoVotes)))
+	totalMetaforoCredits := totalSeasonCreditWithoutMint.Mul(decimal.RequireFromString(MetaforoTotalCreditRatio))
+	metaforoVoteRewardUnit := totalMetaforoCredits.Div(decimal.NewFromInt(int64(totalMetaforoVotes)))
 
 	log.Debug().Msgf("Total vote count for season %d is %d, and vote rewards unit is %s", currentSeason.Idx, totalMetaforoVotes, metaforoVoteRewardUnit.String())
 
-	var resp []NodeCalcResponse
+	var detailRecords []*CreditDetail
 
 	for wallet, record := range userCredits {
 		seasonsCredit := lo.MapToSlice(record.SeasonsCredit, func(seasonIdx uint, aggrSeasonCredit AggregatedSeasonCredit) SeasonCreditResponse {
@@ -210,7 +226,7 @@ func AggrScr(ctx *gin.Context) {
 		metaforoVoteReward := metaforoVoteRewardUnit.Mul(decimal.NewFromInt(int64(userMetaforoVoteCount)))
 
 		//		lo.Map(lo.Values[int, AggregatedSeasonCredit](record.SeasonsCredit), )
-		resp = append(resp, NodeCalcResponse{
+		detailRecords = append(detailRecords, &CreditDetail{
 			Wallet:            wallet,
 			SeasonsCredit:     seasonsCredit,
 			SeasonTotalCredit: record.TotalSeasonCredit.Add(metaforoVoteReward).String(),
@@ -221,5 +237,12 @@ func AggrScr(ctx *gin.Context) {
 		})
 	}
 
-	ctx.JSON(http.StatusOK, api.Success(&resp))
+	ctx.JSON(http.StatusOK, api.Success(&NodeCalcResponse{
+		SeasonName:                   currentSeason.Name,
+		SeasonTotalCreditWithoutMint: totalSeasonCreditWithoutMint.String(),
+		SeasonTotalMintCredit:        totalMetaforoCredits.String(),
+		MintRewardConfirmed:          false,
+		SeedSnapshoted:               false,
+		Records:                      detailRecords,
+	}))
 }
