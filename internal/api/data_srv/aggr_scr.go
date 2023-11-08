@@ -56,6 +56,8 @@ type NodeCalcResponse struct {
 	SeasonName                   string `json:"season_name"`
 	SeasonTotalCreditWithoutMint string `json:"season_total_credit_without_mint"`
 	SeasonTotalMintCredit        string `json:"season_total_mint_credit"`
+	TotalWalletCount             int    `json:"total_wallet_count"`
+	ActivateWalletCount          int    `json:"activate_wallet_count"`
 
 	// Some flags
 	MintRewardConfirmed bool `json:"metaforo_confirmed"`
@@ -156,6 +158,8 @@ func AggrScr(ctx *gin.Context) {
 		log.Warn().Msgf("no meatforo voting data for season %d", currentSeason.Idx)
 	}
 
+	activateWalletCount := 0
+
 	// Calculate total credit for current season and calculate metaforo vote reward unit
 
 	// Main loop over aggregated records, which contains those logics:
@@ -191,6 +195,7 @@ func AggrScr(ctx *gin.Context) {
 			if r.SeasonIdx == currentSeason.Idx {
 				totalSeasonCreditWithoutMint = totalSeasonCreditWithoutMint.Add(r.SeasonTotal)
 				creditRcd.CurrentSeasonCredit = r.SeasonTotal
+				activateWalletCount += 1
 			}
 
 			// Add weighted season credit
@@ -209,8 +214,6 @@ func AggrScr(ctx *gin.Context) {
 	totalMetaforoCredits := totalSeasonCreditWithoutMint.Mul(decimal.RequireFromString(MetaforoTotalCreditRatio))
 	metaforoVoteRewardUnit := totalMetaforoCredits.Div(decimal.NewFromInt(int64(totalMetaforoVotes)))
 
-	log.Debug().Msgf("Total vote count for season %d is %d, and vote rewards unit is %s", currentSeason.Idx, totalMetaforoVotes, metaforoVoteRewardUnit.String())
-
 	var detailRecords []*CreditDetail
 
 	for wallet, record := range userCredits {
@@ -225,7 +228,6 @@ func AggrScr(ctx *gin.Context) {
 		userMetaforoVoteCount := model.GetMapValueOrDefault[string, int](metaforoVoteCount, wallet, 0)
 		metaforoVoteReward := metaforoVoteRewardUnit.Mul(decimal.NewFromInt(int64(userMetaforoVoteCount)))
 
-		//		lo.Map(lo.Values[int, AggregatedSeasonCredit](record.SeasonsCredit), )
 		detailRecords = append(detailRecords, &CreditDetail{
 			Wallet:            wallet,
 			SeasonsCredit:     seasonsCredit,
@@ -241,6 +243,8 @@ func AggrScr(ctx *gin.Context) {
 		SeasonName:                   currentSeason.Name,
 		SeasonTotalCreditWithoutMint: totalSeasonCreditWithoutMint.String(),
 		SeasonTotalMintCredit:        totalMetaforoCredits.String(),
+		TotalWalletCount:             len(userCredits),
+		ActivateWalletCount:          activateWalletCount,
 		MintRewardConfirmed:          false,
 		SeedSnapshoted:               false,
 		Records:                      detailRecords,
