@@ -21,7 +21,10 @@ const MintRewardDetailTemplate = "SeeDAO %s 治理挖矿收益"
 
 func ApproveMintReward(ctx *gin.Context) {
 	// Get current reward records
-	db := api.ForContextOnlyDB(ctx)
+	//user, enforcer, db, _ := api.ForContext(ctx)
+	user, _, db, _ := api.ForContext(ctx)
+
+	// TODO: Enforcer check permission
 
 	currentSeason, err := service.GetCurrentSeason(db)
 	if err != nil {
@@ -49,17 +52,18 @@ func ApproveMintReward(ctx *gin.Context) {
 	// Create app bundle and applications for each records
 	err = db.Transaction(func(tx *gorm.DB) error {
 		appBundle := model.AppBundle{
-			AppRecords: nil,
-			Comment:    "",
-			Submitter:  "",
-			EntityType: "project",
-			EntityId:   cityHallProject.ID,
-			SeasonId:   currentSeason.ID,
-			Season:     *currentSeason,
-			State:      model.ApplicationStateOpen,
-			Type:       model.ApplicationNewReward,
-			CreatedAt:  time.Now(),
-			UpdatedAt:  time.Now(),
+			AppRecords:   nil,
+			Comment:      fmt.Sprintf(MintRewardDetailTemplate, currentSeason.Name),
+			Submitter:    model.FormatUserWallet(user.Wallet),
+			EntityType:   "project",
+			EntityId:     cityHallProject.ID,
+			SeasonId:     currentSeason.ID,
+			Season:       *currentSeason,
+			State:        model.ApplicationStateOpen,
+			Type:         model.ApplicationNewReward,
+			ShadowRecord: false,
+			CreatedAt:    time.Now(),
+			UpdatedAt:    time.Now(),
 		}
 		log.Error().Msgf("TTT: app bundle: %+v", appBundle)
 		err = tx.Save(&appBundle).Error
