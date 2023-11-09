@@ -100,6 +100,10 @@ func main() {
 		panic(err)
 	}
 
+	// setup cache
+	// Currently the cache is only used by saving aggregated data, may be extended to other data in future
+	storage.InitCache()
+
 	// setup S3 uploader manager
 	err = sdk.InitAwsClient(cfg.AwsConfig.AccessKey, cfg.AwsConfig.SecretKey, cfg.AwsConfig.Region, cfg.AwsConfig.BucketName)
 	if err != nil {
