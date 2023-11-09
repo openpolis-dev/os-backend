@@ -80,6 +80,11 @@ func Create(ctx *gin.Context) {
 	members := lo.Map[string](req.Members, func(item string, _ int) string {
 		return strings.ToLower(item)
 	})
+	// remove duplicate sponsors and members
+	sponsors = lo.Uniq[string](sponsors)
+	members = lo.Uniq[string](members)
+	// remove sponsors from members
+	members = lo.Without[string](members, sponsors...)
 
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
@@ -556,6 +561,8 @@ func UpdateStaffs(ctx *gin.Context) {
 			proj.Sponsors = append(proj.Sponsors, sponsors...)
 			// remove duplicate sponsors
 			proj.Sponsors = lo.Uniq[string](proj.Sponsors)
+			// remove sponsors from members
+			proj.Sponsors = lo.Without[string](proj.Sponsors, proj.Members...)
 			err = model.ProjectModel.CreateOrUpdate(tx, proj)
 			if err != nil {
 				tx.Rollback()
@@ -590,6 +597,8 @@ func UpdateStaffs(ctx *gin.Context) {
 			proj.Members = append(proj.Members, members...)
 			// remove duplicate members
 			proj.Members = lo.Uniq[string](proj.Members)
+			// remove members from sponsors
+			proj.Members = lo.Without[string](proj.Members, proj.Sponsors...)
 			err = model.ProjectModel.CreateOrUpdate(tx, proj)
 			if err != nil {
 				tx.Rollback()

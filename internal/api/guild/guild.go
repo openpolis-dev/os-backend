@@ -60,6 +60,7 @@ type (
 )
 
 // Create a guild
+//
 //	@Summary	Create a guild
 //	@Tags		Guild
 //	@Accept		json
@@ -82,6 +83,11 @@ func Create(ctx *gin.Context) {
 	members := lo.Map[string](req.Members, func(item string, _ int) string {
 		return strings.ToLower(item)
 	})
+	// remove duplicate sponsors and members
+	sponsors = lo.Uniq[string](sponsors)
+	members = lo.Uniq[string](members)
+	// remove sponsors from members
+	members = lo.Without[string](members, sponsors...)
 
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
@@ -199,6 +205,7 @@ func Create(ctx *gin.Context) {
 }
 
 // Update a guild
+//
 //	@Summary	Update a guild
 //	@Tags		Guild
 //	@Accept		json
@@ -266,6 +273,7 @@ func Update(ctx *gin.Context) {
 }
 
 // Detail get a guild detail
+//
 //	@Summary	Get a guild detail
 //	@Tags		Guild
 //	@Accept		json
@@ -306,6 +314,7 @@ func Detail(ctx *gin.Context) {
 }
 
 // List `GET /guilds?page=1&size=10&sort_field=created_at&sort_order=desc`
+//
 //	@Summary	List guilds
 //	@Tags		Guild
 //	@Accept		json
@@ -378,6 +387,7 @@ type UpdateStaffsReq struct {
 }
 
 // UpdateStaffs update guild sponsors/members
+//
 //	@Summary	Update guild sponsors/members
 //	@Tags		Guild
 //	@Accept		json
@@ -454,6 +464,8 @@ func UpdateStaffs(ctx *gin.Context) {
 			guild.Sponsors = append(guild.Sponsors, sponsors...)
 			// remove duplicate sponsors
 			guild.Sponsors = lo.Uniq[string](guild.Sponsors)
+			// remove sponsors from members
+			guild.Sponsors = lo.Without[string](guild.Sponsors, guild.Members...)
 			err = model.GuildModel.CreateOrUpdate(tx, guild)
 			if err != nil {
 				tx.Rollback()
@@ -488,6 +500,8 @@ func UpdateStaffs(ctx *gin.Context) {
 			guild.Members = append(guild.Members, members...)
 			// remove duplicate members
 			guild.Members = lo.Uniq[string](guild.Members)
+			// remove members from sponsors
+			guild.Members = lo.Without[string](guild.Members, guild.Sponsors...)
 			err = model.GuildModel.CreateOrUpdate(tx, guild)
 			if err != nil {
 				tx.Rollback()
@@ -601,6 +615,7 @@ func UpdateStaffs(ctx *gin.Context) {
 // ------ Guild Budget ------ ------
 
 // UpdateBudget update guild budget
+//
 //	@Summary	Update guild budget
 //	@Tags		Guild
 //	@Accept		json
