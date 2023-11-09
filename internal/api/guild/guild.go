@@ -201,7 +201,7 @@ func Create(ctx *gin.Context) {
 		}
 	}(push, staffs, guild.ID, guild.Name)
 
-	ctx.JSON(http.StatusOK, api.Success(nil))
+	ctx.JSON(http.StatusOK, api.Success(guild))
 }
 
 // Update a guild

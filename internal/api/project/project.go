@@ -211,7 +211,7 @@ func Create(ctx *gin.Context) {
 		}
 	}(push, staffs, proj.ID, proj.Name)
 
-	ctx.JSON(http.StatusOK, api.Success(nil))
+	ctx.JSON(http.StatusOK, api.Success(proj))
 }
 
 // Update `PUT /projects/:id`
@@ -408,7 +408,7 @@ func Detail(ctx *gin.Context) {
 //	@Description	This api parses passed in pagination query params,
 //	@Router			/projects [get]
 //	@Tags			Project
-//	@Param			status		query		string	false	"status of project"	Enum(open pending_close closed)
+//	@Param			status		query		string	false	"status array, e.g. 'open,pending_close'"	Enum(open pending_close closed)
 //	@Param			page		query		string	false	"which page"
 //	@Param			size		query		string	false	"size of each page"
 //	@Param			sort_field	query		string	false	"sort by which field"

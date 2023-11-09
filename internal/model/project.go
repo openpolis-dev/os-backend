@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -62,7 +63,11 @@ func (*projectModel) List(db *gorm.DB, status string, page *gormfind.Page, showS
 		querySeg = querySeg.Where("is_special = false")
 	}
 	if status != "" {
-		querySeg = querySeg.Where("status = ?", status)
+		if strings.Contains(status, ",") {
+			querySeg = querySeg.Where("status IN ?", strings.Split(status, ","))
+		} else {
+			querySeg = querySeg.Where("status = ?", status)
+		}
 	}
 
 	total, err = gormfind.Count(querySeg)
