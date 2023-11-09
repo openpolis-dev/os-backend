@@ -1,6 +1,8 @@
 package data_srv
 
 import (
+	"bytes"
+	"encoding/gob"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -12,6 +14,7 @@ import (
 	"github.com/theseed-labs/os-backend/internal/sdk"
 	"github.com/theseed-labs/os-backend/internal/service"
 	"github.com/theseed-labs/os-backend/internal/static_data"
+	"github.com/theseed-labs/os-backend/internal/storage"
 )
 
 const dbQuery = `select season_id,
@@ -215,6 +218,7 @@ func AggrScr(ctx *gin.Context) {
 	metaforoVoteRewardUnit := totalMetaforoCredits.Div(decimal.NewFromInt(int64(totalMetaforoVotes)))
 
 	var detailRecords []*CreditDetail
+	mintRewardData := make(map[string]string)
 
 	for wallet, record := range userCredits {
 		seasonsCredit := lo.MapToSlice(record.SeasonsCredit, func(seasonIdx uint, aggrSeasonCredit AggregatedSeasonCredit) SeasonCreditResponse {
@@ -227,6 +231,9 @@ func AggrScr(ctx *gin.Context) {
 
 		userMetaforoVoteCount := model.GetMapValueOrDefault[string, int](metaforoVoteCount, wallet, 0)
 		metaforoVoteReward := metaforoVoteRewardUnit.Mul(decimal.NewFromInt(int64(userMetaforoVoteCount)))
+		if !metaforoVoteReward.Equal(decimal.Zero) {
+			mintRewardData[wallet] = metaforoVoteReward.String()
+		}
 
 		detailRecords = append(detailRecords, &CreditDetail{
 			Wallet:            wallet,
@@ -239,14 +246,29 @@ func AggrScr(ctx *gin.Context) {
 		})
 	}
 
+	// Buffer for metaforo data
+	var buffer bytes.Buffer
+	bufEncoder := gob.NewEncoder(&buffer)
+	err = bufEncoder.Encode(mintRewardData)
+	log.Error().Msgf("TTT: Write buf size: %d", buffer.Len())
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		return
+	}
+	err = storage.StoreCachedData(storage.MetaforoRewardCacheKey(currentSeason.Idx), buffer.Bytes())
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		return
+	}
+
 	ctx.JSON(http.StatusOK, api.Success(&NodeCalcResponse{
 		SeasonName:                   currentSeason.Name,
 		SeasonTotalCreditWithoutMint: totalSeasonCreditWithoutMint.String(),
 		SeasonTotalMintCredit:        totalMetaforoCredits.String(),
 		TotalWalletCount:             len(userCredits),
 		ActivateWalletCount:          activateWalletCount,
-		MintRewardConfirmed:          false,
-		SeedSnapshoted:               false,
+		MintRewardConfirmed:          currentSeason.MintRewardConfirmed,
+		SeedSnapshoted:               currentSeason.SeedSnapshotSaved,
 		Records:                      detailRecords,
 	}))
 }
