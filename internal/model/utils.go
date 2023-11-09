@@ -222,11 +222,13 @@ func QueryAppBundleRecords(db *gorm.DB, queryParams *ListAppBundleQueryParams) (
 	}
 
 	// TODO: Dup logic start
-	if !lo.Contains([]string{"open", "approved", "rejected"}, clearState) {
-		return nil, 0, fmt.Errorf("unknown state %s", queryParams.State)
+	if clearState != "" {
+		if !lo.Contains([]string{"open", "approved", "rejected"}, clearState) {
+			return nil, 0, fmt.Errorf("unknown state %s", queryParams.State)
+		}
+		whereClause += " AND app_bundles.state = @state"
+		whereParams["state"] = ApplicationState(clearState)
 	}
-	whereClause += " AND app_bundles.state = @state"
-	whereParams["state"] = ApplicationState(clearState)
 
 	if clearedEntity != "" {
 		whereClause += " AND app_bundles.entity_type = @entity_type"

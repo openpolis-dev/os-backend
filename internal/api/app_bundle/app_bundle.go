@@ -53,7 +53,7 @@ func BuildResponseFromDatabaseSearchResult() {
 //	@Param		size		query		string	false	"size of each page"
 //	@Param		sort_field	query		string	false	"sort by which field"
 //	@Param		sort_order	query		string	false	"order of sort"	Enum(asc desc)
-//	@Param		state	query		string	true	"state of app bundle"	Enum(open approved rejected)
+//	@Param		state	query		string	false	"state of app bundle"	Enum(open approved rejected)
 //
 //	@Success	200			{object}	AppBundleResponseRecord
 func ListAppBundle(ctx *gin.Context) {
