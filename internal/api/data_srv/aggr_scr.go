@@ -26,6 +26,7 @@ from applications
          join seasons on season_id = seasons.id
 where applications.type = 'NEW_REWARD'
   and applications.asset_name = 'SCR'
+  and applications.sub_type is NULL
 GROUP by season_id, target_user_wallet`
 
 const MetaforoTotalCreditRatio = "0.05"
