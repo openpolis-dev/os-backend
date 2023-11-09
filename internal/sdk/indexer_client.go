@@ -31,7 +31,7 @@ func GetIndexerClient() *IndexerClient {
 }
 
 func (c *IndexerClient) GetSeedHolderInfo(endTimestamp int64) ([]*SeedHolderRecord, error) {
-	endpoint := fmt.Sprintf("%s/erc721/snapshot/0x30093266E34a816a53e302bE3e59a93B52792FD4/%d", c.ApiBase, endTimestamp)
+	endpoint := fmt.Sprintf("%s/snapshot/erc721/0x30093266E34a816a53e302bE3e59a93B52792FD4/%d", c.ApiBase, endTimestamp)
 	log.Debug().Msgf("Try to get seed holder data, endpoint is %s", endpoint)
 
 	resp, err := http.Get(endpoint)
