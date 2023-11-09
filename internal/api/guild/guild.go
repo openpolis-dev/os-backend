@@ -89,6 +89,9 @@ func Create(ctx *gin.Context) {
 	// remove sponsors from members
 	members = lo.Without[string](members, sponsors...)
 
+	// remove duplicate proposals
+	proposals := lo.Uniq[string](req.Proposals)
+
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
 	ok, err := enforcer.Enforce(user.Wallet, api.ObjGuild, api.ActCreate)
@@ -109,7 +112,7 @@ func Create(ctx *gin.Context) {
 		Desc:      req.Desc,
 		Sponsors:  sponsors,
 		Members:   members,
-		Proposals: req.Proposals,
+		Proposals: proposals,
 		Creator:   user.Wallet,
 	}
 	err = model.GuildModel.CreateOrUpdate(tx, &guild)
