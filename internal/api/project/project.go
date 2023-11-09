@@ -86,6 +86,9 @@ func Create(ctx *gin.Context) {
 	// remove sponsors from members
 	members = lo.Without[string](members, sponsors...)
 
+	// remove duplicate proposals
+	proposals := lo.Uniq[string](req.Proposals)
+
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
 	ok, err := enforcer.Enforce(user.Wallet, api.ObjProj, api.ActCreate)
@@ -107,7 +110,7 @@ func Create(ctx *gin.Context) {
 		Status:    model.ProjectStatusOpen,
 		Sponsors:  sponsors,
 		Members:   members,
-		Proposals: req.Proposals,
+		Proposals: proposals,
 		Creator:   user.Wallet,
 	}
 	err = model.ProjectModel.CreateOrUpdate(tx, &proj)
