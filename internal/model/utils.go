@@ -216,7 +216,7 @@ func QueryAppBundleRecords(db *gorm.DB, queryParams *ListAppBundleQueryParams) (
 	}
 
 	querySQL := QueryAppBundlesWithEntityNameBaseSQL
-	whereClause := "\n"
+	whereClause := "\nHAVING app_bundles.auto_generated=false and type=@type"
 	whereParams := map[string]any{
 		"type": "NEW_REWARD",
 	}
@@ -225,7 +225,7 @@ func QueryAppBundleRecords(db *gorm.DB, queryParams *ListAppBundleQueryParams) (
 	if !lo.Contains([]string{"open", "approved", "rejected"}, clearState) {
 		return nil, 0, fmt.Errorf("unknown state %s", queryParams.State)
 	}
-	whereClause += " HAVING app_bundles.state = @state"
+	whereClause += " AND app_bundles.state = @state"
 	whereParams["state"] = ApplicationState(clearState)
 
 	if clearedEntity != "" {
