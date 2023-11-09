@@ -9,11 +9,8 @@ import (
 )
 
 type SeedHolderRecord struct {
-	Id              int    `json:"id"`
-	ContractAddress string `json:"contractAddress"`
-	Owner           string `json:"owner"`
-	TokenId         string `json:"tokenId"`
-	Timestamp       int    `json:"timestamp"`
+	Wallet string   `json:"wallet"`
+	Ids    []string `json:"ids"`
 }
 
 type IndexerClient struct {
@@ -48,7 +45,7 @@ func (c *IndexerClient) GetSeedHolderInfo(endTimestamp int64) ([]*SeedHolderReco
 		return nil, fmt.Errorf("got error response from indexer endpoint: status code: %d, resp: %+v", resp.StatusCode, resp)
 	}
 
-	respData := []*SeedHolderRecord{}
+	var respData []*SeedHolderRecord
 	err = json.NewDecoder(resp.Body).Decode(&respData)
 	if err != nil {
 		return nil, err

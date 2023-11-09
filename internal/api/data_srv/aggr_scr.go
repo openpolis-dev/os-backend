@@ -96,6 +96,7 @@ type SeasonCreditResponse struct {
 }
 
 func getSeedHolderData(endTs int64) map[string]int {
+	// TODO: Check whether current season seed has been frozen, if yes, query data from DB instead of API
 	indexerClient := sdk.GetIndexerClient()
 	seedHolderData, err := indexerClient.GetSeedHolderInfo(endTs)
 	if err != nil {
@@ -106,8 +107,7 @@ func getSeedHolderData(endTs int64) map[string]int {
 	seedCount := make(map[string]int)
 
 	for _, holderInfo := range seedHolderData {
-		model.SetDefaultMapValue(seedCount, model.FormatUserWallet(holderInfo.Owner), 0)
-		seedCount[model.FormatUserWallet(holderInfo.Owner)] += 1
+		seedCount[model.FormatUserWallet(holderInfo.Wallet)] += len(holderInfo.Ids)
 	}
 
 	return seedCount
