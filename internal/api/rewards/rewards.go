@@ -103,18 +103,13 @@ func ApproveMintReward(ctx *gin.Context) {
 			return err
 		}
 
-		return nil
+		// Mark season metaforo credit confirmed
+		currentSeason.MintRewardConfirmed = true
+		currentSeason.MintRewardConfirmedAt = time.Now().UnixMilli()
+		currentSeason.MintRewardAppBundleId = appBundle.ID
+		return tx.Save(currentSeason).Error
 	})
 
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
-		return
-	}
-
-	// Mark season metaforo credit confirmed
-	currentSeason.MintRewardConfirmed = true
-	currentSeason.MintRewardConfirmedAt = time.Now().UnixMilli()
-	err = db.Save(currentSeason).Error
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
