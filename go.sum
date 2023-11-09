@@ -428,6 +428,8 @@ github.com/ugorji/go v1.2.7/go.mod h1:nF9osbDWLy6bDVv/Rtoh6QgnvNDpmCalQV5urGCCS6
 github.com/ugorji/go/codec v1.2.7/go.mod h1:WGN1fab3R1fzQlVQTkfxVtIBhWDRqOviHU95kRgeqEY=
 github.com/ugorji/go/codec v1.2.11 h1:BMaWp1Bb6fHwEtbplGBGJ498wD+LKlNSl25MjdZY4dU=
 github.com/ugorji/go/codec v1.2.11/go.mod h1:UNopzCgEMSXjBc6AOMqYvWC1ktqTAfzJZUZgYf6w6lg=
+github.com/unipassid/unipass-sigverify-go v0.9.0 h1:AxLua/Uw8gmCgJ2KnI8p8qMxYyXBm9KeWwIDDkTOOvc=
+github.com/unipassid/unipass-sigverify-go v0.9.0/go.mod h1:MNLYzYOs+XHJhkw6ZWbQJsVq83wqfHYV3ITwM9k1lUw=
 github.com/urfave/cli/v2 v2.25.7 h1:VAzn5oq403l5pHjc4OhD54+XGO9cdKVL/7lDjF+iKUs=
 github.com/xiaosongfu/ethsign v0.1.0 h1:PjjQc5HQXJrx5FtXG2Zi8lepCrGVVo0CKO2ISEyj7Ks=
 github.com/xiaosongfu/ethsign v0.1.0/go.mod h1:NfSs7qZs0ieP9C8ZkyA48R/qdFPBA3nyw2n39E5MW4s=
