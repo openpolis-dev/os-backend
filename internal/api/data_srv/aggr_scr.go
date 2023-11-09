@@ -96,7 +96,6 @@ type SeasonCreditResponse struct {
 }
 
 func getSeedHolderData(endTs int64) map[string]int {
-	// TODO: Check whether current season seed has been frozen, if yes, query data from DB instead of API
 	indexerClient := sdk.GetIndexerClient()
 	seedHolderData, err := indexerClient.GetSeedHolderInfo(endTs)
 	if err != nil {
@@ -132,9 +131,16 @@ func AggrScr(ctx *gin.Context) {
 		return
 	}
 
-	// Get seed holder count via indexer API before current season end timestamp
-	// TODO: Confirm whether the timestamp is season end ts or some other timesamp
-	seedHolderCount := getSeedHolderData(currentSeason.EndAt)
+	seedHolderCount := make(map[string]int)
+
+	// If season has been snapshoted, get snapshot data with timestamp saved in DB,
+	// otherwise the season end timestamp will be used for event end data
+	// After getting the timesamp, invoke Indexer service to get seed count
+	if currentSeason.SeedSnapshotSaved {
+		seedHolderCount = getSeedHolderData(currentSeason.SeedSnapshotAt)
+	} else {
+		seedHolderCount = getSeedHolderData(currentSeason.EndAt)
+	}
 
 	// Result for db sql query, which are grouped query
 	var aggregatedSeasonCredits []AggregatedSeasonCredit

@@ -119,5 +119,25 @@ func ApproveMintReward(ctx *gin.Context) {
 }
 
 func SnapshotSeed(ctx *gin.Context) {
+	// Get current reward records
+	//user, enforcer, db, _ := api.ForContext(ctx)
+	user, _, db, _ := api.ForContext(ctx)
 
+	// TODO: check permission of user
+
+	currentSeason, err := service.GetCurrentSeason(db)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		return
+	}
+	currentSeason.SeedSnapshotSaved = true
+	currentSeason.SeedSnapshotAt = time.Now().UnixMilli()
+	currentSeason.SeedSnapshotSubmitter = model.FormatUserWallet(user.Wallet)
+	err = db.Save(currentSeason).Error
+
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+	} else {
+		ctx.JSON(http.StatusOK, api.Success(fmt.Sprintf("SEED snapshoted at %d", currentSeason.SeedSnapshotAt)))
+	}
 }
