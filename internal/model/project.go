@@ -167,3 +167,51 @@ func (*projectModel) DepositBudget(db *gorm.DB, projectId uint, budgetType Budge
 		}
 	})
 }
+
+// GetCityHallProject get cityhall project in DB
+func GetCityHallProject(db *gorm.DB) (*Project, error) {
+	project := Project{}
+	db.Where(Project{
+		IsSpecial:   true,
+		SpecialType: SpecialProjectCityHall,
+	}).First(&project)
+	return &project, nil
+}
+
+// GetOrCreateCityHallProject get or create cityhall project in DB
+func GetOrCreateCityHallProject(db *gorm.DB, cityHallUsers []string) (*Project, error) {
+	project := Project{}
+	db.Where(Project{
+		IsSpecial:   true,
+		SpecialType: SpecialProjectCityHall,
+	}).First(&project)
+
+	if project.ID == 0 {
+		generatedProject, err := createCityHallProject(db, cityHallUsers)
+
+		if err != nil {
+			return nil, err
+		}
+
+		project = *generatedProject
+	}
+
+	return &project, nil
+}
+
+func createCityHallProject(db *gorm.DB, cityHallUsers []string) (*Project, error) {
+	project := Project{
+		Name:        "CityHall",
+		IsSpecial:   true,
+		SpecialType: SpecialProjectCityHall,
+		Sponsors:    cityHallUsers,
+		CreatedAt:   time.Time{},
+		UpdatedAt:   time.Time{},
+	}
+	err := db.Create(&project).Error
+
+	if err != nil {
+		return nil, err
+	}
+	return &project, nil
+}

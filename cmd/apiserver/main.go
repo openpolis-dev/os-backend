@@ -6,6 +6,7 @@ import (
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 	"github.com/theseed-labs/os-backend/internal/api/data_srv"
+	"github.com/theseed-labs/os-backend/internal/api/rewards"
 
 	"github.com/casbin/casbin/v2"
 	gormadapter "github.com/casbin/gorm-adapter/v3"
@@ -99,6 +100,10 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	// setup cache
+	// Currently the cache is only used by saving aggregated data, may be extended to other data in future
+	storage.InitCache()
 
 	// setup S3 uploader manager
 	err = sdk.InitAwsClient(cfg.AwsConfig.AccessKey, cfg.AwsConfig.SecretKey, cfg.AwsConfig.Region, cfg.AwsConfig.BucketName)
@@ -287,7 +292,10 @@ func main() {
 		pushGroup.POST("/", push.Create)
 		pushGroup.GET("/", push.List)
 
-		// foo routers
+		// reward routers
+		rewardsGroup := authorizedGroup.Group("/rewards")
+		rewardsGroup.POST("/approve_mint_reward", rewards.ApproveMintReward)
+		rewardsGroup.POST("/snapshot_seed", rewards.SnapshotSeed)
 	}
 
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))

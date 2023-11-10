@@ -25,6 +25,10 @@ type Application struct {
 	// application type
 	Type ApplicationType `json:"type"`
 
+	// SubType saves an optional type for the application.
+	// And the data currently is only used by backend code, no frontend logic should relay on this
+	SubType string `json:"sub_type"`
+
 	// Member send this application
 	Applicant string `json:"applicant"`
 
@@ -41,6 +45,7 @@ type Application struct {
 	UpdatedAt time.Time `json:"updated_at"`
 
 	// DetailedType means a sub category of this application
+	// Value for this field saves data from Excel data
 	DetailedType string `json:"detailed_type"`
 
 	// Comment saves some user entered data

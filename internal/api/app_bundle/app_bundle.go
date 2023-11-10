@@ -53,7 +53,7 @@ func BuildResponseFromDatabaseSearchResult() {
 //	@Param		size		query		string	false	"size of each page"
 //	@Param		sort_field	query		string	false	"sort by which field"
 //	@Param		sort_order	query		string	false	"order of sort"	Enum(asc desc)
-//	@Param		state	query		string	true	"state of app bundle"	Enum(open approved rejected)
+//	@Param		state	query		string	false	"state of app bundle"	Enum(open approved rejected)
 //
 //	@Success	200			{object}	AppBundleResponseRecord
 func ListAppBundle(ctx *gin.Context) {
@@ -184,16 +184,17 @@ func CreateAppBundle(ctx *gin.Context) {
 
 	err = db.Transaction(func(tx *gorm.DB) error {
 		appBundle := model.AppBundle{
-			Comment:    newAppBundleReq.Comment,
-			Submitter:  user.Wallet,
-			EntityType: newAppBundleReq.Entity,
-			EntityId:   newAppBundleReq.EntityId,
-			SeasonId:   seasonRecord.ID,
-			Season:     *seasonRecord,
-			State:      model.ApplicationStateOpen,
-			CreatedAt:  time.Now().In(internal.ProjectTimezone),
-			UpdatedAt:  time.Now().In(internal.ProjectTimezone),
-			Type:       "NEW_REWARD",
+			Comment:      newAppBundleReq.Comment,
+			Submitter:    user.Wallet,
+			EntityType:   newAppBundleReq.Entity,
+			EntityId:     newAppBundleReq.EntityId,
+			SeasonId:     seasonRecord.ID,
+			Season:       *seasonRecord,
+			State:        model.ApplicationStateOpen,
+			ShadowRecord: false,
+			CreatedAt:    time.Now().In(internal.ProjectTimezone),
+			UpdatedAt:    time.Now().In(internal.ProjectTimezone),
+			Type:         "NEW_REWARD",
 		}
 
 		appBundle.AppRecords = lo.Map(newAppBundleReq.Records, func(appRcdRequest *model.NewApplicationRequest, index int) *model.Application {

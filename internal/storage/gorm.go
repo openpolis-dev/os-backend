@@ -89,8 +89,9 @@ func SeedDbRecords() {
 			EndAt:   time.Date(2024, 2, 28, 0, 0, 0, 0, prjTz).Unix(),
 		},
 	}
+	// Do nothing on conflict
 	err := gormDB.Clauses(clause.OnConflict{
-		UpdateAll: true,
+		DoNothing: true,
 	}).Create(&seasons).Error
 
 	if err != nil {

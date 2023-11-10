@@ -4,6 +4,7 @@ go 1.20
 
 require (
 	github.com/OneSignal/onesignal-go-api v1.0.4
+	github.com/allegro/bigcache/v3 v3.1.0
 	github.com/aws/aws-sdk-go v1.45.25
 	github.com/bwmarrin/discordgo v0.27.1
 	github.com/casbin/casbin/v2 v2.77.2
@@ -24,7 +25,6 @@ require (
 	github.com/swaggo/files v1.0.1
 	github.com/swaggo/gin-swagger v1.6.0
 	github.com/swaggo/swag v1.16.2
-	github.com/unipassid/unipass-sigverify-go v0.9.0
 	github.com/xiaosongfu/ethsign v0.1.0
 	github.com/xiaosongfu/gormfind v0.1.0
 	github.com/xuri/excelize/v2 v2.8.0
@@ -72,6 +72,7 @@ require (
 	github.com/goccy/go-json v0.10.2 // indirect
 	github.com/golang-sql/civil v0.0.0-20220223132316-b832511892a9 // indirect
 	github.com/golang-sql/sqlexp v0.1.0 // indirect
+	github.com/golang/mock v1.6.0 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/google/pprof v0.0.0-20230207041349-798e818bf904 // indirect
@@ -96,6 +97,7 @@ require (
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.8 // indirect
+	github.com/prometheus/client_golang v1.14.0 // indirect
 	github.com/relvacode/iso8601 v1.1.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/richardlehane/mscfb v1.0.4 // indirect
@@ -109,6 +111,7 @@ require (
 	github.com/tklauser/numcpus v0.6.1 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.2.11 // indirect
+	github.com/unipassid/unipass-sigverify-go v0.9.0 // indirect
 	github.com/xuri/efp v0.0.0-20230802181842-ad255f2331ca // indirect
 	github.com/xuri/nfp v0.0.0-20230819163627-dc951e3ffe1a // indirect
 	golang.org/x/arch v0.3.0 // indirect
@@ -116,7 +119,7 @@ require (
 	golang.org/x/exp v0.0.0-20230905200255-921286631fa9 // indirect
 	golang.org/x/mod v0.12.0 // indirect
 	golang.org/x/net v0.17.0 // indirect
-	golang.org/x/oauth2 v0.0.0-20210323180902-22b0adad7558 // indirect
+	golang.org/x/oauth2 v0.0.0-20220223155221-ee480838109b // indirect
 	golang.org/x/sync v0.3.0 // indirect
 	golang.org/x/sys v0.13.0 // indirect
 	golang.org/x/text v0.13.0 // indirect

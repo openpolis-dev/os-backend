@@ -32,6 +32,9 @@ type AppBundle struct {
 	// For CLOSE_PROJECT request, an app bundle also will also be created to fit db foreign key
 	Type ApplicationType `json:"type"`
 
+	// Indicate whether this AppBundle record is a shadow record which not to be shown in List response
+	ShadowRecord bool `json:"-"`
+
 	CreatedAt time.Time `gorm:"autoCreateTime"`
 	UpdatedAt time.Time `gorm:"autoUpdateTime"`
 }

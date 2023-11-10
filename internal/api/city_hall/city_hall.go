@@ -32,50 +32,14 @@ type (
 	}
 )
 
-func createCityHallProject(db *gorm.DB, cityHallUsers []string) (*model.Project, error) {
-	project := model.Project{
-		Name:        "CityHall",
-		IsSpecial:   true,
-		SpecialType: model.SpecialProjectCityHall,
-		Sponsors:    cityHallUsers,
-		CreatedAt:   time.Time{},
-		UpdatedAt:   time.Time{},
-	}
-	err := db.Create(&project).Error
-
-	if err != nil {
-		return nil, err
-	}
-	return &project, nil
-}
-
-func getCityHallProject(db *gorm.DB, cityHallUsers []string) (*model.Project, error) {
-	project := model.Project{}
-	db.Where(model.Project{
-		IsSpecial:   true,
-		SpecialType: model.SpecialProjectCityHall,
-	}).First(&project)
-
-	if project.ID == 0 {
-		generatedProject, err := createCityHallProject(db, cityHallUsers)
-
-		if err != nil {
-			return nil, err
-		}
-
-		project = *generatedProject
-	}
-
-	return &project, nil
-}
-
+// getOrCreateCityHallProject validate user's permission and then get or create cityhall project in DB
 func getOrCreateCityHallProject(db *gorm.DB, enforcer *casbin.Enforcer) (*model.Project, error) {
 	configuredCityHallUser, err := enforcer.GetUsersForRole(api.RoleHall)
 	if err != nil {
 		return nil, errors.New("get cityhall permission error")
 	}
 
-	cityHallProject, err := getCityHallProject(db, configuredCityHallUser)
+	cityHallProject, err := model.GetOrCreateCityHallProject(db, configuredCityHallUser)
 	if err != nil {
 		return nil, errors.New("get cityhall record error")
 	}

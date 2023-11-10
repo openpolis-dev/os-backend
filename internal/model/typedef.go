@@ -37,10 +37,6 @@ func MustParseApplicationType(typeStr string) ApplicationType {
 	return applicationType
 }
 
-func (t ApplicationType) ToString() string {
-	return string(t)
-}
-
 const (
 	ApplicationCloseProject ApplicationType = "CLOSE_PROJECT"
 	ApplicationNewReward    ApplicationType = "NEW_REWARD"

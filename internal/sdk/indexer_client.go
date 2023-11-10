@@ -6,14 +6,12 @@ import (
 	"net/http"
 
 	"github.com/rs/zerolog/log"
+	"github.com/theseed-labs/os-backend/internal"
 )
 
 type SeedHolderRecord struct {
-	Id              int    `json:"id"`
-	ContractAddress string `json:"contractAddress"`
-	Owner           string `json:"owner"`
-	TokenId         string `json:"tokenId"`
-	Timestamp       int    `json:"timestamp"`
+	Wallet string   `json:"wallet"`
+	Ids    []string `json:"ids"`
 }
 
 type IndexerClient struct {
@@ -34,7 +32,7 @@ func GetIndexerClient() *IndexerClient {
 }
 
 func (c *IndexerClient) GetSeedHolderInfo(endTimestamp int64) ([]*SeedHolderRecord, error) {
-	endpoint := fmt.Sprintf("%s/erc721/snapshot/0x30093266E34a816a53e302bE3e59a93B52792FD4/%d", c.ApiBase, endTimestamp)
+	endpoint := fmt.Sprintf("%s/snapshot/%s/%s/%d", c.ApiBase, internal.SeedContractType, internal.SeedContractAddr, endTimestamp)
 	log.Debug().Msgf("Try to get seed holder data, endpoint is %s", endpoint)
 
 	resp, err := http.Get(endpoint)
@@ -48,7 +46,7 @@ func (c *IndexerClient) GetSeedHolderInfo(endTimestamp int64) ([]*SeedHolderReco
 		return nil, fmt.Errorf("got error response from indexer endpoint: status code: %d, resp: %+v", resp.StatusCode, resp)
 	}
 
-	respData := []*SeedHolderRecord{}
+	var respData []*SeedHolderRecord
 	err = json.NewDecoder(resp.Body).Decode(&respData)
 	if err != nil {
 		return nil, err
