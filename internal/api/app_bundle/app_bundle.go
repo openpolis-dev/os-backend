@@ -286,10 +286,10 @@ func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState
 	}
 
 	for _, r := range appBundleRcds {
-		if r.State != model.ApplicationStateOpen {
+		if r.State != model.ApplicationStateOpen && r.State != model.ApplicationStateRejected {
 			ctx.JSON(http.StatusBadRequest, api.Reply{
 				Code: -1,
-				Msg:  fmt.Sprintf("app bundle %+v has non processable state", r),
+				Msg:  fmt.Sprintf("app bundle %+v is at processable state", r),
 			})
 			return
 		}
@@ -308,6 +308,17 @@ func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState
 
 	push := api.ForContextOnlyPush(ctx)
 
+	var action model.AuditActionType
+	switch newState {
+	case model.ApplicationStateApproved:
+		action = model.AuditActionApprove
+	case model.ApplicationStateRejected:
+		action = model.AuditActionReject
+	default:
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("unknown new state %s", newState)))
+		return
+	}
+
 	err = db.Transaction(func(tx *gorm.DB) error {
 		for _, appBundleRcd := range appBundleRcds {
 
@@ -321,19 +332,20 @@ func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState
 				AppBundleId: appBundleRcd.ID,
 				AppBundle:   appBundleRcd,
 				LogTs:       time.Now().In(internal.ProjectTimezone),
-				Operation:   model.AuditActionApprove,
+				Operation:   action,
 				Operator:    user.Wallet,
-				PreState:    "",
-				PostState:   model.ApplicationStateOpen,
+				PreState:    model.ApplicationStateOpen,
+				PostState:   newState,
 				ExtraData:   "",
 			}).Error
 			if err != nil {
 				return err
 			}
+
 			for _, appRcd := range appBundleRcd.AppRecords {
-				err = model.AuditApplication(tx, user.Wallet, appRcd, model.AuditActionApprove, "", enforcer, push)
+				err = model.AuditApplication(tx, user.Wallet, appRcd, action, "", enforcer, push)
 				if err != nil {
-					log.Error().Msgf("save app bundle record error: %+v, app bundle: %+v", err, appBundleRcd)
+					log.Error().Msgf("update application state error: %+v, app bundle: %+v", err, appBundleRcd)
 					tx.Rollback()
 					return err
 				}
@@ -342,10 +354,10 @@ func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState
 					AppBundleId: appBundleRcd.ID,
 					AppBundle:   appBundleRcd,
 					LogTs:       time.Now().In(internal.ProjectTimezone),
-					Operation:   model.AuditActionApprove,
+					Operation:   action,
 					Operator:    user.Wallet,
-					PreState:    "",
-					PostState:   model.ApplicationStateOpen,
+					PreState:    model.ApplicationStateOpen,
+					PostState:   newState,
 					ExtraData:   "",
 				}).Error
 				if err != nil {
