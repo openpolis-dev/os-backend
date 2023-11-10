@@ -84,6 +84,36 @@ const docTemplate = `{
                         "description": "order of sort",
                         "name": "sort_order",
                         "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "state of app bundle",
+                        "name": "state",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "applicant of app bundle",
+                        "name": "applicant",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "season id",
+                        "name": "season_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "entity name to be filter",
+                        "name": "entity",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "entity id",
+                        "name": "entity_id",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -235,7 +265,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/data_srv.NodeCalcResponse"
+                                "$ref": "#/definitions/data_srv.CreditDetail"
                             }
                         }
                     }
@@ -696,7 +726,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "status of project",
+                        "description": "status array, e.g. 'open,pending_close'",
                         "name": "status",
                         "in": "query"
                     },
@@ -1069,85 +1099,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/public_data/bounty/detail/{id}": {
-            "get": {
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "PublicData"
-                ],
-                "summary": "BountyDetail returns the detail of a bounty",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "id",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/api.Reply"
-                        }
-                    }
-                }
-            }
-        },
-        "/public_data/bounty/list": {
-            "get": {
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "PublicData"
-                ],
-                "summary": "BountyList returns the list of bounties",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "page",
-                        "name": "page",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "size",
-                        "name": "size",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/api.Reply"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/api.ListReplyData"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            }
-        },
         "/public_data/contract/node": {
             "get": {
                 "tags": [
@@ -1261,6 +1212,116 @@ const docTemplate = `{
                                     }
                                 }
                             ]
+                        }
+                    }
+                }
+            }
+        },
+        "/public_data/notion/database/{id}": {
+            "get": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "PublicData"
+                ],
+                "summary": "NotionDatabase returns the list of notion database",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "page",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "size",
+                        "name": "size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Reply"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/api.ListReplyData"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/public_data/notion/page/{id}": {
+            "get": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "PublicData"
+                ],
+                "summary": "NotionPage returns the detail of a notion page",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.Reply"
+                        }
+                    }
+                }
+            }
+        },
+        "/public_data/notion/user/{id}": {
+            "get": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "PublicData"
+                ],
+                "summary": "NotionUser returns the detail of a notion user",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.Reply"
                         }
                     }
                 }
@@ -1700,6 +1761,28 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/webhook/tally": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Webhook"
+                ],
+                "summary": "Tally is the webhook for the tally.so",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.Reply"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -1733,6 +1816,12 @@ const docTemplate = `{
         "app_bundle.AppBundleResponseRecord": {
             "type": "object",
             "properties": {
+                "applicant": {
+                    "type": "string"
+                },
+                "apply_time": {
+                    "type": "string"
+                },
                 "assets": {
                     "type": "array",
                     "items": {
@@ -1781,12 +1870,6 @@ const docTemplate = `{
                 },
                 "state": {
                     "$ref": "#/definitions/model.ApplicationState"
-                },
-                "submit_date": {
-                    "type": "string"
-                },
-                "submitter": {
-                    "type": "string"
                 }
             }
         },
@@ -1801,7 +1884,7 @@ const docTemplate = `{
                 }
             }
         },
-        "data_srv.NodeCalcResponse": {
+        "data_srv.CreditDetail": {
             "type": "object",
             "properties": {
                 "activity_credit": {
@@ -1811,6 +1894,12 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "metaforo_credit": {
+                    "type": "string"
+                },
+                "metaforo_vote_count": {
+                    "type": "string"
+                },
+                "season_total_credit": {
                     "type": "string"
                 },
                 "seasons_credit": {
@@ -1830,6 +1919,9 @@ const docTemplate = `{
         "data_srv.SeasonCreditResponse": {
             "type": "object",
             "properties": {
+                "season_idx": {
+                    "type": "integer"
+                },
                 "season_name": {
                     "type": "string"
                 },
@@ -2359,7 +2451,7 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "endAt": {
-                    "type": "string"
+                    "type": "integer"
                 },
                 "id": {
                     "type": "integer"
@@ -2368,12 +2460,34 @@ const docTemplate = `{
                     "description": "Numeric index for the season, will be used to calculate latest credits in current season",
                     "type": "integer"
                 },
+                "mintRewardAppBundleId": {
+                    "description": "app bundle id saves application for this season's reward application",
+                    "type": "integer"
+                },
+                "mintRewardConfirmed": {
+                    "description": "Whether mint reward has been confirmed and the timestamp of confirmation",
+                    "type": "boolean"
+                },
+                "mintRewardConfirmedAt": {
+                    "type": "integer"
+                },
                 "name": {
                     "type": "string"
                 },
-                "startAt": {
-                    "description": "TODO: This field do not contains timezone info, need to review code about this",
+                "seedSnapshotAt": {
+                    "type": "integer"
+                },
+                "seedSnapshotSaved": {
+                    "description": "Whether seed data snapshot has been taken and the timestamp of snapshot",
+                    "type": "boolean"
+                },
+                "seedSnapshotSubmitter": {
+                    "description": "submitter for the seed snapshot",
                     "type": "string"
+                },
+                "startAt": {
+                    "description": "StartAt and EndAt saves epoch second to avoid complex logic of timezone",
+                    "type": "integer"
                 }
             }
         },

@@ -20,6 +20,10 @@ definitions:
     type: object
   app_bundle.AppBundleResponseRecord:
     properties:
+      applicant:
+        type: string
+      apply_time:
+        type: string
       assets:
         items:
           properties:
@@ -52,10 +56,6 @@ definitions:
         type: string
       state:
         $ref: '#/definitions/model.ApplicationState'
-      submit_date:
-        type: string
-      submitter:
-        type: string
     type: object
   application.ApplicantListResponse:
     properties:
@@ -64,13 +64,17 @@ definitions:
       name:
         type: string
     type: object
-  data_srv.NodeCalcResponse:
+  data_srv.CreditDetail:
     properties:
       activity_credit:
         type: string
       effective_credit:
         type: string
       metaforo_credit:
+        type: string
+      metaforo_vote_count:
+        type: string
+      season_total_credit:
         type: string
       seasons_credit:
         items:
@@ -83,6 +87,8 @@ definitions:
     type: object
   data_srv.SeasonCreditResponse:
     properties:
+      season_idx:
+        type: integer
       season_name:
         type: string
       total:
@@ -433,19 +439,36 @@ definitions:
   model.Season:
     properties:
       endAt:
-        type: string
+        type: integer
       id:
         type: integer
       idx:
         description: Numeric index for the season, will be used to calculate latest
           credits in current season
         type: integer
+      mintRewardAppBundleId:
+        description: app bundle id saves application for this season's reward application
+        type: integer
+      mintRewardConfirmed:
+        description: Whether mint reward has been confirmed and the timestamp of confirmation
+        type: boolean
+      mintRewardConfirmedAt:
+        type: integer
       name:
         type: string
-      startAt:
-        description: 'TODO: This field do not contains timezone info, need to review
-          code about this'
+      seedSnapshotAt:
+        type: integer
+      seedSnapshotSaved:
+        description: Whether seed data snapshot has been taken and the timestamp of
+          snapshot
+        type: boolean
+      seedSnapshotSubmitter:
+        description: submitter for the seed snapshot
         type: string
+      startAt:
+        description: StartAt and EndAt saves epoch second to avoid complex logic of
+          timezone
+        type: integer
     type: object
   model.SpecialProjectType:
     enum:
@@ -873,6 +896,26 @@ paths:
         in: query
         name: sort_order
         type: string
+      - description: state of app bundle
+        in: query
+        name: state
+        type: string
+      - description: applicant of app bundle
+        in: query
+        name: applicant
+        type: string
+      - description: season id
+        in: query
+        name: season_id
+        type: integer
+      - description: entity name to be filter
+        in: query
+        name: entity
+        type: string
+      - description: entity id
+        in: query
+        name: entity_id
+        type: string
       responses:
         "200":
           description: OK
@@ -965,7 +1008,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/data_srv.NodeCalcResponse'
+              $ref: '#/definitions/data_srv.CreditDetail'
             type: array
       summary: returns aggregated credit score and node calculation result
   /guilds:
@@ -1246,7 +1289,7 @@ paths:
     get:
       description: This api parses passed in pagination query params,
       parameters:
-      - description: status of project
+      - description: status array, e.g. 'open,pending_close'
         in: query
         name: status
         type: string
@@ -1479,54 +1522,6 @@ paths:
       summary: list my projects
       tags:
       - Project
-  /public_data/bounty/detail/{id}:
-    get:
-      consumes:
-      - application/json
-      parameters:
-      - description: id
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/api.Reply'
-      summary: BountyDetail returns the detail of a bounty
-      tags:
-      - PublicData
-  /public_data/bounty/list:
-    get:
-      consumes:
-      - application/json
-      parameters:
-      - description: page
-        in: query
-        name: page
-        type: integer
-      - description: size
-        in: query
-        name: size
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/api.Reply'
-            - properties:
-                data:
-                  $ref: '#/definitions/api.ListReplyData'
-              type: object
-      summary: BountyList returns the list of bounties
-      tags:
-      - PublicData
   /public_data/contract/node:
     get:
       responses:
@@ -1589,6 +1584,74 @@ paths:
                   $ref: '#/definitions/publicdata.discord'
               type: object
       summary: DiscordData returns the data of the discord server
+      tags:
+      - PublicData
+  /public_data/notion/database/{id}:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: page
+        in: query
+        name: page
+        type: integer
+      - description: size
+        in: query
+        name: size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  $ref: '#/definitions/api.ListReplyData'
+              type: object
+      summary: NotionDatabase returns the list of notion database
+      tags:
+      - PublicData
+  /public_data/notion/page/{id}:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: id
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.Reply'
+      summary: NotionPage returns the detail of a notion page
+      tags:
+      - PublicData
+  /public_data/notion/user/{id}:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: id
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.Reply'
+      summary: NotionUser returns the detail of a notion user
       tags:
       - PublicData
   /push:
@@ -1849,4 +1912,18 @@ paths:
       summary: Query multiple users by wallet array on batch
       tags:
       - User
+  /webhook/tally:
+    post:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.Reply'
+      summary: Tally is the webhook for the tally.so
+      tags:
+      - Webhook
 swagger: "2.0"

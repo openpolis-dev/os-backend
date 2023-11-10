@@ -52,11 +52,11 @@ func BuildResponseFromDatabaseSearchResult() {
 //	@Param		page		query		string	false	"which page"
 //	@Param		size		query		string	false	"size of each page"
 //	@Param		sort_field	query		string	false	"sort by which field"
-//	@Param		sort_order	query		string	false	"order of sort"	Enum(asc desc)
-//	@Param		state	query		string	false	"state of app bundle"	Enum(open approved rejected)
+//	@Param		sort_order	query		string	false	"order of sort"			Enum(asc desc)
+//	@Param		state		query		string	false	"state of app bundle"	Enum(open approved rejected)
 //	@Param		applicant	query		string	false	"applicant of app bundle"
-//	@Param		season_id	query		int	false	"season id"
-//	@Param		entity	query		string	false	"entity name to be filter" Enum(project guild)
+//	@Param		season_id	query		int		false	"season id"
+//	@Param		entity		query		string	false	"entity name to be filter"	Enum(project guild)
 //	@Param		entity_id	query		string	false	"entity id"
 //
 //	@Success	200			{object}	AppBundleResponseRecord

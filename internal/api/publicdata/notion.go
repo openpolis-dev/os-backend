@@ -10,14 +10,14 @@ import (
 )
 
 // NotionDatabase returns the list of notion database
-// @Summary NotionDatabase returns the list of notion database
-// @Tags PublicData
-// @Accept json
-// @Produce json
-// @Param page query int false "page"
-// @Param size query int false "size"
-// @Router /public_data/notion/database/{id} [get]
-// @Success 200 {object} api.Reply{data=api.ListReplyData}
+//	@Summary	NotionDatabase returns the list of notion database
+//	@Tags		PublicData
+//	@Accept		json
+//	@Produce	json
+//	@Param		page	query	int	false	"page"
+//	@Param		size	query	int	false	"size"
+//	@Router		/public_data/notion/database/{id} [get]
+//	@Success	200	{object}	api.Reply{data=api.ListReplyData}
 func NotionDatabase(ctx *gin.Context) {
 	databaseId := ctx.Param("id")
 
@@ -70,13 +70,13 @@ func NotionDatabase(ctx *gin.Context) {
 }
 
 // NotionPage returns the detail of a notion page
-// @Summary NotionPage returns the detail of a notion page
-// @Tags PublicData
-// @Accept json
-// @Produce json
-// @Param id path string true "id"
-// @Router /public_data/notion/page/{id} [get]
-// @Success 200 {object} api.Reply
+//	@Summary	NotionPage returns the detail of a notion page
+//	@Tags		PublicData
+//	@Accept		json
+//	@Produce	json
+//	@Param		id	path	string	true	"id"
+//	@Router		/public_data/notion/page/{id} [get]
+//	@Success	200	{object}	api.Reply
 func NotionPage(ctx *gin.Context) {
 	pageId := ctx.Param("id")
 
@@ -99,13 +99,13 @@ func NotionPage(ctx *gin.Context) {
 }
 
 // NotionUser returns the detail of a notion user
-// @Summary NotionUser returns the detail of a notion user
-// @Tags PublicData
-// @Accept json
-// @Produce json
-// @Param id path string true "id"
-// @Router /public_data/notion/user/{id} [get]
-// @Success 200 {object} api.Reply
+//	@Summary	NotionUser returns the detail of a notion user
+//	@Tags		PublicData
+//	@Accept		json
+//	@Produce	json
+//	@Param		id	path	string	true	"id"
+//	@Router		/public_data/notion/user/{id} [get]
+//	@Success	200	{object}	api.Reply
 func NotionUser(ctx *gin.Context) {
 	userId := ctx.Param("id")
 
