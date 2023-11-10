@@ -26,7 +26,7 @@ from applications
          join seasons on season_id = seasons.id
 where applications.type = 'NEW_REWARD'
   and applications.asset_name = 'SCR'
-  and applications.sub_type is NULL
+  and applications.sub_type IN (NULL ,"")
 GROUP by season_id, target_user_wallet`
 
 const MetaforoTotalCreditRatio = "0.05"
@@ -83,7 +83,7 @@ type CreditDetail struct {
 	SeasonsCredit     []SeasonCreditResponse `json:"seasons_credit"`
 	SeasonTotalCredit string                 `json:"season_total_credit"`
 	ActivityCredit    string                 `json:"activity_credit"`
-	MetaforoVoteCount string                 `json:"metaforo_vote_count"`
+	MetaforoVoteCount int                    `json:"metaforo_vote_count"`
 	MetaforoCredit    string                 `json:"metaforo_credit"`
 	SeedCount         int                    `json:"seed_count"`
 	EffectiveCredit   string                 `json:"effective_credit"`
@@ -247,6 +247,7 @@ func AggrScr(ctx *gin.Context) {
 			SeasonsCredit:     seasonsCredit,
 			SeasonTotalCredit: record.TotalSeasonCredit.Add(metaforoVoteReward).String(),
 			ActivityCredit:    record.CurrentSeasonCredit.Add(metaforoVoteReward).String(),
+			MetaforoVoteCount: userMetaforoVoteCount,
 			MetaforoCredit:    metaforoVoteReward.String(),
 			SeedCount:         record.SeedCount,
 			EffectiveCredit:   record.CurrentSeasonCredit.Add(metaforoVoteReward).Add(record.WeightedPastSeasonsCredit).String(),
