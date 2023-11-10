@@ -205,6 +205,7 @@ func CreateAppBundle(ctx *gin.Context) {
 				CreatedAt:        time.Now().In(internal.ProjectTimezone),
 				UpdatedAt:        time.Now().In(internal.ProjectTimezone),
 				DetailedType:     appRcdRequest.DetailedType,
+				Comment:          appRcdRequest.Comment,
 				TargetUserWallet: appRcdRequest.TargetUserWallet,
 				AssetName:        appRcdRequest.AssetName,
 				AssetAmount:      appRcdRequest.Amount,
