@@ -62,7 +62,7 @@ const (
 var applicationStateMap = map[ApplicationState]map[AuditActionType]ApplicationState{
 	ApplicationStateOpen:       {AuditActionApprove: ApplicationStateApproved, AuditActionReject: ApplicationStateRejected},
 	ApplicationStateApproved:   {AuditActionProcess: ApplicationStateProcessing},
-	ApplicationStateRejected:   {},
+	ApplicationStateRejected:   {AuditActionApprove: ApplicationStateApproved},
 	ApplicationStateProcessing: {AuditActionComplete: ApplicationStateCompleted},
 	ApplicationStateCompleted:  {},
 }
