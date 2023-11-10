@@ -54,7 +54,7 @@ func ApproveMintReward(ctx *gin.Context) {
 		appBundle := model.AppBundle{
 			AppRecords:   nil,
 			Comment:      fmt.Sprintf(MintRewardDetailTemplate, currentSeason.Name),
-			Submitter:    model.FormatUserWallet(user.Wallet),
+			Applicant:    model.FormatUserWallet(user.Wallet),
 			EntityType:   "project",
 			EntityId:     cityHallProject.ID,
 			SeasonId:     currentSeason.ID,

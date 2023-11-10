@@ -27,12 +27,12 @@ type AppBundleResponseRecord struct {
 		Name string `json:"name"`
 		Type string `json:"type"`
 	} `json:"entity"`
-	Submitter  string                 `json:"submitter"`
-	SubmitDate time.Time              `json:"submit_date"`
-	Reviewer   string                 `json:"reviewer"`
-	Comment    string                 `json:"comment"`
-	State      model.ApplicationState `json:"state"`
-	Assets     []struct {
+	Applicant string                 `json:"applicant"`
+	ApplyTime time.Time              `json:"apply_time"`
+	Reviewer  string                 `json:"reviewer"`
+	Comment   string                 `json:"comment"`
+	State     model.ApplicationState `json:"state"`
+	Assets    []struct {
 		Name   string `json:"name"`
 		Amount string `json:"amount"`
 	} `json:"assets"`
@@ -54,6 +54,10 @@ func BuildResponseFromDatabaseSearchResult() {
 //	@Param		sort_field	query		string	false	"sort by which field"
 //	@Param		sort_order	query		string	false	"order of sort"	Enum(asc desc)
 //	@Param		state	query		string	false	"state of app bundle"	Enum(open approved rejected)
+//	@Param		applicant	query		string	false	"applicant of app bundle"
+//	@Param		season_id	query		int	false	"season id"
+//	@Param		entity	query		string	false	"entity name to be filter" Enum(project guild)
+//	@Param		entity_id	query		string	false	"entity id"
 //
 //	@Success	200			{object}	AppBundleResponseRecord
 func ListAppBundle(ctx *gin.Context) {
@@ -110,10 +114,10 @@ func ListAppBundle(ctx *gin.Context) {
 				Name: jointAppBundleEntityRcd.EntityName,
 				Type: jointAppBundleEntityRcd.AppBundle.EntityType,
 			},
-			Submitter:  jointAppBundleEntityRcd.AppBundle.Submitter,
-			SubmitDate: jointAppBundleEntityRcd.AppBundle.CreatedAt,
-			Comment:    jointAppBundleEntityRcd.AppBundle.Comment,
-			State:      jointAppBundleEntityRcd.AppBundle.State,
+			Applicant: jointAppBundleEntityRcd.AppBundle.Applicant,
+			ApplyTime: jointAppBundleEntityRcd.AppBundle.CreatedAt,
+			Comment:   jointAppBundleEntityRcd.AppBundle.Comment,
+			State:     jointAppBundleEntityRcd.AppBundle.State,
 			Assets: lo.MapToSlice(assetSummary, func(assetName string, amount decimal.Decimal) struct {
 				Name   string `json:"name"`
 				Amount string `json:"amount"`
@@ -185,7 +189,7 @@ func CreateAppBundle(ctx *gin.Context) {
 	err = db.Transaction(func(tx *gorm.DB) error {
 		appBundle := model.AppBundle{
 			Comment:      newAppBundleReq.Comment,
-			Submitter:    user.Wallet,
+			Applicant:    user.Wallet,
 			EntityType:   newAppBundleReq.Entity,
 			EntityId:     newAppBundleReq.EntityId,
 			SeasonId:     seasonRecord.ID,

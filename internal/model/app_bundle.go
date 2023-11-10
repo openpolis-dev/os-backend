@@ -2,9 +2,6 @@ package model
 
 import (
 	"time"
-
-	"github.com/xiaosongfu/gormfind"
-	"gorm.io/gorm"
 )
 
 type AppBundle struct {
@@ -15,8 +12,8 @@ type AppBundle struct {
 
 	Comment string
 
-	// Submitter of this bundle
-	Submitter string
+	// Applicant of this bundle
+	Applicant string
 
 	// Entity means this app bundle's refer, which maybe project or guild.
 	// And the field EntityId is the db record ID for Project or Guild table
@@ -61,23 +58,4 @@ type AppBundleAuditLog struct {
 
 	// ExtraData saves some additional data for the operation, e.g. reject reason
 	ExtraData string `json:"extra_data"`
-}
-
-func ListAppBundles(db *gorm.DB, state string, page *gormfind.Page) (rcds []*AppBundle, total int64, err error) {
-	querySeg := db.Model(&AppBundle{})
-	if state != "" {
-		querySeg = querySeg.Where("state = ?", state)
-	}
-
-	total, err = gormfind.Count(querySeg)
-	if err != nil {
-		return
-	}
-
-	rcds, err = gormfind.Rows[AppBundle](querySeg, page)
-	if err != nil {
-		return
-	}
-
-	return
 }

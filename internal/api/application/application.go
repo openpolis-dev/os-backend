@@ -152,7 +152,7 @@ func Create(ctx *gin.Context) {
 			}
 
 			appBundle := model.AppBundle{
-				Submitter:    user.Wallet,
+				Applicant:    user.Wallet,
 				EntityType:   req.Entity,
 				EntityId:     req.EntityId,
 				SeasonId:     seasonRecord.ID,
