@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/casbin/casbin/v2"
+	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
 	"github.com/theseed-labs/os-backend/internal/api"
@@ -135,8 +136,16 @@ func AuditApplication(db *gorm.DB, operatorWallet string, application *Applicati
 	if application.EntityType == "project" {
 		project, err := ProjectModel.Detail(db, application.EntityId)
 		if err != nil {
+			log.Error().Msgf("Fetch project %d error: %+v", application.EntityId, err)
 			return err
 		}
+
+		if project == nil {
+			err := fmt.Errorf("project %d not found", application.EntityId)
+			log.Error().Msgf("Fetch project %d error: %+v", application.EntityId, err)
+			return err
+		}
+
 		// For close_project application, the project should be in pending_close state
 		// For new_reward application, the project should be in open state
 		if (application.Type == ApplicationCloseProject && project.Status != ProjectStatusPendingClose) ||
