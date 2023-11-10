@@ -57,12 +57,6 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "status of application bundle",
-                        "name": "status",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
                         "description": "which page",
                         "name": "page",
                         "in": "query"
@@ -129,7 +123,7 @@ const docTemplate = `{
                 "tags": [
                     "app_bundle"
                 ],
-                "summary": "List all application bundles match the query params",
+                "summary": "Create app bundles based on request data",
                 "parameters": [
                     {
                         "description": "New application bundle request",

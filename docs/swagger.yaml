@@ -876,10 +876,6 @@ paths:
   /app_bundles:
     get:
       parameters:
-      - description: status of application bundle
-        in: query
-        name: status
-        type: string
       - description: which page
         in: query
         name: page
@@ -937,7 +933,7 @@ paths:
           description: Created
           schema:
             type: string
-      summary: List all application bundles match the query params
+      summary: Create app bundles based on request data
       tags:
       - app_bundle
   /app_bundles_reject:
