@@ -82,6 +82,7 @@ func ApproveMintReward(ctx *gin.Context) {
 
 			appRcds = append(appRcds, &model.Application{
 				Type:             model.ApplicationNewReward,
+				SubType:          "MintRewards",
 				Applicant:        "",
 				State:            model.ApplicationStateOpen,
 				CreatedAt:        time.Now(),
