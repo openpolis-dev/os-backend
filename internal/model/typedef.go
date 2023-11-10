@@ -282,8 +282,6 @@ type ListAppBundleQueryParams struct {
 	State     string `form:"state"`
 	Entity    string `form:"entity"`
 	EntityId  string `form:"entity_id"`
-	StartDate string `form:"start_date"`
-	EndDate   string `form:"end_date"`
 	Applicant string `form:"applicant"`
 	SeasonId  int    `form:"season_id"`
 }

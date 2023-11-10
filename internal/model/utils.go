@@ -240,22 +240,6 @@ func QueryAppBundleRecords(db *gorm.DB, queryParams *ListAppBundleQueryParams) (
 		whereParams["applicant"] = queryParams.Applicant
 	}
 
-	if queryParams.StartDate != "" && queryParams.EndDate != "" {
-		startDate, err := time.Parse(DateQueryFormat, queryParams.StartDate)
-		if err != nil {
-			return nil, 0, err
-		}
-
-		endDate, err := time.Parse(DateQueryFormat, queryParams.EndDate)
-		if err != nil {
-			return nil, 0, err
-		}
-
-		whereClause += " AND app_bundles.created_at >= @start_date AND app_bundles.created_at <= @end_date"
-		whereParams["start_date"] = startDate
-		whereParams["end_date"] = endDate
-	}
-
 	if len(strings.TrimSpace(queryParams.EntityId)) != 0 {
 		whereClause += " AND app_bundles.entity_id = @entity_id"
 		whereParams["entity_id"] = strings.TrimSpace(queryParams.EntityId)
