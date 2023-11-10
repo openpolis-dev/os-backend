@@ -61,32 +61,38 @@ func MigrateTables() {
 // SeedDbRecords inits some const data records to database if not existing
 func SeedDbRecords() {
 	prjTz := time.FixedZone("UTF+8", int((8 * time.Hour).Seconds()))
+	// Note: S3 end is changed since the testing for node calc is not finished yet
 	seasons := []model.Season{
 		{
 			Name:    "S0",
 			Idx:     0,
-			StartAt: time.Date(1970, 1, 1, 0, 0, 0, 0, prjTz).Unix(),
-			EndAt:   time.Date(2023, 2, 28, 0, 0, 0, 0, prjTz).Unix(),
+			StartAt: time.Date(2022, 9, 26, 0, 0, 0, 0, prjTz).Unix(),
+			EndAt:   time.Date(2022, 11, 3, 0, 0, 0, 0, prjTz).Unix(),
 		}, {
 			Name:    "S1",
 			Idx:     1,
-			StartAt: time.Date(2023, 3, 1, 0, 0, 0, 0, prjTz).Unix(),
-			EndAt:   time.Date(2023, 5, 30, 0, 0, 0, 0, prjTz).Unix(),
+			StartAt: time.Date(2022, 11, 3, 0, 0, 0, 0, prjTz).Unix(),
+			EndAt:   time.Date(2023, 2, 26, 0, 0, 0, 0, prjTz).Unix(),
 		}, {
 			Name:    "S2",
 			Idx:     2,
-			StartAt: time.Date(2023, 6, 1, 0, 0, 0, 0, prjTz).Unix(),
-			EndAt:   time.Date(2023, 8, 31, 0, 0, 0, 0, prjTz).Unix(),
+			StartAt: time.Date(2023, 2, 28, 0, 0, 0, 0, prjTz).Unix(),
+			EndAt:   time.Date(2023, 6, 2, 0, 0, 0, 0, prjTz).Unix(),
 		}, {
 			Name:    "S3",
 			Idx:     3,
-			StartAt: time.Date(2023, 9, 1, 0, 0, 0, 0, prjTz).Unix(),
-			EndAt:   time.Date(2023, 11, 30, 0, 0, 0, 0, prjTz).Unix(),
+			StartAt: time.Date(2023, 6, 3, 0, 0, 0, 0, prjTz).Unix(),
+			EndAt:   time.Date(2023, 9, 5, 0, 0, 0, 0, prjTz).Unix(),
 		}, {
 			Name:    "S4",
 			Idx:     4,
-			StartAt: time.Date(2023, 12, 1, 0, 0, 0, 0, prjTz).Unix(),
-			EndAt:   time.Date(2024, 2, 28, 0, 0, 0, 0, prjTz).Unix(),
+			StartAt: time.Date(2023, 9, 6, 0, 0, 0, 0, prjTz).Unix(),
+			EndAt:   time.Date(2023, 12, 1, 0, 0, 0, 0, prjTz).Unix(),
+			//}, {
+			//	Name:    "S5",
+			//	Idx:     5,
+			//	StartAt: time.Date(2023, 11, 2, 0, 0, 0, 0, prjTz).Unix(),
+			//	EndAt:   time.Date(2024, 1, 1, 0, 0, 0, 0, prjTz).Unix(),
 		},
 	}
 	// Do nothing on conflict

@@ -131,7 +131,7 @@ func SnapshotSeed(ctx *gin.Context) {
 		return
 	}
 	currentSeason.SeedSnapshotSaved = true
-	currentSeason.SeedSnapshotAt = time.Now().UnixMilli()
+	currentSeason.SeedSnapshotAt = time.Now().Unix()
 	currentSeason.SeedSnapshotSubmitter = model.FormatUserWallet(user.Wallet)
 	err = db.Save(currentSeason).Error
 
