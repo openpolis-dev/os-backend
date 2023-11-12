@@ -206,6 +206,7 @@ func (r *jointAppEntityRslt) ToFrontedApplicationRecord(db *gorm.DB) *FrontendAp
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			// No record found, skip
+			log.Warn().Msgf("Application %d has no audit log found", r.Application.ID)
 		} else {
 			return nil
 		}

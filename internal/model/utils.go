@@ -33,6 +33,8 @@ FROM app_bundles
    LEFT JOIN projects ON app_bundles.entity_type = 'project' AND app_bundles.entity_id = projects.id
    LEFT JOIN guilds ON app_bundles.entity_type = 'guild' AND app_bundles.entity_id = guilds.id`
 
+var CloseProjectStateOrder = []string{string(ApplicationStateOpen), ApplicationStateCompleted, ApplicationStateRejected}
+
 // NewApplicationRecord create application and related audit log message with given params
 func NewApplicationRecord(db *gorm.DB, application *Application) error {
 	return db.Transaction(func(tx *gorm.DB) error {
@@ -158,10 +160,6 @@ func GenerateFrontendApplicationRecords(db *gorm.DB, queryParams *ListApplicatio
 		whereParams["entity_id"] = strings.TrimSpace(queryParams.EntityId)
 	}
 
-	if queryParams.SortField == "" {
-		queryParams.SortField = "created_at"
-	}
-
 	if queryParams.Size == 0 {
 		queryParams.Size = internal.DefaultPageSize
 	}
@@ -170,8 +168,23 @@ func GenerateFrontendApplicationRecords(db *gorm.DB, queryParams *ListApplicatio
 		queryParams.Page = 1
 	}
 
-	if queryParams.SortOrder == "" {
-		queryParams.SortOrder = "desc"
+	orderByClause := ""
+	if clearAppType == "close_project" {
+		// For close_project type, the return records should have stable order
+		querySort := lo.Map(CloseProjectStateOrder, func(state string, index int) string {
+			return fmt.Sprintf("when applications.state='%s' then %d\n", state, index+1)
+		})
+		orderByClause = fmt.Sprintf("case \n%s end asc, applications.created_at desc", strings.Join(querySort, ""))
+	} else {
+		if queryParams.SortField == "" {
+			queryParams.SortField = "created_at"
+		}
+
+		if queryParams.SortOrder == "" {
+			queryParams.SortOrder = "desc"
+		}
+
+		orderByClause = fmt.Sprintf("applications.%s %s ", queryParams.SortField, queryParams.SortOrder)
 	}
 
 	if queryParams.UserWallet != "" {
@@ -188,7 +201,7 @@ func GenerateFrontendApplicationRecords(db *gorm.DB, queryParams *ListApplicatio
 	total := db.Raw(querySQL+whereClause, whereParams).Scan(&[]map[string]any{}).RowsAffected
 
 	// TODO: This is the mysql style, need to find way to get db schema here and implement pg way
-	whereClause += fmt.Sprintf("\nORDER BY applications.%s %s LIMIT @offset, @limit", queryParams.SortField, queryParams.SortOrder)
+	whereClause += fmt.Sprintf("\nORDER BY %s LIMIT @offset, @limit", orderByClause)
 	whereParams["offset"] = (queryParams.Page - 1) * queryParams.Size
 	whereParams["limit"] = queryParams.Size
 
@@ -199,7 +212,6 @@ func GenerateFrontendApplicationRecords(db *gorm.DB, queryParams *ListApplicatio
 	}
 	rslt := make([]*FrontendApplicationRecord, len(rcds))
 	for i, r := range rcds {
-		fmt.Printf("TTT: rcd: %+v\n", r)
 		rslt[i] = r.ToFrontedApplicationRecord(db)
 	}
 	return rslt, total, nil
