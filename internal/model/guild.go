@@ -70,9 +70,9 @@ func (*guildModel) ListBySponsorOrMember(db *gorm.DB, wallet string, page *gormf
 }
 
 // SetBudget set budget record directly, but only total amount is allowed to set directly
-func (*guildModel) SetBudget(db *gorm.DB, guildId uint, budgetType BudgetType, assertName string, totalAmount decimal.Decimal) error {
+func (*guildModel) SetBudget(db *gorm.DB, guildId uint, assertName string, totalAmount decimal.Decimal) error {
 	return db.Transaction(func(tx *gorm.DB) error {
-		budgetRecord, err := GuildBudgetModel.QueryByGuildIdAndBudgetType(tx, guildId, budgetType)
+		budgetRecord, err := GuildBudgetModel.QueryByGuildIdAndAssetName(tx, guildId, assertName)
 		if err != nil {
 			return err
 		}
@@ -81,7 +81,6 @@ func (*guildModel) SetBudget(db *gorm.DB, guildId uint, budgetType BudgetType, a
 			budgetRecord = &GuildBudget{
 				GuildID:      guildId,
 				Name:         assertName,
-				Type:         budgetType,
 				TotalAmount:  totalAmount,
 				RemainAmount: totalAmount,
 			}
@@ -95,27 +94,27 @@ func (*guildModel) SetBudget(db *gorm.DB, guildId uint, budgetType BudgetType, a
 
 // TODO: Some budget related logics can be merged
 
-func (*guildModel) WithdrawBudget(db *gorm.DB, guildId uint, budgetType BudgetType, tokenName string, tokenAmount decimal.Decimal) error {
+func (*guildModel) WithdrawBudget(db *gorm.DB, guildId uint, assetName string, assetAmount decimal.Decimal) error {
 	return db.Transaction(func(tx *gorm.DB) error {
-		budgetRcd, err := GuildBudgetModel.QueryByGuildIdAndBudgetType(tx, guildId, budgetType)
+		budgetRcd, err := GuildBudgetModel.QueryByGuildIdAndAssetName(tx, guildId, assetName)
 		if err != nil {
 			return err
 		}
 
 		if budgetRcd == nil {
-			return fmt.Errorf("guild %d has no budget record with asset %s", guildId, tokenName)
+			return fmt.Errorf("guild %d has no budget record with asset %s", guildId, assetName)
 		}
 
-		budgetRcd.UsedAmount = budgetRcd.UsedAmount.Add(tokenAmount)
-		budgetRcd.RemainAmount = budgetRcd.RemainAmount.Sub(tokenAmount)
+		budgetRcd.UsedAmount = budgetRcd.UsedAmount.Add(assetAmount)
+		budgetRcd.RemainAmount = budgetRcd.RemainAmount.Sub(assetAmount)
 		return tx.Save(budgetRcd).Error
 	})
 }
 
 // DepositBudget deposits budget back to guild, e.g. application for reward has been rejected
-func (*guildModel) DepositBudget(db *gorm.DB, guildId uint, budgetType BudgetType, tokenName string, tokenAmount decimal.Decimal) error {
+func (*guildModel) DepositBudget(db *gorm.DB, guildId uint, assetName string, assetAmount decimal.Decimal) error {
 	return db.Transaction(func(tx *gorm.DB) error {
-		budgetRcd, err := GuildBudgetModel.QueryByGuildIdAndBudgetType(tx, guildId, budgetType)
+		budgetRcd, err := GuildBudgetModel.QueryByGuildIdAndAssetName(tx, guildId, assetName)
 		if err != nil {
 			return err
 		}
@@ -123,15 +122,14 @@ func (*guildModel) DepositBudget(db *gorm.DB, guildId uint, budgetType BudgetTyp
 		if budgetRcd == nil {
 			return tx.Save(&GuildBudget{
 				GuildID:      guildId,
-				Name:         tokenName,
-				Type:         budgetType,
-				TotalAmount:  tokenAmount,
+				Name:         assetName,
+				TotalAmount:  assetAmount,
 				UsedAmount:   decimal.Zero,
-				RemainAmount: tokenAmount,
+				RemainAmount: assetAmount,
 			}).Error
 		} else {
-			budgetRcd.UsedAmount = budgetRcd.UsedAmount.Sub(tokenAmount)
-			budgetRcd.RemainAmount = budgetRcd.RemainAmount.Add(tokenAmount)
+			budgetRcd.UsedAmount = budgetRcd.UsedAmount.Sub(assetAmount)
+			budgetRcd.RemainAmount = budgetRcd.RemainAmount.Add(assetAmount)
 			return tx.Save(budgetRcd).Error
 		}
 	})

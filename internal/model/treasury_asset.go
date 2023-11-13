@@ -132,13 +132,12 @@ func (*treasuryAssetHelper) GetOrCreateCurrQuarterRecord(db *gorm.DB) (*Treasury
 	return &r, nil
 }
 
-// GetOrCreateCQDetailedRecord creates detailed record for current quarter if not existing, then return the record to invoker
+// GetOrCreateCurrentSeasonDetailedRecord creates detailed record for current quarter if not existing, then return the record to invoker
 // The second return value indicates whether the record returned in first param is new created or existing data
-func (*treasuryAssetHelper) GetOrCreateCQDetailedRecord(db *gorm.DB, treasuryRecordId uint, budgetType BudgetType, assetName string, totalAmount decimal.Decimal) (*TreasuryDetailedRecord, bool, error) {
+func (*treasuryAssetHelper) GetOrCreateCurrentSeasonDetailedRecord(db *gorm.DB, treasuryRecordId uint, assetName string, totalAmount decimal.Decimal) (*TreasuryDetailedRecord, bool, error) {
 	r := TreasuryDetailedRecord{}
 	rslt := db.Where(TreasuryDetailedRecord{
 		TreasuryAssetID: treasuryRecordId,
-		BudgetType:      budgetType,
 		AssetName:       assetName,
 	}).Attrs(TreasuryDetailedRecord{
 		TotalAmount:  totalAmount,
@@ -162,15 +161,15 @@ func (*treasuryAssetHelper) GetOrCreateCQDetailedRecord(db *gorm.DB, treasuryRec
 	}
 }
 
-// UpsertCQTreasuryDetailedRecord creates treasury detailed record and related create audit log
-func (*treasuryAssetHelper) UpsertCQTreasuryDetailedRecord(db *gorm.DB, budgetType BudgetType, assetName string, totalAmount decimal.Decimal, userWallet string) error {
+// UpsertCurrentSeasonTreasuryDetailedRecord creates treasury detailed record and related create audit log
+func (*treasuryAssetHelper) UpsertCurrentSeasonTreasuryDetailedRecord(db *gorm.DB, assetName string, totalAmount decimal.Decimal, userWallet string) error {
 	cqRcd, err := TreasuryAssetHelper.GetOrCreateCurrQuarterRecord(db)
 	if err != nil {
 		return err
 	}
 
 	return db.Transaction(func(tx *gorm.DB) error {
-		r, newRecord, err := TreasuryAssetHelper.GetOrCreateCQDetailedRecord(tx, cqRcd.ID, budgetType, assetName, totalAmount)
+		r, newRecord, err := TreasuryAssetHelper.GetOrCreateCurrentSeasonDetailedRecord(tx, cqRcd.ID, assetName, totalAmount)
 		if err != nil {
 			return err
 		}
@@ -195,18 +194,18 @@ func (*treasuryAssetHelper) UpsertCQTreasuryDetailedRecord(db *gorm.DB, budgetTy
 }
 
 // WithdrawTreasureAsset get asset from treasury record
-func (*treasuryAssetHelper) WithdrawTreasureAsset(db *gorm.DB, budgetType BudgetType, assetName string, deltaValue decimal.Decimal, userWallet string, auditMsg string) error {
-	return TreasuryAssetHelper.ChangeCQTreasuryAssetValue(db, budgetType, assetName, deltaValue, userWallet, auditMsg)
+func (*treasuryAssetHelper) WithdrawTreasureAsset(db *gorm.DB, assetName string, deltaValue decimal.Decimal, userWallet string, auditMsg string) error {
+	return TreasuryAssetHelper.ChangeCQTreasuryAssetValue(db, assetName, deltaValue, userWallet, auditMsg)
 }
 
 // DepositTreasureAsset save asset back to treasury record
-func (*treasuryAssetHelper) DepositTreasureAsset(db *gorm.DB, budgetType BudgetType, assetName string, deltaValue decimal.Decimal, userWallet string, auditMsg string) error {
-	return TreasuryAssetHelper.ChangeCQTreasuryAssetValue(db, budgetType, assetName, deltaValue.Neg(), userWallet, auditMsg)
+func (*treasuryAssetHelper) DepositTreasureAsset(db *gorm.DB, assetName string, deltaValue decimal.Decimal, userWallet string, auditMsg string) error {
+	return TreasuryAssetHelper.ChangeCQTreasuryAssetValue(db, assetName, deltaValue.Neg(), userWallet, auditMsg)
 }
 
 // ChangeCQTreasuryAssetValue update asset value for current quarter treasury record, the value passed in deltaValue allows both positive and negative value
 // For positive value, the remain amount will be decreased while the negative means remain amount will be increased
-func (*treasuryAssetHelper) ChangeCQTreasuryAssetValue(db *gorm.DB, budgetType BudgetType, assetName string, deltaValue decimal.Decimal, userWallet string, auditMsg string) error {
+func (*treasuryAssetHelper) ChangeCQTreasuryAssetValue(db *gorm.DB, assetName string, deltaValue decimal.Decimal, userWallet string, auditMsg string) error {
 	cqRcd, err := TreasuryAssetHelper.GetOrCreateCurrQuarterRecord(db)
 	if err != nil {
 		return err
@@ -214,7 +213,7 @@ func (*treasuryAssetHelper) ChangeCQTreasuryAssetValue(db *gorm.DB, budgetType B
 
 	return db.Transaction(func(tx *gorm.DB) error {
 		// Search by treasury asset id and budget type, and init the record if not found
-		r, _, err := TreasuryAssetHelper.GetOrCreateCQDetailedRecord(tx, cqRcd.ID, budgetType, assetName, decimal.Zero)
+		r, _, err := TreasuryAssetHelper.GetOrCreateCurrentSeasonDetailedRecord(tx, cqRcd.ID, assetName, decimal.Zero)
 		if err != nil {
 			return err
 		}

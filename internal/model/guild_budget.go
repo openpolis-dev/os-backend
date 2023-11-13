@@ -12,7 +12,6 @@ type GuildBudget struct {
 	ID           uint            `json:"id" gorm:"primaryKey"`
 	GuildID      uint            `json:"guild_id"` // guild_id
 	Name         string          `json:"name"`
-	Type         BudgetType      `json:"type"`                                    // budget type, credit or token
 	TotalAmount  decimal.Decimal `json:"total_amount" sql:"type:decimal(20,8);"`  // total_amount
 	UsedAmount   decimal.Decimal `json:"used_amount" sql:"type:decimal(20,8);"`   // used_amount
 	RemainAmount decimal.Decimal `json:"remain_amount" sql:"type:decimal(20,8);"` // remain_amount
@@ -43,7 +42,7 @@ func (*guildBudgetModel) ListByGuildId(db *gorm.DB, guildID uint) ([]*GuildBudge
 	return gormfind.Rows[GuildBudget](querySeg, nil)
 }
 
-func (*guildBudgetModel) QueryByGuildIdAndBudgetType(db *gorm.DB, guildID uint, budgetType BudgetType) (*GuildBudget, error) {
-	querySeg := db.Where("guild_id = ?", guildID).Where("type = ?", budgetType)
+func (*guildBudgetModel) QueryByGuildIdAndAssetName(db *gorm.DB, guildID uint, assetName string) (*GuildBudget, error) {
+	querySeg := db.Where("guild_id = ?", guildID).Where("name = ?", assetName)
 	return gormfind.Row[GuildBudget](querySeg)
 }

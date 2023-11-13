@@ -101,9 +101,9 @@ func (*projectModel) ListBySponsorOrMember(db *gorm.DB, wallet string, page *gor
 // SetBudget set budget record directly. Only totalAmount will be passed in.
 // If the budget is not existing, a new record will be created with total and remain amount all set to passed in value
 // If the budget is already existing, the total will be updated to passed in value, and the remain will also be updated by the delta
-func (*projectModel) SetBudget(db *gorm.DB, projectId uint, budgetType BudgetType, assertName string, totalAmount decimal.Decimal) error {
+func (*projectModel) SetBudget(db *gorm.DB, projectId uint, assertName string, totalAmount decimal.Decimal) error {
 	return db.Transaction(func(tx *gorm.DB) error {
-		budgetRecord, err := ProjectBudgetModel.QueryByProjectIdAndBudgetProps(tx, projectId, budgetType, assertName)
+		budgetRecord, err := ProjectBudgetModel.QueryByProjectIdAndBudgetProps(tx, projectId, assertName)
 		if err != nil {
 			return err
 		}
@@ -112,7 +112,6 @@ func (*projectModel) SetBudget(db *gorm.DB, projectId uint, budgetType BudgetTyp
 			budgetRecord = &ProjectBudget{
 				ProjectID:    projectId,
 				AssetName:    assertName,
-				Type:         budgetType,
 				TotalAmount:  totalAmount,
 				UsedAmount:   decimal.Zero,
 				RemainAmount: totalAmount,
@@ -126,9 +125,9 @@ func (*projectModel) SetBudget(db *gorm.DB, projectId uint, budgetType BudgetTyp
 	})
 }
 
-func (*projectModel) WithdrawBudget(db *gorm.DB, projectId uint, budgetType BudgetType, assetName string, tokenAmount decimal.Decimal) error {
+func (*projectModel) WithdrawBudget(db *gorm.DB, projectId uint, assetName string, tokenAmount decimal.Decimal) error {
 	return db.Transaction(func(tx *gorm.DB) error {
-		budgetRcd, err := ProjectBudgetModel.QueryByProjectIdAndBudgetProps(tx, projectId, budgetType, assetName)
+		budgetRcd, err := ProjectBudgetModel.QueryByProjectIdAndBudgetProps(tx, projectId, assetName)
 		if err != nil {
 			return err
 		}
@@ -144,9 +143,9 @@ func (*projectModel) WithdrawBudget(db *gorm.DB, projectId uint, budgetType Budg
 }
 
 // DepositBudget deposits budget back to project, e.g. application for reward has been rejected
-func (*projectModel) DepositBudget(db *gorm.DB, projectId uint, budgetType BudgetType, assetName string, tokenAmount decimal.Decimal) error {
+func (*projectModel) DepositBudget(db *gorm.DB, projectId uint, assetName string, tokenAmount decimal.Decimal) error {
 	return db.Transaction(func(tx *gorm.DB) error {
-		budgetRcd, err := ProjectBudgetModel.QueryByProjectIdAndBudgetProps(tx, projectId, budgetType, assetName)
+		budgetRcd, err := ProjectBudgetModel.QueryByProjectIdAndBudgetProps(tx, projectId, assetName)
 		if err != nil {
 			return err
 		}
@@ -155,7 +154,6 @@ func (*projectModel) DepositBudget(db *gorm.DB, projectId uint, budgetType Budge
 			return tx.Save(&ProjectBudget{
 				ProjectID:    projectId,
 				AssetName:    assetName,
-				Type:         budgetType,
 				TotalAmount:  tokenAmount,
 				UsedAmount:   decimal.Zero,
 				RemainAmount: tokenAmount,

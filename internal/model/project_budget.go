@@ -8,18 +8,10 @@ import (
 	"gorm.io/gorm"
 )
 
-type BudgetType string
-
-const (
-	BudgetTypeCredit BudgetType = "credit"
-	BudgetTypeToken             = "token"
-)
-
 type ProjectBudget struct {
 	ID           uint            `json:"id" gorm:"primaryKey"`
 	ProjectID    uint            `json:"project_id"` // project_id
 	AssetName    string          `json:"name"`
-	Type         BudgetType      `json:"type"`                                    // budget type, credit or token
 	TotalAmount  decimal.Decimal `json:"total_amount" sql:"type:decimal(20,8);"`  // total_amount = used_amount + remain_amount
 	UsedAmount   decimal.Decimal `json:"used_amount" sql:"type:decimal(20,8);"`   // used_amount
 	RemainAmount decimal.Decimal `json:"remain_amount" sql:"type:decimal(20,8);"` // remain_amount
@@ -50,7 +42,7 @@ func (*projectBudgetModel) ListByProjectId(db *gorm.DB, projID uint) ([]*Project
 	return gormfind.Rows[ProjectBudget](querySeg, nil)
 }
 
-func (*projectBudgetModel) QueryByProjectIdAndBudgetProps(db *gorm.DB, projID uint, budgetType BudgetType, assetName string) (*ProjectBudget, error) {
-	querySeg := db.Where(&ProjectBudget{ProjectID: projID, AssetName: assetName, Type: budgetType})
+func (*projectBudgetModel) QueryByProjectIdAndBudgetProps(db *gorm.DB, projID uint, assetName string) (*ProjectBudget, error) {
+	querySeg := db.Where(&ProjectBudget{ProjectID: projID, AssetName: assetName})
 	return gormfind.Row[ProjectBudget](querySeg)
 }

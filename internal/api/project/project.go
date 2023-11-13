@@ -35,9 +35,8 @@ type (
 		Budgets []*BudgetParam `json:"budgets"`
 	}
 	BudgetParam struct {
-		Name        string           `json:"name"`
-		BudgetType  model.BudgetType `json:"budget_type"`
-		TotalAmount decimal.Decimal  `json:"total_amount"`
+		Name        string          `json:"name"`
+		TotalAmount decimal.Decimal `json:"total_amount"`
 	}
 	UpdateReq struct {
 		LogoStr string `json:"logo"`
@@ -123,7 +122,6 @@ func Create(ctx *gin.Context) {
 	budgets := lo.Map[*BudgetParam, *model.ProjectBudget](req.Budgets, func(item *BudgetParam, _ int) *model.ProjectBudget {
 		return &model.ProjectBudget{
 			ProjectID:    proj.ID,
-			Type:         item.BudgetType,
 			AssetName:    item.Name,
 			TotalAmount:  item.TotalAmount,
 			UsedAmount:   decimal.Zero,
@@ -139,7 +137,7 @@ func Create(ctx *gin.Context) {
 
 	// Withdraw asset from treasure
 	for _, budget := range budgets {
-		err = model.TreasuryAssetHelper.WithdrawTreasureAsset(tx, budget.Type, budget.AssetName, budget.TotalAmount, user.Wallet, fmt.Sprintf("Create project %d by %s", proj.ID, user.Wallet))
+		err = model.TreasuryAssetHelper.WithdrawTreasureAsset(tx, budget.AssetName, budget.TotalAmount, user.Wallet, fmt.Sprintf("Create project %d by %s", proj.ID, user.Wallet))
 		if err != nil {
 			tx.Rollback()
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
