@@ -12,7 +12,7 @@ import (
 func GetOrCreateCurrentAssetRecords(ctx *gin.Context) {
 	db := api.ForContextOnlyDB(ctx)
 
-	currQuarterTreasuryRecord, err := model.TreasuryAssetHelper.GetOrCreateCurrQuarterRecord(db)
+	currQuarterTreasuryRecord, err := model.TreasuryAssetHelper.GetOrCreateCurrentSeasonRecord(db)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
@@ -62,7 +62,7 @@ func UpdateAssets(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 	}
 
-	currQuarterTreasuryRecord, err := model.TreasuryAssetHelper.GetOrCreateCurrQuarterRecord(db)
+	currQuarterTreasuryRecord, err := model.TreasuryAssetHelper.GetOrCreateCurrentSeasonRecord(db)
 	ctx.JSON(http.StatusOK, api.Success(currQuarterTreasuryRecord))
 }
 

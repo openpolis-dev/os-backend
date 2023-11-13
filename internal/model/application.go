@@ -367,13 +367,11 @@ func GetCurrentSeasonApplications(db *gorm.DB, states []string, appTypes []strin
 	whereParams := map[string]any{"season_id": currentSeason.ID}
 
 	if len(states) > 0 {
-		whereClause += " AND state IN (@states)"
-		whereParams["states"] = strings.Join(states, ",")
+		whereClause += " AND state IN ('" + strings.Join(states, "','") + "')"
 	}
 
 	if len(appTypes) > 0 {
-		whereClause += " AND type IN (types)"
-		whereParams["types"] = strings.Join(appTypes, ",")
+		whereClause += " AND type IN ('" + strings.Join(appTypes, "','") + "')"
 	}
 
 	var records []*Application
