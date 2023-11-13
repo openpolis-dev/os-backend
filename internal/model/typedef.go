@@ -239,8 +239,6 @@ type UpdateAssetRequestParams struct {
 }
 
 type TreasuryAssetsResponse struct {
-	ID                uint            `json:"id"`
-	QuarterNum        string          `json:"quarter_num"`
 	CreditTotalAmount decimal.Decimal `json:"credit_total_amount"`
 	CreditUsedAmount  decimal.Decimal `json:"credit_used_amount"`
 	TokenTotalAmount  decimal.Decimal `json:"token_total_amount"`

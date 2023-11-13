@@ -1,10 +1,10 @@
 package model
 
 import (
-	"encoding/json"
-	"fmt"
+	"strings"
 	"time"
 
+	"github.com/rs/zerolog/log"
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 )
@@ -12,9 +12,11 @@ import (
 type TreasuryAsset struct {
 	ID uint `json:"id" gorm:"primaryKey"`
 
-	QuarterNum string `json:"quarter_num"` // Quarter num, the format is yyyy0[1234]
-
 	DetailedRecords []TreasuryDetailedRecord `json:"detailed_records"`
+
+	// Season information of treasury assets
+	SeasonId uint    `json:"season_id"`
+	Season   *Season `json:"season"`
 
 	CreatedAt time.Time `json:"created_at" gorm:"autoCreateTime"`
 	UpdatedAt time.Time `json:"updated_at" gorm:"autoUpdateTime"`
@@ -23,8 +25,6 @@ type TreasuryAsset struct {
 type TreasuryDetailedRecord struct {
 	ID              uint `json:"id" gorm:"primaryKey"`
 	TreasuryAssetID uint `json:"treasury_asset_id"`
-
-	BudgetType BudgetType `json:"budget_type"`
 
 	AssetName    string          `json:"asset_name"`
 	TotalAmount  decimal.Decimal `json:"total_amount" sql:"type:decimal(20,8);"`
@@ -51,66 +51,51 @@ type TreasuryAuditLog struct {
 	UpdatedAt time.Time `json:"updated_at" gorm:"autoUpdateTime"`
 }
 
-func (r *TreasuryAsset) ToTreasuryAssetsResponse(db *gorm.DB) *TreasuryAssetsResponse {
+func (r *TreasuryAsset) ToTreasuryAssetsResponse(db *gorm.DB) (*TreasuryAssetsResponse, error) {
 	var creditTotal, creditUsed, tokenTotal, tokenUsed decimal.Decimal
 
 	// Calculate total amount
 	for _, detailedRcd := range r.DetailedRecords {
-		if detailedRcd.BudgetType == BudgetTypeCredit {
-			creditTotal = creditTotal.Add(detailedRcd.TotalAmount)
-		} else if detailedRcd.BudgetType == BudgetTypeToken {
+		if strings.HasPrefix(detailedRcd.AssetName, "USD") {
 			tokenTotal = tokenTotal.Add(detailedRcd.TotalAmount)
+		} else if strings.EqualFold(detailedRcd.AssetName, "SCR") {
+			creditTotal = creditTotal.Add(detailedRcd.TotalAmount)
+		} else {
+			log.Warn().Msgf("non token or credit asset %s, ignore the treasury record: %+v", detailedRcd.AssetName, detailedRcd)
 		}
 	}
 
-	// Calculate used amount
-	startDate, endDate := getCurrentQuarterTimeRange()
-	var applications []Application
-	db.Model(&Application{}).
-		Where("created_at >= ? AND created_at < ? AND state IN (?, ?) AND type = ?", startDate, endDate, ApplicationStateProcessing, ApplicationStateCompleted, ApplicationNewReward).
-		Find(&applications)
+	appStates := []string{string(ApplicationStateOpen), ApplicationStateProcessing}
+	appTypes := []string{string(ApplicationNewReward)}
+
+	applications, err := GetCurrentSeasonApplications(db, appStates, appTypes)
+
+	if err != nil {
+		return nil, err
+	}
 
 	creditUsed = decimal.Zero
 	tokenUsed = decimal.Zero
 	for _, application := range applications {
-		var detailedData NewRewardApplicationDetailedData
-		err := json.Unmarshal(application.DetailedData, &detailedData)
-		if err != nil {
-			panic(err)
-		}
-		rewardTokenAmount := decimal.Zero
-		rewardCreditAmount := decimal.Zero
-
-		for _, assetRcd := range detailedData.Assets {
-			switch assetRcd.AssetType {
-			case BudgetTypeToken:
-				rewardTokenAmount = rewardTokenAmount.Add(assetRcd.Amount)
-				break
-			case BudgetTypeCredit:
-				rewardCreditAmount = rewardCreditAmount.Add(assetRcd.Amount)
-				break
+		if strings.HasPrefix(application.AssetName, "USD") {
+			// only calculate completed USD
+			if application.State == ApplicationStateCompleted {
+				tokenUsed = tokenUsed.Add(application.AssetAmount)
 			}
-		}
-
-		switch application.State {
-		case ApplicationStateProcessing:
-			creditUsed = creditUsed.Add(rewardCreditAmount)
-			break
-		case ApplicationStateCompleted:
-			creditUsed = creditUsed.Add(rewardCreditAmount)
-			tokenUsed = tokenUsed.Add(rewardTokenAmount)
-			break
+		} else if strings.EqualFold(application.AssetName, "SCR") {
+			// calculate processing and completed SCR
+			creditUsed = creditUsed.Add(application.AssetAmount)
+		} else {
+			log.Warn().Msgf("non token or credit asset %s, ignore the application record: %+v", application.AssetName, application)
 		}
 	}
 
 	return &TreasuryAssetsResponse{
-		ID:                r.ID,
-		QuarterNum:        r.QuarterNum,
 		CreditTotalAmount: creditTotal,
 		CreditUsedAmount:  creditUsed,
 		TokenTotalAmount:  tokenTotal,
 		TokenUsedAmount:   tokenUsed,
-	}
+	}, nil
 }
 
 type treasuryAssetHelper struct{}
@@ -119,8 +104,12 @@ var TreasuryAssetHelper treasuryAssetHelper
 
 // GetOrCreateCurrQuarterRecord tries to get treasury record for current quarter, if not found a record with quarter num will be created and returned
 func (*treasuryAssetHelper) GetOrCreateCurrQuarterRecord(db *gorm.DB) (*TreasuryAsset, error) {
+	currSeason, err := GetCurrentSeason(db)
+	if err != nil {
+		return nil, err
+	}
 	var r TreasuryAsset
-	rslt := db.Preload("DetailedRecords").FirstOrInit(&r, TreasuryAsset{QuarterNum: getCurrentQuarterNum()})
+	rslt := db.Preload("DetailedRecords").FirstOrInit(&r, TreasuryAsset{SeasonId: currSeason.ID})
 	if rslt.Error != nil {
 		return nil, rslt.Error
 	} else if rslt.RowsAffected == 0 {
@@ -228,68 +217,4 @@ func (*treasuryAssetHelper) ChangeCQTreasuryAssetValue(db *gorm.DB, assetName st
 			Message:                  auditMsg,
 		}).Error
 	})
-}
-
-func monthToQuarterIndex(m time.Month) int {
-	switch m {
-	case time.December, time.January, time.February:
-		return 1
-	case time.March, time.April, time.May:
-		return 2
-	case time.June, time.July, time.August:
-		return 3
-	case time.September, time.October, time.November:
-		return 4
-	}
-	return 0
-}
-
-func getQuarterNumForTime(t time.Time) string {
-	year, month, _ := t.Date()
-	quarterIdx := monthToQuarterIndex(month)
-
-	// December is assigned to next year's S1
-	// TODO: Need the confirmation from community
-	if month == time.December {
-		year += 1
-	}
-
-	// TODO: Change season name to S1/2/3/4 instead of 01/2/3/4 to avoid confusion
-	return fmt.Sprintf("%d%02d", year, quarterIdx)
-}
-
-func getQuarterTimeRangeForTime(t time.Time) (string, string) {
-	year, month, _ := t.Date()
-	quarterIdx := monthToQuarterIndex(month)
-	if quarterIdx == 0 {
-		panic(fmt.Errorf("unknown month: %d", month))
-	}
-
-	// Mapping between quarter index and start end month:
-	// 1: 12.1 (last year) - 3.1
-	// 2: 3.1 - 6.1
-	// 3: 6.1 - 9.1
-	// 4: 9.1 - 12.1
-	startMon := (quarterIdx - 1) * 3
-	endMon := startMon + 3
-
-	if quarterIdx == 1 {
-		// The period is cross year, need some more processing
-		if month == 12 {
-			// month equals to 12 means this is the last month, and there is no need to extract 1 from the year
-			return fmt.Sprintf("%d-12-01", year), fmt.Sprintf("%d-%02d-01", year+1, endMon)
-		} else {
-			return fmt.Sprintf("%d-12-01", year-1), fmt.Sprintf("%d-%02d-01", year, endMon)
-		}
-	} else {
-		return fmt.Sprintf("%d-%02d-01", year, startMon), fmt.Sprintf("%d-%02d-01", year, endMon)
-	}
-}
-
-func getCurrentQuarterNum() string {
-	return getQuarterNumForTime(time.Now())
-}
-
-func getCurrentQuarterTimeRange() (string, string) {
-	return getQuarterTimeRangeForTime(time.Now())
 }
