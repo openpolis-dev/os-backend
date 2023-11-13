@@ -57,6 +57,8 @@ definitions:
       state:
         $ref: '#/definitions/model.ApplicationState'
     type: object
+  app_bundle.ListAvailableProjectAndGuildResp:
+    type: object
   application.ApplicantListResponse:
     properties:
       applicant:
@@ -73,7 +75,7 @@ definitions:
       metaforo_credit:
         type: string
       metaforo_vote_count:
-        type: string
+        type: integer
       season_total_credit:
         type: string
       seasons_credit:
@@ -997,6 +999,21 @@ paths:
           schema:
             $ref: '#/definitions/application.ApplicantListResponse'
       summary: List all applicants existing in applications table for filter
+  /available_projects_guilds:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  $ref: '#/definitions/app_bundle.ListAvailableProjectAndGuildResp'
+              type: object
+      summary: List available projects and guilds for current user
+      tags:
+      - app_bundle
   /data_srv/aggr_scr:
     get:
       responses:
