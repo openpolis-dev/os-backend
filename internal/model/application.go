@@ -354,3 +354,35 @@ func userWalletRecordExisting(db *gorm.DB, walletAddr string) error {
 
 	return nil
 }
+
+// GetCurrentSeasonApplications returns application in current season with state and type filter passed in
+func GetCurrentSeasonApplications(db *gorm.DB, states []string, appTypes []string) ([]*Application, error) {
+	currentSeason, err := GetCurrentSeason(db)
+	if err != nil {
+		log.Error().Msgf("get current season error: %+v", err)
+		return nil, err
+	}
+
+	whereClause := "season_id = @season_id"
+	whereParams := map[string]any{"season_id": currentSeason.ID}
+
+	if len(states) > 0 {
+		whereClause += " AND state IN (@states)"
+		whereParams["states"] = strings.Join(states, ",")
+	}
+
+	if len(appTypes) > 0 {
+		whereClause += " AND type IN (types)"
+		whereParams["types"] = strings.Join(appTypes, ",")
+	}
+
+	var records []*Application
+	err = db.Model(Application{}).Where(whereClause, whereParams).Find(&records).Error
+
+	if err != nil {
+		log.Error().Msgf("query current season applications error: %+v", err)
+		return nil, err
+	}
+
+	return records, nil
+}

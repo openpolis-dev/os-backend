@@ -12,7 +12,6 @@ import (
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk"
-	"github.com/theseed-labs/os-backend/internal/service"
 	"github.com/theseed-labs/os-backend/internal/static_data"
 	"github.com/theseed-labs/os-backend/internal/storage"
 )
@@ -125,7 +124,7 @@ func AggrScr(ctx *gin.Context) {
 	db := api.ForContextOnlyDB(ctx)
 
 	// Fetch current season data from database
-	currentSeason, err := service.GetCurrentSeason(db)
+	currentSeason, err := model.GetCurrentSeason(db)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return

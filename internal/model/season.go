@@ -1,5 +1,12 @@
 package model
 
+import (
+	"time"
+
+	"github.com/theseed-labs/os-backend/internal"
+	"gorm.io/gorm"
+)
+
 type Season struct {
 	ID uint `gorm:"primaryKey"`
 
@@ -21,4 +28,42 @@ type Season struct {
 	// StartAt and EndAt saves epoch second to avoid complex logic of timezone
 	StartAt int64 `gorm:"index"`
 	EndAt   int64 `gorm:"index"`
+}
+
+// GetCurrentSeason query season table to get current season record.
+// The logic is finding out first record with start_at field earlier than current local time.
+// This query does not create season record if not existing since the data should be created in InitDB function
+func GetCurrentSeason(db *gorm.DB) (*Season, error) {
+	now := time.Now().In(internal.ProjectTimezone).Unix()
+	var currSeason Season
+	err := db.Model(&Season{}).
+		Where("start_at < ?", now).
+		Order("start_at desc").
+		First(&currSeason).Error
+
+	if err != nil {
+		return nil, err
+	}
+	return &currSeason, nil
+}
+
+func MustGetCurrentSeason(db *gorm.DB) *Season {
+	season, err := GetCurrentSeason(db)
+	if err != nil {
+		panic(err)
+	}
+
+	return season
+}
+
+func GetSeasonsByName(db *gorm.DB, seasonNameList []string) ([]*Season, error) {
+	var seasons []*Season
+	err := db.Model(&Season{}).
+		Where("name IN ?", seasonNameList).
+		Find(&seasons).Error
+
+	if err != nil {
+		return nil, err
+	}
+	return seasons, nil
 }

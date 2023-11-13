@@ -12,7 +12,6 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/model"
-	"github.com/theseed-labs/os-backend/internal/service"
 	"github.com/theseed-labs/os-backend/internal/storage"
 	"github.com/xuri/excelize/v2"
 	"gorm.io/gorm"
@@ -53,7 +52,7 @@ type EntityProps struct {
 
 func parseSeasonParams(db *gorm.DB, seasonParamValue string) ([]*model.Season, error) {
 	if seasonParamValue == "" {
-		currentSeason, err := service.GetCurrentSeason(db)
+		currentSeason, err := model.GetCurrentSeason(db)
 		if err != nil {
 			return nil, err
 		}
@@ -64,7 +63,7 @@ func parseSeasonParams(db *gorm.DB, seasonParamValue string) ([]*model.Season, e
 		return seasonRcds, err
 	} else {
 		seasonNames := strings.Split(seasonParamValue, ",")
-		seasonRcds, err := service.GetSeasonsByName(db, seasonNames)
+		seasonRcds, err := model.GetSeasonsByName(db, seasonNames)
 		if err != nil {
 			return nil, err
 		}
