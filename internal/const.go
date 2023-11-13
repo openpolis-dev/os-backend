@@ -20,3 +20,5 @@ var ApplicationDownloadHeader = map[string]string{
 
 const SeedContractType = "erc721"
 const SeedContractAddr = "0x30093266E34a816a53e302bE3e59a93B52792FD4"
+
+var CityhallGroupNames = []string{"内部治理小组", "品牌小组", "技术小组"}

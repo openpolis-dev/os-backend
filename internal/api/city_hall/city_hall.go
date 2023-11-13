@@ -2,14 +2,16 @@ package city_hall
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/casbin/casbin/v2"
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
+	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
+	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"gorm.io/gorm"
@@ -29,6 +31,7 @@ type (
 	CityHallUpdateMemberReq struct {
 		AddMember    []string `json:"add"`
 		RemoveMember []string `json:"remove"`
+		GroupName    string   `json:"group_name"`
 	}
 )
 
@@ -167,20 +170,27 @@ func UpdateMember(ctx *gin.Context) {
 	err = ctx.BindJSON(&req)
 	log.Debug().Msgf("city hall update member form user %s", user.Wallet)
 
+	if !lo.Contains(internal.CityhallGroupNames, req.GroupName) {
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("invalid group_name %s", req.GroupName)))
+		return
+	}
+
 	sponsorsMap := make(map[string]bool)
-	for _, userAddr := range cityHallProject.Sponsors {
-		sponsorsMap[strings.ToLower(userAddr)] = true
+	if sponsors, found := cityHallProject.GroupedSponsors[req.GroupName]; found {
+		for _, sponsorWallet := range sponsors {
+			sponsorsMap[model.FormatUserWallet(sponsorWallet)] = true
+		}
 	}
 
 	///////////////////////////////
 	// Update grouping policy
 	///////////////////////////////
 
-	// Add member to policy
+	// Add member to policy group
 	var addHallGroupingPolicy [][]string
 	for _, memberAddr := range req.AddMember {
-		sponsorsMap[strings.ToLower(memberAddr)] = true
-		addHallGroupingPolicy = append(addHallGroupingPolicy, []string{strings.ToLower(memberAddr), api.RoleHall})
+		sponsorsMap[model.FormatUserWallet(memberAddr)] = true
+		addHallGroupingPolicy = append(addHallGroupingPolicy, []string{model.FormatUserWallet(memberAddr), api.RoleHall})
 	}
 
 	// Add user to hall group
@@ -197,8 +207,8 @@ func UpdateMember(ctx *gin.Context) {
 	// Remove member from policy group
 	var removeHallGroupingPolicy [][]string
 	for _, memberAddr := range req.RemoveMember {
-		sponsorsMap[strings.ToLower(memberAddr)] = false
-		removeHallGroupingPolicy = append(removeHallGroupingPolicy, []string{strings.ToLower(memberAddr), api.RoleHall})
+		sponsorsMap[model.FormatUserWallet(memberAddr)] = false
+		removeHallGroupingPolicy = append(removeHallGroupingPolicy, []string{model.FormatUserWallet(memberAddr), api.RoleHall})
 	}
 
 	// Remove user from hall group
@@ -232,7 +242,11 @@ func UpdateMember(ctx *gin.Context) {
 		return
 	}
 
-	cityHallProject.Sponsors = newSponsorsList
+	if cityHallProject.GroupedSponsors == nil {
+		cityHallProject.GroupedSponsors = make(map[string][]string)
+	}
+
+	cityHallProject.GroupedSponsors[req.GroupName] = newSponsorsList
 	err = db.Save(cityHallProject).Error
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))

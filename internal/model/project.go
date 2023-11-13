@@ -25,15 +25,16 @@ const (
 )
 
 type Project struct {
-	ID        uint          `json:"id" gorm:"primaryKey"`
-	Logo      string        `json:"logo"`
-	Name      string        `json:"name"`
-	Intro     string        `json:"intro"`
-	Desc      string        `json:"desc"`
-	Status    ProjectStatus `json:"status" gorm:"index"` // Status may have those values: open/pending_close/closed
-	Sponsors  []string      `json:"sponsors" gorm:"serializer:json"`
-	Members   []string      `json:"members" gorm:"serializer:json"`
-	Proposals []string      `json:"proposals" gorm:"serializer:json"`
+	ID              uint                `json:"id" gorm:"primaryKey"`
+	Logo            string              `json:"logo"`
+	Name            string              `json:"name"`
+	Intro           string              `json:"intro"`
+	Desc            string              `json:"desc"`
+	Status          ProjectStatus       `json:"status" gorm:"index"` // Status may have those values: open/pending_close/closed
+	GroupedSponsors map[string][]string `json:"grouped_sponsors" gorm:"serializer:json"`
+	Sponsors        []string            `json:"sponsors" gorm:"serializer:json"`
+	Members         []string            `json:"members" gorm:"serializer:json"`
+	Proposals       []string            `json:"proposals" gorm:"serializer:json"`
 
 	Creator string `json:"creator"`
 
