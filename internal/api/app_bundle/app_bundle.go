@@ -38,8 +38,8 @@ type AppBundleResponseRecord struct {
 }
 
 type ListAvailableProjectAndGuildResp struct {
-	guilds   []*model.Guild
-	projects []*model.Project
+	Guilds   []*model.Guild
+	Projects []*model.Project
 }
 
 func BuildResponseFromDatabaseSearchResult() {
@@ -91,9 +91,9 @@ func ListAvailableProjectsAndGuilds(ctx *gin.Context) {
 		}
 	}
 
-	ctx.JSON(http.StatusOK, api.Success(ListAvailableProjectAndGuildResp{
-		guilds:   guilds,
-		projects: projects,
+	ctx.JSON(http.StatusOK, api.Success(&ListAvailableProjectAndGuildResp{
+		guilds,
+		projects,
 	}))
 }
 
