@@ -250,6 +250,34 @@ const docTemplate = `{
                 }
             }
         },
+        "/available_projects_guilds": {
+            "get": {
+                "tags": [
+                    "app_bundle"
+                ],
+                "summary": "List available projects and guilds for current user",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Reply"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/app_bundle.ListAvailableProjectAndGuildResp"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/data_srv/aggr_scr": {
             "get": {
                 "summary": "returns aggregated credit score and node calculation result",
@@ -1867,6 +1895,9 @@ const docTemplate = `{
                 }
             }
         },
+        "app_bundle.ListAvailableProjectAndGuildResp": {
+            "type": "object"
+        },
         "application.ApplicantListResponse": {
             "type": "object",
             "properties": {
@@ -1891,7 +1922,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "metaforo_vote_count": {
-                    "type": "string"
+                    "type": "integer"
                 },
                 "season_total_credit": {
                     "type": "string"
