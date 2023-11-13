@@ -38,8 +38,64 @@ type AppBundleResponseRecord struct {
 	} `json:"assets"`
 }
 
+type ListAvailableProjectAndGuildResp struct {
+	guilds   []*model.Guild
+	projects []*model.Project
+}
+
 func BuildResponseFromDatabaseSearchResult() {
 
+}
+
+// ListAvailableProjectsAndGuilds returns available projects and guilds for current user
+//
+// @Summary	List available projects and guilds for current user
+// @Router		/available_projects_guilds [get]
+// @Tags		app_bundle
+//
+// @Success	200	{object}	api.Reply{data=ListAvailableProjectAndGuildResp}
+func ListAvailableProjectsAndGuilds(ctx *gin.Context) {
+	user, enforcer, db, _ := api.ForContext(ctx)
+
+	ok, err := enforcer.HasRoleForUser(user.Wallet, api.RoleHall)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		return
+	}
+
+	var guilds []*model.Guild
+	var projects []*model.Project
+
+	if ok {
+		guilds, _, err = model.GuildModel.List(db, nil)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+			return
+		}
+
+		projects, _, err = model.ProjectModel.List(db, "open", nil, false)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+			return
+		}
+	} else {
+		guilds, _, err = model.GuildModel.ListBySponsor(db, user.Wallet, nil)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+			return
+		}
+
+		projects, _, err = model.ProjectModel.ListBySponsor(db, user.Wallet, "open", nil, false)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+			return
+		}
+	}
+
+	ctx.JSON(http.StatusOK, api.Success(ListAvailableProjectAndGuildResp{
+		guilds:   guilds,
+		projects: projects,
+	}))
 }
 
 // ListAppBundle returns application bundles with passed in query types

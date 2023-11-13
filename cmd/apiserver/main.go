@@ -252,6 +252,7 @@ func main() {
 		applicationGroup.POST("/", application.Create)
 
 		appBundleGroup := authorizedGroup.Group("/app_bundles")
+		appBundleGroup.GET("/available_projects_guilds", app_bundle.ListAvailableProjectsAndGuilds)
 		appBundleGroup.GET("/", app_bundle.ListAppBundle)
 		appBundleGroup.POST("/", app_bundle.CreateAppBundle)
 

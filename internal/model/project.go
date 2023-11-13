@@ -98,6 +98,30 @@ func (*projectModel) ListBySponsorOrMember(db *gorm.DB, wallet string, page *gor
 	return data, total, nil
 }
 
+func (*projectModel) ListBySponsor(db *gorm.DB, sponsor string, status string, page *gormfind.Page, showSpecialProjectFlag bool) (data []*Project, total int64, err error) {
+	querySeg := db.Table("projects").Where("sponsors LIKE ?", fmt.Sprintf("%%\"%s\"%%", sponsor)) // value is: `%"0x123"%`
+	if !showSpecialProjectFlag {
+		querySeg = querySeg.Where("is_special = false")
+	}
+	if status != "" {
+		if strings.Contains(status, ",") {
+			querySeg = querySeg.Where("status IN ?", strings.Split(status, ","))
+		} else {
+			querySeg = querySeg.Where("status = ?", status)
+		}
+	}
+
+	total, err = gormfind.Count(querySeg)
+	if err != nil {
+		return
+	}
+	data, err = gormfind.Rows[Project](querySeg, page)
+	if err != nil {
+		return
+	}
+	return data, total, nil
+}
+
 // SetBudget set budget record directly. Only totalAmount will be passed in.
 // If the budget is not existing, a new record will be created with total and remain amount all set to passed in value
 // If the budget is already existing, the total will be updated to passed in value, and the remain will also be updated by the delta

@@ -69,6 +69,20 @@ func (*guildModel) ListBySponsorOrMember(db *gorm.DB, wallet string, page *gormf
 	return data, total, nil
 }
 
+func (*guildModel) ListBySponsor(db *gorm.DB, sponsor string, page *gormfind.Page) (data []*Guild, total int64, err error) {
+	querySeg := db.Table("guilds").Where("sponsors LIKE ?", fmt.Sprintf("%%\"%s\"%%", sponsor)) // value is: `%"0x123"%`
+
+	total, err = gormfind.Count(querySeg)
+	if err != nil {
+		return
+	}
+	data, err = gormfind.Rows[Guild](querySeg, page)
+	if err != nil {
+		return
+	}
+	return data, total, nil
+}
+
 // SetBudget set budget record directly, but only total amount is allowed to set directly
 func (*guildModel) SetBudget(db *gorm.DB, guildId uint, budgetType BudgetType, assertName string, totalAmount decimal.Decimal) error {
 	return db.Transaction(func(tx *gorm.DB) error {
