@@ -42,10 +42,6 @@ type ListAvailableProjectAndGuildResp struct {
 	Projects []*model.Project `json:"projects"`
 }
 
-func BuildResponseFromDatabaseSearchResult() {
-
-}
-
 // ListAvailableProjectsAndGuilds returns available projects and guilds for current user
 //
 // @Summary	List available projects and guilds for current user
