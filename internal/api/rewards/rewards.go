@@ -12,7 +12,6 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/model"
-	"github.com/theseed-labs/os-backend/internal/service"
 	"github.com/theseed-labs/os-backend/internal/storage"
 	"gorm.io/gorm"
 )
@@ -26,7 +25,7 @@ func ApproveMintReward(ctx *gin.Context) {
 
 	// TODO: Enforcer check permission
 
-	currentSeason, err := service.GetCurrentSeason(db)
+	currentSeason, err := model.GetCurrentSeason(db)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
@@ -126,7 +125,7 @@ func SnapshotSeed(ctx *gin.Context) {
 
 	// TODO: check permission of user
 
-	currentSeason, err := service.GetCurrentSeason(db)
+	currentSeason, err := model.GetCurrentSeason(db)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return

@@ -86,7 +86,6 @@ type ListApplicationQueryParams struct {
 type NewRewardAssetRecord struct {
 	// AssetName and Amount saves the token related info about this reward application.
 	// The asset type is same with project budget type, which is used to match budget record in project / guild
-	AssetType BudgetType      `json:"asset_type"`
 	AssetName string          `json:"asset_name"`
 	Amount    decimal.Decimal `json:"amount" sql:"type:decimal(20,8);"`
 }
@@ -99,18 +98,6 @@ type NewRewardApplicationDetailedData struct {
 
 	// Assets saves all application assets, the key for this map is asset name
 	Assets map[string]NewRewardAssetRecord `json:"assets"`
-}
-
-func (detailedData *NewRewardApplicationDetailedData) AmountOfAssetType(assetType BudgetType) (decimal.Decimal, bool) {
-	total := decimal.NewFromInt(0)
-	found := false
-	for _, record := range (*detailedData).Assets {
-		if record.AssetType == assetType {
-			total = total.Add(record.Amount)
-			found = true
-		}
-	}
-	return total, found
 }
 
 // FrontendApplicationRecord defines struct for application record that returns to frontend invoker
@@ -248,13 +235,10 @@ func (r *jointAppEntityRslt) ToFrontedApplicationRecord(db *gorm.DB) *FrontendAp
 
 type UpdateAssetRequestParams struct {
 	AssetName   string          `json:"asset_name"`
-	BudgetType  BudgetType      `json:"budget_type"`
 	TotalAmount decimal.Decimal `json:"total_amount" sql:"type:decimal(20,8);"`
 }
 
 type TreasuryAssetsResponse struct {
-	ID                uint            `json:"id"`
-	QuarterNum        string          `json:"quarter_num"`
 	CreditTotalAmount decimal.Decimal `json:"credit_total_amount"`
 	CreditUsedAmount  decimal.Decimal `json:"credit_used_amount"`
 	TokenTotalAmount  decimal.Decimal `json:"token_total_amount"`

@@ -17,7 +17,6 @@ import (
 type UserAssetRecord struct {
 	ID               uint            `json:"id" gorm:"primaryKey"`
 	UserWallet       string          `json:"user_wallet" gorm:"type:varchar(256)"`
-	AssetType        BudgetType      `json:"asset_type"`                                  // type of the asset, credit or token
 	AssetName        string          `json:"asset_name" gorm:"type:varchar(64)"`          // asset name
 	DealtAmount      decimal.Decimal `json:"dealt_amount" sql:"type:decimal(20,8);"`      // amount of asset that already dealt
 	ProcessingAmount decimal.Decimal `json:"processing_amount" sql:"type:decimal(20,8);"` // amount of asset that still need confirmation

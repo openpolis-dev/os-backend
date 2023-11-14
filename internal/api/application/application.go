@@ -19,7 +19,6 @@ import (
 	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/model"
-	"github.com/theseed-labs/os-backend/internal/service"
 	"github.com/xuri/excelize/v2"
 	"gorm.io/gorm"
 )
@@ -146,7 +145,7 @@ func Create(ctx *gin.Context) {
 				return err
 			}
 
-			seasonRecord, err := service.GetCurrentSeason(db)
+			seasonRecord, err := model.GetCurrentSeason(db)
 			if err != nil {
 				return err
 			}

@@ -105,7 +105,6 @@ func UpdateBudget(ctx *gin.Context) {
 	err = db.Where(&model.ProjectBudget{
 		ProjectID: cityHallProject.ID,
 		AssetName: req.AssetName,
-		Type:      model.BudgetType(req.AssetType),
 	}).First(&budget).Error
 
 	if err != nil {
@@ -113,7 +112,6 @@ func UpdateBudget(ctx *gin.Context) {
 			budget = model.ProjectBudget{
 				ProjectID:    cityHallProject.ID,
 				AssetName:    req.AssetName,
-				Type:         model.BudgetType(req.AssetType),
 				TotalAmount:  req.TotalAmount,
 				UsedAmount:   decimal.Zero,
 				RemainAmount: req.TotalAmount,

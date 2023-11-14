@@ -32,9 +32,8 @@ type (
 		Budgets []*BudgetParam `json:"budgets"`
 	}
 	BudgetParam struct {
-		Name        string           `json:"name"`
-		BudgetType  model.BudgetType `json:"budget_type"`
-		TotalAmount decimal.Decimal  `json:"total_amount"`
+		Name        string          `json:"name"`
+		TotalAmount decimal.Decimal `json:"total_amount"`
 	}
 	UpdateReq struct {
 		LogoStr string `json:"logo"`
@@ -125,7 +124,6 @@ func Create(ctx *gin.Context) {
 	budgets := lo.Map[*BudgetParam, *model.GuildBudget](req.Budgets, func(item *BudgetParam, _ int) *model.GuildBudget {
 		return &model.GuildBudget{
 			GuildID:      guild.ID,
-			Type:         item.BudgetType,
 			Name:         item.Name,
 			TotalAmount:  item.TotalAmount,
 			RemainAmount: item.TotalAmount,

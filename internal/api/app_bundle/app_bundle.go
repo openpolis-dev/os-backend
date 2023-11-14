@@ -13,7 +13,6 @@ import (
 	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/model"
-	"github.com/theseed-labs/os-backend/internal/service"
 	"gorm.io/gorm"
 )
 
@@ -234,7 +233,7 @@ func CreateAppBundle(ctx *gin.Context) {
 	}
 
 	// TODO: Need confirm about season number for application bundles
-	seasonRecord, err := service.GetCurrentSeason(db)
+	seasonRecord, err := model.GetCurrentSeason(db)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
