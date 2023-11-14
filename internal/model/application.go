@@ -125,7 +125,7 @@ func (app *Application) nextStateAfterAction(action AuditActionType) Application
 }
 
 // AuditApplication applies audit action on application and create related audit log in transaction
-func AuditApplication(db *gorm.DB, operatorWallet string, application *Application, action AuditActionType, extraMsg string, enforcer *casbin.Enforcer, push sdk.Pusher) error {
+func AuditApplication(db *gorm.DB, operatorWallet string, application *Application, action AuditActionType, extraMsg string, enforcer *casbin.Enforcer, push []sdk.Pusher) error {
 	// Check application record, verify whether the action can be applied on the application
 	if !application.ValidateAuditAction(action) {
 		// TODO: Define the error message as project constant
@@ -166,7 +166,7 @@ func AuditApplication(db *gorm.DB, operatorWallet string, application *Applicati
 
 // BatchAuditApplication audits multiple applications in same transaction.
 // Note: if any error occurred during the transaction the whole transaction will not be performed.
-func BatchAuditApplication(db *gorm.DB, operatorWallet string, applications *[]Application, action AuditActionType, extraMsg string, enforcer *casbin.Enforcer, push sdk.Pusher) error {
+func BatchAuditApplication(db *gorm.DB, operatorWallet string, applications *[]Application, action AuditActionType, extraMsg string, enforcer *casbin.Enforcer, push []sdk.Pusher) error {
 	for _, application := range *applications {
 		if !application.ValidateAuditAction(action) {
 			// TODO: Define the error message as project constant
@@ -190,7 +190,7 @@ func BatchAuditApplication(db *gorm.DB, operatorWallet string, applications *[]A
 	})
 }
 
-func doAuditApplicationInTransaction(tx *gorm.DB, operatorWallet string, application *Application, action AuditActionType, extraMsg string, enforcer *casbin.Enforcer, push sdk.Pusher) error {
+func doAuditApplicationInTransaction(tx *gorm.DB, operatorWallet string, application *Application, action AuditActionType, extraMsg string, enforcer *casbin.Enforcer, push []sdk.Pusher) error {
 	nextState := application.nextStateAfterAction(action)
 
 	// Create audit log for application
@@ -258,7 +258,7 @@ func processingApplication(tx *gorm.DB, application *Application) error {
 }
 
 // completeApplication performs the associated operations and marks the application to complete state
-func completeApplication(tx *gorm.DB, operatorWallet string, application *Application, enforcer *casbin.Enforcer, push sdk.Pusher) error {
+func completeApplication(tx *gorm.DB, operatorWallet string, application *Application, enforcer *casbin.Enforcer, push []sdk.Pusher) error {
 	if application.Type == ApplicationCloseProject {
 		// This is a close project application, so the `entity_id` saved indicates a project record
 		project, err := ProjectModel.Detail(tx, application.EntityId)

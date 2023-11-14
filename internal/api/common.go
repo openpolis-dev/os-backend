@@ -90,8 +90,8 @@ func ForContextOnlyDB(ctx *gin.Context) (db *gorm.DB) {
 }
 
 // ForContextOnlyPush read `Push` from `Context`
-func ForContextOnlyPush(ctx *gin.Context) (push sdk.Pusher) {
-	push, _ = ctx.Value(middleware.PushKey).(sdk.Pusher)
+func ForContextOnlyPush(ctx *gin.Context) (push []sdk.Pusher) {
+	push, _ = ctx.Value(middleware.PushKey).([]sdk.Pusher)
 
 	return
 }

@@ -43,9 +43,10 @@ type (
 		SuperUsers []string `json:"superUsers" yaml:"superUsers"`
 	}
 	push struct {
-		BaseURI string `json:"baseURI" yaml:"baseURI"`
-		Token   string `json:"token" yaml:"token"`
-
+		Desktop pushOneSignalConfig `json:"desktop" yaml:"desktop"`
+		Mobile  pushOneSignalConfig `json:"mobile" yaml:"mobile"`
+	}
+	pushOneSignalConfig struct {
 		OneSignalAppId  string `json:"oneSignalAppId" yaml:"oneSignalAppId"`
 		OneSignalAppKey string `json:"oneSignalAppKey" yaml:"oneSignalAppKey"`
 	}

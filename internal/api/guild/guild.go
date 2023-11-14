@@ -194,11 +194,13 @@ func Create(ctx *gin.Context) {
 	// send notification
 	push := api.ForContextOnlyPush(ctx)
 	staffs := append(sponsors, members...)
-	go func(push sdk.Pusher, staffs []string, guildID uint, guildName string) {
+	go func(push []sdk.Pusher, staffs []string, guildID uint, guildName string) {
 		title, body, data := sdk.GenerateGuildStaffAddNotificationParams(guildID, guildName)
-		err := push.PushToWallets(staffs, title, body, data)
-		if err != nil {
-			log.Error().Msgf("push to %v failed: %s", staffs, err)
+		for _, p := range push {
+			err := p.PushToWallets(staffs, title, body, data)
+			if err != nil {
+				log.Error().Msgf("push to %v failed: %s", staffs, err)
+			}
 		}
 	}(push, staffs, guild.ID, guild.Name)
 
@@ -528,11 +530,13 @@ func UpdateStaffs(ctx *gin.Context) {
 		// send notification
 		push := api.ForContextOnlyPush(ctx)
 		staffs := append(sponsors, members...)
-		go func(push sdk.Pusher, staffs []string, guildID uint, guildName string) {
+		go func(push []sdk.Pusher, staffs []string, guildID uint, guildName string) {
 			title, body, data := sdk.GenerateGuildStaffAddNotificationParams(guildID, guildName)
-			err := push.PushToWallets(staffs, title, body, data)
-			if err != nil {
-				log.Error().Msgf("push to %+v failed: %s", staffs, err)
+			for _, p := range push {
+				err := p.PushToWallets(staffs, title, body, data)
+				if err != nil {
+					log.Error().Msgf("push to %+v failed: %s", staffs, err)
+				}
 			}
 		}(push, staffs, guild.ID, guild.Name)
 	} else if req.Action == "remove" {
@@ -598,11 +602,13 @@ func UpdateStaffs(ctx *gin.Context) {
 		// send notification
 		push := api.ForContextOnlyPush(ctx)
 		staffs := append(sponsors, members...)
-		go func(push sdk.Pusher, staffs []string, guildID uint, guildName string) {
+		go func(push []sdk.Pusher, staffs []string, guildID uint, guildName string) {
 			title, body, data := sdk.GenerateGuildStaffRemoveNotificationParams(guildID, guildName)
-			err := push.PushToWallets(staffs, title, body, data)
-			if err != nil {
-				log.Error().Msgf("push to %+v failed: %s", staffs, err)
+			for _, p := range push {
+				err := p.PushToWallets(staffs, title, body, data)
+				if err != nil {
+					log.Error().Msgf("push to %+v failed: %s", staffs, err)
+				}
 			}
 		}(push, staffs, guild.ID, guild.Name)
 	}

@@ -24,6 +24,7 @@ type CreateReq struct {
 }
 
 // Create a push
+//
 //	@Summary	Create a push
 //	@Tags		Push
 //	@Accept		json
@@ -68,11 +69,13 @@ func Create(ctx *gin.Context) {
 
 	// send push
 	pushSDK := api.ForContextOnlyPush(ctx)
-	go func(pushSDK sdk.Pusher, title, body map[string]string, jumpURL string) {
+	go func(pushSDK []sdk.Pusher, title, body map[string]string, jumpURL string) {
 		data := sdk.GenerateCustomNotificationParams(jumpURL)
-		err := pushSDK.PushAll(title, body, data)
-		if err != nil {
-			log.Error().Msgf("push to all failed: %s", err)
+		for _, p := range pushSDK {
+			err := p.PushAll(title, body, data)
+			if err != nil {
+				log.Error().Msgf("push to all failed: %s", err)
+			}
 		}
 	}(pushSDK, map[string]string{sdk.LanguageZH: req.Title, sdk.LanguageEN: req.Title}, map[string]string{sdk.LanguageZH: req.Content, sdk.LanguageEN: req.Content}, req.JumpURL)
 

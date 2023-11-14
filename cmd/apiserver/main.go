@@ -52,7 +52,11 @@ func main() {
 
 	// setup push sdk
 	//pushSDK := sdk.NewFCM(cfg.Push.BaseURI, cfg.Push.Token)
-	pushSDK := sdk.NewOneSignal(cfg.Push.OneSignalAppId, cfg.Push.OneSignalAppKey)
+	pushSDK := []sdk.Pusher{
+		// need pushing to desktop and mobile
+		sdk.NewOneSignal(cfg.Push.Desktop.OneSignalAppId, cfg.Push.Desktop.OneSignalAppKey),
+		sdk.NewOneSignal(cfg.Push.Mobile.OneSignalAppId, cfg.Push.Mobile.OneSignalAppKey),
+	}
 
 	// setup permission system
 	adapter, err := gormadapter.NewAdapter(cfg.Casbin.DriverName, cfg.DataSource.Dsn, true)
