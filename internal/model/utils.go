@@ -5,22 +5,43 @@ import (
 	"strings"
 	"time"
 
+	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	"github.com/theseed-labs/os-backend/internal"
 	"gorm.io/gorm"
 )
 
 const DateQueryFormat = "2006-01-02"
-const DateTimeFormat = "2006-01-02T15:04:05"
 
-const QueryApplicationsWithEntityNameBaseSQL = `SELECT applications.*,
-CASE
-   WHEN applications.entity_type = 'project' THEN projects.name
-   WHEN applications.entity_type = 'guild' THEN guilds.name
-   ELSE NULL END AS entity_name
-FROM applications
-   LEFT JOIN projects ON applications.entity_type = 'project' AND applications.entity_id = projects.id
-   LEFT JOIN guilds ON applications.entity_type = 'guild' AND applications.entity_id = guilds.id`
+const QueryApplicationsWithEntityNameBaseSQL = `
+SELECT app.id               as application_id,
+       seasons.name,
+       CASE
+           WHEN app.entity_type = 'project' THEN projects.name
+           WHEN app.entity_type = 'guild' THEN guilds.name
+           ELSE NULL END    AS entity_name,
+       CASE
+           WHEN app.entity_type = 'project' THEN projects.name
+           WHEN app.entity_type = 'guild' THEN guilds.name
+           ELSE NULL END    AS budget_source,
+       aal.operation,
+       app.created_at       as created_at,
+       app.target_user_wallet,
+       app.asset_name,
+       app.asset_amount     as amount,
+       app.state            as status,
+       app.detailed_type,
+       app.comment,
+       app.applicant        as submitter_wallet,
+       aal.operator         as reviewer_wallet,
+       app.complete_message as transaction_ids
+FROM applications as app
+         LEFT JOIN projects ON app.entity_type = 'project' AND app.entity_id = projects.id
+         LEFT JOIN guilds ON app.entity_type = 'guild' AND app.entity_id = guilds.id
+         LEFT JOIN seasons ON app.season_id = app.season_id
+         LEFT JOIN application_audit_logs aal on app.id = aal.application_id AND aal.id = (select max(id)
+                                                                                           from application_audit_logs aal
+                                                                                           where aal.application_id = app.id)`
 
 const QueryAppBundlesWithEntityNameBaseSQL = `SELECT app_bundles.*,
 CASE
@@ -87,6 +108,7 @@ func GenerateFrontendApplicationRecordsByIds(db *gorm.DB, ids []uint64) ([]*Fron
 	var projectRcds []jointAppEntityRslt
 	err := db.Raw(querySQL, ids).Find(&projectRcds).Error
 	if err != nil {
+		log.Error().Msgf("query joint app entity error: %+v", err)
 		return nil, err
 	}
 
@@ -118,16 +140,16 @@ func GenerateFrontendApplicationRecords(db *gorm.DB, queryParams *ListApplicatio
 	appType := MustParseApplicationType(queryParams.Type)
 
 	querySQL := QueryApplicationsWithEntityNameBaseSQL
-	whereClause := "\nWHERE applications.type = @app_type"
+	whereClause := "\nWHERE app.type = @app_type"
 	whereParams := map[string]any{"app_type": appType}
 
 	if clearEntity != "" {
-		whereClause += " AND applications.entity_type = @entity_type"
+		whereClause += " AND app.entity_type = @entity_type"
 		whereParams["entity_type"] = clearEntity
 	}
 
 	if queryParams.Applicant != "" {
-		whereClause += " AND applications.applicant = @applicant"
+		whereClause += " AND app.applicant = @applicant"
 		whereParams["applicant"] = queryParams.Applicant
 	}
 
@@ -135,7 +157,7 @@ func GenerateFrontendApplicationRecords(db *gorm.DB, queryParams *ListApplicatio
 		if !lo.Contains([]string{"open", "approved", "rejected", "processing", "completed"}, clearState) {
 			return nil, 0, fmt.Errorf("unknown state %s", queryParams.State)
 		}
-		whereClause += " AND applications.state = @state"
+		whereClause += " AND app.state = @state"
 		whereParams["state"] = ApplicationState(clearState)
 	}
 
@@ -150,13 +172,13 @@ func GenerateFrontendApplicationRecords(db *gorm.DB, queryParams *ListApplicatio
 			return nil, 0, err
 		}
 
-		whereClause += " AND applications.created_at >= @start_date AND applications.created_at <= @end_date"
+		whereClause += " AND app.created_at >= @start_date AND app.created_at <= @end_date"
 		whereParams["start_date"] = startDate
 		whereParams["end_date"] = endDate
 	}
 
 	if len(strings.TrimSpace(queryParams.EntityId)) != 0 {
-		whereClause += " AND applications.entity_id = @entity_id"
+		whereClause += " AND app.entity_id = @entity_id"
 		whereParams["entity_id"] = strings.TrimSpace(queryParams.EntityId)
 	}
 
@@ -172,9 +194,9 @@ func GenerateFrontendApplicationRecords(db *gorm.DB, queryParams *ListApplicatio
 	if clearAppType == "close_project" {
 		// For close_project type, the return records should have stable order
 		querySort := lo.Map(CloseProjectStateOrder, func(state string, index int) string {
-			return fmt.Sprintf("when applications.state='%s' then %d\n", state, index+1)
+			return fmt.Sprintf("when app.state='%s' then %d\n", state, index+1)
 		})
-		orderByClause = fmt.Sprintf("case \n%s end asc, applications.created_at desc", strings.Join(querySort, ""))
+		orderByClause = fmt.Sprintf("case \n%s end asc, app.created_at desc", strings.Join(querySort, ""))
 	} else {
 		if queryParams.SortField == "" {
 			queryParams.SortField = "created_at"
@@ -184,16 +206,16 @@ func GenerateFrontendApplicationRecords(db *gorm.DB, queryParams *ListApplicatio
 			queryParams.SortOrder = "desc"
 		}
 
-		orderByClause = fmt.Sprintf("applications.%s %s ", queryParams.SortField, queryParams.SortOrder)
+		orderByClause = fmt.Sprintf("app.%s %s ", queryParams.SortField, queryParams.SortOrder)
 	}
 
 	if queryParams.UserWallet != "" {
-		whereClause += " AND applications.target_user_wallet = @target_user_wallet"
+		whereClause += " AND app.target_user_wallet = @target_user_wallet"
 		whereParams["target_user_wallet"] = strings.ToLower(strings.TrimSpace(queryParams.UserWallet))
 	}
 
 	if queryParams.SeasonId != 0 {
-		whereClause += " AND applications.season_id = @season_id"
+		whereClause += " AND app.season_id = @season_id"
 		whereParams["season_id"] = queryParams.SeasonId
 	}
 
@@ -205,15 +227,13 @@ func GenerateFrontendApplicationRecords(db *gorm.DB, queryParams *ListApplicatio
 	whereParams["offset"] = (queryParams.Page - 1) * queryParams.Size
 	whereParams["limit"] = queryParams.Size
 
-	var rcds []jointAppEntityRslt
-	err := db.Raw(querySQL+whereClause, whereParams).Find(&rcds).Error
+	var rslt []*FrontendApplicationRecord
+	err := db.Raw(querySQL+whereClause, whereParams).Find(&rslt).Error
 	if err != nil {
+		log.Error().Msgf("get application list error: %+v, query sql: %s, query params: %+v", err, querySQL+whereClause, whereParams)
 		return nil, 0, err
 	}
-	rslt := make([]*FrontendApplicationRecord, len(rcds))
-	for i, r := range rcds {
-		rslt[i] = r.ToFrontedApplicationRecord(db)
-	}
+
 	return rslt, total, nil
 }
 
