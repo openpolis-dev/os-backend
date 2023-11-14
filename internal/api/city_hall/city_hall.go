@@ -9,7 +9,6 @@ import (
 	"github.com/casbin/casbin/v2"
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
-	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
 	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api"
@@ -45,6 +44,12 @@ func getOrCreateCityHallProject(db *gorm.DB, enforcer *casbin.Enforcer) (*model.
 	cityHallProject, err := model.GetOrCreateCityHallProject(db, configuredCityHallUser)
 	if err != nil {
 		return nil, errors.New("get cityhall record error")
+	}
+
+	for grpName, _ := range cityHallProject.GroupedSponsors {
+		if _, found := internal.CityhallGroupNames[grpName]; !found {
+			delete(cityHallProject.GroupedSponsors, grpName)
+		}
 	}
 
 	return cityHallProject, err
@@ -168,7 +173,7 @@ func UpdateMember(ctx *gin.Context) {
 	err = ctx.BindJSON(&req)
 	log.Debug().Msgf("city hall update member form user %s", user.Wallet)
 
-	if !lo.Contains(internal.CityhallGroupNames, req.GroupName) {
+	if _, found := internal.CityhallGroupNames[req.GroupName]; !found {
 		ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("invalid group_name %s", req.GroupName)))
 		return
 	}
