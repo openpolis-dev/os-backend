@@ -80,7 +80,7 @@ type ApplicationAuditLog struct {
 	ID uint `json:"id" gorm:"primaryKey"`
 
 	// Which application this audit log belongs to
-	ApplicationID uint `json:"application_id"`
+	ApplicationID uint `json:"application_id" gorm:"index"`
 
 	LogTs time.Time `json:"log_ts"`
 
