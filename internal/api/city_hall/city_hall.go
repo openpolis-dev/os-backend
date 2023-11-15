@@ -173,14 +173,30 @@ func UpdateMember(ctx *gin.Context) {
 	err = ctx.BindJSON(&req)
 	log.Debug().Msgf("city hall update member form user %s", user.Wallet)
 
-	if _, found := internal.CityhallGroupNames[req.GroupName]; !found {
-		ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("invalid group_name %s", req.GroupName)))
-		return
+	//if _, found := internal.CityhallGroupNames[req.GroupName]; !found {
+	//	ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("invalid group_name %s", req.GroupName)))
+	//	return
+	//}
+
+	// TODO: All checking groupName is "" is workaround logic for non grouped request, will be changed to grouped version after FE updated
+	if req.GroupName != "" {
+		if _, found := internal.CityhallGroupNames[req.GroupName]; !found {
+			ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("invalid group_name %s", req.GroupName)))
+			return
+		}
 	}
 
 	sponsorsMap := make(map[string]bool)
-	if sponsors, found := cityHallProject.GroupedSponsors[req.GroupName]; found {
-		for _, sponsorWallet := range sponsors {
+
+	// TODO: All checking groupName is "" is workaround logic for non grouped request, will be changed to grouped version after FE updated
+	if req.GroupName != "" {
+		if sponsors, found := cityHallProject.GroupedSponsors[req.GroupName]; found {
+			for _, sponsorWallet := range sponsors {
+				sponsorsMap[model.FormatUserWallet(sponsorWallet)] = true
+			}
+		}
+	} else {
+		for _, sponsorWallet := range cityHallProject.Sponsors {
 			sponsorsMap[model.FormatUserWallet(sponsorWallet)] = true
 		}
 	}
@@ -233,23 +249,30 @@ func UpdateMember(ctx *gin.Context) {
 	}
 
 	// Update sponsors record in DB
-	var newSponsorsList []string
-	for memberAddr, confirmedSponsors := range sponsorsMap {
-		if confirmedSponsors {
-			newSponsorsList = append(newSponsorsList, memberAddr)
+	// TODO: All checking groupName is "" is workaround logic for non grouped request, will be changed to grouped version after FE updated
+	if req.GroupName != "" {
+		var newSponsorsList []string
+		for memberAddr, confirmedSponsors := range sponsorsMap {
+			if confirmedSponsors {
+				newSponsorsList = append(newSponsorsList, memberAddr)
+			}
 		}
+
+		if cityHallProject.GroupedSponsors == nil {
+			cityHallProject.GroupedSponsors = make(map[string][]string)
+		}
+
+		cityHallProject.GroupedSponsors[req.GroupName] = newSponsorsList
+	} else {
+		var newSponsorsList []string
+		for memberAddr, confirmedSponsors := range sponsorsMap {
+			if confirmedSponsors {
+				newSponsorsList = append(newSponsorsList, memberAddr)
+			}
+		}
+		cityHallProject.Sponsors = newSponsorsList
 	}
 
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
-		return
-	}
-
-	if cityHallProject.GroupedSponsors == nil {
-		cityHallProject.GroupedSponsors = make(map[string][]string)
-	}
-
-	cityHallProject.GroupedSponsors[req.GroupName] = newSponsorsList
 	err = db.Save(cityHallProject).Error
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
