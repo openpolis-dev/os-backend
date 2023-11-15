@@ -4,7 +4,6 @@ package model
 // and new_reward currently.
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -27,6 +26,10 @@ type Application struct {
 	// application type
 	Type ApplicationType `json:"type"`
 
+	// SubType saves an optional type for the application.
+	// And the data currently is only used by backend code, no frontend logic should relay on this
+	SubType string `json:"sub_type"`
+
 	// Member send this application
 	Applicant string `json:"applicant"`
 
@@ -43,6 +46,7 @@ type Application struct {
 	UpdatedAt time.Time `json:"updated_at"`
 
 	// DetailedType means a sub category of this application
+	// Value for this field saves data from Excel data
 	DetailedType string `json:"detailed_type"`
 
 	// Comment saves some user entered data
@@ -53,14 +57,22 @@ type Application struct {
 	// The data will be deserialized to specified struct before using
 	DetailedData datatypes.JSON `json:"detailed_data,omitempty"`
 
+	// In OS ver 2.0, a single application should only contain single asset record.
+	// The DetailedData field will be abandoned after v2.0
+	AssetName        string          `json:"asset_name" gorm:"index"`
+	AssetAmount      decimal.Decimal `json:"asset_amount" sql:"type:decimal(20,8);"`
+	TargetUserWallet string          `json:"target_user_wallet" gorm:"index"`
+
 	// Entity means this application's refer, which maybe project or guild.
 	// And the field EntityId is the db record ID for Project or Guild table
 	EntityType string `json:"entity_type" gorm:"index"`
 	EntityId   uint   `json:"entity_id" gorm:"index"`
 
-	// Save season name in application table
-	// Note: this may be changed to using separated Season table for saving some extra info
-	SeasonName string `json:"season_name" gorm:"index"`
+	// Season information of application
+	SeasonId uint    `json:"season_id"`
+	Season   *Season `json:"season"`
+
+	BundleId uint `json:"bundle_id"`
 }
 
 type ApplicationAuditLog struct {
@@ -68,7 +80,7 @@ type ApplicationAuditLog struct {
 	ID uint `json:"id" gorm:"primaryKey"`
 
 	// Which application this audit log belongs to
-	ApplicationID uint `json:"application_id"`
+	ApplicationID uint `json:"application_id" gorm:"index"`
 
 	LogTs time.Time `json:"log_ts"`
 
@@ -113,7 +125,7 @@ func (app *Application) nextStateAfterAction(action AuditActionType) Application
 }
 
 // AuditApplication applies audit action on application and create related audit log in transaction
-func AuditApplication(db *gorm.DB, operatorWallet string, application *Application, action AuditActionType, extraMsg string, enforcer *casbin.Enforcer, push *sdk.Push) error {
+func AuditApplication(db *gorm.DB, operatorWallet string, application *Application, action AuditActionType, extraMsg string, enforcer *casbin.Enforcer, push []sdk.Pusher) error {
 	// Check application record, verify whether the action can be applied on the application
 	if !application.ValidateAuditAction(action) {
 		// TODO: Define the error message as project constant
@@ -124,8 +136,16 @@ func AuditApplication(db *gorm.DB, operatorWallet string, application *Applicati
 	if application.EntityType == "project" {
 		project, err := ProjectModel.Detail(db, application.EntityId)
 		if err != nil {
+			log.Error().Msgf("Fetch project %d error: %+v", application.EntityId, err)
 			return err
 		}
+
+		if project == nil {
+			err := fmt.Errorf("project %d not found", application.EntityId)
+			log.Error().Msgf("Fetch project %d error: %+v", application.EntityId, err)
+			return err
+		}
+
 		// For close_project application, the project should be in pending_close state
 		// For new_reward application, the project should be in open state
 		if (application.Type == ApplicationCloseProject && project.Status != ProjectStatusPendingClose) ||
@@ -146,7 +166,7 @@ func AuditApplication(db *gorm.DB, operatorWallet string, application *Applicati
 
 // BatchAuditApplication audits multiple applications in same transaction.
 // Note: if any error occurred during the transaction the whole transaction will not be performed.
-func BatchAuditApplication(db *gorm.DB, operatorWallet string, applications *[]Application, action AuditActionType, extraMsg string, enforcer *casbin.Enforcer, push *sdk.Push) error {
+func BatchAuditApplication(db *gorm.DB, operatorWallet string, applications *[]Application, action AuditActionType, extraMsg string, enforcer *casbin.Enforcer, push []sdk.Pusher) error {
 	for _, application := range *applications {
 		if !application.ValidateAuditAction(action) {
 			// TODO: Define the error message as project constant
@@ -170,7 +190,7 @@ func BatchAuditApplication(db *gorm.DB, operatorWallet string, applications *[]A
 	})
 }
 
-func doAuditApplicationInTransaction(tx *gorm.DB, operatorWallet string, application *Application, action AuditActionType, extraMsg string, enforcer *casbin.Enforcer, push *sdk.Push) error {
+func doAuditApplicationInTransaction(tx *gorm.DB, operatorWallet string, application *Application, action AuditActionType, extraMsg string, enforcer *casbin.Enforcer, push []sdk.Pusher) error {
 	nextState := application.nextStateAfterAction(action)
 
 	// Create audit log for application
@@ -210,155 +230,102 @@ func doAuditApplicationInTransaction(tx *gorm.DB, operatorWallet string, applica
 	}
 
 	if nextState == ApplicationStateProcessing {
-		if application.Type == ApplicationNewReward {
-			// The NewReward application getting into processing state requires some updates on assets of project and user
-			// * For project/guild, find budget record and extract amount from remainAmount
-			// * For user, update asset record with asset name and processing amount.
-			if application.EntityType == "project" {
-				detailedData := NewRewardApplicationDetailedData{}
-				err := json.Unmarshal(application.DetailedData, &detailedData)
-				if err != nil {
-					return err
-				}
-
-				for assetName, assetRecord := range detailedData.Assets {
-					// Update project budget
-					if err := ProjectModel.WithdrawBudget(tx, application.EntityId, assetRecord.AssetType, assetName, assetRecord.Amount); err != nil {
-						return err
-					}
-
-					// Update user asset record
-					if err := UserAssetRecordModel.CreateOrUpdate(tx, detailedData.TargetUserWallet, assetRecord.AssetType, assetName, assetRecord.Amount, decimal.Zero); err != nil {
-						return err
-					}
-				}
-			} else if application.EntityType == "guild" {
-				detailedData := NewRewardApplicationDetailedData{}
-				err := json.Unmarshal(application.DetailedData, &detailedData)
-				if err != nil {
-					return err
-				}
-
-				for assetName, assetRecord := range detailedData.Assets {
-					// Update guild budget
-					if err := GuildModel.WithdrawBudget(tx, application.EntityId, assetRecord.AssetType, assetName, assetRecord.Amount); err != nil {
-						return err
-					}
-
-					// Update user asset record
-					if err := UserAssetRecordModel.CreateOrUpdate(tx, detailedData.TargetUserWallet, assetRecord.AssetType, assetName, assetRecord.Amount, decimal.Zero); err != nil {
-						return err
-					}
-				}
-			} else {
-				return fmt.Errorf("unknown application entity type %s", application.EntityType)
-			}
+		err := processingApplication(tx, application)
+		if err != nil {
+			return err
 		}
 	} else if nextState == ApplicationStateCompleted {
-		if application.Type == ApplicationCloseProject {
-			// This is a close project application, so the `entity_id` saved indicates a project record
-			project, err := ProjectModel.Detail(tx, application.EntityId)
-			if err != nil {
-				return err
-			}
-			project.Status = ProjectStatusClosed
-
-			// Deposit project remain budget back to treasure
-			budgets, err := ProjectBudgetModel.ListByProjectId(tx, project.ID)
-			if err != nil {
-				return err
-			}
-			for _, budget := range budgets {
-				err = TreasuryAssetHelper.DepositTreasureAsset(tx, budget.Type, budget.AssetName, budget.TotalAmount, operatorWallet, fmt.Sprintf("Close project %d by %s", project.ID, operatorWallet))
-				if err != nil {
-					return err
-				}
-			}
-
-			err = tx.Save(project).Error
-			if err != nil {
-				return err
-			}
-
-			// clean rbac if passed in enforcer
-			if enforcer != nil {
-				// remove policies
-				policies := [][]string{
-					// p, proj_sponsor_1, proj_1, modify
-					// p, proj_sponsor_1, proj_1, create_app
-					// p, proj_sponsor_1, proj_1, u_member
-					// p, proj_sponsor_1, proj_1, u_budget
-					{fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, project.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, project.ID), api.ActModify},
-					{fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, project.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, project.ID), api.ActCreateApplication},
-					{fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, project.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, project.ID), api.ActUpdateMember},
-					{fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, project.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, project.ID), api.ActUpdateBudget},
-					//// p, proj_member_1, proj_1, modify
-					//// p, proj_member_1, proj_1, create_app
-					//{fmt.Sprintf("%s%d", api.RoleProjMemberPrefix, project.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, project.ID), api.ActModify},
-					//{fmt.Sprintf("%s%d", api.RoleProjMemberPrefix, project.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, project.ID), api.ActCreateApplication},
-				}
-				_, err = enforcer.RemovePolicies(policies)
-				if err != nil {
-					return err
-				}
-				// remove roles for sponsors
-				oldSponsorGroupingPolicies := lo.Map(project.Sponsors, func(sponsor string, _ int) []string {
-					// g, 0xc13..1283 proj_sponsor_1
-					return []string{sponsor, fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, project.ID)}
-				})
-				_, err = enforcer.RemoveGroupingPolicies(oldSponsorGroupingPolicies)
-				if err != nil {
-					return err
-				}
-				err = enforcer.SavePolicy()
-				if err != nil {
-					return err
-				}
-				//// remove roles for members
-				//oldMemberGroupingPolicies := lo.Map(project.Members, func(member string, _ int) []string {
-				//	// g, 0xc13..1283 proj_member_1
-				//	return []string{member, fmt.Sprintf("%s%d", api.RoleProjMemberPrefix, project.ID)}
-				//})
-				//_, err = enforcer.RemoveGroupingPolicies(oldMemberGroupingPolicies)
-				//if err != nil {
-				//	return err
-				//}
-			}
-		} else if application.Type == ApplicationNewReward {
-			// For new reward application, the `entity_type` is required to get related db table
-			// The main steps for the post complete operation are:
-			// * Add the amount to target user
-
-			detailedData := NewRewardApplicationDetailedData{}
-			err := json.Unmarshal(application.DetailedData, &detailedData)
-			if err != nil {
-				return err
-			}
-
-			for assetName, assetRecord := range detailedData.Assets {
-				// Update user asset record
-				if err := UserAssetRecordModel.CompleteAssetTransaction(tx, detailedData.TargetUserWallet, assetRecord.AssetType, assetName, assetRecord.Amount); err != nil {
-					return err
-				}
-
-				if assetRecord.Amount.Cmp(decimal.Zero) == 0 {
-					continue
-				}
-
-				// send notification in separated coroutines if passed in notificator
-				if push != nil {
-					go func(push *sdk.Push, staffs []string, assertName string, amount string) {
-						title, body, data := api.GenerateObtainAssertNotificationParams(assertName, amount)
-						err := push.PushToWallets(staffs, title, body, data)
-						if err != nil {
-							log.Error().Msgf("push to %+v failed: %s", staffs, err)
-						}
-					}(push, []string{strings.ToLower(detailedData.TargetUserWallet)}, assetRecord.AssetName, assetRecord.Amount.String())
-				}
-			}
+		err := completeApplication(tx, operatorWallet, application, enforcer, push)
+		if err != nil {
+			return err
 		}
 	}
 
+	return nil
+}
+
+func processingApplication(tx *gorm.DB, application *Application) error {
+	if application.Type == ApplicationNewReward {
+		// Changes in OS ver 2.0
+		// * No budget for project and guild
+		// * One application only saves one type of asset, and the fields are extracted from DetailedData
+		// Update user asset record
+		if err := UserAssetRecordModel.CreateOrUpdate(tx, application.TargetUserWallet, application.AssetName, application.AssetAmount, decimal.Zero); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// completeApplication performs the associated operations and marks the application to complete state
+func completeApplication(tx *gorm.DB, operatorWallet string, application *Application, enforcer *casbin.Enforcer, push []sdk.Pusher) error {
+	if application.Type == ApplicationCloseProject {
+		// This is a close project application, so the `entity_id` saved indicates a project record
+		project, err := ProjectModel.Detail(tx, application.EntityId)
+		if err != nil {
+			return err
+		}
+
+		project.Status = ProjectStatusClosed
+		err = tx.Save(project).Error
+		if err != nil {
+			return err
+		}
+
+		// TODO: Verify whether those duplicated code can be merged into some functions
+		// clean rbac if passed in enforcer
+		if enforcer != nil {
+			// remove policies
+			policies := [][]string{
+				// p, proj_sponsor_1, proj_1, modify
+				// p, proj_sponsor_1, proj_1, create_app
+				// p, proj_sponsor_1, proj_1, u_member
+				// p, proj_sponsor_1, proj_1, u_budget
+				{fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, project.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, project.ID), api.ActModify},
+				{fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, project.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, project.ID), api.ActCreateApplication},
+				{fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, project.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, project.ID), api.ActUpdateMember},
+				{fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, project.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, project.ID), api.ActUpdateBudget},
+				//// p, proj_member_1, proj_1, modify
+				//// p, proj_member_1, proj_1, create_app
+				//{fmt.Sprintf("%s%d", api.RoleProjMemberPrefix, project.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, project.ID), api.ActModify},
+				//{fmt.Sprintf("%s%d", api.RoleProjMemberPrefix, project.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, project.ID), api.ActCreateApplication},
+			}
+			_, err = enforcer.RemovePolicies(policies)
+			if err != nil {
+				return err
+			}
+			// remove roles for sponsors
+			oldSponsorGroupingPolicies := lo.Map(project.Sponsors, func(sponsor string, _ int) []string {
+				// g, 0xc13..1283 proj_sponsor_1
+				return []string{sponsor, fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, project.ID)}
+			})
+			_, err = enforcer.RemoveGroupingPolicies(oldSponsorGroupingPolicies)
+			if err != nil {
+				return err
+			}
+			err = enforcer.SavePolicy()
+			if err != nil {
+				return err
+			}
+			//// remove roles for members
+			//oldMemberGroupingPolicies := lo.Map(project.Members, func(member string, _ int) []string {
+			//	// g, 0xc13..1283 proj_member_1
+			//	return []string{member, fmt.Sprintf("%s%d", api.RoleProjMemberPrefix, project.ID)}
+			//})
+			//_, err = enforcer.RemoveGroupingPolicies(oldMemberGroupingPolicies)
+			//if err != nil {
+			//	return err
+			//}
+		}
+	} else if application.Type == ApplicationNewReward {
+		// For new reward application, the `entity_type` is required to get related db table
+		// The main steps for the post complete operation are:
+		// * Add the amount to target user
+
+		if err := UserAssetRecordModel.CompleteAssetTransaction(tx, application.TargetUserWallet, application.AssetName, application.AssetAmount); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -386,4 +353,34 @@ func userWalletRecordExisting(db *gorm.DB, walletAddr string) error {
 	}
 
 	return nil
+}
+
+// GetCurrentSeasonApplications returns application in current season with state and type filter passed in
+func GetCurrentSeasonApplications(db *gorm.DB, states []string, appTypes []string) ([]*Application, error) {
+	currentSeason, err := GetCurrentSeason(db)
+	if err != nil {
+		log.Error().Msgf("get current season error: %+v", err)
+		return nil, err
+	}
+
+	whereClause := "season_id = @season_id"
+	whereParams := map[string]any{"season_id": currentSeason.ID}
+
+	if len(states) > 0 {
+		whereClause += " AND state IN ('" + strings.Join(states, "','") + "')"
+	}
+
+	if len(appTypes) > 0 {
+		whereClause += " AND type IN ('" + strings.Join(appTypes, "','") + "')"
+	}
+
+	var records []*Application
+	err = db.Model(Application{}).Where(whereClause, whereParams).Find(&records).Error
+
+	if err != nil {
+		log.Error().Msgf("query current season applications error: %+v", err)
+		return nil, err
+	}
+
+	return records, nil
 }

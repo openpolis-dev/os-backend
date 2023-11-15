@@ -3,6 +3,11 @@ package main
 import (
 	"flag"
 
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
+	"github.com/theseed-labs/os-backend/internal/api/data_srv"
+	"github.com/theseed-labs/os-backend/internal/api/rewards"
+
 	"github.com/casbin/casbin/v2"
 	gormadapter "github.com/casbin/gorm-adapter/v3"
 	"github.com/gin-contrib/cors"
@@ -10,21 +15,32 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
+	_ "github.com/theseed-labs/os-backend/docs"
 	"github.com/theseed-labs/os-backend/internal/api"
+	"github.com/theseed-labs/os-backend/internal/api/app_bundle"
 	"github.com/theseed-labs/os-backend/internal/api/application"
 	"github.com/theseed-labs/os-backend/internal/api/city_hall"
 	"github.com/theseed-labs/os-backend/internal/api/event"
 	"github.com/theseed-labs/os-backend/internal/api/guild"
 	"github.com/theseed-labs/os-backend/internal/api/permission"
 	"github.com/theseed-labs/os-backend/internal/api/project"
+	"github.com/theseed-labs/os-backend/internal/api/publicdata"
 	"github.com/theseed-labs/os-backend/internal/api/push"
+	"github.com/theseed-labs/os-backend/internal/api/season"
 	"github.com/theseed-labs/os-backend/internal/api/treasury"
 	"github.com/theseed-labs/os-backend/internal/api/user"
+	"github.com/theseed-labs/os-backend/internal/api/webhook"
 	"github.com/theseed-labs/os-backend/internal/config"
 	"github.com/theseed-labs/os-backend/internal/middleware"
 	"github.com/theseed-labs/os-backend/internal/sdk"
 	"github.com/theseed-labs/os-backend/internal/storage"
 )
+
+//	@title			OS Backend API service
+//	@version		1.0
+//	@license.name	MIT
+//	@host			https://test-api.seedao.tech
+//	@basePath		/v1
 
 func main() {
 	// read config data
@@ -35,7 +51,12 @@ func main() {
 	log.Debug().Msgf("application configuration: %+v", cfg)
 
 	// setup push sdk
-	pushSDK := &sdk.Push{BaseURI: cfg.Push.BaseURI, Token: cfg.Push.Token}
+	//pushSDK := sdk.NewFCM(cfg.Push.BaseURI, cfg.Push.Token)
+	pushSDK := []sdk.Pusher{
+		// need pushing to desktop and mobile
+		sdk.NewOneSignal(cfg.Push.Desktop.OneSignalAppId, cfg.Push.Desktop.OneSignalAppKey),
+		sdk.NewOneSignal(cfg.Push.Mobile.OneSignalAppId, cfg.Push.Mobile.OneSignalAppKey),
+	}
 
 	// setup permission system
 	adapter, err := gormadapter.NewAdapter(cfg.Casbin.DriverName, cfg.DataSource.Dsn, true)
@@ -77,7 +98,16 @@ func main() {
 
 	// setup database
 	storage.InitGormDB(cfg.DataSource.Dsn)
+	storage.MigrateTables()
+	storage.SeedDbRecords()
 	db := storage.GetGormDB()
+	if err != nil {
+		panic(err)
+	}
+
+	// setup cache
+	// Currently the cache is only used by saving aggregated data, may be extended to other data in future
+	storage.InitCache()
 
 	// setup S3 uploader manager
 	err = sdk.InitAwsClient(cfg.AwsConfig.AccessKey, cfg.AwsConfig.SecretKey, cfg.AwsConfig.Region, cfg.AwsConfig.BucketName)
@@ -87,6 +117,12 @@ func main() {
 
 	// setup Spp API client
 	err = sdk.InitSppClient(cfg.ExternalServices.SeedaoSppBase)
+	if err != nil {
+		panic(err)
+	}
+
+	// setup Indexer API Client
+	err = sdk.InitIndexerClient(cfg.ExternalServices.SeedaoEventIndexerBase)
 	if err != nil {
 		panic(err)
 	}
@@ -116,11 +152,6 @@ func main() {
 	v1 := r.Group("/v1")
 	// --> no auth required
 	{
-		// preview mode
-		v1.GET("/preview_enable", user.PreviewEnable)
-		v1.PUT("/preview_toggle", user.PreviewToggle)
-		v1.POST("/preview_login", user.PreviewLogin)
-
 		// user routers
 		userGroup := v1.Group("/user")
 		userGroup.POST("/refresh_nonce", user.RefreshNonce)
@@ -163,6 +194,29 @@ func main() {
 		cityHallGroup := v1.Group("/cityhall")
 		cityHallGroup.GET("/info", city_hall.Info)
 
+		// public data
+		publicData := v1.Group("/public_data")
+		publicData.GET("/discord_member_count", publicdata.DiscordData)
+		publicData.GET("/contract/seed", publicdata.SeedDataFromIndexer)
+		publicData.GET("/contract/scr", publicdata.SCRDataFromIndexer)
+		publicData.GET("/contract/node", publicdata.NodeDataFromIndexer)
+		publicData.GET("/notion/database/:id", publicdata.NotionDatabase)
+		publicData.GET("/notion/page/:id", publicdata.NotionPage)
+		publicData.GET("/notion/user/:id", publicdata.NotionUser)
+
+		// webhook routers
+		webhookGroup := v1.Group("/webhook")
+		webhookGroup.POST("/tally", webhook.Tally)
+
+		// season data
+		seasonsData := v1.Group("/seasons")
+		seasonsData.GET("/", season.List)
+
+		// some data service
+		// TODO: Move to authorized group
+		dataSrv := v1.Group("/data_srv")
+		dataSrv.GET("/aggr_scr", data_srv.AggrScr)
+
 		// foo routers
 	}
 	// --> auth required
@@ -196,14 +250,20 @@ func main() {
 		// my guilds
 		authorizedGroup.GET("/my_guilds", guild.MyGuilds)
 
-		// application routers
+		// application endpoints
+		// Note: Most NEW_REWARD applications has been moved to app_bundle part
 		applicationGroup := authorizedGroup.Group("/applications")
 		applicationGroup.POST("/", application.Create)
-		applicationGroup.POST("/:id/approve", application.Approve)
-		applicationGroup.POST("/:id/reject", application.Reject)
-		applicationGroup.POST("/:id/complete", application.Complete)
-		applicationGroup.POST("/:id/process", application.Process)
 
+		appBundleGroup := authorizedGroup.Group("/app_bundles")
+		appBundleGroup.GET("/available_projects_guilds", app_bundle.ListAvailableProjectsAndGuilds)
+		appBundleGroup.GET("/", app_bundle.ListAppBundle)
+		appBundleGroup.POST("/", app_bundle.CreateAppBundle)
+
+		authorizedGroup.POST("/app_bundle_approve", app_bundle.ApproveAppBundles)
+		authorizedGroup.POST("/app_bundle_reject", app_bundle.RejectAppBundles)
+
+		// batch application routers
 		authorizedGroup.POST("/apps_approve", application.BatchApprove)
 		authorizedGroup.POST("/apps_reject", application.BatchReject)
 		authorizedGroup.POST("/apps_process", application.BatchProcess)
@@ -237,11 +297,13 @@ func main() {
 		pushGroup.POST("/", push.Create)
 		pushGroup.GET("/", push.List)
 
-		// foo routers
+		// reward routers
+		rewardsGroup := authorizedGroup.Group("/rewards")
+		rewardsGroup.POST("/approve_mint_reward", rewards.ApproveMintReward)
+		rewardsGroup.POST("/snapshot_seed", rewards.SnapshotSeed)
 	}
 
-	r.StaticFile("/_doc/apispec", "./_doc/api.html")
-	r.StaticFile("/_doc/api.yml", "./_doc/api.yml")
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	_ = r.Run()
 }

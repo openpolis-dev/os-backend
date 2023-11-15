@@ -5,6 +5,7 @@ import (
 
 	"github.com/casbin/casbin/v2"
 	"github.com/gin-gonic/gin"
+	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/config"
 	"github.com/theseed-labs/os-backend/internal/middleware"
 	"github.com/theseed-labs/os-backend/internal/sdk"
@@ -89,8 +90,8 @@ func ForContextOnlyDB(ctx *gin.Context) (db *gorm.DB) {
 }
 
 // ForContextOnlyPush read `Push` from `Context`
-func ForContextOnlyPush(ctx *gin.Context) (push *sdk.Push) {
-	push, _ = ctx.Value(middleware.PushKey).(*sdk.Push)
+func ForContextOnlyPush(ctx *gin.Context) (push []sdk.Pusher) {
+	push, _ = ctx.Value(middleware.PushKey).([]sdk.Pusher)
 
 	return
 }
@@ -137,7 +138,7 @@ func ParseAndConvertPageParam(ctx *gin.Context) *gormfind.Page {
 	}
 
 	if size == 0 {
-		size = DefaultPageSize
+		size = internal.DefaultPageSize
 	}
 
 	return &gormfind.Page{

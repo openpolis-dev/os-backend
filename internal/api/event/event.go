@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/xiaosongfu/gormfind"
@@ -143,7 +144,7 @@ func Detail(ctx *gin.Context) {
 func Delete(ctx *gin.Context) {
 	db := api.ForContextOnlyDB(ctx)
 	patterStr := ctx.Query("delete_key")
-	if patterStr != api.EventDeleteMagicWorld {
+	if patterStr != internal.EventDeleteMagicWorld {
 		ctx.JSON(http.StatusNotFound, "")
 		return
 	}

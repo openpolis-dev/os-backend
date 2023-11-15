@@ -1,11 +1,13 @@
 package model
 
 import (
-	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
 
+	"github.com/rs/zerolog/log"
+	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 )
@@ -35,10 +37,6 @@ func MustParseApplicationType(typeStr string) ApplicationType {
 	return applicationType
 }
 
-func (t ApplicationType) ToString() string {
-	return string(t)
-}
-
 const (
 	ApplicationCloseProject ApplicationType = "CLOSE_PROJECT"
 	ApplicationNewReward    ApplicationType = "NEW_REWARD"
@@ -64,7 +62,7 @@ const (
 var applicationStateMap = map[ApplicationState]map[AuditActionType]ApplicationState{
 	ApplicationStateOpen:       {AuditActionApprove: ApplicationStateApproved, AuditActionReject: ApplicationStateRejected},
 	ApplicationStateApproved:   {AuditActionProcess: ApplicationStateProcessing},
-	ApplicationStateRejected:   {},
+	ApplicationStateRejected:   {AuditActionApprove: ApplicationStateApproved},
 	ApplicationStateProcessing: {AuditActionComplete: ApplicationStateCompleted},
 	ApplicationStateCompleted:  {},
 }
@@ -82,12 +80,12 @@ type ListApplicationQueryParams struct {
 	EndDate    string `form:"end_date"`
 	Applicant  string `form:"applicant"`
 	UserWallet string `form:"user_wallet"`
+	SeasonId   int    `form:"season_id"`
 }
 
 type NewRewardAssetRecord struct {
 	// AssetName and Amount saves the token related info about this reward application.
 	// The asset type is same with project budget type, which is used to match budget record in project / guild
-	AssetType BudgetType      `json:"asset_type"`
 	AssetName string          `json:"asset_name"`
 	Amount    decimal.Decimal `json:"amount" sql:"type:decimal(20,8);"`
 }
@@ -102,26 +100,15 @@ type NewRewardApplicationDetailedData struct {
 	Assets map[string]NewRewardAssetRecord `json:"assets"`
 }
 
-func (detailedData *NewRewardApplicationDetailedData) AmountOfAssetType(assetType BudgetType) (decimal.Decimal, bool) {
-	total := decimal.NewFromInt(0)
-	found := false
-	for _, record := range (*detailedData).Assets {
-		if record.AssetType == assetType {
-			total = total.Add(record.Amount)
-			found = true
-		}
-	}
-	return total, found
-}
-
 // FrontendApplicationRecord defines struct for application record that returns to frontend invoker
 type FrontendApplicationRecord struct {
 	ApplicationID    uint      `json:"application_id"`
+	SeasonName       string    `json:"season_name"`
 	EntityName       string    `json:"entity_name"` // name field value from specified entity table
 	CreatedAt        time.Time `json:"created_at"`
 	TargetUserWallet string    `json:"target_user_wallet"`
-	TokenAmount      string    `json:"token_amount"`
-	CreditAmount     string    `json:"credit_amount"`
+	AssetName        string    `json:"asset_name"`
+	Amount           string    `json:"amount"`
 	BudgetSource     string    `json:"budget_source"` // the data is from name field of project or guild
 	Status           string    `json:"status"`        // application status
 	DetailedType     string    `json:"detailed_type"`
@@ -144,8 +131,8 @@ func (r *FrontendApplicationRecord) ToCSV() []string {
 	return []string{
 		createdAtStr,
 		r.TargetUserWallet,
-		r.CreditAmount,
-		r.TokenAmount,
+		r.AssetName,
+		r.Amount,
 		r.DetailedType,
 		r.BudgetSource,
 		r.Comment,
@@ -168,8 +155,8 @@ func (r *FrontendApplicationRecord) ToXlsx() []any {
 	return []any{
 		createdAtStr,
 		r.TargetUserWallet,
-		r.CreditAmount,
-		r.TokenAmount,
+		r.AssetName,
+		r.Amount,
 		r.DetailedType,
 		r.BudgetSource,
 		r.Comment,
@@ -181,46 +168,13 @@ func (r *FrontendApplicationRecord) ToXlsx() []any {
 	}
 }
 
-// jointAppProjectFields saves query fields of join query of application and project
-const jointAppProjectFields = `applications.id,
-applications.type,
-applications.applicant,
-applications.state,
-applications.reject_reason,
-applications.complete_message,
-applications.created_at,
-applications.updated_at,
-applications.entity_type,
-applications.entity_id,
-applications.detailed_data,
-applications.detailed_type,
-applications.comment,
-projects.name as prj_name,
-projects.id as prj_id`
-
-// jointAppEntityRslt saves results returned by application and project join query
+// jointAppEntityRslt saves applications records by guild and project join query
 type jointAppEntityRslt struct {
 	Application *Application `gorm:"embedded"`
 	EntityName  string       `json:"entity_name"`
 }
 
 func (r *jointAppEntityRslt) ToFrontedApplicationRecord(db *gorm.DB) *FrontendApplicationRecord {
-	var tokenAmount decimal.Decimal
-	var creditAmount decimal.Decimal
-	var targetUserWallet string
-	if r.Application.Type == ApplicationNewReward {
-		detailedData := NewRewardApplicationDetailedData{}
-		err := json.Unmarshal(r.Application.DetailedData, &detailedData)
-		if err != nil {
-			return nil
-		}
-
-		tokenAmount, _ = detailedData.AmountOfAssetType(BudgetTypeToken)
-		creditAmount, _ = detailedData.AmountOfAssetType(BudgetTypeCredit)
-
-		targetUserWallet = detailedData.TargetUserWallet
-	}
-
 	var submitterWallet string
 	var submitterUsername string
 	var reviewerWallet string
@@ -237,8 +191,9 @@ func (r *jointAppEntityRslt) ToFrontedApplicationRecord(db *gorm.DB) *FrontendAp
 		Where(&ApplicationAuditLog{ApplicationID: r.Application.ID}).
 		Where("operation IN ?", []string{AuditActionApprove, AuditActionReject}).First(&auditlog).Error
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			// No record found, skip
+			log.Warn().Msgf("Application %d has no audit log found", r.Application.ID)
 		} else {
 			return nil
 		}
@@ -246,17 +201,26 @@ func (r *jointAppEntityRslt) ToFrontedApplicationRecord(db *gorm.DB) *FrontendAp
 		reviewerWallet = auditlog.Operator
 		reviewerUsername, err = UserModel.TryGetUsername(db, reviewerWallet)
 		if err != nil {
+			log.Error().Msgf("Get username error: %+v", err)
 			return nil
 		}
 	}
 
+	var appSeasonRcd Season
+	err = db.Model(&Season{}).First(&appSeasonRcd, r.Application.SeasonId).Error
+	if err != nil {
+		log.Error().Msgf("Query season error: %+v", err)
+		return nil
+	}
+
 	return &FrontendApplicationRecord{
 		ApplicationID:    r.Application.ID,
+		SeasonName:       appSeasonRcd.Name,
 		EntityName:       r.Application.EntityType,
 		CreatedAt:        r.Application.CreatedAt,
-		TargetUserWallet: targetUserWallet,
-		TokenAmount:      tokenAmount.String(),
-		CreditAmount:     creditAmount.String(),
+		TargetUserWallet: r.Application.TargetUserWallet,
+		AssetName:        r.Application.AssetName,
+		Amount:           r.Application.AssetAmount.String(),
 		BudgetSource:     r.EntityName,
 		Status:           string(r.Application.State),
 		DetailedType:     r.Application.DetailedType,
@@ -271,13 +235,10 @@ func (r *jointAppEntityRslt) ToFrontedApplicationRecord(db *gorm.DB) *FrontendAp
 
 type UpdateAssetRequestParams struct {
 	AssetName   string          `json:"asset_name"`
-	BudgetType  BudgetType      `json:"budget_type"`
 	TotalAmount decimal.Decimal `json:"total_amount" sql:"type:decimal(20,8);"`
 }
 
 type TreasuryAssetsResponse struct {
-	ID                uint            `json:"id"`
-	QuarterNum        string          `json:"quarter_num"`
 	CreditTotalAmount decimal.Decimal `json:"credit_total_amount"`
 	CreditUsedAmount  decimal.Decimal `json:"credit_used_amount"`
 	TokenTotalAmount  decimal.Decimal `json:"token_total_amount"`
@@ -290,10 +251,48 @@ type NewApplicationRequest struct {
 	Entity           string          `json:"entity"`
 	EntityId         uint            `json:"entity_id"`
 	TargetUserWallet string          `json:"target_user_wallet"`
-	CreditAssetName  string          `json:"credit_asset_name"`
-	CreditAmount     decimal.Decimal `json:"credit_amount"`
-	TokenAssetName   string          `json:"token_asset_name"`
-	TokenAmount      decimal.Decimal `json:"token_amount"`
+	AssetName        string          `json:"asset_name"`
+	Amount           decimal.Decimal `json:"amount"`
 	DetailedType     string          `json:"detailed_type"`
 	Comment          string          `json:"comment"`
+}
+
+// App Bundle related types and logic
+
+type ListAppBundleQueryParams struct {
+	Page      int    `form:"page"`
+	Size      int    `form:"size"`
+	SortField string `form:"sort_field"`
+	SortOrder string `form:"sort_order"`
+	State     string `form:"state"`
+	Entity    string `form:"entity"`
+	EntityId  string `form:"entity_id"`
+	Applicant string `form:"applicant"`
+	SeasonId  int    `form:"season_id"`
+}
+
+// JointAppBundleEntityRslt saves app bundles records by guild and project join query
+type JointAppBundleEntityRslt struct {
+	AppBundle  *AppBundle `gorm:"embedded"`
+	EntityName string     `json:"entity_name"`
+	SeasonName string     `json:"season_name"`
+}
+
+func ToFrontendApplicationRecordList(db *gorm.DB, appRcds []*Application, entityName string) []*FrontendApplicationRecord {
+	return lo.Map(appRcds, func(appRcd *Application, _ int) *FrontendApplicationRecord {
+		appEntityRcd := jointAppEntityRslt{
+			Application: appRcd,
+			EntityName:  entityName,
+		}
+		return appEntityRcd.ToFrontedApplicationRecord(db)
+	})
+}
+
+// NewAppBundleRequest saves new application bundle request data, the records inside uses NewApplicationRequest directly
+// The only type in newAppBundle is newApplication is newReward
+type NewAppBundleRequest struct {
+	Entity   string                   `json:"entity"`
+	EntityId uint                     `json:"entity_id"`
+	Comment  string                   `json:"comment"`
+	Records  []*NewApplicationRequest `json:"records"`
 }

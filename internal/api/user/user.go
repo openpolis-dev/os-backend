@@ -36,7 +36,15 @@ type RefreshNonceReply struct {
 	Nonce string `json:"nonce"`
 }
 
-// RefreshNonce `POST /refresh_nonce`
+// RefreshNonce refresh nonce
+//
+//	@Summary	Refresh nonce
+//	@Tags		Auth
+//	@Accept		json
+//	@Produce	json
+//	@Param		JsonBody	body		RefreshNonceReq	true	"request json body"
+//	@Success	200			{object}	api.Reply{data=RefreshNonceReply}
+//	@Router		/user/refresh_nonce [post]
 func RefreshNonce(ctx *gin.Context) {
 	req := RefreshNonceReq{}
 	err := ctx.BindJSON(&req)
@@ -68,14 +76,24 @@ func RefreshNonce(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, api.Success(RefreshNonceReply{Nonce: nonce}))
+	ctx.JSON(http.StatusOK, api.Success(&RefreshNonceReply{Nonce: nonce}))
 }
 
 type RetrieveNonceReply struct {
 	Nonce string `json:"nonce"`
 }
 
-// RetrieveNonce `GET /retrieve_nonce?wallet=0x123
+// RetrieveNonce  retrieve nonce
+//
+//	`GET /retrieve_nonce?wallet=0x123
+//
+//	@Summary	Retrieve nonce
+//	@Tags		Auth
+//	@Accept		json
+//	@Produce	json
+//	@Param		wallet	query		string	true	"wallet address"
+//	@Success	200		{object}	api.Reply{data=RetrieveNonceReply}
+//	@Router		/user/retrieve_nonce [get]
 func RetrieveNonce(ctx *gin.Context) {
 	wallet := ctx.Query("wallet")
 
@@ -92,7 +110,7 @@ func RetrieveNonce(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, api.Success(RetrieveNonceReply{Nonce: userNonce.Nonce}))
+	ctx.JSON(http.StatusOK, api.Success(&RetrieveNonceReply{Nonce: userNonce.Nonce}))
 }
 
 type LoginReq struct {
@@ -110,7 +128,15 @@ type LoginReply struct {
 	User     *model.User `json:"user"`
 }
 
-// Login `POST /login`
+// Login user login
+//
+//	@Summary	Login
+//	@Tags		Auth
+//	@Accept		json
+//	@Produce	json
+//	@Param		JsonBody	body		LoginReq	true	"request json body"
+//	@Success	200			{object}	api.Reply{data=LoginReply}
+//	@Router		/user/login [post]
 func Login(ctx *gin.Context) {
 	req := LoginReq{}
 	err := ctx.BindJSON(&req)
@@ -201,14 +227,21 @@ func Login(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, api.Success(LoginReply{
+	ctx.JSON(http.StatusOK, api.Success(&LoginReply{
 		Token:    token,
 		TokenExp: tokenExp,
 		User:     user,
 	}))
 }
 
-// Logout `POST /logout`
+// Logout user logout
+//
+//	@Summary	Logout
+//	@Tags		Auth
+//	@Accept		json
+//	@Produce	json
+//	@Success	200	{object}	api.Reply
+//	@Router		/user/logout [post]
 func Logout(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, api.Success(nil))
 }
@@ -216,9 +249,26 @@ func Logout(ctx *gin.Context) {
 // ------ ------ ------ ------ ------ ------ ------ ------ ------
 // ------ User ------ ------
 
-// Detail `GET /me`
+// Detail get user detail
+//
+//	@Summary	Get user detail
+//	@Tags		User
+//	@Accept		json
+//	@Produce	json
+//	@Success	200	{object}	api.Reply{data=sdk.SeepassResponse}
+//	@Router		/user/me [get]
 func Detail(ctx *gin.Context) {
+	// TODO: Get data from seepass API, and return data from DB if seepass returns 404
 	user, db := api.ForContextUserAndDB(ctx)
+
+	sppClient := sdk.GetSppClient()
+	seepassResp, err := sppClient.GetSeepassData(user.Wallet)
+	if err == nil {
+		ctx.JSON(http.StatusOK, api.Success(seepassResp))
+		return
+	}
+
+	log.Warn().Msgf("query seepass data error, wallet: %s, error: %+v", user.Wallet, err)
 
 	u, err := model.UserModel.Detail(db, user.Wallet)
 	if err != nil {
@@ -229,7 +279,24 @@ func Detail(ctx *gin.Context) {
 		u = &model.User{Wallet: user.Wallet}
 	}
 
-	ctx.JSON(http.StatusOK, api.Success(u))
+	seepassResp = &sdk.SeepassResponse{
+		Roles:    make([]string, 0),
+		Wallet:   user.Wallet,
+		Nickname: u.Name,
+		Avatar:   u.Avatar,
+		Bio:      u.Bio,
+		Email:    u.Email,
+	}
+
+	seepassResp.Scr.Amount = "0"
+
+	// TODO: Move the hardcoded data to some const data or configuraiton service
+	seepassResp.Level.CurrentLv = "0"
+	seepassResp.Level.NextLv = "1"
+	seepassResp.Level.ScrToNextLv = "5000"
+	seepassResp.Level.UpgradePercent = "0"
+
+	ctx.JSON(http.StatusOK, api.Success(seepassResp))
 }
 
 type UpdateReq struct {
@@ -241,10 +308,19 @@ type UpdateReq struct {
 	DiscordProfile string `json:"discord_profile"`
 	TwitterProfile string `json:"twitter_profile"`
 	GoogleProfile  string `json:"google_profile"`
+	GithubProfile  string `json:"github_profile"`
 	Mirror         string `json:"mirror"`
 }
 
 // Update `PUT /me`
+//
+//	@Summary	Update user info
+//	@Tags		User
+//	@Accept		json
+//	@Produce	json
+//	@Param		JsonBody	body		UpdateReq	true	"request json body"
+//	@Success	200			{object}	api.Reply
+//	@Router		/user/me [put]
 func Update(ctx *gin.Context) {
 	req := UpdateReq{}
 	err := ctx.BindJSON(&req)
@@ -273,6 +349,7 @@ func Update(ctx *gin.Context) {
 	u.DiscordProfile = req.DiscordProfile
 	u.TwitterProfile = req.TwitterProfile
 	u.GoogleProfile = req.GoogleProfile
+	u.GithubProfile = req.GithubProfile
 	u.Mirror = req.Mirror
 
 	// Only upload image when data is b64 image string (start with `data:image`)
@@ -290,7 +367,7 @@ func Update(ctx *gin.Context) {
 	}
 
 	sppClient := sdk.GetSppClient()
-	sppUpdatePayload := u.BuildSppUpdateProfilePayload(user.Wallet)
+	sppUpdatePayload := u.BuildSppUpdateProfilePayload()
 	err = sppClient.UpdateProfile(user.Wallet, sppUpdatePayload)
 	if err != nil {
 		log.Error().Msgf("update user %s info to spp error, update req data: %+v, error: %+v", user.Wallet, req, err)
@@ -299,8 +376,17 @@ func Update(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, api.Success(nil))
 }
 
-// Users `GET /users?wallets=0x1&wallets=0x2&wallets=0x3`
-// query multiple users by wallet array on batch
+// Users query multiple users by wallet array on batch
+//
+//	`GET /users?wallets=0x1&wallets=0x2&wallets=0x3`
+//
+//	@Summary	Query multiple users by wallet array on batch
+//	@Tags		User
+//	@Accept		json
+//	@Produce	json
+//	@Param		wallets	query		[]string	true	"wallets"
+//	@Success	200		{object}	api.Reply{data=[]model.User}
+//	@Router		/user/users [get]
 func Users(ctx *gin.Context) {
 	wallets := ctx.QueryArray("wallets")
 	//// convert all wallet to lower case
@@ -333,8 +419,17 @@ func Users(ctx *gin.Context) {
 // ------ ------ ------ ------ ------ ------ ------ ------ ------
 // ------ Permission ------ ------
 
-// GetFrontendPermission `GET /casbin?casbin_subject=0x1`
-// query frontend permission by user wallet
+// GetFrontendPermission query frontend permission by user wallet
+//
+//	`GET /casbin?casbin_subject=0x1`
+//
+//	@Summary	Query frontend permission by user wallet
+//	@Tags		Permission
+//	@Accept		json
+//	@Produce	json
+//	@Param		casbin_subject	query		string	true	"casbin_subject"
+//	@Success	200				{object}	api.Reply{data=string}
+//	@Router		/user/casbin [get]
 func GetFrontendPermission(ctx *gin.Context) {
 	enforcer := api.ForContextOnlyEnforcer(ctx)
 

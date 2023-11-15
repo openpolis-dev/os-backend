@@ -16,7 +16,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
-	"github.com/shopspring/decimal"
+	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/xuri/excelize/v2"
@@ -27,15 +27,21 @@ type AuditRequestBody struct {
 	Message string `json:"message"`
 }
 
+type ApplicantListResponse struct {
+	Applicant string
+	Name      string
+}
+
 // ListApplicants list all applicants existing in applications table for filter
+//
+//	@summary	List all applicants existing in applications table for filter
+//	@router		/apps_applicants [get]
+//	@success	200	{object}	ApplicantListResponse
 func ListApplicants(ctx *gin.Context) {
 	var err error
 	db := api.ForContextOnlyDB(ctx)
 
-	var rslt []struct {
-		Applicant string
-		Name      string
-	}
+	var rslt []ApplicantListResponse
 
 	err = db.Model(&model.Application{}).
 		Distinct("wallet").
@@ -51,7 +57,10 @@ func ListApplicants(ctx *gin.Context) {
 }
 
 // List lists all applications based on query params and return in JSON format
-// GET /applications
+//
+//	@summary	lists all applications based on query params and return in JSON format
+//	@router		/applications [get]
+//	@success	200	{object}	api.Reply{data=api.ListReplyData{rows=model.FrontendApplicationRecord}}
 func List(ctx *gin.Context) {
 	var err error
 	db := api.ForContextOnlyDB(ctx)
@@ -84,7 +93,11 @@ func List(ctx *gin.Context) {
 
 // Create handles creating one or more application records with passed in data, the passed in data must be an array
 // An audit log record will be created with application at same time with action open
-// POST /applications/
+//
+//	@summary	create single application, for now only CLOSE_PROJECT type is allowed
+//	@router		/applications [post]
+//	@param		JsonBody	body		[]model.NewApplicationRequest	true	"new application request"
+//	@success	200			{string}	nil
 func Create(ctx *gin.Context) {
 	var newApplicationReqs []model.NewApplicationRequest
 	if err := ctx.BindJSON(&newApplicationReqs); err != nil {
@@ -109,6 +122,10 @@ func Create(ctx *gin.Context) {
 				return fmt.Errorf("unknown application entity %s", req.Entity)
 			}
 
+			if appType == model.ApplicationNewReward {
+				return fmt.Errorf("NEW_REWARD application should be submitted via app_bundle")
+			}
+
 			if req.Entity != "guild" && req.Entity != "project" {
 				return fmt.Errorf("unknown application entity %s", req.Entity)
 			}
@@ -128,8 +145,25 @@ func Create(ctx *gin.Context) {
 				return err
 			}
 
-			if (!req.CreditAmount.Equal(decimal.Zero) && req.CreditAssetName == "") || (!req.TokenAmount.Equal(decimal.Zero) && req.TokenAssetName == "") {
-				return fmt.Errorf("asset name for related amount is required")
+			seasonRecord, err := model.GetCurrentSeason(db)
+			if err != nil {
+				return err
+			}
+
+			appBundle := model.AppBundle{
+				Applicant:    user.Wallet,
+				EntityType:   req.Entity,
+				EntityId:     req.EntityId,
+				SeasonId:     seasonRecord.ID,
+				State:        model.ApplicationStateOpen,
+				CreatedAt:    time.Time{},
+				UpdatedAt:    time.Time{},
+				ShadowRecord: true,
+				Type:         "CLOSE_PROJECT",
+			}
+			err = db.Save(&appBundle).Error
+			if err != nil {
+				return err
 			}
 
 			app := &model.Application{
@@ -138,35 +172,12 @@ func Create(ctx *gin.Context) {
 				State:        model.ApplicationStateOpen,
 				EntityType:   req.Entity,
 				EntityId:     req.EntityId,
+				SeasonId:     seasonRecord.ID,
 				DetailedType: req.DetailedType,
 				Comment:      req.Comment,
 				CreatedAt:    time.Now(),
 				UpdatedAt:    time.Now(),
-			}
-
-			if appType == model.ApplicationNewReward {
-				rewardDetailedData := model.NewRewardApplicationDetailedData{
-					TargetUserWallet: req.TargetUserWallet,
-					Assets: map[string]model.NewRewardAssetRecord{
-						req.CreditAssetName: {
-							AssetType: model.BudgetTypeCredit,
-							AssetName: req.CreditAssetName,
-							Amount:    req.CreditAmount,
-						},
-						req.TokenAssetName: {
-							AssetType: model.BudgetTypeToken,
-							AssetName: req.TokenAssetName,
-							Amount:    req.TokenAmount,
-						},
-					},
-				}
-
-				detailedDataBytes, err := json.Marshal(rewardDetailedData)
-				if err != nil {
-					return err
-				}
-
-				app.DetailedData = detailedDataBytes
+				BundleId:     appBundle.ID,
 			}
 
 			err = model.NewApplicationRecord(db, app)
@@ -228,8 +239,8 @@ func Download(ctx *gin.Context) {
 	}
 
 	lang := api.GetLangFromQuery(ctx, "en")
-	headerStr := api.ApplicationDownloadHeader[lang]
-	if header, found := api.ApplicationDownloadHeader[lang]; found {
+	headerStr := internal.ApplicationDownloadHeader[lang]
+	if header, found := internal.ApplicationDownloadHeader[lang]; found {
 		headerStr = header
 	}
 
@@ -328,8 +339,8 @@ func Download(ctx *gin.Context) {
 
 func DownloadUploadTemplate(ctx *gin.Context) {
 	lang := api.GetLangFromQuery(ctx, "en")
-	headerStr := api.ApplicationUploadTemplateHeader[lang]
-	if header, found := api.ApplicationUploadTemplateHeader[lang]; found {
+	headerStr := internal.ApplicationUploadTemplateHeader[lang]
+	if header, found := internal.ApplicationUploadTemplateHeader[lang]; found {
 		headerStr = header
 	}
 

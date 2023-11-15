@@ -20,6 +20,7 @@ type Config struct {
 	Push             push            `json:"push" yaml:"push"`
 	AwsConfig        awsConfig       `json:"awsConfig" yaml:"awsConfig"`
 	ExternalServices externalService `json:"externalServices" yaml:"externalServices"`
+	PublicData       publicData      `json:"publicData" yaml:"publicData"`
 }
 
 type (
@@ -42,8 +43,12 @@ type (
 		SuperUsers []string `json:"superUsers" yaml:"superUsers"`
 	}
 	push struct {
-		BaseURI string `json:"baseURI" yaml:"baseURI"`
-		Token   string `json:"token" yaml:"token"`
+		Desktop pushOneSignalConfig `json:"desktop" yaml:"desktop"`
+		Mobile  pushOneSignalConfig `json:"mobile" yaml:"mobile"`
+	}
+	pushOneSignalConfig struct {
+		OneSignalAppId  string `json:"oneSignalAppId" yaml:"oneSignalAppId"`
+		OneSignalAppKey string `json:"oneSignalAppKey" yaml:"oneSignalAppKey"`
 	}
 	awsConfig struct {
 		AccessKey  string `json:"accessKey" yaml:"accessKey"`
@@ -52,7 +57,25 @@ type (
 		BucketName string `json:"bucketName" yaml:"bucketName"`
 	}
 	externalService struct {
-		SeedaoSppBase string `json:"SeedaoSppBase" yaml:"SeedaoSppBase"`
+		SeedaoSppBase          string `json:"SeedaoSppBase" yaml:"SeedaoSppBase"`
+		SeedaoEventIndexerBase string `json:"SeedaoEventIndexerBase" yaml:"SeedaoEventIndexerBase"`
+	}
+	publicData struct {
+		Discord struct {
+			Token   string `json:"token" yaml:"token"`
+			GuildID string `json:"guildID" yaml:"guildID"`
+		} `json:"discord" yaml:"discord"`
+		Contracts struct {
+			SCR  string `json:"scr" yaml:"scr"`
+			Seed string `json:"seed" yaml:"seed"`
+			Node string `json:"node" yaml:"node"`
+		} `json:"contracts" yaml:"contracts"`
+		CacheInSeconds int64  `json:"cacheInSeconds" yaml:"cacheInSeconds"`
+		MainnetRPC     string `json:"mainnetRPC" yaml:"mainnetRPC"`
+		SppIndexerHost string `json:"sppIndexerHost" yaml:"sppIndexerHost"`
+		Notion         struct {
+			APIToken string `json:"APIToken" yaml:"APIToken"`
+		} `json:"notion" yaml:"notion"`
 	}
 )
 

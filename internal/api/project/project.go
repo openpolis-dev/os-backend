@@ -25,6 +25,8 @@ type (
 	CreateReq struct {
 		LogoStr string `json:"logo"` // base64 encoded image string
 		Name    string `json:"name"`
+		Intro   string `json:"intro"`
+		Desc    string `json:"desc"`
 
 		Sponsors  []string `json:"sponsors"`
 		Members   []string `json:"members"`
@@ -33,23 +35,18 @@ type (
 		Budgets []*BudgetParam `json:"budgets"`
 	}
 	BudgetParam struct {
-		Name        string           `json:"name"`
-		BudgetType  model.BudgetType `json:"budget_type"`
-		TotalAmount decimal.Decimal  `json:"total_amount"`
+		Name        string          `json:"name"`
+		TotalAmount decimal.Decimal `json:"total_amount"`
 	}
 	UpdateReq struct {
 		LogoStr string `json:"logo"`
 		Name    string `json:"name"`
+		Intro   string `json:"intro"`
+		Desc    string `json:"desc"`
 	}
 	DetailReply struct {
 		model.Project
 		Budgets []*model.ProjectBudget `json:"budgets"`
-	}
-	UpdateSponsorsReq struct {
-		Sponsors []string `json:"sponsors"`
-	}
-	UpdateMembersReq struct {
-		Members []string `json:"members"`
 	}
 	UpdateBudgetReq struct {
 		Id          uint            `json:"id"`
@@ -59,6 +56,14 @@ type (
 )
 
 // Create `POST /projects`
+//
+//	@Summary		Create a project with passed in data
+//	@Description	This api create a project record with passed in data
+//	@Router			/projects [post]
+//	@Tags			Project
+//	@Param			request	body		CreateReq	true	"new project request data"
+//
+//	@Success		200		{object}	api.Reply
 func Create(ctx *gin.Context) {
 	req := CreateReq{}
 	err := ctx.BindJSON(&req)
@@ -74,6 +79,14 @@ func Create(ctx *gin.Context) {
 	members := lo.Map[string](req.Members, func(item string, _ int) string {
 		return strings.ToLower(item)
 	})
+	// remove duplicate sponsors and members
+	sponsors = lo.Uniq[string](sponsors)
+	members = lo.Uniq[string](members)
+	// remove sponsors from members
+	members = lo.Without[string](members, sponsors...)
+
+	// remove duplicate proposals
+	proposals := lo.Uniq[string](req.Proposals)
 
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
@@ -91,10 +104,13 @@ func Create(ctx *gin.Context) {
 	// save project
 	proj := model.Project{
 		Name:      req.Name,
+		Intro:     req.Intro,
+		Desc:      req.Desc,
 		Status:    model.ProjectStatusOpen,
 		Sponsors:  sponsors,
 		Members:   members,
-		Proposals: req.Proposals,
+		Proposals: proposals,
+		Creator:   user.Wallet,
 	}
 	err = model.ProjectModel.CreateOrUpdate(tx, &proj)
 	if err != nil {
@@ -106,7 +122,6 @@ func Create(ctx *gin.Context) {
 	budgets := lo.Map[*BudgetParam, *model.ProjectBudget](req.Budgets, func(item *BudgetParam, _ int) *model.ProjectBudget {
 		return &model.ProjectBudget{
 			ProjectID:    proj.ID,
-			Type:         item.BudgetType,
 			AssetName:    item.Name,
 			TotalAmount:  item.TotalAmount,
 			UsedAmount:   decimal.Zero,
@@ -122,7 +137,7 @@ func Create(ctx *gin.Context) {
 
 	// Withdraw asset from treasure
 	for _, budget := range budgets {
-		err = model.TreasuryAssetHelper.WithdrawTreasureAsset(tx, budget.Type, budget.AssetName, budget.TotalAmount, user.Wallet, fmt.Sprintf("Create project %d by %s", proj.ID, user.Wallet))
+		err = model.TreasuryAssetHelper.WithdrawTreasureAsset(tx, budget.AssetName, budget.TotalAmount, user.Wallet, fmt.Sprintf("Create project %d by %s", proj.ID, user.Wallet))
 		if err != nil {
 			tx.Rollback()
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
@@ -189,18 +204,29 @@ func Create(ctx *gin.Context) {
 	// send notification
 	push := api.ForContextOnlyPush(ctx)
 	staffs := append(sponsors, members...)
-	go func(push *sdk.Push, staffs []string, projectID uint, projectName string) {
-		title, body, data := api.GenerateProjectStaffAddNotificationParams(projectID, projectName)
-		err := push.PushToWallets(staffs, title, body, data)
-		if err != nil {
-			log.Error().Msgf("push to %v failed: %s", staffs, err)
+	go func(push []sdk.Pusher, staffs []string, projectID uint, projectName string) {
+		title, body, data := sdk.GenerateProjectStaffAddNotificationParams(projectID, projectName)
+		for _, p := range push {
+			err := p.PushToWallets(staffs, title, body, data)
+			if err != nil {
+				log.Error().Msgf("push to %v failed: %s", staffs, err)
+			}
 		}
 	}(push, staffs, proj.ID, proj.Name)
 
-	ctx.JSON(http.StatusOK, api.Success(nil))
+	ctx.JSON(http.StatusOK, api.Success(proj))
 }
 
 // Update `PUT /projects/:id`
+//
+//	@Summary		Update project information
+//	@Description	This api update a project record with passed in data
+//	@Router			/projects/:id [put]
+//	@Tags			Project
+//	@Param			id		path		string		true	"id of the project"
+//	@Param			request	body		UpdateReq	true	"update project info"
+//
+//	@Success		200		{object}	api.Reply
 func Update(ctx *gin.Context) {
 	idParam := ctx.Param("id")
 	id, err := strconv.Atoi(idParam)
@@ -253,6 +279,8 @@ func Update(ctx *gin.Context) {
 	// update logo and name
 	proj.Logo = logoUrl
 	proj.Name = req.Name
+	proj.Intro = req.Intro
+	proj.Desc = req.Desc
 	err = model.ProjectModel.CreateOrUpdate(db, proj)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
@@ -264,6 +292,14 @@ func Update(ctx *gin.Context) {
 
 // Close
 // POST /project/:id/close
+//
+//	@Summary		Close a project
+//	@Description	This api close specified project, admin permission is required for this operation
+//	@Router			/projects/:id/close [post]
+//	@Tags			Project
+//	@Param			id	path		number	true	"project ID"
+//
+//	@Success		200	{object}	api.Reply
 func Close(ctx *gin.Context) {
 	idParam := ctx.Param("id")
 	id, err := strconv.Atoi(idParam)
@@ -330,6 +366,13 @@ func Close(ctx *gin.Context) {
 }
 
 // Detail `GET /project/:id`
+//
+//	@Summary	show detail of a project
+//	@Tags		Project
+//	@Param		id	path	int	true	"guild id"
+//	@Router		/projects/:id [get]
+//
+//	@Success	200	{object}	api.Reply{data=DetailReply}
 func Detail(ctx *gin.Context) {
 	idParam := ctx.Param("id")
 	id, err := strconv.Atoi(idParam)
@@ -363,6 +406,18 @@ func Detail(ctx *gin.Context) {
 }
 
 // List `GET /projects?status=open&page=1&size=10&sort_field=created_at&sort_order=desc`
+//
+//	@Summary		List all projects match the query params
+//	@Description	This api parses passed in pagination query params,
+//	@Router			/projects [get]
+//	@Tags			Project
+//	@Param			status		query		string	false	"status array, e.g. 'open,pending_close'"	Enum(open pending_close closed)
+//	@Param			page		query		string	false	"which page"
+//	@Param			size		query		string	false	"size of each page"
+//	@Param			sort_field	query		string	false	"sort by which field"
+//	@Param			sort_order	query		string	false	"order of sort"	Enum(asc desc)
+//
+//	@Success		200			{object}	api.Reply{data=api.ListReplyData{rows=model.Project}}
 func List(ctx *gin.Context) {
 	db := api.ForContextOnlyDB(ctx)
 
@@ -386,7 +441,20 @@ func List(ctx *gin.Context) {
 	}))
 }
 
-// MyProjects `GET /projects/my?page=1&size=10&sort_field=created_at&sort_order=desc`
+// MyProjects  list my projects
+//
+//	`GET /projects/my_projects?page=1&size=10&sort_field=created_at&sort_order=desc`
+//
+//	@Summary	list my projects
+//	@Tags		Project
+//	@Accept		json
+//	@Produce	json
+//	@Param		page		query		int		false	"page number, default: 1"
+//	@Param		size		query		int		false	"page size, default: 10"
+//	@Param		sort_field	query		string	false	"sort field, default: created_at"
+//	@Param		sort_order	query		string	false	"sort order, default: desc"
+//	@Success	200			{object}	api.Reply{data=api.ListReplyData{rows=model.Project}}
+//	@Router		/projects/my_projects [get]
 func MyProjects(ctx *gin.Context) {
 	user, db := api.ForContextUserAndDB(ctx)
 
@@ -406,150 +474,22 @@ func MyProjects(ctx *gin.Context) {
 	}))
 }
 
-// ------ ------ ------ ------ ------ ------ ------ ------ ------
-// ------ Project Sponsors/Members ------ ------
-
-//// UpdateSponsors `POST /projects/:id/update_sponsors`
-//func UpdateSponsors(ctx *gin.Context) {
-//	idParam := ctx.Param("id")
-//	id, err := strconv.Atoi(idParam)
-//	if err != nil {
-//		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
-//		return
-//	}
-//
-//	req := UpdateSponsorsReq{}
-//	err = ctx.BindJSON(&req)
-//	if err != nil {
-//		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
-//		return
-//	}
-//
-//	user, enforcer, db, _ := api.ForContext(ctx)
-//	//  check permission
-//	ok, err := enforcer.Enforce(user.Wallet, fmt.Sprintf("%s%d", api.ObjProjPrefix, id), api.ActUpdateSponsor)
-//	if err != nil {
-//		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
-//		return
-//	}
-//	if !ok {
-//		ctx.JSON(http.StatusForbidden, api.Forbidden())
-//		return
-//	}
-//
-//	proj, err := model.ProjectModel.Detail(db, uint(id))
-//	if err != nil {
-//		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
-//		return
-//	}
-//
-//	// remove roles for old sponsors
-//	oldSponsorGroupingPolicies := lo.Map(proj.Sponsors, func(sponsor string, _ int) []string {
-//		// g, 0xc13..1283 proj_sponsor_1
-//		return []string{sponsor, fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, proj.ID)}
-//	})
-//	_, err = enforcer.RemoveGroupingPolicies(oldSponsorGroupingPolicies)
-//	if err != nil {
-//		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
-//		return
-//	}
-//
-//	// update project sponsors
-//	proj.Sponsors = req.Sponsors
-//	err = model.ProjectModel.CreateOrUpdate(db, proj)
-//	if err != nil {
-//		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
-//		return
-//	}
-//
-//	// add roles for new sponsors
-//	newSponsorGroupingPolicies := lo.Map(req.Sponsors, func(sponsor string, _ int) []string {
-//		// g, 0xc13..1283 proj_sponsor_1
-//		return []string{strings.ToLower(sponsor), fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, proj.ID)}
-//	})
-//	_, err = enforcer.AddGroupingPolicies(newSponsorGroupingPolicies)
-//	if err != nil {
-//		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
-//		return
-//	}
-//
-//	ctx.JSON(http.StatusOK, api.Success(nil))
-//}
-//
-//// UpdateMembers `POST /projects/:id/update_members`
-//func UpdateMembers(ctx *gin.Context) {
-//	idParam := ctx.Param("id")
-//	id, err := strconv.Atoi(idParam)
-//	if err != nil {
-//		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
-//		return
-//	}
-//
-//	req := UpdateMembersReq{}
-//	err = ctx.BindJSON(&req)
-//	if err != nil {
-//		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
-//		return
-//	}
-//
-//	user, enforcer, db, _ := api.ForContext(ctx)
-//	//  check permission
-//	ok, err := enforcer.Enforce(user.Wallet, fmt.Sprintf("%s%d", api.ObjProjPrefix, id), api.ActUpdateMember)
-//	if err != nil {
-//		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
-//		return
-//	}
-//	if !ok {
-//		ctx.JSON(http.StatusForbidden, api.Forbidden())
-//		return
-//	}
-//
-//	proj, err := model.ProjectModel.Detail(db, uint(id))
-//	if err != nil {
-//		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
-//		return
-//	}
-//
-//	//// remove roles for old members
-//	//oldMemberGroupingPolicies := lo.Map(proj.Members, func(member string, _ int) []string {
-//	//	// g, 0xc13..1283 proj_member_1
-//	//	return []string{member, fmt.Sprintf("%s%d", api.RoleProjMemberPrefix, proj.ID)}
-//	//})
-//	//_, err = enforcer.RemoveGroupingPolicies(oldMemberGroupingPolicies)
-//	//if err != nil {
-//	//	ctx.JSON(http.StatusInternalServerError, err)
-//	//	return
-//	//}
-//
-//	// update project members
-//	proj.Members = req.Members
-//	err = model.ProjectModel.CreateOrUpdate(db, proj)
-//	if err != nil {
-//		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
-//		return
-//	}
-//
-//	//// add roles for new members
-//	//newMemberGroupingPolicies := lo.Map(req.Members, func(member string, _ int) []string {
-//	//	// g, 0xc13..1283 proj_member_1
-//	//	return []string{strings.ToLower(member), fmt.Sprintf("%s%d", api.RoleProjMemberPrefix, proj.ID)}
-//	//})
-//	//_, err = enforcer.AddGroupingPolicies(newMemberGroupingPolicies)
-//	//if err != nil {
-//	//	ctx.JSON(http.StatusInternalServerError, err)
-//	//	return
-//	//}
-//
-//	ctx.JSON(http.StatusOK, api.Success(nil))
-//}
-
 type UpdateStaffsReq struct {
 	Action   string   `json:"action"` // `add` or `remove`
 	Sponsors []string `json:"sponsors"`
 	Members  []string `json:"members"`
 }
 
-// UpdateStaffs `POST /projects/:id/update_staffs`
+// UpdateStaffs update project sponsors and members
+//
+//	@Summary	update project sponsors and members
+//	@Tags		Project
+//	@Accept		json
+//	@Produce	json
+//	@Param		id			path		int				true	"project id"
+//	@Param		JsonBody	body		UpdateStaffsReq	true	"request json body"
+//	@Success	200			{object}	api.Reply
+//	@Router		/projects/{id}/update_staffs [post]
 func UpdateStaffs(ctx *gin.Context) {
 	idParam := ctx.Param("id")
 	id, err := strconv.Atoi(idParam)
@@ -624,6 +564,8 @@ func UpdateStaffs(ctx *gin.Context) {
 			proj.Sponsors = append(proj.Sponsors, sponsors...)
 			// remove duplicate sponsors
 			proj.Sponsors = lo.Uniq[string](proj.Sponsors)
+			// remove sponsors from members
+			proj.Sponsors = lo.Without[string](proj.Sponsors, proj.Members...)
 			err = model.ProjectModel.CreateOrUpdate(tx, proj)
 			if err != nil {
 				tx.Rollback()
@@ -658,6 +600,8 @@ func UpdateStaffs(ctx *gin.Context) {
 			proj.Members = append(proj.Members, members...)
 			// remove duplicate members
 			proj.Members = lo.Uniq[string](proj.Members)
+			// remove members from sponsors
+			proj.Members = lo.Without[string](proj.Members, proj.Sponsors...)
 			err = model.ProjectModel.CreateOrUpdate(tx, proj)
 			if err != nil {
 				tx.Rollback()
@@ -683,11 +627,13 @@ func UpdateStaffs(ctx *gin.Context) {
 		// send notification
 		push := api.ForContextOnlyPush(ctx)
 		staffs := append(sponsors, members...)
-		go func(push *sdk.Push, staffs []string, projectID uint, projectName string) {
-			title, body, data := api.GenerateProjectStaffAddNotificationParams(projectID, projectName)
-			err := push.PushToWallets(staffs, title, body, data)
-			if err != nil {
-				log.Error().Msgf("push to %+v failed: %s", staffs, err)
+		go func(push []sdk.Pusher, staffs []string, projectID uint, projectName string) {
+			title, body, data := sdk.GenerateProjectStaffAddNotificationParams(projectID, projectName)
+			for _, p := range push {
+				err := p.PushToWallets(staffs, title, body, data)
+				if err != nil {
+					log.Error().Msgf("push to %+v failed: %s", staffs, err)
+				}
 			}
 		}(push, staffs, proj.ID, proj.Name)
 	} else if req.Action == "remove" {
@@ -753,11 +699,13 @@ func UpdateStaffs(ctx *gin.Context) {
 		// send notification
 		push := api.ForContextOnlyPush(ctx)
 		staffs := append(sponsors, members...)
-		go func(push *sdk.Push, staffs []string, projectID uint, projectName string) {
-			title, body, data := api.GenerateProjectStaffRemoveNotificationParams(projectID, projectName)
-			err := push.PushToWallets(staffs, title, body, data)
-			if err != nil {
-				log.Error().Msgf("push to %+v failed: %s", staffs, err)
+		go func(push []sdk.Pusher, staffs []string, projectID uint, projectName string) {
+			title, body, data := sdk.GenerateProjectStaffRemoveNotificationParams(projectID, projectName)
+			for _, p := range push {
+				err := p.PushToWallets(staffs, title, body, data)
+				if err != nil {
+					log.Error().Msgf("push to %+v failed: %s", staffs, err)
+				}
 			}
 		}(push, staffs, proj.ID, proj.Name)
 	}
@@ -770,7 +718,16 @@ func UpdateStaffs(ctx *gin.Context) {
 // ------ ------ ------ ------ ------ ------ ------ ------ ------
 // ------ Project Budget ------ ------
 
-// UpdateBudget `POST /projects/:id/update_budget`
+// UpdateBudget update project budget
+//
+//	@Summary	Update project budget
+//	@Tags		Project
+//	@Accept		json
+//	@Produce	json
+//	@Param		id			path		int				true	"project id"
+//	@Param		JsonBody	body		UpdateBudgetReq	true	"request json body"
+//	@Success	200			{object}	api.Reply
+//	@Router		/projects/{id}/update_budget [post]
 func UpdateBudget(ctx *gin.Context) {
 	idParam := ctx.Param("id")
 	id, err := strconv.Atoi(idParam)
@@ -836,6 +793,14 @@ func UpdateBudget(ctx *gin.Context) {
 // ------ Project Proposals ------ ------
 
 // AddRelatedProposal `POST /projects/:id/add_related_proposal?proposalIDs=1&proposalIDs=2`
+//
+//	@Summary	Add related proposals to the project
+//	@Router		/projects/:id/add_related_proposal [post]
+//	@Tags		Project
+//	@Param		id			path		number		true	"project ID"
+//	@Param		proposalIDs	query		[]string	true	"proposal ID list"
+//
+//	@Success	200			{object}	api.Reply
 func AddRelatedProposal(ctx *gin.Context) {
 	idParam := ctx.Param("id")
 	id, err := strconv.Atoi(idParam)

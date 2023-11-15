@@ -12,13 +12,19 @@ import (
 func GetOrCreateCurrentAssetRecords(ctx *gin.Context) {
 	db := api.ForContextOnlyDB(ctx)
 
-	currQuarterTreasuryRecord, err := model.TreasuryAssetHelper.GetOrCreateCurrQuarterRecord(db)
+	currQuarterTreasuryRecord, err := model.TreasuryAssetHelper.GetOrCreateCurrentSeasonRecord(db)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
 
-	ctx.JSON(http.StatusOK, api.Success(currQuarterTreasuryRecord.ToTreasuryAssetsResponse(db)))
+	treasuryAssetResp, err := currQuarterTreasuryRecord.ToTreasuryAssetsResponse(db)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, api.Success(treasuryAssetResp))
 }
 
 // UpdateAssets updates asset records of current quarter budget
@@ -44,7 +50,7 @@ func UpdateAssets(ctx *gin.Context) {
 
 	err = db.Transaction(func(tx *gorm.DB) error {
 		for _, assetParam := range updateParams {
-			err = model.TreasuryAssetHelper.UpsertCQTreasuryDetailedRecord(tx, assetParam.BudgetType, assetParam.AssetName, assetParam.TotalAmount, user.Wallet)
+			err = model.TreasuryAssetHelper.UpsertCurrentSeasonTreasuryDetailedRecord(tx, assetParam.AssetName, assetParam.TotalAmount, user.Wallet)
 			if err != nil {
 				return err
 			}
@@ -56,7 +62,7 @@ func UpdateAssets(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 	}
 
-	currQuarterTreasuryRecord, err := model.TreasuryAssetHelper.GetOrCreateCurrQuarterRecord(db)
+	currQuarterTreasuryRecord, err := model.TreasuryAssetHelper.GetOrCreateCurrentSeasonRecord(db)
 	ctx.JSON(http.StatusOK, api.Success(currQuarterTreasuryRecord))
 }
 

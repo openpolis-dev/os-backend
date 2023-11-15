@@ -1,4 +1,4 @@
-package api
+package sdk
 
 import (
 	"fmt"
@@ -29,7 +29,7 @@ const (
  "proj_id": 1
 }
 */
-func GenerateProjectStaffAddNotificationParams(projectID uint, projectName string) (title map[string]string, body map[string]string, payload map[string]string) {
+func GenerateProjectStaffAddNotificationParams(projectID uint, projectName string) (title map[string]string, body map[string]string, payload map[string]any) {
 	title = make(map[string]string)
 	title[LanguageEN] = "Project notification"
 	title[LanguageZH] = "项目提示"
@@ -38,7 +38,8 @@ func GenerateProjectStaffAddNotificationParams(projectID uint, projectName strin
 	body[LanguageEN] = fmt.Sprintf("You have been added to %s project", projectName)
 	body[LanguageZH] = fmt.Sprintf("你已被添加为 %s 项目的成员", projectName)
 
-	payload = map[string]string{
+	// even `payload`'s type is `map[string]any`, but FCM only support `map[string]string`
+	payload = map[string]any{
 		"type":    NotificationTypeProjStaffAdd,
 		"proj_id": strconv.Itoa(int(projectID)),
 	}
@@ -47,7 +48,7 @@ func GenerateProjectStaffAddNotificationParams(projectID uint, projectName strin
 }
 
 // GenerateProjectStaffRemoveNotificationParams generate params for project's staff removed.
-func GenerateProjectStaffRemoveNotificationParams(projectID uint, projectName string) (title map[string]string, body map[string]string, payload map[string]string) {
+func GenerateProjectStaffRemoveNotificationParams(projectID uint, projectName string) (title map[string]string, body map[string]string, payload map[string]any) {
 	title = make(map[string]string)
 	title[LanguageEN] = "Project notification"
 	title[LanguageZH] = "项目提示"
@@ -56,7 +57,7 @@ func GenerateProjectStaffRemoveNotificationParams(projectID uint, projectName st
 	body[LanguageEN] = fmt.Sprintf("You have been removed by %s project", projectName)
 	body[LanguageZH] = fmt.Sprintf("你已被 %s 项目移除", projectName)
 
-	payload = map[string]string{
+	payload = map[string]any{
 		"type":    NotificationTypeProjStaffRemove,
 		"proj_id": strconv.Itoa(int(projectID)),
 	}
@@ -71,7 +72,7 @@ func GenerateProjectStaffRemoveNotificationParams(projectID uint, projectName st
  "guild_id": 1
 }
 */
-func GenerateGuildStaffAddNotificationParams(guildID uint, guildName string) (title map[string]string, body map[string]string, payload map[string]string) {
+func GenerateGuildStaffAddNotificationParams(guildID uint, guildName string) (title map[string]string, body map[string]string, payload map[string]any) {
 	title = make(map[string]string)
 	title[LanguageEN] = "Guild notification"
 	title[LanguageZH] = "公会提示"
@@ -80,7 +81,7 @@ func GenerateGuildStaffAddNotificationParams(guildID uint, guildName string) (ti
 	body[LanguageEN] = fmt.Sprintf("You have been added to %s guild", guildName)
 	body[LanguageZH] = fmt.Sprintf("你已被添加为 %s 公会的成员", guildName)
 
-	payload = map[string]string{
+	payload = map[string]any{
 		"type":     NotificationTypeGuildStaffAdd,
 		"guild_id": strconv.Itoa(int(guildID)),
 	}
@@ -89,7 +90,7 @@ func GenerateGuildStaffAddNotificationParams(guildID uint, guildName string) (ti
 }
 
 // GenerateGuildStaffRemoveNotificationParams generate params for guild's staff removed.
-func GenerateGuildStaffRemoveNotificationParams(guildID uint, guildName string) (title map[string]string, body map[string]string, payload map[string]string) {
+func GenerateGuildStaffRemoveNotificationParams(guildID uint, guildName string) (title map[string]string, body map[string]string, payload map[string]any) {
 	title = make(map[string]string)
 	title[LanguageEN] = "Guild notification"
 	title[LanguageZH] = "公会提示"
@@ -98,7 +99,7 @@ func GenerateGuildStaffRemoveNotificationParams(guildID uint, guildName string) 
 	body[LanguageEN] = fmt.Sprintf("You have been removed by %s guild", guildName)
 	body[LanguageZH] = fmt.Sprintf("你已被 %s 公会移除", guildName)
 
-	payload = map[string]string{
+	payload = map[string]any{
 		"type":     NotificationTypeGuildStaffRemove,
 		"guild_id": strconv.Itoa(int(guildID)),
 	}
@@ -114,7 +115,7 @@ func GenerateGuildStaffRemoveNotificationParams(guildID uint, guildName string) 
  "amount": 120
 }
 */
-func GenerateObtainAssertNotificationParams(assertName string, amount string) (title map[string]string, body map[string]string, payload map[string]string) {
+func GenerateObtainAssertNotificationParams(assertName string, amount string) (title map[string]string, body map[string]string, payload map[string]any) {
 	title = make(map[string]string)
 	title[LanguageEN] = "Personal assets"
 	title[LanguageZH] = "个人资产"
@@ -123,7 +124,7 @@ func GenerateObtainAssertNotificationParams(assertName string, amount string) (t
 	body[LanguageEN] = fmt.Sprintf("%s %s received", amount, assertName)
 	body[LanguageZH] = fmt.Sprintf("已收到 %s %s", amount, assertName)
 
-	payload = map[string]string{
+	payload = map[string]any{
 		"type":          NotificationTypeObtainAssert,
 		"assert_name":   assertName,
 		"assert_amount": amount,
@@ -139,8 +140,8 @@ func GenerateObtainAssertNotificationParams(assertName string, amount string) (t
  "jump_url": "https://xx.com/yy",
 }
 */
-func GenerateCustomNotificationParams(jumpUrl string) (payload map[string]string) {
-	payload = map[string]string{
+func GenerateCustomNotificationParams(jumpUrl string) (payload map[string]any) {
+	payload = map[string]any{
 		"type":     NotificationTypeCustom,
 		"jump_url": jumpUrl,
 	}

@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/samber/lo"
-	"github.com/theseed-labs/os-backend/internal/api"
+	"github.com/theseed-labs/os-backend/internal"
 	"gorm.io/gorm"
 )
 
@@ -21,6 +21,19 @@ CASE
 FROM applications
    LEFT JOIN projects ON applications.entity_type = 'project' AND applications.entity_id = projects.id
    LEFT JOIN guilds ON applications.entity_type = 'guild' AND applications.entity_id = guilds.id`
+
+const QueryAppBundlesWithEntityNameBaseSQL = `SELECT app_bundles.*,
+CASE
+   WHEN app_bundles.entity_type = 'project' THEN projects.name
+   WHEN app_bundles.entity_type = 'guild' THEN guilds.name
+   ELSE NULL END AS entity_name,
+seasons.name AS season_name
+FROM app_bundles
+   LEFT JOIN seasons ON app_bundles.season_id = seasons.id
+   LEFT JOIN projects ON app_bundles.entity_type = 'project' AND app_bundles.entity_id = projects.id
+   LEFT JOIN guilds ON app_bundles.entity_type = 'guild' AND app_bundles.entity_id = guilds.id`
+
+var CloseProjectStateOrder = []string{string(ApplicationStateOpen), ApplicationStateCompleted, ApplicationStateRejected}
 
 // NewApplicationRecord create application and related audit log message with given params
 func NewApplicationRecord(db *gorm.DB, application *Application) error {
@@ -85,6 +98,8 @@ func GenerateFrontendApplicationRecordsByIds(db *gorm.DB, ids []uint64) ([]*Fron
 	return rslt, nil
 }
 
+// GenerateFrontendApplicationRecords filter application records from DB with params and convert to predefined format used for frontend page
+// TODO: Check whether some generic function can be used to merge duplicated logic in this function and QueryAppBundleRecords
 func GenerateFrontendApplicationRecords(db *gorm.DB, queryParams *ListApplicationQueryParams) ([]*FrontendApplicationRecord, int64, error) {
 	clearAppType := strings.ToLower(strings.TrimSpace(queryParams.Type))
 	clearEntity := strings.ToLower(strings.TrimSpace(queryParams.Entity))
@@ -145,12 +160,109 @@ func GenerateFrontendApplicationRecords(db *gorm.DB, queryParams *ListApplicatio
 		whereParams["entity_id"] = strings.TrimSpace(queryParams.EntityId)
 	}
 
+	if queryParams.Size == 0 {
+		queryParams.Size = internal.DefaultPageSize
+	}
+
+	if queryParams.Page == 0 {
+		queryParams.Page = 1
+	}
+
+	orderByClause := ""
+	if clearAppType == "close_project" {
+		// For close_project type, the return records should have stable order
+		querySort := lo.Map(CloseProjectStateOrder, func(state string, index int) string {
+			return fmt.Sprintf("when applications.state='%s' then %d\n", state, index+1)
+		})
+		orderByClause = fmt.Sprintf("case \n%s end asc, applications.created_at desc", strings.Join(querySort, ""))
+	} else {
+		if queryParams.SortField == "" {
+			queryParams.SortField = "created_at"
+		}
+
+		if queryParams.SortOrder == "" {
+			queryParams.SortOrder = "desc"
+		}
+
+		orderByClause = fmt.Sprintf("applications.%s %s ", queryParams.SortField, queryParams.SortOrder)
+	}
+
+	if queryParams.UserWallet != "" {
+		whereClause += " AND applications.target_user_wallet = @target_user_wallet"
+		whereParams["target_user_wallet"] = strings.ToLower(strings.TrimSpace(queryParams.UserWallet))
+	}
+
+	if queryParams.SeasonId != 0 {
+		whereClause += " AND applications.season_id = @season_id"
+		whereParams["season_id"] = queryParams.SeasonId
+	}
+
+	// Calculate total count
+	total := db.Raw(querySQL+whereClause, whereParams).Scan(&[]map[string]any{}).RowsAffected
+
+	// TODO: This is the mysql style, need to find way to get db schema here and implement pg way
+	whereClause += fmt.Sprintf("\nORDER BY %s LIMIT @offset, @limit", orderByClause)
+	whereParams["offset"] = (queryParams.Page - 1) * queryParams.Size
+	whereParams["limit"] = queryParams.Size
+
+	var rcds []jointAppEntityRslt
+	err := db.Raw(querySQL+whereClause, whereParams).Find(&rcds).Error
+	if err != nil {
+		return nil, 0, err
+	}
+	rslt := make([]*FrontendApplicationRecord, len(rcds))
+	for i, r := range rcds {
+		rslt[i] = r.ToFrontedApplicationRecord(db)
+	}
+	return rslt, total, nil
+}
+
+func QueryAppBundleRecords(db *gorm.DB, queryParams *ListAppBundleQueryParams) ([]JointAppBundleEntityRslt, int64, error) {
+	clearedEntity := strings.ToLower(strings.TrimSpace(queryParams.Entity))
+	clearState := strings.ToLower(strings.TrimSpace(queryParams.State))
+
+	if clearedEntity != "" {
+		if !lo.Contains([]string{"project", "guild"}, clearedEntity) {
+			return nil, 0, fmt.Errorf("unknown entity type %s", queryParams.Entity)
+		}
+	}
+
+	querySQL := QueryAppBundlesWithEntityNameBaseSQL
+	whereClause := "\nHAVING app_bundles.shadow_record=false and type=@type"
+	whereParams := map[string]any{
+		"type": "NEW_REWARD",
+	}
+
+	// TODO: Dup logic start
+	if clearState != "" {
+		if !lo.Contains([]string{"open", "approved", "rejected"}, clearState) {
+			return nil, 0, fmt.Errorf("unknown state %s", queryParams.State)
+		}
+		whereClause += " AND app_bundles.state = @state"
+		whereParams["state"] = ApplicationState(clearState)
+	}
+
+	if clearedEntity != "" {
+		whereClause += " AND app_bundles.entity_type = @entity_type"
+		whereParams["entity_type"] = clearedEntity
+	}
+
+	if queryParams.Applicant != "" {
+		whereClause += " AND app_bundles.applicant = @applicant"
+		whereParams["applicant"] = queryParams.Applicant
+	}
+
+	if len(strings.TrimSpace(queryParams.EntityId)) != 0 {
+		whereClause += " AND app_bundles.entity_id = @entity_id"
+		whereParams["entity_id"] = strings.TrimSpace(queryParams.EntityId)
+	}
+
 	if queryParams.SortField == "" {
 		queryParams.SortField = "created_at"
 	}
 
 	if queryParams.Size == 0 {
-		queryParams.Size = api.DefaultPageSize
+		queryParams.Size = internal.DefaultPageSize
 	}
 
 	if queryParams.Page == 0 {
@@ -161,35 +273,27 @@ func GenerateFrontendApplicationRecords(db *gorm.DB, queryParams *ListApplicatio
 		queryParams.SortOrder = "desc"
 	}
 
-	if queryParams.UserWallet != "" {
-		whereClause += " AND LOWER(JSON_EXTRACT(applications.detailed_data, '$.user_wallet')) LIKE '%" +
-			strings.ToLower(strings.TrimSpace(queryParams.UserWallet)) + "%'"
+	if queryParams.SeasonId != 0 {
+		whereClause += " AND app_bundles.season_id = @season_id"
+		whereParams["season_id"] = queryParams.SeasonId
 	}
+	// TODO: Dup logic end
 
 	// Calculate total count
 	total := db.Raw(querySQL+whereClause, whereParams).Scan(&[]map[string]any{}).RowsAffected
 
 	// TODO: This is the mysql style, need to find way to get db schema here and implement pg way
-	whereClause += fmt.Sprintf("\nORDER BY applications.%s %s LIMIT @offset, @limit", queryParams.SortField, queryParams.SortOrder)
+	whereClause += fmt.Sprintf("\nORDER BY app_bundles.%s %s LIMIT @offset, @limit", queryParams.SortField, queryParams.SortOrder)
 	whereParams["offset"] = (queryParams.Page - 1) * queryParams.Size
 	whereParams["limit"] = queryParams.Size
 
-	sql := db.ToSQL(func(tx *gorm.DB) *gorm.DB {
-		return tx.Raw(querySQL+whereClause, whereParams)
-	})
-	fmt.Printf("TTT: sql: %+s\n", sql)
-
-	var rcds []jointAppEntityRslt
+	var rcds []JointAppBundleEntityRslt
 	err := db.Raw(querySQL+whereClause, whereParams).Find(&rcds).Error
 	if err != nil {
 		return nil, 0, err
 	}
-	rslt := make([]*FrontendApplicationRecord, len(rcds))
-	for i, r := range rcds {
-		fmt.Printf("TTT: rcd: %+v\n", r)
-		rslt[i] = r.ToFrontedApplicationRecord(db)
-	}
-	return rslt, total, nil
+
+	return rcds, total, nil
 }
 
 func ConvertTimeToTzString(t time.Time, timeLoc string, timeFormat string) (string, error) {
@@ -199,4 +303,23 @@ func ConvertTimeToTzString(t time.Time, timeLoc string, timeFormat string) (stri
 	}
 	locTime := t.In(loc) // convert to UTC+8 timezone
 	return locTime.Format(timeFormat), nil
+}
+
+func SetDefaultMapValue[K comparable, V any](origMap map[K]V, key K, value V) {
+	_, ok := origMap[key]
+	if !ok {
+		origMap[key] = value
+	}
+}
+func GetMapValueOrDefault[K comparable, V any](origMap map[K]V, key K, defaultValue V) V {
+	_, ok := origMap[key]
+	if !ok {
+		return defaultValue
+	} else {
+		return origMap[key]
+	}
+}
+
+func FormatUserWallet(wallet string) string {
+	return strings.TrimSpace(strings.ToLower(wallet))
 }

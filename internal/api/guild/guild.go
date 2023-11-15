@@ -22,6 +22,8 @@ type (
 	CreateReq struct {
 		LogoStr string `json:"logo"` // base64 encoded logo image, will be uploaded to AWS S3 and saved URL in db record
 		Name    string `json:"name"`
+		Intro   string `json:"intro"`
+		Desc    string `json:"desc"`
 
 		Sponsors  []string `json:"sponsors"`
 		Members   []string `json:"members"`
@@ -30,13 +32,14 @@ type (
 		Budgets []*BudgetParam `json:"budgets"`
 	}
 	BudgetParam struct {
-		Name        string           `json:"name"`
-		BudgetType  model.BudgetType `json:"budget_type"`
-		TotalAmount decimal.Decimal  `json:"total_amount"`
+		Name        string          `json:"name"`
+		TotalAmount decimal.Decimal `json:"total_amount"`
 	}
 	UpdateReq struct {
 		LogoStr string `json:"logo"`
 		Name    string `json:"name"`
+		Intro   string `json:"intro"`
+		Desc    string `json:"desc"`
 	}
 	DetailReply struct {
 		model.Guild
@@ -55,7 +58,15 @@ type (
 	}
 )
 
-// Create `POST /guilds`
+// Create a guild
+//
+//	@Summary	Create a guild
+//	@Tags		Guild
+//	@Accept		json
+//	@Produce	json
+//	@Param		JsonBody	body		CreateReq	true	"request json body"
+//	@Success	200			{object}	api.Reply
+//	@Router		/guilds [post]
 func Create(ctx *gin.Context) {
 	req := CreateReq{}
 	err := ctx.BindJSON(&req)
@@ -71,6 +82,14 @@ func Create(ctx *gin.Context) {
 	members := lo.Map[string](req.Members, func(item string, _ int) string {
 		return strings.ToLower(item)
 	})
+	// remove duplicate sponsors and members
+	sponsors = lo.Uniq[string](sponsors)
+	members = lo.Uniq[string](members)
+	// remove sponsors from members
+	members = lo.Without[string](members, sponsors...)
+
+	// remove duplicate proposals
+	proposals := lo.Uniq[string](req.Proposals)
 
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
@@ -88,9 +107,12 @@ func Create(ctx *gin.Context) {
 	// save guild
 	guild := model.Guild{
 		Name:      req.Name,
+		Intro:     req.Intro,
+		Desc:      req.Desc,
 		Sponsors:  sponsors,
 		Members:   members,
-		Proposals: req.Proposals,
+		Proposals: proposals,
+		Creator:   user.Wallet,
 	}
 	err = model.GuildModel.CreateOrUpdate(tx, &guild)
 	if err != nil {
@@ -102,7 +124,6 @@ func Create(ctx *gin.Context) {
 	budgets := lo.Map[*BudgetParam, *model.GuildBudget](req.Budgets, func(item *BudgetParam, _ int) *model.GuildBudget {
 		return &model.GuildBudget{
 			GuildID:      guild.ID,
-			Type:         item.BudgetType,
 			Name:         item.Name,
 			TotalAmount:  item.TotalAmount,
 			RemainAmount: item.TotalAmount,
@@ -173,18 +194,29 @@ func Create(ctx *gin.Context) {
 	// send notification
 	push := api.ForContextOnlyPush(ctx)
 	staffs := append(sponsors, members...)
-	go func(push *sdk.Push, staffs []string, guildID uint, guildName string) {
-		title, body, data := api.GenerateGuildStaffAddNotificationParams(guildID, guildName)
-		err := push.PushToWallets(staffs, title, body, data)
-		if err != nil {
-			log.Error().Msgf("push to %v failed: %s", staffs, err)
+	go func(push []sdk.Pusher, staffs []string, guildID uint, guildName string) {
+		title, body, data := sdk.GenerateGuildStaffAddNotificationParams(guildID, guildName)
+		for _, p := range push {
+			err := p.PushToWallets(staffs, title, body, data)
+			if err != nil {
+				log.Error().Msgf("push to %v failed: %s", staffs, err)
+			}
 		}
 	}(push, staffs, guild.ID, guild.Name)
 
-	ctx.JSON(http.StatusOK, api.Success(nil))
+	ctx.JSON(http.StatusOK, api.Success(guild))
 }
 
-// Update `PUT /guilds/:id`
+// Update a guild
+//
+//	@Summary	Update a guild
+//	@Tags		Guild
+//	@Accept		json
+//	@Produce	json
+//	@Param		id			path		int			true	"guild id"
+//	@Param		JsonBody	body		UpdateReq	true	"request json body"
+//	@Success	200			{object}	api.Reply
+//	@Router		/guilds/{id} [put]
 func Update(ctx *gin.Context) {
 	idParam := ctx.Param("id")
 	id, err := strconv.Atoi(idParam)
@@ -232,6 +264,8 @@ func Update(ctx *gin.Context) {
 	// update name
 	guild.Logo = logoUrl
 	guild.Name = req.Name
+	guild.Intro = req.Intro
+	guild.Desc = req.Desc
 	err = model.GuildModel.CreateOrUpdate(db, guild)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
@@ -241,7 +275,15 @@ func Update(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, api.Success(nil))
 }
 
-// Detail `GET /guilds/:id`
+// Detail get a guild detail
+//
+//	@Summary	Get a guild detail
+//	@Tags		Guild
+//	@Accept		json
+//	@Produce	json
+//	@Param		id	path		int	true	"guild id"
+//	@Success	200	{object}	api.Reply{data=DetailReply}
+//	@Router		/guilds/{id} [get]
 func Detail(ctx *gin.Context) {
 	idParam := ctx.Param("id")
 	id, err := strconv.Atoi(idParam)
@@ -275,6 +317,17 @@ func Detail(ctx *gin.Context) {
 }
 
 // List `GET /guilds?page=1&size=10&sort_field=created_at&sort_order=desc`
+//
+//	@Summary	List guilds
+//	@Tags		Guild
+//	@Accept		json
+//	@Produce	json
+//	@Param		page		query		int		false	"page number, default: 1"
+//	@Param		size		query		int		false	"page size, default: 10"
+//	@Param		sort_field	query		string	false	"sort field, default: created_at"
+//	@Param		sort_order	query		string	false	"sort order, default: desc"
+//	@Success	200			{object}	api.Reply{data=api.ListReplyData{rows=model.Guild}}
+//	@Router		/guilds [get]
 func List(ctx *gin.Context) {
 	db := api.ForContextOnlyDB(ctx)
 
@@ -286,7 +339,7 @@ func List(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, api.Success(api.ListReplyData{
+	ctx.JSON(http.StatusOK, api.Success(&api.ListReplyData{
 		Page:  page.Page,
 		Size:  page.Size,
 		Total: total,
@@ -294,7 +347,20 @@ func List(ctx *gin.Context) {
 	}))
 }
 
-// MyGuilds `GET /guilds/my?page=1&size=10&sort_field=created_at&sort_order=desc`
+// MyGuilds list my guilds
+//
+//	`GET /guilds/my?page=1&size=10&sort_field=created_at&sort_order=desc`
+//
+//	@Summary	list my guilds
+//	@Tags		Guild
+//	@Accept		json
+//	@Produce	json
+//	@Param		page		query		int		false	"page number, default: 1"
+//	@Param		size		query		int		false	"page size, default: 10"
+//	@Param		sort_field	query		string	false	"sort field, default: created_at"
+//	@Param		sort_order	query		string	false	"sort order, default: desc"
+//	@Success	200			{object}	api.Reply{data=api.ListReplyData{rows=model.Guild}}
+//	@Router		/guilds/my_guilds [get]
 func MyGuilds(ctx *gin.Context) {
 	user, db := api.ForContextUserAndDB(ctx)
 
@@ -306,7 +372,7 @@ func MyGuilds(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, api.Success(api.ListReplyData{
+	ctx.JSON(http.StatusOK, api.Success(&api.ListReplyData{
 		Page:  page.Page,
 		Size:  page.Size,
 		Total: total,
@@ -323,7 +389,16 @@ type UpdateStaffsReq struct {
 	Members  []string `json:"members"`
 }
 
-// UpdateStaffs `POST /guilds/:id/update_staffs`
+// UpdateStaffs update guild sponsors/members
+//
+//	@Summary	Update guild sponsors/members
+//	@Tags		Guild
+//	@Accept		json
+//	@Produce	json
+//	@Param		id			path		int				true	"guild id"
+//	@Param		JsonBody	body		UpdateStaffsReq	true	"request json body"
+//	@Success	200			{object}	api.Reply
+//	@Router		/guilds/{id}/update_staffs [post]
 func UpdateStaffs(ctx *gin.Context) {
 	idParam := ctx.Param("id")
 	id, err := strconv.Atoi(idParam)
@@ -392,6 +467,8 @@ func UpdateStaffs(ctx *gin.Context) {
 			guild.Sponsors = append(guild.Sponsors, sponsors...)
 			// remove duplicate sponsors
 			guild.Sponsors = lo.Uniq[string](guild.Sponsors)
+			// remove sponsors from members
+			guild.Sponsors = lo.Without[string](guild.Sponsors, guild.Members...)
 			err = model.GuildModel.CreateOrUpdate(tx, guild)
 			if err != nil {
 				tx.Rollback()
@@ -426,6 +503,8 @@ func UpdateStaffs(ctx *gin.Context) {
 			guild.Members = append(guild.Members, members...)
 			// remove duplicate members
 			guild.Members = lo.Uniq[string](guild.Members)
+			// remove members from sponsors
+			guild.Members = lo.Without[string](guild.Members, guild.Sponsors...)
 			err = model.GuildModel.CreateOrUpdate(tx, guild)
 			if err != nil {
 				tx.Rollback()
@@ -451,11 +530,13 @@ func UpdateStaffs(ctx *gin.Context) {
 		// send notification
 		push := api.ForContextOnlyPush(ctx)
 		staffs := append(sponsors, members...)
-		go func(push *sdk.Push, staffs []string, guildID uint, guildName string) {
-			title, body, data := api.GenerateGuildStaffAddNotificationParams(guildID, guildName)
-			err := push.PushToWallets(staffs, title, body, data)
-			if err != nil {
-				log.Error().Msgf("push to %+v failed: %s", staffs, err)
+		go func(push []sdk.Pusher, staffs []string, guildID uint, guildName string) {
+			title, body, data := sdk.GenerateGuildStaffAddNotificationParams(guildID, guildName)
+			for _, p := range push {
+				err := p.PushToWallets(staffs, title, body, data)
+				if err != nil {
+					log.Error().Msgf("push to %+v failed: %s", staffs, err)
+				}
 			}
 		}(push, staffs, guild.ID, guild.Name)
 	} else if req.Action == "remove" {
@@ -521,11 +602,13 @@ func UpdateStaffs(ctx *gin.Context) {
 		// send notification
 		push := api.ForContextOnlyPush(ctx)
 		staffs := append(sponsors, members...)
-		go func(push *sdk.Push, staffs []string, guildID uint, guildName string) {
-			title, body, data := api.GenerateGuildStaffRemoveNotificationParams(guildID, guildName)
-			err := push.PushToWallets(staffs, title, body, data)
-			if err != nil {
-				log.Error().Msgf("push to %+v failed: %s", staffs, err)
+		go func(push []sdk.Pusher, staffs []string, guildID uint, guildName string) {
+			title, body, data := sdk.GenerateGuildStaffRemoveNotificationParams(guildID, guildName)
+			for _, p := range push {
+				err := p.PushToWallets(staffs, title, body, data)
+				if err != nil {
+					log.Error().Msgf("push to %+v failed: %s", staffs, err)
+				}
 			}
 		}(push, staffs, guild.ID, guild.Name)
 	}
@@ -538,7 +621,16 @@ func UpdateStaffs(ctx *gin.Context) {
 // ------ ------ ------ ------ ------ ------ ------ ------ ------
 // ------ Guild Budget ------ ------
 
-// UpdateBudget `POST /guilds/:id/update_budget`
+// UpdateBudget update guild budget
+//
+//	@Summary	Update guild budget
+//	@Tags		Guild
+//	@Accept		json
+//	@Produce	json
+//	@Param		id			path		int				true	"guild id"
+//	@Param		JsonBody	body		UpdateBudgetReq	true	"request json body"
+//	@Success	200			{object}	api.Reply
+//	@Router		/guilds/{id}/update_budget [post]
 func UpdateBudget(ctx *gin.Context) {
 	idParam := ctx.Param("id")
 	id, err := strconv.Atoi(idParam)
@@ -585,7 +677,18 @@ func UpdateBudget(ctx *gin.Context) {
 // ------ ------ ------ ------ ------ ------ ------ ------ ------
 // ------ Guild Proposals ------ ------
 
-// AddRelatedProposal `POST /guilds/:id/add_related_proposal?proposalIDs=1&proposalIDs=2`
+// AddRelatedProposal add related proposals to guild
+//
+//	`POST /guilds/:id/add_related_proposal?proposalIDs=1&proposalIDs=2`
+//
+//	@Summary	Add related proposals to guild
+//	@Tags		Guild
+//	@Accept		json
+//	@Produce	json
+//	@Param		id			path		int		true	"guild id"
+//	@Param		proposalIDs	query		[]int	true	"proposal ids"
+//	@Success	200			{object}	api.Reply
+//	@Router		/guilds/{id}/add_related_proposal [post]
 func AddRelatedProposal(ctx *gin.Context) {
 	idParam := ctx.Param("id")
 	id, err := strconv.Atoi(idParam)

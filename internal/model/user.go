@@ -19,6 +19,7 @@ type User struct {
 	DiscordProfile string `json:"discord_profile"`
 	TwitterProfile string `json:"twitter_profile"`
 	GoogleProfile  string `json:"google_profile"`
+	GithubProfile  string `json:"github_profile"`
 
 	Mirror string `json:"mirror"`
 
@@ -61,7 +62,7 @@ func (*userModel) TryGetUsername(db *gorm.DB, wallet string) (string, error) {
 	}
 }
 
-func (u *User) BuildSppUpdateProfilePayload(wallet string) *sdk.SppUpdateProfileRequest {
+func (u *User) BuildSppUpdateProfilePayload() *sdk.SppUpdateProfileRequest {
 	sppReq := &sdk.SppUpdateProfileRequest{
 		Nickname:       u.Name,
 		Bio:            u.Bio,
@@ -102,6 +103,14 @@ func (u *User) BuildSppUpdateProfilePayload(wallet string) *sdk.SppUpdateProfile
 
 	if u.GoogleProfile != "" && u.Email == "" {
 		u.Email = u.GoogleProfile
+	}
+
+	if u.GithubProfile != "" {
+		sppReq.SocialAccounts = append(sppReq.SocialAccounts, sdk.ProfileSocialAccount{
+			Network:  "github",
+			Identity: u.GithubProfile,
+			Verified: false,
+		})
 	}
 
 	return sppReq

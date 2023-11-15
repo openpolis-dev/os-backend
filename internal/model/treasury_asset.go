@@ -1,10 +1,10 @@
 package model
 
 import (
-	"encoding/json"
-	"fmt"
+	"strings"
 	"time"
 
+	"github.com/rs/zerolog/log"
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 )
@@ -12,9 +12,11 @@ import (
 type TreasuryAsset struct {
 	ID uint `json:"id" gorm:"primaryKey"`
 
-	QuarterNum string `json:"quarter_num"` // Quarter num, the format is yyyy0[1234]
-
 	DetailedRecords []TreasuryDetailedRecord `json:"detailed_records"`
+
+	// Season information of treasury assets
+	SeasonId uint    `json:"season_id"`
+	Season   *Season `json:"season"`
 
 	CreatedAt time.Time `json:"created_at" gorm:"autoCreateTime"`
 	UpdatedAt time.Time `json:"updated_at" gorm:"autoUpdateTime"`
@@ -23,8 +25,6 @@ type TreasuryAsset struct {
 type TreasuryDetailedRecord struct {
 	ID              uint `json:"id" gorm:"primaryKey"`
 	TreasuryAssetID uint `json:"treasury_asset_id"`
-
-	BudgetType BudgetType `json:"budget_type"`
 
 	AssetName    string          `json:"asset_name"`
 	TotalAmount  decimal.Decimal `json:"total_amount" sql:"type:decimal(20,8);"`
@@ -51,76 +51,65 @@ type TreasuryAuditLog struct {
 	UpdatedAt time.Time `json:"updated_at" gorm:"autoUpdateTime"`
 }
 
-func (r *TreasuryAsset) ToTreasuryAssetsResponse(db *gorm.DB) *TreasuryAssetsResponse {
+func (r *TreasuryAsset) ToTreasuryAssetsResponse(db *gorm.DB) (*TreasuryAssetsResponse, error) {
 	var creditTotal, creditUsed, tokenTotal, tokenUsed decimal.Decimal
 
 	// Calculate total amount
 	for _, detailedRcd := range r.DetailedRecords {
-		if detailedRcd.BudgetType == BudgetTypeCredit {
-			creditTotal = creditTotal.Add(detailedRcd.TotalAmount)
-		} else if detailedRcd.BudgetType == BudgetTypeToken {
+		if strings.HasPrefix(detailedRcd.AssetName, "USD") {
 			tokenTotal = tokenTotal.Add(detailedRcd.TotalAmount)
+		} else if strings.EqualFold(detailedRcd.AssetName, "SCR") {
+			creditTotal = creditTotal.Add(detailedRcd.TotalAmount)
+		} else {
+			log.Warn().Msgf("non token or credit asset %s, ignore the treasury record: %+v", detailedRcd.AssetName, detailedRcd)
 		}
 	}
 
-	// Calculate used amount
-	startDate, endDate := getCurrentQuarterTimeRange()
-	var applications []Application
-	db.Model(&Application{}).
-		Where("created_at >= ? AND created_at < ? AND state IN (?, ?) AND type = ?", startDate, endDate, ApplicationStateProcessing, ApplicationStateCompleted, ApplicationNewReward).
-		Find(&applications)
+	appStates := []string{string(ApplicationStateOpen), ApplicationStateProcessing, ApplicationStateCompleted}
+	appTypes := []string{string(ApplicationNewReward)}
+
+	applications, err := GetCurrentSeasonApplications(db, appStates, appTypes)
+
+	if err != nil {
+		return nil, err
+	}
 
 	creditUsed = decimal.Zero
 	tokenUsed = decimal.Zero
 	for _, application := range applications {
-		var detailedData NewRewardApplicationDetailedData
-		err := json.Unmarshal(application.DetailedData, &detailedData)
-		if err != nil {
-			panic(err)
-		}
-		rewardTokenAmount := decimal.Zero
-		rewardCreditAmount := decimal.Zero
-
-		for _, assetRcd := range detailedData.Assets {
-			switch assetRcd.AssetType {
-			case BudgetTypeToken:
-				rewardTokenAmount = rewardTokenAmount.Add(assetRcd.Amount)
-				break
-			case BudgetTypeCredit:
-				rewardCreditAmount = rewardCreditAmount.Add(assetRcd.Amount)
-				break
+		if strings.HasPrefix(application.AssetName, "USD") {
+			// only calculate completed USD
+			if application.State == ApplicationStateCompleted {
+				tokenUsed = tokenUsed.Add(application.AssetAmount)
 			}
-		}
-
-		switch application.State {
-		case ApplicationStateProcessing:
-			creditUsed = creditUsed.Add(rewardCreditAmount)
-			break
-		case ApplicationStateCompleted:
-			creditUsed = creditUsed.Add(rewardCreditAmount)
-			tokenUsed = tokenUsed.Add(rewardTokenAmount)
-			break
+		} else if strings.EqualFold(application.AssetName, "SCR") {
+			// calculate processing and completed SCR
+			creditUsed = creditUsed.Add(application.AssetAmount)
+		} else {
+			log.Warn().Msgf("non token or credit asset %s, ignore the application record: %+v", application.AssetName, application)
 		}
 	}
 
 	return &TreasuryAssetsResponse{
-		ID:                r.ID,
-		QuarterNum:        r.QuarterNum,
 		CreditTotalAmount: creditTotal,
 		CreditUsedAmount:  creditUsed,
 		TokenTotalAmount:  tokenTotal,
 		TokenUsedAmount:   tokenUsed,
-	}
+	}, nil
 }
 
 type treasuryAssetHelper struct{}
 
 var TreasuryAssetHelper treasuryAssetHelper
 
-// GetOrCreateCurrQuarterRecord tries to get treasury record for current quarter, if not found a record with quarter num will be created and returned
-func (*treasuryAssetHelper) GetOrCreateCurrQuarterRecord(db *gorm.DB) (*TreasuryAsset, error) {
+// GetOrCreateCurrentSeasonRecord tries to get treasury record for current quarter, if not found a record with quarter num will be created and returned
+func (*treasuryAssetHelper) GetOrCreateCurrentSeasonRecord(db *gorm.DB) (*TreasuryAsset, error) {
+	currSeason, err := GetCurrentSeason(db)
+	if err != nil {
+		return nil, err
+	}
 	var r TreasuryAsset
-	rslt := db.Preload("DetailedRecords").FirstOrInit(&r, TreasuryAsset{QuarterNum: getCurrentQuarterNum()})
+	rslt := db.Preload("DetailedRecords").FirstOrInit(&r, TreasuryAsset{SeasonId: currSeason.ID})
 	if rslt.Error != nil {
 		return nil, rslt.Error
 	} else if rslt.RowsAffected == 0 {
@@ -132,13 +121,12 @@ func (*treasuryAssetHelper) GetOrCreateCurrQuarterRecord(db *gorm.DB) (*Treasury
 	return &r, nil
 }
 
-// GetOrCreateCQDetailedRecord creates detailed record for current quarter if not existing, then return the record to invoker
+// GetOrCreateCurrentSeasonDetailedRecord creates detailed record for current quarter if not existing, then return the record to invoker
 // The second return value indicates whether the record returned in first param is new created or existing data
-func (*treasuryAssetHelper) GetOrCreateCQDetailedRecord(db *gorm.DB, treasuryRecordId uint, budgetType BudgetType, assetName string, totalAmount decimal.Decimal) (*TreasuryDetailedRecord, bool, error) {
+func (*treasuryAssetHelper) GetOrCreateCurrentSeasonDetailedRecord(db *gorm.DB, treasuryRecordId uint, assetName string, totalAmount decimal.Decimal) (*TreasuryDetailedRecord, bool, error) {
 	r := TreasuryDetailedRecord{}
 	rslt := db.Where(TreasuryDetailedRecord{
 		TreasuryAssetID: treasuryRecordId,
-		BudgetType:      budgetType,
 		AssetName:       assetName,
 	}).Attrs(TreasuryDetailedRecord{
 		TotalAmount:  totalAmount,
@@ -162,15 +150,15 @@ func (*treasuryAssetHelper) GetOrCreateCQDetailedRecord(db *gorm.DB, treasuryRec
 	}
 }
 
-// UpsertCQTreasuryDetailedRecord creates treasury detailed record and related create audit log
-func (*treasuryAssetHelper) UpsertCQTreasuryDetailedRecord(db *gorm.DB, budgetType BudgetType, assetName string, totalAmount decimal.Decimal, userWallet string) error {
-	cqRcd, err := TreasuryAssetHelper.GetOrCreateCurrQuarterRecord(db)
+// UpsertCurrentSeasonTreasuryDetailedRecord creates treasury detailed record and related create audit log
+func (*treasuryAssetHelper) UpsertCurrentSeasonTreasuryDetailedRecord(db *gorm.DB, assetName string, totalAmount decimal.Decimal, userWallet string) error {
+	cqRcd, err := TreasuryAssetHelper.GetOrCreateCurrentSeasonRecord(db)
 	if err != nil {
 		return err
 	}
 
 	return db.Transaction(func(tx *gorm.DB) error {
-		r, newRecord, err := TreasuryAssetHelper.GetOrCreateCQDetailedRecord(tx, cqRcd.ID, budgetType, assetName, totalAmount)
+		r, newRecord, err := TreasuryAssetHelper.GetOrCreateCurrentSeasonDetailedRecord(tx, cqRcd.ID, assetName, totalAmount)
 		if err != nil {
 			return err
 		}
@@ -195,26 +183,26 @@ func (*treasuryAssetHelper) UpsertCQTreasuryDetailedRecord(db *gorm.DB, budgetTy
 }
 
 // WithdrawTreasureAsset get asset from treasury record
-func (*treasuryAssetHelper) WithdrawTreasureAsset(db *gorm.DB, budgetType BudgetType, assetName string, deltaValue decimal.Decimal, userWallet string, auditMsg string) error {
-	return TreasuryAssetHelper.ChangeCQTreasuryAssetValue(db, budgetType, assetName, deltaValue, userWallet, auditMsg)
+func (*treasuryAssetHelper) WithdrawTreasureAsset(db *gorm.DB, assetName string, deltaValue decimal.Decimal, userWallet string, auditMsg string) error {
+	return TreasuryAssetHelper.ChangeCQTreasuryAssetValue(db, assetName, deltaValue, userWallet, auditMsg)
 }
 
 // DepositTreasureAsset save asset back to treasury record
-func (*treasuryAssetHelper) DepositTreasureAsset(db *gorm.DB, budgetType BudgetType, assetName string, deltaValue decimal.Decimal, userWallet string, auditMsg string) error {
-	return TreasuryAssetHelper.ChangeCQTreasuryAssetValue(db, budgetType, assetName, deltaValue.Neg(), userWallet, auditMsg)
+func (*treasuryAssetHelper) DepositTreasureAsset(db *gorm.DB, assetName string, deltaValue decimal.Decimal, userWallet string, auditMsg string) error {
+	return TreasuryAssetHelper.ChangeCQTreasuryAssetValue(db, assetName, deltaValue.Neg(), userWallet, auditMsg)
 }
 
 // ChangeCQTreasuryAssetValue update asset value for current quarter treasury record, the value passed in deltaValue allows both positive and negative value
 // For positive value, the remain amount will be decreased while the negative means remain amount will be increased
-func (*treasuryAssetHelper) ChangeCQTreasuryAssetValue(db *gorm.DB, budgetType BudgetType, assetName string, deltaValue decimal.Decimal, userWallet string, auditMsg string) error {
-	cqRcd, err := TreasuryAssetHelper.GetOrCreateCurrQuarterRecord(db)
+func (*treasuryAssetHelper) ChangeCQTreasuryAssetValue(db *gorm.DB, assetName string, deltaValue decimal.Decimal, userWallet string, auditMsg string) error {
+	cqRcd, err := TreasuryAssetHelper.GetOrCreateCurrentSeasonRecord(db)
 	if err != nil {
 		return err
 	}
 
 	return db.Transaction(func(tx *gorm.DB) error {
 		// Search by treasury asset id and budget type, and init the record if not found
-		r, _, err := TreasuryAssetHelper.GetOrCreateCQDetailedRecord(tx, cqRcd.ID, budgetType, assetName, decimal.Zero)
+		r, _, err := TreasuryAssetHelper.GetOrCreateCurrentSeasonDetailedRecord(tx, cqRcd.ID, assetName, decimal.Zero)
 		if err != nil {
 			return err
 		}
@@ -229,40 +217,4 @@ func (*treasuryAssetHelper) ChangeCQTreasuryAssetValue(db *gorm.DB, budgetType B
 			Message:                  auditMsg,
 		}).Error
 	})
-}
-
-func monthToQuarterIndex(m time.Month) int {
-	switch m {
-	case time.January, time.February, time.March:
-		return 1
-	case time.April, time.May, time.June:
-		return 2
-	case time.July, time.August, time.September:
-		return 3
-	case time.October, time.November, time.December:
-		return 4
-	}
-	return 0
-}
-
-func getCurrentQuarterNum() string {
-	year, month, _ := time.Now().Date()
-	quarterIdx := monthToQuarterIndex(month)
-
-	return fmt.Sprintf("%d%02d", year, quarterIdx)
-}
-
-func getCurrentQuarterTimeRange() (string, string) {
-	year, month, _ := time.Now().Date()
-	quarterIdx := monthToQuarterIndex(month)
-	if quarterIdx == 0 {
-		panic(fmt.Errorf("unknown month: %d", month))
-	}
-	startMon := (quarterIdx-1)*3 + 1
-	endMon := startMon + 3
-	if quarterIdx == 4 {
-		return fmt.Sprintf("%d-%d-01", year, startMon), fmt.Sprintf("%d-01-01", year+1)
-	} else {
-		return fmt.Sprintf("%d-%d-01", year, startMon), fmt.Sprintf("%d-%d-01", year, endMon)
-	}
 }

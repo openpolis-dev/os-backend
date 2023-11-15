@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -24,13 +25,18 @@ const (
 )
 
 type Project struct {
-	ID        uint          `json:"id" gorm:"primaryKey"`
-	Logo      string        `json:"logo"`
-	Name      string        `json:"name"`
-	Status    ProjectStatus `json:"status" gorm:"index"` // Status may have those values: open/pending_close/closed
-	Sponsors  []string      `json:"sponsors" gorm:"serializer:json"`
-	Members   []string      `json:"members" gorm:"serializer:json"`
-	Proposals []string      `json:"proposals" gorm:"serializer:json"`
+	ID              uint                `json:"id" gorm:"primaryKey"`
+	Logo            string              `json:"logo"`
+	Name            string              `json:"name"`
+	Intro           string              `json:"intro"`
+	Desc            string              `json:"desc"`
+	Status          ProjectStatus       `json:"status" gorm:"index"` // Status may have those values: open/pending_close/closed
+	GroupedSponsors map[string][]string `json:"grouped_sponsors" gorm:"serializer:json"`
+	Sponsors        []string            `json:"sponsors" gorm:"serializer:json"`
+	Members         []string            `json:"members" gorm:"serializer:json"`
+	Proposals       []string            `json:"proposals" gorm:"serializer:json"`
+
+	Creator string `json:"creator"`
 
 	IsSpecial   bool               `json:"is_special" gorm:"index"`
 	SpecialType SpecialProjectType `json:"special_type" gorm:"index"`
@@ -58,7 +64,11 @@ func (*projectModel) List(db *gorm.DB, status string, page *gormfind.Page, showS
 		querySeg = querySeg.Where("is_special = false")
 	}
 	if status != "" {
-		querySeg.Where("status = ?", status)
+		if strings.Contains(status, ",") {
+			querySeg = querySeg.Where("status IN ?", strings.Split(status, ","))
+		} else {
+			querySeg = querySeg.Where("status = ?", status)
+		}
 	}
 
 	total, err = gormfind.Count(querySeg)
@@ -89,12 +99,36 @@ func (*projectModel) ListBySponsorOrMember(db *gorm.DB, wallet string, page *gor
 	return data, total, nil
 }
 
+func (*projectModel) ListBySponsor(db *gorm.DB, sponsor string, status string, page *gormfind.Page, showSpecialProjectFlag bool) (data []*Project, total int64, err error) {
+	querySeg := db.Table("projects").Where("sponsors LIKE ?", fmt.Sprintf("%%\"%s\"%%", sponsor)) // value is: `%"0x123"%`
+	if !showSpecialProjectFlag {
+		querySeg = querySeg.Where("is_special = false")
+	}
+	if status != "" {
+		if strings.Contains(status, ",") {
+			querySeg = querySeg.Where("status IN ?", strings.Split(status, ","))
+		} else {
+			querySeg = querySeg.Where("status = ?", status)
+		}
+	}
+
+	total, err = gormfind.Count(querySeg)
+	if err != nil {
+		return
+	}
+	data, err = gormfind.Rows[Project](querySeg, page)
+	if err != nil {
+		return
+	}
+	return data, total, nil
+}
+
 // SetBudget set budget record directly. Only totalAmount will be passed in.
 // If the budget is not existing, a new record will be created with total and remain amount all set to passed in value
 // If the budget is already existing, the total will be updated to passed in value, and the remain will also be updated by the delta
-func (*projectModel) SetBudget(db *gorm.DB, projectId uint, budgetType BudgetType, assertName string, totalAmount decimal.Decimal) error {
+func (*projectModel) SetBudget(db *gorm.DB, projectId uint, assertName string, totalAmount decimal.Decimal) error {
 	return db.Transaction(func(tx *gorm.DB) error {
-		budgetRecord, err := ProjectBudgetModel.QueryByProjectIdAndBudgetProps(tx, projectId, budgetType, assertName)
+		budgetRecord, err := ProjectBudgetModel.QueryByProjectIdAndBudgetProps(tx, projectId, assertName)
 		if err != nil {
 			return err
 		}
@@ -103,7 +137,6 @@ func (*projectModel) SetBudget(db *gorm.DB, projectId uint, budgetType BudgetTyp
 			budgetRecord = &ProjectBudget{
 				ProjectID:    projectId,
 				AssetName:    assertName,
-				Type:         budgetType,
 				TotalAmount:  totalAmount,
 				UsedAmount:   decimal.Zero,
 				RemainAmount: totalAmount,
@@ -117,9 +150,9 @@ func (*projectModel) SetBudget(db *gorm.DB, projectId uint, budgetType BudgetTyp
 	})
 }
 
-func (*projectModel) WithdrawBudget(db *gorm.DB, projectId uint, budgetType BudgetType, assetName string, tokenAmount decimal.Decimal) error {
+func (*projectModel) WithdrawBudget(db *gorm.DB, projectId uint, assetName string, tokenAmount decimal.Decimal) error {
 	return db.Transaction(func(tx *gorm.DB) error {
-		budgetRcd, err := ProjectBudgetModel.QueryByProjectIdAndBudgetProps(tx, projectId, budgetType, assetName)
+		budgetRcd, err := ProjectBudgetModel.QueryByProjectIdAndBudgetProps(tx, projectId, assetName)
 		if err != nil {
 			return err
 		}
@@ -135,9 +168,9 @@ func (*projectModel) WithdrawBudget(db *gorm.DB, projectId uint, budgetType Budg
 }
 
 // DepositBudget deposits budget back to project, e.g. application for reward has been rejected
-func (*projectModel) DepositBudget(db *gorm.DB, projectId uint, budgetType BudgetType, assetName string, tokenAmount decimal.Decimal) error {
+func (*projectModel) DepositBudget(db *gorm.DB, projectId uint, assetName string, tokenAmount decimal.Decimal) error {
 	return db.Transaction(func(tx *gorm.DB) error {
-		budgetRcd, err := ProjectBudgetModel.QueryByProjectIdAndBudgetProps(tx, projectId, budgetType, assetName)
+		budgetRcd, err := ProjectBudgetModel.QueryByProjectIdAndBudgetProps(tx, projectId, assetName)
 		if err != nil {
 			return err
 		}
@@ -146,7 +179,6 @@ func (*projectModel) DepositBudget(db *gorm.DB, projectId uint, budgetType Budge
 			return tx.Save(&ProjectBudget{
 				ProjectID:    projectId,
 				AssetName:    assetName,
-				Type:         budgetType,
 				TotalAmount:  tokenAmount,
 				UsedAmount:   decimal.Zero,
 				RemainAmount: tokenAmount,
@@ -157,4 +189,52 @@ func (*projectModel) DepositBudget(db *gorm.DB, projectId uint, budgetType Budge
 			return tx.Save(budgetRcd).Error
 		}
 	})
+}
+
+// GetCityHallProject get cityhall project in DB
+func GetCityHallProject(db *gorm.DB) (*Project, error) {
+	project := Project{}
+	db.Where(Project{
+		IsSpecial:   true,
+		SpecialType: SpecialProjectCityHall,
+	}).First(&project)
+	return &project, nil
+}
+
+// GetOrCreateCityHallProject get or create cityhall project in DB
+func GetOrCreateCityHallProject(db *gorm.DB, cityHallUsers []string) (*Project, error) {
+	project := Project{}
+	db.Where(Project{
+		IsSpecial:   true,
+		SpecialType: SpecialProjectCityHall,
+	}).First(&project)
+
+	if project.ID == 0 {
+		generatedProject, err := createCityHallProject(db, cityHallUsers)
+
+		if err != nil {
+			return nil, err
+		}
+
+		project = *generatedProject
+	}
+
+	return &project, nil
+}
+
+func createCityHallProject(db *gorm.DB, cityHallUsers []string) (*Project, error) {
+	project := Project{
+		Name:        "CityHall",
+		IsSpecial:   true,
+		SpecialType: SpecialProjectCityHall,
+		Sponsors:    cityHallUsers,
+		CreatedAt:   time.Time{},
+		UpdatedAt:   time.Time{},
+	}
+	err := db.Create(&project).Error
+
+	if err != nil {
+		return nil, err
+	}
+	return &project, nil
 }
