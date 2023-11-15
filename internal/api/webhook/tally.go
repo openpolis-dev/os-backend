@@ -9,6 +9,7 @@ import (
 )
 
 // Tally is the webhook for the tally.so
+//
 //	@Summary	Tally is the webhook for the tally.so
 //	@Tags		Webhook
 //	@Accept		json
@@ -17,7 +18,7 @@ import (
 //	@Router		/webhook/tally [post]
 func Tally(ctx *gin.Context) {
 	body, _ := ctx.GetRawData()
-	log.Warn().Msgf("webhook>>tally: ", string(body))
+	log.Warn().Msgf("webhook>>tally: %s", string(body))
 
 	ctx.JSON(http.StatusOK, api.Success(nil))
 }

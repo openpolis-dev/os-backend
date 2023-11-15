@@ -19,9 +19,7 @@ const (
 	carolWallet = "0x_carol_wallet"
 	daveWallet  = "0x_dave_wallet"
 
-	token1Type = model.BudgetTypeCredit
 	token1Name = "TTT"
-	token2Type = model.BudgetTypeToken
 	token2Name = "AAT"
 	token3Name = "42T"
 )

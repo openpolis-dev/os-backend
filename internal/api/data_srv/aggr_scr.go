@@ -188,7 +188,7 @@ func AggrScr(ctx *gin.Context) {
 
 		// Do not handle seasons data further than current season
 		if r.SeasonIdx > currentSeason.Idx {
-			log.Warn().Msgf("season in record is %d, current season is %d, ignore the future records", r.SeasonName, currentSeason.Name)
+			log.Warn().Msgf("season in record is %s, current season is %s, ignore the future records", r.SeasonName, currentSeason.Name)
 			continue
 		}
 
