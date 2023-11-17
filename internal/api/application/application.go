@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
@@ -74,7 +73,7 @@ func List(ctx *gin.Context) {
 		return
 	}
 
-	rcds, total, err := model.GenerateFrontendApplicationRecords(db, &queryParams)
+	rcds, total, err := model.GenerateFrontendApplicationRecords(db, &queryParams, true)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.Reply{
 			Code: -1,
@@ -199,52 +198,43 @@ func Create(ctx *gin.Context) {
 	ctx.JSON(http.StatusCreated, api.Success(nil))
 }
 
-// Download get lists from passed in IDs and generate file and send to invoker
+// Download downloads all applications based on query params and sends Excel file for downloading
+//
+//	@summary	downloads all applications based on query params and sends Excel file for downloading
+//	@router		/download_applications [get]
+//	@success	200	{object}	api.Reply{data=api.ListReplyData{rows=model.FrontendApplicationRecord}}
 func Download(ctx *gin.Context) {
-	fileFormat := ""
-	fileFormat = strings.ToLower(ctx.Query("format"))
-	if fileFormat == "" {
-		fileFormat = "xlsx"
-	}
-
+	var err error
 	db := api.ForContextOnlyDB(ctx)
 
-	idList := ctx.Query("ids")
-
-	if len(idList) == 0 {
-		ctx.JSON(http.StatusBadRequest,
-			api.ServerError(fmt.Errorf("pass application id in ids query param with format 1,2,3,4")))
+	queryParams := model.ListApplicationQueryParams{}
+	if err := ctx.Bind(&queryParams); err != nil {
+		ctx.JSON(http.StatusBadRequest, api.Reply{
+			Code: -1,
+			Msg:  fmt.Sprintf("query params error: %+v", err),
+		})
 		return
 	}
 
-	var err error
-	err = nil
-
-	ids := lo.Map(strings.Split(idList, ","), func(idStr string, _ int) uint64 {
-		val, err := strconv.ParseUint(idStr, 10, 64)
-		if err != nil {
-			err = fmt.Errorf("invalid application id %s", idStr)
-			return 0
-		}
-		return val
-	})
-
+	rcds, _, err := model.GenerateFrontendApplicationRecords(db, &queryParams, false)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		ctx.JSON(http.StatusInternalServerError, api.Reply{
+			Code: -1,
+			Msg:  fmt.Sprintf("query result error: %+v", err),
+		})
+		return
 	}
 
-	rcds, err := model.GenerateFrontendApplicationRecordsByIds(db, ids)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
-	}
-
+	// Generated header with passed in lang
 	lang := api.GetLangFromQuery(ctx, "en")
 	headerStr := internal.ApplicationDownloadHeader[lang]
 	if header, found := internal.ApplicationDownloadHeader[lang]; found {
 		headerStr = header
 	}
-
 	csvHeaderList := strings.Split(headerStr, ",")
+
+	// Get file format will be generated
+	fileFormat := strings.ToLower(api.GetQueryParamsOrDefaultValue(ctx, "format", "xlsx"))
 
 	if fileFormat == "csv" {
 		buf := new(bytes.Buffer)
@@ -252,15 +242,17 @@ func Download(ctx *gin.Context) {
 		err = w.Write(csvHeaderList)
 		if err != nil {
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+			return
 		}
+
 		for _, r := range rcds {
-			fmt.Printf("TTT: rcd: %+v\n", r)
 			if r == nil {
 				continue
 			}
 			err = w.Write(r.ToCSV())
 			if err != nil {
 				ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+				return
 			}
 		}
 		w.Flush()
@@ -282,6 +274,7 @@ func Download(ctx *gin.Context) {
 		streamWriter, err := f.NewStreamWriter("Sheet1")
 		if err != nil {
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+			return
 		}
 
 		// write first row
@@ -289,6 +282,7 @@ func Download(ctx *gin.Context) {
 		title := lo.Map(csvHeaderList, func(item string, _ int) any { return item })
 		if err := streamWriter.SetRow(cell, title); err != nil {
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+			return
 		}
 
 		rowId := 2
@@ -307,6 +301,7 @@ func Download(ctx *gin.Context) {
 		if err = streamWriter.Flush(); err != nil {
 			log.Error().Msgf("flush writer [%s] failed: %s", fileName, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+			return
 		}
 
 		// write to response
@@ -323,11 +318,13 @@ func Download(ctx *gin.Context) {
 		jsonBytes, err := json.Marshal(rcds)
 		if err != nil {
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+			return
 		}
 
 		err = os.WriteFile(tmpFile.Name(), jsonBytes, 0777)
 		if err != nil {
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+			return
 		}
 
 		ctx.FileAttachment(tmpFile.Name(), fileBaseName)
