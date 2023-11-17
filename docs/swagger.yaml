@@ -58,6 +58,15 @@ definitions:
         $ref: '#/definitions/model.ApplicationState'
     type: object
   app_bundle.ListAvailableProjectAndGuildResp:
+    properties:
+      guilds:
+        items:
+          $ref: '#/definitions/model.Guild'
+        type: array
+      projects:
+        items:
+          $ref: '#/definitions/model.Project'
+        type: array
     type: object
   application.ApplicantListResponse:
     properties:
@@ -65,6 +74,77 @@ definitions:
         type: string
       name:
         type: string
+    type: object
+  city_hall.CityHallDetailReply:
+    properties:
+      budgets:
+        items:
+          $ref: '#/definitions/model.ProjectBudget'
+        type: array
+      created_at:
+        type: string
+      creator:
+        type: string
+      desc:
+        type: string
+      grouped_sponsors:
+        additionalProperties:
+          items:
+            type: string
+          type: array
+        type: object
+      id:
+        type: integer
+      intro:
+        type: string
+      is_special:
+        type: boolean
+      logo:
+        type: string
+      members:
+        items:
+          type: string
+        type: array
+      name:
+        type: string
+      proposals:
+        items:
+          type: string
+        type: array
+      special_type:
+        $ref: '#/definitions/model.SpecialProjectType'
+      sponsors:
+        items:
+          type: string
+        type: array
+      status:
+        allOf:
+        - $ref: '#/definitions/model.ProjectStatus'
+        description: 'Status may have those values: open/pending_close/closed'
+      updated_at:
+        type: string
+    type: object
+  city_hall.CityHallUpdateBudgetReq:
+    properties:
+      asset_name:
+        type: string
+      asset_type:
+        type: string
+      total_amount:
+        type: number
+    type: object
+  city_hall.CityHallUpdateMemberReq:
+    properties:
+      add:
+        items:
+          type: string
+        type: array
+      group_name:
+        type: string
+      remove:
+        items:
+          type: string
+        type: array
     type: object
   data_srv.CreditDetail:
     properties:
@@ -98,8 +178,6 @@ definitions:
     type: object
   guild.BudgetParam:
     properties:
-      budget_type:
-        $ref: '#/definitions/model.BudgetType'
       name:
         type: string
       total_amount:
@@ -209,12 +287,6 @@ definitions:
     type: string
     x-enum-varnames:
     - ApplicationStateOpen
-  model.BudgetType:
-    enum:
-    - credit
-    type: string
-    x-enum-varnames:
-    - BudgetTypeCredit
   model.FrontendApplicationRecord:
     properties:
       amount:
@@ -301,10 +373,6 @@ definitions:
       total_amount:
         description: total_amount
         type: number
-      type:
-        allOf:
-        - $ref: '#/definitions/model.BudgetType'
-        description: budget type, credit or token
       updated_at:
         type: string
       used_amount:
@@ -351,6 +419,12 @@ definitions:
         type: string
       desc:
         type: string
+      grouped_sponsors:
+        additionalProperties:
+          items:
+            type: string
+          type: array
+        type: object
       id:
         type: integer
       intro:
@@ -399,10 +473,6 @@ definitions:
       total_amount:
         description: total_amount = used_amount + remain_amount
         type: number
-      type:
-        allOf:
-        - $ref: '#/definitions/model.BudgetType'
-        description: budget type, credit or token
       updated_at:
         type: string
       used_amount:
@@ -518,10 +588,6 @@ definitions:
       asset_name:
         description: asset name
         type: string
-      asset_type:
-        allOf:
-        - $ref: '#/definitions/model.BudgetType'
-        description: type of the asset, credit or token
       created_at:
         type: string
       dealt_amount:
@@ -560,8 +626,6 @@ definitions:
     type: object
   project.BudgetParam:
     properties:
-      budget_type:
-        $ref: '#/definitions/model.BudgetType'
       name:
         type: string
       total_amount:
@@ -607,6 +671,12 @@ definitions:
         type: string
       desc:
         type: string
+      grouped_sponsors:
+        additionalProperties:
+          items:
+            type: string
+          type: array
+        type: object
       id:
         type: integer
       intro:
@@ -1014,6 +1084,41 @@ paths:
       summary: List available projects and guilds for current user
       tags:
       - app_bundle
+  /cityhall/batch_update_members:
+    post:
+      parameters:
+      - description: member data
+        in: body
+        name: JsonBody
+        required: true
+        schema:
+          items:
+            $ref: '#/definitions/city_hall.CityHallUpdateMemberReq'
+          type: array
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: updates multiple group member info in single request, the logic is
+        same with single update
+  /cityhall/update_members:
+    post:
+      parameters:
+      - description: member data
+        in: body
+        name: JsonBody
+        required: true
+        schema:
+          $ref: '#/definitions/city_hall.CityHallUpdateMemberReq'
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: updates cityhall member, if group name existing in the request, the
+        grouped sponsors field will be updated, otherwise the sponsors field will
+        be updated
   /data_srv/aggr_scr:
     get:
       responses:

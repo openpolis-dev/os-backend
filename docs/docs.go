@@ -278,6 +278,57 @@ const docTemplate = `{
                 }
             }
         },
+        "/cityhall/batch_update_members": {
+            "post": {
+                "summary": "updates multiple group member info in single request, the logic is same with single update",
+                "parameters": [
+                    {
+                        "description": "member data",
+                        "name": "JsonBody",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/city_hall.CityHallUpdateMemberReq"
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/cityhall/update_members": {
+            "post": {
+                "summary": "updates cityhall member, if group name existing in the request, the grouped sponsors field will be updated, otherwise the sponsors field will be updated",
+                "parameters": [
+                    {
+                        "description": "member data",
+                        "name": "JsonBody",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/city_hall.CityHallUpdateMemberReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/data_srv/aggr_scr": {
             "get": {
                 "summary": "returns aggregated credit score and node calculation result",
@@ -1896,7 +1947,21 @@ const docTemplate = `{
             }
         },
         "app_bundle.ListAvailableProjectAndGuildResp": {
-            "type": "object"
+            "type": "object",
+            "properties": {
+                "guilds": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.Guild"
+                    }
+                },
+                "projects": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.Project"
+                    }
+                }
+            }
         },
         "application.ApplicantListResponse": {
             "type": "object",
@@ -1906,6 +1971,116 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string"
+                }
+            }
+        },
+        "city_hall.CityHallDetailReply": {
+            "type": "object",
+            "properties": {
+                "budgets": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.ProjectBudget"
+                    }
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "creator": {
+                    "type": "string"
+                },
+                "desc": {
+                    "type": "string"
+                },
+                "grouped_sponsors": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "intro": {
+                    "type": "string"
+                },
+                "is_special": {
+                    "type": "boolean"
+                },
+                "logo": {
+                    "type": "string"
+                },
+                "members": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "proposals": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "special_type": {
+                    "$ref": "#/definitions/model.SpecialProjectType"
+                },
+                "sponsors": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "status": {
+                    "description": "Status may have those values: open/pending_close/closed",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.ProjectStatus"
+                        }
+                    ]
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "city_hall.CityHallUpdateBudgetReq": {
+            "type": "object",
+            "properties": {
+                "asset_name": {
+                    "type": "string"
+                },
+                "asset_type": {
+                    "type": "string"
+                },
+                "total_amount": {
+                    "type": "number"
+                }
+            }
+        },
+        "city_hall.CityHallUpdateMemberReq": {
+            "type": "object",
+            "properties": {
+                "add": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "group_name": {
+                    "type": "string"
+                },
+                "remove": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },
@@ -1958,9 +2133,6 @@ const docTemplate = `{
         "guild.BudgetParam": {
             "type": "object",
             "properties": {
-                "budget_type": {
-                    "$ref": "#/definitions/model.BudgetType"
-                },
                 "name": {
                     "type": "string"
                 },
@@ -2125,15 +2297,6 @@ const docTemplate = `{
                 "ApplicationStateOpen"
             ]
         },
-        "model.BudgetType": {
-            "type": "string",
-            "enum": [
-                "credit"
-            ],
-            "x-enum-varnames": [
-                "BudgetTypeCredit"
-            ]
-        },
         "model.FrontendApplicationRecord": {
             "type": "object",
             "properties": {
@@ -2261,14 +2424,6 @@ const docTemplate = `{
                     "description": "total_amount",
                     "type": "number"
                 },
-                "type": {
-                    "description": "budget type, credit or token",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/model.BudgetType"
-                        }
-                    ]
-                },
                 "updated_at": {
                     "type": "string"
                 },
@@ -2338,6 +2493,15 @@ const docTemplate = `{
                 },
                 "desc": {
                     "type": "string"
+                },
+                "grouped_sponsors": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
                 },
                 "id": {
                     "type": "integer"
@@ -2411,14 +2575,6 @@ const docTemplate = `{
                 "total_amount": {
                     "description": "total_amount = used_amount + remain_amount",
                     "type": "number"
-                },
-                "type": {
-                    "description": "budget type, credit or token",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/model.BudgetType"
-                        }
-                    ]
                 },
                 "updated_at": {
                     "type": "string"
@@ -2585,14 +2741,6 @@ const docTemplate = `{
                     "description": "asset name",
                     "type": "string"
                 },
-                "asset_type": {
-                    "description": "type of the asset, credit or token",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/model.BudgetType"
-                        }
-                    ]
-                },
                 "created_at": {
                     "type": "string"
                 },
@@ -2651,9 +2799,6 @@ const docTemplate = `{
         "project.BudgetParam": {
             "type": "object",
             "properties": {
-                "budget_type": {
-                    "$ref": "#/definitions/model.BudgetType"
-                },
                 "name": {
                     "type": "string"
                 },
@@ -2721,6 +2866,15 @@ const docTemplate = `{
                 },
                 "desc": {
                     "type": "string"
+                },
+                "grouped_sponsors": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
                 },
                 "id": {
                     "type": "integer"

@@ -291,6 +291,7 @@ func main() {
 		cityHallGroup := authorizedGroup.Group("/cityhall")
 		cityHallGroup.POST("/update_budget", city_hall.UpdateBudget)
 		cityHallGroup.POST("/update_members", city_hall.UpdateMember)
+		cityHallGroup.POST("/batch_update_members", city_hall.BatchUpdateMembers)
 
 		// push routers
 		pushGroup := authorizedGroup.Group("/push")
