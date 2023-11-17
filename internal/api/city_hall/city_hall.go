@@ -9,6 +9,7 @@ import (
 	"github.com/casbin/casbin/v2"
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
+	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
 	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api"
@@ -64,6 +65,10 @@ func getOrCreateCityHallProject(db *gorm.DB, enforcer *casbin.Enforcer) (*model.
 func Info(ctx *gin.Context) {
 	_, enforcer, db, _ := api.ForContext(ctx)
 	cityHallProject, err := getOrCreateCityHallProject(db, enforcer)
+	cityHallProject.GroupedSponsors = lo.PickBy(cityHallProject.GroupedSponsors, func(_ string, members []string) bool {
+		return members != nil && len(members) != 0
+	})
+
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall record error")))
 		return
