@@ -114,9 +114,7 @@ type FrontendApplicationRecord struct {
 	DetailedType     string    `json:"detailed_type"`
 	Comment          string    `json:"comment"`
 	SubmitterWallet  string    `json:"submitter_wallet"`
-	SubmitterName    string    `json:"submitter_name"`
 	ReviewerWallet   string    `json:"reviewer_wallet"`
-	ReviewerName     string    `json:"reviewer_name"`
 	TransactionIds   string    `json:"transaction_ids"`
 }
 
@@ -127,16 +125,11 @@ type jointAppEntityRslt struct {
 }
 
 func (r *jointAppEntityRslt) ToFrontedApplicationRecord(db *gorm.DB) *FrontendApplicationRecord {
+	var err error
 	var submitterWallet string
-	var submitterUsername string
 	var reviewerWallet string
-	var reviewerUsername string
 
 	submitterWallet = r.Application.Applicant
-	submitterUsername, err := UserModel.TryGetUsername(db, submitterWallet)
-	if err != nil {
-		return nil
-	}
 
 	auditlog := ApplicationAuditLog{}
 	err = db.Model(&ApplicationAuditLog{}).
@@ -151,11 +144,6 @@ func (r *jointAppEntityRslt) ToFrontedApplicationRecord(db *gorm.DB) *FrontendAp
 		}
 	} else {
 		reviewerWallet = auditlog.Operator
-		reviewerUsername, err = UserModel.TryGetUsername(db, reviewerWallet)
-		if err != nil {
-			log.Error().Msgf("Get username error: %+v", err)
-			return nil
-		}
 	}
 
 	var appSeasonRcd Season
@@ -178,9 +166,7 @@ func (r *jointAppEntityRslt) ToFrontedApplicationRecord(db *gorm.DB) *FrontendAp
 		DetailedType:     r.Application.DetailedType,
 		Comment:          r.Application.Comment,
 		SubmitterWallet:  submitterWallet,
-		SubmitterName:    submitterUsername,
 		ReviewerWallet:   reviewerWallet,
-		ReviewerName:     reviewerUsername,
 		TransactionIds:   r.Application.CompleteMessage,
 	}
 }
