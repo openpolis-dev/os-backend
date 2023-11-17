@@ -14,8 +14,8 @@ var ApplicationUploadTemplateHeader = map[string]string{
 }
 
 var ApplicationDownloadHeader = map[string]string{
-	"zh": "时间,钱包地址,登记积分,登记Token,事项内容,预算来源,备注,状态,登记人,登记人地址,审核人,审核人地址",
-	"en": "Time,Address,Add Points,Add Token,Content,Budget Source,Note,State,Operator,OperatorWalletAddress,Auditor,AuditorWalletAddress",
+	"zh": "接收人,增加资产,季度,事项内容,预算来源,申请人,状态",
+	"en": "Receiver,Add Assets,Season,Content,Budget Source,Operator,State",
 }
 
 const SeedContractType = "erc721"

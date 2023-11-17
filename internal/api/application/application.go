@@ -249,7 +249,15 @@ func Download(ctx *gin.Context) {
 			if r == nil {
 				continue
 			}
-			err = w.Write(r.ToCSV())
+			err = w.Write([]string{
+				r.TargetUserWallet,
+				fmt.Sprintf("%s %s", r.Amount, r.AssetName),
+				r.SeasonName,
+				r.DetailedType,
+				r.BudgetSource,
+				r.SubmitterWallet,
+				r.Status,
+			})
 			if err != nil {
 				ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 				return
@@ -288,7 +296,15 @@ func Download(ctx *gin.Context) {
 		rowId := 2
 		for _, row := range rcds {
 			cell, _ := excelize.CoordinatesToCellName(1, rowId)
-			err = streamWriter.SetRow(cell, row.ToXlsx())
+			err = streamWriter.SetRow(cell, []any{
+				row.TargetUserWallet,
+				fmt.Sprintf("%s %s", row.Amount, row.AssetName),
+				row.SeasonName,
+				row.DetailedType,
+				row.BudgetSource,
+				row.SubmitterWallet,
+				row.Status,
+			})
 			if err != nil {
 				log.Error().Msgf("write excel row[%d] failed: %s", rowId, err)
 			}

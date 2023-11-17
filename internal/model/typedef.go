@@ -120,54 +120,6 @@ type FrontendApplicationRecord struct {
 	TransactionIds   string    `json:"transaction_ids"`
 }
 
-func (r *FrontendApplicationRecord) ToCSV() []string {
-	var createdAtStr string
-	var err error
-	createdAtStr, err = ConvertTimeToTzString(r.CreatedAt, ExportApplicationTimeZone, ExportApplicationTimeFormat)
-	if err != nil {
-		createdAtStr = r.CreatedAt.Format(time.RFC3339)
-	}
-
-	return []string{
-		createdAtStr,
-		r.TargetUserWallet,
-		r.AssetName,
-		r.Amount,
-		r.DetailedType,
-		r.BudgetSource,
-		r.Comment,
-		r.Status,
-		r.SubmitterName,
-		r.SubmitterWallet,
-		r.ReviewerName,
-		r.ReviewerWallet,
-	}
-}
-
-func (r *FrontendApplicationRecord) ToXlsx() []any {
-	var createdAtStr string
-	var err error
-	createdAtStr, err = ConvertTimeToTzString(r.CreatedAt, ExportApplicationTimeZone, ExportApplicationTimeFormat)
-	if err != nil {
-		createdAtStr = r.CreatedAt.Format(time.RFC3339)
-	}
-
-	return []any{
-		createdAtStr,
-		r.TargetUserWallet,
-		r.AssetName,
-		r.Amount,
-		r.DetailedType,
-		r.BudgetSource,
-		r.Comment,
-		r.Status,
-		r.SubmitterName,
-		r.SubmitterWallet,
-		r.ReviewerName,
-		r.ReviewerWallet,
-	}
-}
-
 // jointAppEntityRslt saves applications records by guild and project join query
 type jointAppEntityRslt struct {
 	Application *Application `gorm:"embedded"`
