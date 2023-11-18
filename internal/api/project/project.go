@@ -344,6 +344,8 @@ func Close(ctx *gin.Context) {
 			State:      model.ApplicationStateOpen,
 			CreatedAt:  time.Now(),
 			UpdatedAt:  time.Now(),
+			CreateTs:   model.GetCurrentUtcEpochSecond(),
+			UpdateTs:   model.GetCurrentUtcEpochSecond(),
 			EntityType: "project",
 			EntityId:   project.ID,
 		}

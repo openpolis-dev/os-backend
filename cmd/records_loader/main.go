@@ -31,6 +31,7 @@ type DetailRecordSchema struct {
 	EntityName   string
 	UserWallet   string
 	DealDate     time.Time
+	DealTs       int64
 	AssetName    string
 	AssetAmount  decimal.Decimal
 	DetailedType string
@@ -140,6 +141,7 @@ func loadDetailSheet(filePath string) ([]*DetailRecordSchema, error) {
 			EntityName:   r[2],
 			UserWallet:   model.FormatUserWallet(r[3]),
 			DealDate:     dealDate.In(internal.ProjectTimezone),
+			DealTs:       dealDate.In(internal.ProjectTimezone).UTC().Unix(),
 			AssetName:    r[5],
 			AssetAmount:  assetAmount,
 			DetailedType: detailedType,
@@ -301,6 +303,8 @@ func saveToDatabase(db *gorm.DB, rcds []*DetailRecordSchema, seasonRcds []*model
 				State:            model.ApplicationStateCompleted,
 				CreatedAt:        r.DealDate,
 				UpdatedAt:        r.DealDate,
+				CreateTs:         r.DealTs,
+				UpdateTs:         r.DealTs,
 				DetailedType:     r.DetailedType,
 				TargetUserWallet: model.FormatUserWallet(r.UserWallet),
 				AssetName:        r.AssetName,

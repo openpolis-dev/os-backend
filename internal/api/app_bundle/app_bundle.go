@@ -28,6 +28,7 @@ type AppBundleResponseRecord struct {
 	} `json:"entity"`
 	Applicant string                 `json:"applicant"`
 	ApplyTime time.Time              `json:"apply_time"`
+	ApplyTs   int64                  `json:"apply_ts"`
 	Reviewer  string                 `json:"reviewer"`
 	Comment   string                 `json:"comment"`
 	State     model.ApplicationState `json:"state"`
@@ -165,6 +166,7 @@ func ListAppBundle(ctx *gin.Context) {
 			},
 			Applicant: jointAppBundleEntityRcd.AppBundle.Applicant,
 			ApplyTime: jointAppBundleEntityRcd.AppBundle.CreatedAt,
+			ApplyTs:   jointAppBundleEntityRcd.AppBundle.CreateTs,
 			Comment:   jointAppBundleEntityRcd.AppBundle.Comment,
 			State:     jointAppBundleEntityRcd.AppBundle.State,
 			Assets: lo.MapToSlice(assetSummary, func(assetName string, amount decimal.Decimal) struct {
@@ -247,6 +249,8 @@ func CreateAppBundle(ctx *gin.Context) {
 			ShadowRecord: false,
 			CreatedAt:    time.Now().In(internal.ProjectTimezone),
 			UpdatedAt:    time.Now().In(internal.ProjectTimezone),
+			CreateTs:     model.GetCurrentUtcEpochSecond(),
+			UpdateTs:     model.GetCurrentUtcEpochSecond(),
 			Type:         "NEW_REWARD",
 		}
 
@@ -257,6 +261,8 @@ func CreateAppBundle(ctx *gin.Context) {
 				State:            model.ApplicationStateOpen,
 				CreatedAt:        time.Now().In(internal.ProjectTimezone),
 				UpdatedAt:        time.Now().In(internal.ProjectTimezone),
+				CreateTs:         model.GetCurrentUtcEpochSecond(),
+				UpdateTs:         model.GetCurrentUtcEpochSecond(),
 				DetailedType:     appRcdRequest.DetailedType,
 				Comment:          appRcdRequest.Comment,
 				TargetUserWallet: appRcdRequest.TargetUserWallet,

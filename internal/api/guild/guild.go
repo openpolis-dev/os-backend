@@ -113,6 +113,8 @@ func Create(ctx *gin.Context) {
 		Members:   members,
 		Proposals: proposals,
 		Creator:   user.Wallet,
+		CreateTs:  model.GetCurrentUtcEpochSecond(),
+		UpdateTs:  model.GetCurrentUtcEpochSecond(),
 	}
 	err = model.GuildModel.CreateOrUpdate(tx, &guild)
 	if err != nil {

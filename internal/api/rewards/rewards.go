@@ -63,6 +63,8 @@ func ApproveMintReward(ctx *gin.Context) {
 			ShadowRecord: false,
 			CreatedAt:    time.Now(),
 			UpdatedAt:    time.Now(),
+			CreateTs:     model.GetCurrentUtcEpochSecond(),
+			UpdateTs:     model.GetCurrentUtcEpochSecond(),
 		}
 		log.Error().Msgf("TTT: app bundle: %+v", appBundle)
 		err = tx.Save(&appBundle).Error
@@ -86,6 +88,8 @@ func ApproveMintReward(ctx *gin.Context) {
 				State:            model.ApplicationStateOpen,
 				CreatedAt:        time.Now(),
 				UpdatedAt:        time.Now(),
+				CreateTs:         model.GetCurrentUtcEpochSecond(),
+				UpdateTs:         model.GetCurrentUtcEpochSecond(),
 				DetailedType:     fmt.Sprintf(MintRewardDetailTemplate, currentSeason.Name),
 				Comment:          "",
 				AssetName:        "SCR",

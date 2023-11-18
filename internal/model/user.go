@@ -1,6 +1,7 @@
 package model
 
 import (
+	"errors"
 	"time"
 
 	"github.com/theseed-labs/os-backend/internal/sdk"
@@ -25,6 +26,9 @@ type User struct {
 
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
+
+	CreateTs int64 `json:"create_ts"`
+	UpdateTs int64 `json:"update_ts"`
 
 	Assets []*UserAssetRecord `json:"assets" gorm:"foreignKey:UserWallet;references:Wallet"`
 }
@@ -51,7 +55,7 @@ func (*userModel) List(db *gorm.DB, wallets []string) ([]*User, error) {
 func (*userModel) TryGetUsername(db *gorm.DB, wallet string) (string, error) {
 	querySeg := db.Where("wallet = ?", wallet)
 	user, err := gormfind.Row[User](querySeg)
-	if err != nil && err != gorm.ErrRecordNotFound {
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return "", err
 	}
 

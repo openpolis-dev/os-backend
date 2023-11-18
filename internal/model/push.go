@@ -18,11 +18,15 @@ type Push struct {
 	// TODO support multi type, custom(JumpURL), xx(yy,zz)
 	JumpURL string `json:"jump_url"`
 
+	// TODO: Verify whether this file need to be changed to epoch second
 	PushDate time.Time `json:"push_date"`
 	Status   int       `json:"status"`
 
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
+
+	CreateTs int64 `json:"create_ts"`
+	UpdateTs int64 `json:"update_ts"`
 }
 
 type pushModel struct{}

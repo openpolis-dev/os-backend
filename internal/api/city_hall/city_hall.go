@@ -139,8 +139,10 @@ func UpdateBudget(ctx *gin.Context) {
 				TotalAmount:  req.TotalAmount,
 				UsedAmount:   decimal.Zero,
 				RemainAmount: req.TotalAmount,
-				CreatedAt:    time.Time{},
-				UpdatedAt:    time.Time{},
+				CreatedAt:    time.Now().In(internal.ProjectTimezone),
+				UpdatedAt:    time.Now().In(internal.ProjectTimezone),
+				CreateTs:     model.GetCurrentUtcEpochSecond(),
+				UpdateTs:     model.GetCurrentUtcEpochSecond(),
 			}
 			err = db.Create(&budget).Error
 			if err != nil {

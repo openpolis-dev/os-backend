@@ -119,6 +119,8 @@ type FrontendApplicationRecord struct {
 	ReviewerWallet   string    `json:"reviewer_wallet"`
 	ReviewerName     string    `json:"reviewer_name"`
 	TransactionIds   string    `json:"transaction_ids"`
+	CreateTs         int64     `json:"create_ts"`
+	UpdateTs         int64     `json:"update_ts"`
 }
 
 func (r *FrontendApplicationRecord) ToCSV() []string {
@@ -219,6 +221,7 @@ func (r *jointAppEntityRslt) ToFrontedApplicationRecord(db *gorm.DB) *FrontendAp
 		SeasonName:       appSeasonRcd.Name,
 		EntityName:       r.Application.EntityType,
 		CreatedAt:        r.Application.CreatedAt,
+		CreateTs:         r.Application.CreateTs,
 		TargetUserWallet: r.Application.TargetUserWallet,
 		AssetName:        r.Application.AssetName,
 		Amount:           r.Application.AssetAmount.String(),

@@ -156,8 +156,10 @@ func Create(ctx *gin.Context) {
 				EntityId:     req.EntityId,
 				SeasonId:     seasonRecord.ID,
 				State:        model.ApplicationStateOpen,
-				CreatedAt:    time.Time{},
-				UpdatedAt:    time.Time{},
+				CreatedAt:    time.Now().In(internal.ProjectTimezone),
+				UpdatedAt:    time.Now().In(internal.ProjectTimezone),
+				CreateTs:     model.GetCurrentUtcEpochSecond(),
+				UpdateTs:     model.GetCurrentUtcEpochSecond(),
 				ShadowRecord: true,
 				Type:         "CLOSE_PROJECT",
 			}
@@ -175,8 +177,10 @@ func Create(ctx *gin.Context) {
 				SeasonId:     seasonRecord.ID,
 				DetailedType: req.DetailedType,
 				Comment:      req.Comment,
-				CreatedAt:    time.Now(),
-				UpdatedAt:    time.Now(),
+				CreatedAt:    time.Now().In(internal.ProjectTimezone),
+				UpdatedAt:    time.Now().In(internal.ProjectTimezone),
+				CreateTs:     model.GetCurrentUtcEpochSecond(),
+				UpdateTs:     model.GetCurrentUtcEpochSecond(),
 				BundleId:     appBundle.ID,
 			}
 

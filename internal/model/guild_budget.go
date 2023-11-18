@@ -17,6 +17,8 @@ type GuildBudget struct {
 	RemainAmount decimal.Decimal `json:"remain_amount" sql:"type:decimal(20,8);"` // remain_amount
 	CreatedAt    time.Time       `json:"created_at"`
 	UpdatedAt    time.Time       `json:"updated_at"`
+	CreateTs     int64           `json:"create_ts"`
+	UpdateTs     int64           `json:"update_ts"`
 }
 
 type guildBudgetModel struct{}

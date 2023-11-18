@@ -45,6 +45,9 @@ type Application struct {
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 
+	CreateTs int64 `json:"create_ts" gorm:"index"`
+	UpdateTs int64 `json:"update_ts"`
+
 	// DetailedType means a sub category of this application
 	// Value for this field saves data from Excel data
 	DetailedType string `json:"detailed_type"`
