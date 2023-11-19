@@ -12,6 +12,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
+	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/sdk"
 	"github.com/xiaosongfu/gormfind"
@@ -44,6 +45,9 @@ type Application struct {
 
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
+
+	CreateTs int64 `json:"create_ts" gorm:"index"`
+	UpdateTs int64 `json:"update_ts"`
 
 	// DetailedType means a sub category of this application
 	// Value for this field saves data from Excel data
@@ -82,7 +86,7 @@ type ApplicationAuditLog struct {
 	// Which application this audit log belongs to
 	ApplicationID uint `json:"application_id" gorm:"index"`
 
-	LogTs time.Time `json:"log_ts"`
+	LogTs int64 `json:"log_ts" gorm:"index"`
 
 	// Which operation this log record, which should be in new/approve/reject/process/complete
 	Operation AuditActionType `json:"operation"`
@@ -196,7 +200,7 @@ func doAuditApplicationInTransaction(tx *gorm.DB, operatorWallet string, applica
 	// Create audit log for application
 	if err := tx.Create(&ApplicationAuditLog{
 		ApplicationID: application.ID,
-		LogTs:         time.Now(),
+		LogTs:         GetCurrentUtcEpochSecond(),
 		Operation:     action,
 		Operator:      operatorWallet,
 		PreState:      application.State,
@@ -225,6 +229,8 @@ func doAuditApplicationInTransaction(tx *gorm.DB, operatorWallet string, applica
 		application.CompleteMessage = extraMsg
 	}
 
+	application.UpdatedAt = time.Now().In(internal.ProjectTimezone)
+	application.UpdateTs = GetCurrentUtcEpochSecond()
 	if err := tx.Save(&application).Error; err != nil {
 		return err
 	}

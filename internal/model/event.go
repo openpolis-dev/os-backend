@@ -30,6 +30,9 @@ type Event struct {
 	StartAt time.Time `json:"start_at"`
 	EndAt   time.Time `json:"end_at"`
 
+	StartTs int64 `json:"start_ts"`
+	EndTs   int64 `json:"end_ts"`
+
 	RewardDetail string `json:"reward_detail"`
 
 	// Application state, which contains open/approved/rejected/processing/completed
@@ -37,4 +40,7 @@ type Event struct {
 
 	CreatedAt time.Time `json:"created_at" gorm:"autoCreateTime"`
 	UpdatedAt time.Time `json:"updated_at" gorm:"autoUpdateTime"`
+
+	CreateTs int64 `json:"create_ts" gorm:"index"`
+	UpdateTs int64 `json:"update_ts"`
 }

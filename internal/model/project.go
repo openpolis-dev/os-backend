@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/shopspring/decimal"
+	"github.com/theseed-labs/os-backend/internal"
 	"github.com/xiaosongfu/gormfind"
 	"gorm.io/gorm"
 )
@@ -43,6 +44,8 @@ type Project struct {
 
 	CreatedAt time.Time `json:"created_at" gorm:"index"`
 	UpdatedAt time.Time `json:"updated_at"`
+	CreateTs  int64     `json:"create_ts"`
+	UpdateTs  int64     `json:"update_ts"`
 }
 
 type projectModel struct{}
@@ -228,8 +231,10 @@ func createCityHallProject(db *gorm.DB, cityHallUsers []string) (*Project, error
 		IsSpecial:   true,
 		SpecialType: SpecialProjectCityHall,
 		Sponsors:    cityHallUsers,
-		CreatedAt:   time.Time{},
-		UpdatedAt:   time.Time{},
+		CreatedAt:   time.Now().In(internal.ProjectTimezone),
+		UpdatedAt:   time.Now().In(internal.ProjectTimezone),
+		CreateTs:    GetCurrentUtcEpochSecond(),
+		UpdateTs:    GetCurrentUtcEpochSecond(),
 	}
 	err := db.Create(&project).Error
 

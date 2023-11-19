@@ -31,6 +31,7 @@ type DetailRecordSchema struct {
 	EntityName   string
 	UserWallet   string
 	DealDate     time.Time
+	DealTs       int64
 	AssetName    string
 	AssetAmount  decimal.Decimal
 	DetailedType string
@@ -140,6 +141,7 @@ func loadDetailSheet(filePath string) ([]*DetailRecordSchema, error) {
 			EntityName:   r[2],
 			UserWallet:   model.FormatUserWallet(r[3]),
 			DealDate:     dealDate.In(internal.ProjectTimezone),
+			DealTs:       dealDate.In(internal.ProjectTimezone).UTC().Unix(),
 			AssetName:    r[5],
 			AssetAmount:  assetAmount,
 			DetailedType: detailedType,
@@ -301,6 +303,8 @@ func saveToDatabase(db *gorm.DB, rcds []*DetailRecordSchema, seasonRcds []*model
 				State:            model.ApplicationStateCompleted,
 				CreatedAt:        r.DealDate,
 				UpdatedAt:        r.DealDate,
+				CreateTs:         r.DealTs,
+				UpdateTs:         r.DealTs,
 				DetailedType:     r.DetailedType,
 				TargetUserWallet: model.FormatUserWallet(r.UserWallet),
 				AssetName:        r.AssetName,
@@ -318,10 +322,10 @@ func saveToDatabase(db *gorm.DB, rcds []*DetailRecordSchema, seasonRcds []*model
 			}
 
 			auditLogs := []*model.ApplicationAuditLog{
-				{ApplicationID: application.ID, LogTs: time.Now().In(internal.ProjectTimezone), PostState: model.ApplicationStateApproved},
-				{ApplicationID: application.ID, LogTs: time.Now().In(internal.ProjectTimezone), PreState: model.ApplicationStateOpen, PostState: model.ApplicationStateApproved},
-				{ApplicationID: application.ID, LogTs: time.Now().In(internal.ProjectTimezone), PreState: model.ApplicationStateApproved, PostState: model.ApplicationStateProcessing},
-				{ApplicationID: application.ID, LogTs: time.Now().In(internal.ProjectTimezone), PreState: model.ApplicationStateProcessing, PostState: model.ApplicationStateCompleted},
+				{ApplicationID: application.ID, LogTs: model.GetCurrentUtcEpochSecond(), PostState: model.ApplicationStateApproved},
+				{ApplicationID: application.ID, LogTs: model.GetCurrentUtcEpochSecond(), PreState: model.ApplicationStateOpen, PostState: model.ApplicationStateApproved},
+				{ApplicationID: application.ID, LogTs: model.GetCurrentUtcEpochSecond(), PreState: model.ApplicationStateApproved, PostState: model.ApplicationStateProcessing},
+				{ApplicationID: application.ID, LogTs: model.GetCurrentUtcEpochSecond(), PreState: model.ApplicationStateProcessing, PostState: model.ApplicationStateCompleted},
 			}
 
 			err = tx.Save(auditLogs).Error

@@ -64,7 +64,7 @@ func NewApplicationRecord(db *gorm.DB, application *Application) error {
 
 		if err := tx.Create(&ApplicationAuditLog{
 			ApplicationID: application.ID,
-			LogTs:         time.Now(),
+			LogTs:         GetCurrentUtcEpochSecond(),
 			Operation:     AuditActionNew,
 			Operator:      application.Applicant,
 			PreState:      "",
@@ -328,4 +328,8 @@ func GetMapValueOrDefault[K comparable, V any](origMap map[K]V, key K, defaultVa
 
 func FormatUserWallet(wallet string) string {
 	return strings.TrimSpace(strings.ToLower(wallet))
+}
+
+func GetCurrentUtcEpochSecond() int64 {
+	return time.Now().UTC().Unix()
 }

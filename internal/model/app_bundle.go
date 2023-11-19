@@ -34,6 +34,9 @@ type AppBundle struct {
 
 	CreatedAt time.Time `gorm:"autoCreateTime"`
 	UpdatedAt time.Time `gorm:"autoUpdateTime"`
+
+	CreateTs int64
+	UpdateTs int64
 }
 
 // AppBundleAuditLog saves audit log for app bundles, the data structure is similar with ApplicationAuditLog.
@@ -43,7 +46,7 @@ type AppBundleAuditLog struct {
 	AppBundleId uint
 	AppBundle   AppBundle
 
-	LogTs time.Time
+	LogTs int64
 	// Which operation this log record, which should be in new/approve/reject/process/complete
 	Operation AuditActionType `json:"operation"`
 
