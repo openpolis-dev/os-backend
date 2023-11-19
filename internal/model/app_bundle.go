@@ -46,7 +46,7 @@ type AppBundleAuditLog struct {
 	AppBundleId uint
 	AppBundle   AppBundle
 
-	LogTs time.Time
+	LogTs int64
 	// Which operation this log record, which should be in new/approve/reject/process/complete
 	Operation AuditActionType `json:"operation"`
 

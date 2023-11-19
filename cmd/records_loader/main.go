@@ -322,10 +322,10 @@ func saveToDatabase(db *gorm.DB, rcds []*DetailRecordSchema, seasonRcds []*model
 			}
 
 			auditLogs := []*model.ApplicationAuditLog{
-				{ApplicationID: application.ID, LogTs: time.Now().In(internal.ProjectTimezone), PostState: model.ApplicationStateApproved},
-				{ApplicationID: application.ID, LogTs: time.Now().In(internal.ProjectTimezone), PreState: model.ApplicationStateOpen, PostState: model.ApplicationStateApproved},
-				{ApplicationID: application.ID, LogTs: time.Now().In(internal.ProjectTimezone), PreState: model.ApplicationStateApproved, PostState: model.ApplicationStateProcessing},
-				{ApplicationID: application.ID, LogTs: time.Now().In(internal.ProjectTimezone), PreState: model.ApplicationStateProcessing, PostState: model.ApplicationStateCompleted},
+				{ApplicationID: application.ID, LogTs: model.GetCurrentUtcEpochSecond(), PostState: model.ApplicationStateApproved},
+				{ApplicationID: application.ID, LogTs: model.GetCurrentUtcEpochSecond(), PreState: model.ApplicationStateOpen, PostState: model.ApplicationStateApproved},
+				{ApplicationID: application.ID, LogTs: model.GetCurrentUtcEpochSecond(), PreState: model.ApplicationStateApproved, PostState: model.ApplicationStateProcessing},
+				{ApplicationID: application.ID, LogTs: model.GetCurrentUtcEpochSecond(), PreState: model.ApplicationStateProcessing, PostState: model.ApplicationStateCompleted},
 			}
 
 			err = tx.Save(auditLogs).Error

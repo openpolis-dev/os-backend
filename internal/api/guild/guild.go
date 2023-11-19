@@ -5,11 +5,13 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
+	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk"
@@ -268,6 +270,8 @@ func Update(ctx *gin.Context) {
 	guild.Name = req.Name
 	guild.Intro = req.Intro
 	guild.Desc = req.Desc
+	guild.UpdateTs = model.GetCurrentUtcEpochSecond()
+	guild.UpdatedAt = time.Now().In(internal.ProjectTimezone)
 	err = model.GuildModel.CreateOrUpdate(db, guild)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
@@ -471,6 +475,8 @@ func UpdateStaffs(ctx *gin.Context) {
 			guild.Sponsors = lo.Uniq[string](guild.Sponsors)
 			// remove sponsors from members
 			guild.Sponsors = lo.Without[string](guild.Sponsors, guild.Members...)
+			guild.UpdateTs = model.GetCurrentUtcEpochSecond()
+			guild.UpdatedAt = time.Now().In(internal.ProjectTimezone)
 			err = model.GuildModel.CreateOrUpdate(tx, guild)
 			if err != nil {
 				tx.Rollback()
@@ -507,6 +513,8 @@ func UpdateStaffs(ctx *gin.Context) {
 			guild.Members = lo.Uniq[string](guild.Members)
 			// remove members from sponsors
 			guild.Members = lo.Without[string](guild.Members, guild.Sponsors...)
+			guild.UpdateTs = model.GetCurrentUtcEpochSecond()
+			guild.UpdatedAt = time.Now().In(internal.ProjectTimezone)
 			err = model.GuildModel.CreateOrUpdate(tx, guild)
 			if err != nil {
 				tx.Rollback()
@@ -547,6 +555,8 @@ func UpdateStaffs(ctx *gin.Context) {
 		if req.Sponsors != nil && len(req.Sponsors) != 0 {
 			// remove guild sponsors
 			guild.Sponsors = lo.Without[string](guild.Sponsors, sponsors...)
+			guild.UpdateTs = model.GetCurrentUtcEpochSecond()
+			guild.UpdatedAt = time.Now().In(internal.ProjectTimezone)
 			err = model.GuildModel.CreateOrUpdate(tx, guild)
 			if err != nil {
 				tx.Rollback()
@@ -579,6 +589,8 @@ func UpdateStaffs(ctx *gin.Context) {
 		if req.Members != nil && len(req.Members) != 0 {
 			// remove guild members
 			guild.Members = lo.Without[string](guild.Members, members...)
+			guild.UpdateTs = model.GetCurrentUtcEpochSecond()
+			guild.UpdatedAt = time.Now().In(internal.ProjectTimezone)
 			err = model.GuildModel.CreateOrUpdate(tx, guild)
 			if err != nil {
 				tx.Rollback()
@@ -725,6 +737,8 @@ func AddRelatedProposal(ctx *gin.Context) {
 	guild.Proposals = append(guild.Proposals, proposalIDs...)
 	// remove duplicate proposals
 	guild.Proposals = lo.Uniq[string](guild.Proposals)
+	guild.UpdateTs = model.GetCurrentUtcEpochSecond()
+	guild.UpdatedAt = time.Now().In(internal.ProjectTimezone)
 	err = model.GuildModel.CreateOrUpdate(db, guild)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))

@@ -158,6 +158,8 @@ func UpdateBudget(ctx *gin.Context) {
 	// update `TotalAmount`
 	budget.TotalAmount = req.TotalAmount
 	budget.RemainAmount = budget.TotalAmount.Sub(budget.UsedAmount)
+	budget.UpdatedAt = time.Now().In(internal.ProjectTimezone)
+	budget.UpdateTs = model.GetCurrentUtcEpochSecond()
 	err = model.ProjectBudgetModel.Update(db, &budget)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
@@ -392,6 +394,8 @@ func updateGroupedMembers(cityHallProject *model.Project, req *CityHallUpdateMem
 		cityHallProject.Sponsors = newSponsorsList
 	}
 
+	cityHallProject.UpdatedAt = time.Now().In(internal.ProjectTimezone)
+	cityHallProject.UpdateTs = model.GetCurrentUtcEpochSecond()
 	err = db.Save(cityHallProject).Error
 	if err != nil {
 		return http.StatusInternalServerError, err

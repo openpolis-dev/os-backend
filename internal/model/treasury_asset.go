@@ -6,6 +6,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"github.com/shopspring/decimal"
+	"github.com/theseed-labs/os-backend/internal"
 	"gorm.io/gorm"
 )
 
@@ -115,7 +116,11 @@ func (*treasuryAssetHelper) GetOrCreateCurrentSeasonRecord(db *gorm.DB) (*Treasu
 		return nil, err
 	}
 	var r TreasuryAsset
-	rslt := db.Preload("DetailedRecords").FirstOrInit(&r, TreasuryAsset{SeasonId: currSeason.ID, CreateTs: GetCurrentUtcEpochSecond()})
+	rslt := db.Preload("DetailedRecords").FirstOrInit(&r, TreasuryAsset{
+		SeasonId:  currSeason.ID,
+		CreateTs:  GetCurrentUtcEpochSecond(),
+		CreatedAt: time.Now().In(internal.ProjectTimezone),
+	})
 	if rslt.Error != nil {
 		return nil, rslt.Error
 	} else if rslt.RowsAffected == 0 {
@@ -137,6 +142,10 @@ func (*treasuryAssetHelper) GetOrCreateCurrentSeasonDetailedRecord(db *gorm.DB, 
 	}).Attrs(TreasuryDetailedRecord{
 		TotalAmount:  totalAmount,
 		RemainAmount: totalAmount,
+		CreatedAt:    time.Now().In(internal.ProjectTimezone),
+		CreateTs:     GetCurrentUtcEpochSecond(),
+		UpdatedAt:    time.Now().In(internal.ProjectTimezone),
+		UpdateTs:     GetCurrentUtcEpochSecond(),
 	}).FirstOrInit(&r)
 
 	if rslt.Error != nil {

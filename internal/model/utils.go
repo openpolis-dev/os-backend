@@ -64,7 +64,7 @@ func NewApplicationRecord(db *gorm.DB, application *Application) error {
 
 		if err := tx.Create(&ApplicationAuditLog{
 			ApplicationID: application.ID,
-			LogTs:         time.Now(),
+			LogTs:         GetCurrentUtcEpochSecond(),
 			Operation:     AuditActionNew,
 			Operator:      application.Applicant,
 			PreState:      "",

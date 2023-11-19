@@ -282,7 +282,7 @@ func CreateAppBundle(ctx *gin.Context) {
 		return tx.Model(model.AppBundleAuditLog{}).Create(&model.AppBundleAuditLog{
 			AppBundleId: appBundle.ID,
 			AppBundle:   appBundle,
-			LogTs:       time.Now().In(internal.ProjectTimezone),
+			LogTs:       model.GetCurrentUtcEpochSecond(),
 			Operation:   model.AuditActionNew,
 			Operator:    user.Wallet,
 			PreState:    "",
@@ -383,6 +383,8 @@ func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState
 		for _, appBundleRcd := range appBundleRcds {
 
 			appBundleRcd.State = newState
+			appBundleRcd.UpdateTs = model.GetCurrentUtcEpochSecond()
+			appBundleRcd.UpdatedAt = time.Now().In(internal.ProjectTimezone)
 			err = tx.Save(&appBundleRcd).Error
 			if err != nil {
 				return err
@@ -391,7 +393,7 @@ func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState
 			err = tx.Model(model.AppBundleAuditLog{}).Create(&model.AppBundleAuditLog{
 				AppBundleId: appBundleRcd.ID,
 				AppBundle:   appBundleRcd,
-				LogTs:       time.Now().In(internal.ProjectTimezone),
+				LogTs:       model.GetCurrentUtcEpochSecond(),
 				Operation:   action,
 				Operator:    user.Wallet,
 				PreState:    model.ApplicationStateOpen,
@@ -413,7 +415,7 @@ func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState
 				err = tx.Model(model.AppBundleAuditLog{}).Create(&model.AppBundleAuditLog{
 					AppBundleId: appBundleRcd.ID,
 					AppBundle:   appBundleRcd,
-					LogTs:       time.Now().In(internal.ProjectTimezone),
+					LogTs:       model.GetCurrentUtcEpochSecond(),
 					Operation:   action,
 					Operator:    user.Wallet,
 					PreState:    model.ApplicationStateOpen,

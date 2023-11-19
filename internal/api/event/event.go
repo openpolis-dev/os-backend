@@ -116,6 +116,10 @@ func Create(ctx *gin.Context) {
 		StartAt:   startDate,
 		EndAt:     endDate,
 		Metadata:  req.Metadata,
+		CreatedAt: time.Now().In(internal.ProjectTimezone),
+		UpdatedAt: time.Now().In(internal.ProjectTimezone),
+		CreateTs:  model.GetCurrentUtcEpochSecond(),
+		UpdateTs:  model.GetCurrentUtcEpochSecond(),
 	}
 
 	err = db.Create(&eventRecord).Error
@@ -199,6 +203,8 @@ func Update(ctx *gin.Context) {
 		return
 	}
 
+	eventRecord.UpdatedAt = time.Now().In(internal.ProjectTimezone)
+	eventRecord.UpdateTs = model.GetCurrentUtcEpochSecond()
 	err = db.Save(&eventRecord).Error
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.BadRequest(err))

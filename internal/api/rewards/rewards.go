@@ -10,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
 	"github.com/shopspring/decimal"
+	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/storage"
@@ -61,8 +62,8 @@ func ApproveMintReward(ctx *gin.Context) {
 			State:        model.ApplicationStateOpen,
 			Type:         model.ApplicationNewReward,
 			ShadowRecord: false,
-			CreatedAt:    time.Now(),
-			UpdatedAt:    time.Now(),
+			CreatedAt:    time.Now().In(internal.ProjectTimezone),
+			UpdatedAt:    time.Now().In(internal.ProjectTimezone),
 			CreateTs:     model.GetCurrentUtcEpochSecond(),
 			UpdateTs:     model.GetCurrentUtcEpochSecond(),
 		}

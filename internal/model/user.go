@@ -4,6 +4,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/sdk"
 	"github.com/xiaosongfu/gormfind"
 	"gorm.io/gorm"
@@ -38,6 +39,9 @@ type userModel struct{}
 var UserModel userModel
 
 func (*userModel) CreateOrUpdate(db *gorm.DB, user *User) error {
+	user.UpdateTs = GetCurrentUtcEpochSecond()
+	user.UpdatedAt = time.Now().In(internal.ProjectTimezone)
+
 	return db.Save(user).Error
 }
 
