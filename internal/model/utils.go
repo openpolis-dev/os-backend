@@ -51,7 +51,8 @@ SELECT app.id                 as application_id,
        app.detailed_type,
        app.comment,
        completed_aal.operator as reviewer_wallet,
-       app.complete_message   as transaction_ids
+       app.complete_message   as transaction_ids,
+       app_bundles.comment as app_bundle_comment
 FROM applications as app
          LEFT JOIN projects ON app.entity_type = 'project' AND app.entity_id = projects.id
          LEFT JOIN guilds ON app.entity_type = 'guild' AND app.entity_id = guilds.id
@@ -79,7 +80,8 @@ FROM applications as app
          LEFT JOIN users applicant ON applicant.wallet = apply_aal.operator
          LEFT JOIN users reviewer ON reviewer.wallet = review_aal.operator
          LEFT JOIN users processor ON processor.wallet = process_aal.operator
-         LEFT JOIN users completer ON completer.wallet = completed_aal.operator`
+         LEFT JOIN users completer ON completer.wallet = completed_aal.operator
+         LEFT JOIN app_bundles ON app.bundle_id = app_bundles.id`
 
 const QueryAppBundlesWithEntityNameBaseSQL = `SELECT app_bundles.*,
 CASE

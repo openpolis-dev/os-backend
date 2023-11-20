@@ -103,16 +103,17 @@ type NewRewardApplicationDetailedData struct {
 
 // FrontendApplicationRecord defines struct for application record that returns to frontend invoker
 type FrontendApplicationRecord struct {
-	ApplicationID uint      `json:"application_id"`
-	SeasonName    string    `json:"season_name"`
-	EntityName    string    `json:"entity_name"` // name field value from specified entity table
-	CreatedAt     time.Time `json:"created_at"`
-	AssetName     string    `json:"asset_name"`
-	Amount        string    `json:"amount"`
-	BudgetSource  string    `json:"budget_source"` // the data is from name field of project or guild
-	Status        string    `json:"status"`        // application status
-	DetailedType  string    `json:"detailed_type"`
-	Comment       string    `json:"comment"`
+	ApplicationID    uint      `json:"application_id"`
+	SeasonName       string    `json:"season_name"`
+	EntityName       string    `json:"entity_name"` // name field value from specified entity table
+	CreatedAt        time.Time `json:"created_at"`
+	AssetName        string    `json:"asset_name"`
+	Amount           string    `json:"amount"`
+	BudgetSource     string    `json:"budget_source"` // the data is from name field of project or guild
+	Status           string    `json:"status"`        // application status
+	DetailedType     string    `json:"detailed_type"`
+	Comment          string    `json:"comment"`
+	AppBundleComment string    `json:"app_bundle_comment"`
 
 	// target user data
 	TargetUserWallet string `json:"target_user_wallet"`

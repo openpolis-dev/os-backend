@@ -2318,6 +2318,9 @@ const docTemplate = `{
                 "amount": {
                     "type": "string"
                 },
+                "app_bundle_comment": {
+                    "type": "string"
+                },
                 "applicant_avatar": {
                     "type": "string"
                 },
