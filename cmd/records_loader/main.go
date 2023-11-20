@@ -322,10 +322,10 @@ func saveToDatabase(db *gorm.DB, rcds []*DetailRecordSchema, seasonRcds []*model
 			}
 
 			auditLogs := []*model.ApplicationAuditLog{
-				{ApplicationID: application.ID, LogTs: model.GetCurrentUtcEpochSecond(), PostState: model.ApplicationStateApproved},
-				{ApplicationID: application.ID, LogTs: model.GetCurrentUtcEpochSecond(), PreState: model.ApplicationStateOpen, PostState: model.ApplicationStateApproved},
-				{ApplicationID: application.ID, LogTs: model.GetCurrentUtcEpochSecond(), PreState: model.ApplicationStateApproved, PostState: model.ApplicationStateProcessing},
-				{ApplicationID: application.ID, LogTs: model.GetCurrentUtcEpochSecond(), PreState: model.ApplicationStateProcessing, PostState: model.ApplicationStateCompleted},
+				{ApplicationID: application.ID, Operation: model.AuditActionNew, LogTs: model.GetCurrentUtcEpochSecond(), PostState: model.ApplicationStateOpen},
+				{ApplicationID: application.ID, Operation: model.AuditActionApprove, LogTs: model.GetCurrentUtcEpochSecond(), PreState: model.ApplicationStateOpen, PostState: model.ApplicationStateApproved},
+				{ApplicationID: application.ID, Operation: model.AuditActionProcess, LogTs: model.GetCurrentUtcEpochSecond(), PreState: model.ApplicationStateApproved, PostState: model.ApplicationStateProcessing},
+				{ApplicationID: application.ID, Operation: model.AuditActionComplete, LogTs: model.GetCurrentUtcEpochSecond(), PreState: model.ApplicationStateProcessing, PostState: model.ApplicationStateCompleted},
 			}
 
 			err = tx.Save(auditLogs).Error
