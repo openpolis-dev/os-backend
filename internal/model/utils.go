@@ -15,7 +15,7 @@ const DateQueryFormat = "2006-01-02"
 
 const QueryApplicationsWithEntityNameBaseSQL = `
 SELECT app.id               as application_id,
-       seasons.name,
+       seasons.name 		as season_name,
        CASE
            WHEN app.entity_type = 'project' THEN projects.name
            WHEN app.entity_type = 'guild' THEN guilds.name
@@ -38,7 +38,7 @@ SELECT app.id               as application_id,
 FROM applications as app
          LEFT JOIN projects ON app.entity_type = 'project' AND app.entity_id = projects.id
          LEFT JOIN guilds ON app.entity_type = 'guild' AND app.entity_id = guilds.id
-         LEFT JOIN seasons ON app.season_id = app.season_id
+         LEFT JOIN seasons ON app.season_id = seasons.id
          LEFT JOIN application_audit_logs aal on app.id = aal.application_id AND aal.id = (select max(id)
                                                                                            from application_audit_logs aal
                                                                                            where aal.application_id = app.id)`
