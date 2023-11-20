@@ -277,8 +277,26 @@ func CreateAppBundle(ctx *gin.Context) {
 
 		err = tx.Model(model.AppBundle{}).Create(&appBundle).Error
 		if err != nil {
+			log.Error().Msgf("Create app_bundle record error: %+v", err)
 			return err
 		}
+
+		// Create application audit logs
+		appAuditLogs := lo.Map(appBundle.AppRecords, func(app *model.Application, _ int) *model.ApplicationAuditLog {
+			return &model.ApplicationAuditLog{
+				ApplicationID: app.ID,
+				LogTs:         model.GetCurrentUtcEpochSecond(),
+				Operation:     model.AuditActionNew,
+				PreState:      "",
+				PostState:     model.ApplicationStateOpen,
+			}
+		})
+		err = tx.Model(model.ApplicationAuditLog{}).Create(&appAuditLogs).Error
+		if err != nil {
+			log.Error().Msgf("Create application audit log records error: %+v", err)
+			return err
+		}
+
 		return tx.Model(model.AppBundleAuditLog{}).Create(&model.AppBundleAuditLog{
 			AppBundleId: appBundle.ID,
 			AppBundle:   appBundle,

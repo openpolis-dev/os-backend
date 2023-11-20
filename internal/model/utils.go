@@ -189,7 +189,7 @@ func GenerateFrontendApplicationRecords(db *gorm.DB, queryParams *ListApplicatio
 	}
 
 	if clearAssetName != "" {
-		whereClause += " AND LOWER(applications.asset_name) = @asset_name"
+		whereClause += " AND LOWER(app.asset_name) = @asset_name"
 		whereParams["asset_name"] = clearAssetName
 	}
 
