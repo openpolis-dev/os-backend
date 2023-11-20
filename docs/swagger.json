@@ -1888,6 +1888,9 @@
                 "apply_time": {
                     "type": "string"
                 },
+                "apply_ts": {
+                    "type": "integer"
+                },
                 "assets": {
                     "type": "array",
                     "items": {
@@ -1976,6 +1979,9 @@
                         "$ref": "#/definitions/model.ProjectBudget"
                     }
                 },
+                "create_ts": {
+                    "type": "integer"
+                },
                 "created_at": {
                     "type": "string"
                 },
@@ -2037,6 +2043,9 @@
                             "$ref": "#/definitions/model.ProjectStatus"
                         }
                     ]
+                },
+                "update_ts": {
+                    "type": "integer"
                 },
                 "updated_at": {
                     "type": "string"
@@ -2185,6 +2194,9 @@
                         "$ref": "#/definitions/model.GuildBudget"
                     }
                 },
+                "create_ts": {
+                    "type": "integer"
+                },
                 "created_at": {
                     "type": "string"
                 },
@@ -2223,6 +2235,9 @@
                     "items": {
                         "type": "string"
                     }
+                },
+                "update_ts": {
+                    "type": "integer"
                 },
                 "updated_at": {
                     "type": "string"
@@ -2296,7 +2311,18 @@
                 "amount": {
                     "type": "string"
                 },
+                "applicant_avatar": {
+                    "type": "string"
+                },
+                "applicant_wallet": {
+                    "description": "related users in the application process",
+                    "type": "string"
+                },
                 "application_id": {
+                    "type": "integer"
+                },
+                "apply_ts": {
+                    "description": "The timestamp this application been created",
                     "type": "integer"
                 },
                 "asset_name": {
@@ -2309,6 +2335,19 @@
                 "comment": {
                     "type": "string"
                 },
+                "complete_ts": {
+                    "description": "The timestamp this application been marked as completed",
+                    "type": "integer"
+                },
+                "completer_avatar": {
+                    "type": "string"
+                },
+                "completer_wallet": {
+                    "type": "string"
+                },
+                "create_ts": {
+                    "type": "integer"
+                },
                 "created_at": {
                     "type": "string"
                 },
@@ -2319,7 +2358,21 @@
                     "description": "name field value from specified entity table",
                     "type": "string"
                 },
-                "reviewer_name": {
+                "process_ts": {
+                    "description": "The timestamp this application been processed",
+                    "type": "integer"
+                },
+                "processor_avatar": {
+                    "type": "string"
+                },
+                "processor_wallet": {
+                    "type": "string"
+                },
+                "review_ts": {
+                    "description": "The timestamp this application been reviewed",
+                    "type": "integer"
+                },
+                "reviewer_avatar": {
                     "type": "string"
                 },
                 "reviewer_wallet": {
@@ -2332,23 +2385,27 @@
                     "description": "application status",
                     "type": "string"
                 },
-                "submitter_name": {
-                    "type": "string"
-                },
-                "submitter_wallet": {
+                "target_user_avatar": {
                     "type": "string"
                 },
                 "target_user_wallet": {
+                    "description": "target user data",
                     "type": "string"
                 },
                 "transaction_ids": {
                     "type": "string"
+                },
+                "update_ts": {
+                    "type": "integer"
                 }
             }
         },
         "model.Guild": {
             "type": "object",
             "properties": {
+                "create_ts": {
+                    "type": "integer"
+                },
                 "created_at": {
                     "type": "string"
                 },
@@ -2388,6 +2445,9 @@
                         "type": "string"
                     }
                 },
+                "update_ts": {
+                    "type": "integer"
+                },
                 "updated_at": {
                     "type": "string"
                 }
@@ -2396,6 +2456,9 @@
         "model.GuildBudget": {
             "type": "object",
             "properties": {
+                "create_ts": {
+                    "type": "integer"
+                },
                 "created_at": {
                     "type": "string"
                 },
@@ -2416,6 +2479,9 @@
                 "total_amount": {
                     "description": "total_amount",
                     "type": "number"
+                },
+                "update_ts": {
+                    "type": "integer"
                 },
                 "updated_at": {
                     "type": "string"
@@ -2478,6 +2544,9 @@
         "model.Project": {
             "type": "object",
             "properties": {
+                "create_ts": {
+                    "type": "integer"
+                },
                 "created_at": {
                     "type": "string"
                 },
@@ -2540,6 +2609,9 @@
                         }
                     ]
                 },
+                "update_ts": {
+                    "type": "integer"
+                },
                 "updated_at": {
                     "type": "string"
                 }
@@ -2548,6 +2620,9 @@
         "model.ProjectBudget": {
             "type": "object",
             "properties": {
+                "create_ts": {
+                    "type": "integer"
+                },
                 "created_at": {
                     "type": "string"
                 },
@@ -2568,6 +2643,9 @@
                 "total_amount": {
                     "description": "total_amount = used_amount + remain_amount",
                     "type": "number"
+                },
+                "update_ts": {
+                    "type": "integer"
                 },
                 "updated_at": {
                     "type": "string"
@@ -2593,6 +2671,9 @@
                 "content": {
                     "type": "string"
                 },
+                "create_ts": {
+                    "type": "integer"
+                },
                 "created_at": {
                     "type": "string"
                 },
@@ -2607,6 +2688,7 @@
                     "type": "string"
                 },
                 "push_date": {
+                    "description": "TODO: Verify whether this file need to be changed to epoch second",
                     "type": "string"
                 },
                 "status": {
@@ -2615,6 +2697,9 @@
                 "title": {
                     "description": "TODO support multi language",
                     "type": "string"
+                },
+                "update_ts": {
+                    "type": "integer"
                 },
                 "updated_at": {
                     "type": "string"
@@ -2689,6 +2774,9 @@
                 "bio": {
                     "type": "string"
                 },
+                "create_ts": {
+                    "type": "integer"
+                },
                 "created_at": {
                     "type": "string"
                 },
@@ -2716,6 +2804,9 @@
                 "twitter_profile": {
                     "type": "string"
                 },
+                "update_ts": {
+                    "type": "integer"
+                },
                 "updated_at": {
                     "type": "string"
                 },
@@ -2734,6 +2825,9 @@
                     "description": "asset name",
                     "type": "string"
                 },
+                "create_ts": {
+                    "type": "integer"
+                },
                 "created_at": {
                     "type": "string"
                 },
@@ -2747,6 +2841,9 @@
                 "processing_amount": {
                     "description": "amount of asset that still need confirmation",
                     "type": "number"
+                },
+                "update_ts": {
+                    "type": "integer"
                 },
                 "updated_at": {
                     "type": "string"
@@ -2851,6 +2948,9 @@
                         "$ref": "#/definitions/model.ProjectBudget"
                     }
                 },
+                "create_ts": {
+                    "type": "integer"
+                },
                 "created_at": {
                     "type": "string"
                 },
@@ -2912,6 +3012,9 @@
                             "$ref": "#/definitions/model.ProjectStatus"
                         }
                     ]
+                },
+                "update_ts": {
+                    "type": "integer"
                 },
                 "updated_at": {
                     "type": "string"
