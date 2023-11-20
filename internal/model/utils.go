@@ -14,34 +14,59 @@ import (
 const DateQueryFormat = "2006-01-02"
 
 const QueryApplicationsWithEntityNameBaseSQL = `
-SELECT app.id               as application_id,
-       seasons.name 		as season_name,
+SELECT app.id                 as application_id,
+       seasons.name           as season_name,
        CASE
            WHEN app.entity_type = 'project' THEN projects.name
            WHEN app.entity_type = 'guild' THEN guilds.name
-           ELSE NULL END    AS entity_name,
+           ELSE NULL END      AS entity_name,
        CASE
            WHEN app.entity_type = 'project' THEN projects.name
            WHEN app.entity_type = 'guild' THEN guilds.name
-           ELSE NULL END    AS budget_source,
-       aal.operation,
-       app.created_at       as created_at,
+           ELSE NULL END      AS budget_source,
+       completed_aal.operator as completer_wallet,
+       completed_aal.log_ts   as complete_ts,
+       process_aal.operator   as processor_wallet,
+       process_aal.log_ts     as process_ts,
+       approve_aal.operator   as reviewer_wallet,
+       approve_aal.log_ts     as review_ts,
+       new_aal.operator       as submitter_wallet,
+       new_aal.log_ts         as apply_ts,
+       app.created_at         as created_at,
+       app.create_ts          as create_ts,
+       app.update_ts          as update_ts,
+       app.comment            as comment,
        app.target_user_wallet,
        app.asset_name,
-       app.asset_amount     as amount,
-       app.state            as status,
+       app.asset_amount       as amount,
+       app.state              as status,
        app.detailed_type,
        app.comment,
-       app.applicant        as submitter_wallet,
-       aal.operator         as reviewer_wallet,
-       app.complete_message as transaction_ids
+       completed_aal.operator as reviewer_wallet,
+       app.complete_message   as transaction_ids
 FROM applications as app
          LEFT JOIN projects ON app.entity_type = 'project' AND app.entity_id = projects.id
          LEFT JOIN guilds ON app.entity_type = 'guild' AND app.entity_id = guilds.id
          LEFT JOIN seasons ON app.season_id = seasons.id
-         LEFT JOIN application_audit_logs aal on app.id = aal.application_id AND aal.id = (select max(id)
-                                                                                           from application_audit_logs aal
-                                                                                           where aal.application_id = app.id)`
+         LEFT JOIN application_audit_logs completed_aal on app.id = completed_aal.application_id AND completed_aal.id =
+                                                                                                     (select max(id)
+                                                                                                      from application_audit_logs aal
+                                                                                                      where aal.application_id = app.id
+                                                                                                        and aal.post_state = 'completed')
+         LEFT JOIN application_audit_logs process_aal on app.id = process_aal.application_id AND process_aal.id =
+                                                                                                 (select max(id)
+                                                                                                  from application_audit_logs aal
+                                                                                                  where aal.application_id = app.id
+                                                                                                    and aal.post_state = 'processing')
+         LEFT JOIN application_audit_logs approve_aal on app.id = approve_aal.application_id AND approve_aal.id =
+                                                                                                 (select max(id)
+                                                                                                  from application_audit_logs aal
+                                                                                                  where aal.application_id = app.id
+                                                                                                    and aal.post_state = 'approved')
+         LEFT JOIN application_audit_logs new_aal on app.id = new_aal.application_id AND new_aal.id = (select max(id)
+                                                                                                       from application_audit_logs aal
+                                                                                                       where aal.application_id = app.id
+                                                                                                         and aal.post_state = 'open')`
 
 const QueryAppBundlesWithEntityNameBaseSQL = `SELECT app_bundles.*,
 CASE

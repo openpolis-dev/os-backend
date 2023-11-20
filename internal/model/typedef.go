@@ -117,10 +117,8 @@ type FrontendApplicationRecord struct {
 	TargetUserWallet string `json:"target_user_wallet"`
 	TargetUserAvatar string `json:"target_user_avatar"`
 	SubmitterWallet  string `json:"submitter_wallet"`
-	SubmitterName    string `json:"submitter_name"`
 	ApplicantAvatar  string `json:"applicant_avatar"`
 	ReviewerWallet   string `json:"reviewer_wallet"`
-	ReviewerName     string `json:"reviewer_name"`
 	ReviewerAvatar   string `json:"reviewer_avatar"`
 
 	// Timestamp related fields
@@ -150,9 +148,7 @@ func (r *FrontendApplicationRecord) ToCSV() []string {
 		r.BudgetSource,
 		r.Comment,
 		r.Status,
-		r.SubmitterName,
 		r.SubmitterWallet,
-		r.ReviewerName,
 		r.ReviewerWallet,
 	}
 }
@@ -174,9 +170,7 @@ func (r *FrontendApplicationRecord) ToXlsx() []any {
 		r.BudgetSource,
 		r.Comment,
 		r.Status,
-		r.SubmitterName,
 		r.SubmitterWallet,
-		r.ReviewerName,
 		r.ReviewerWallet,
 	}
 }
@@ -188,16 +182,11 @@ type jointAppEntityRslt struct {
 }
 
 func (r *jointAppEntityRslt) ToFrontedApplicationRecord(db *gorm.DB) *FrontendApplicationRecord {
+	var err error
 	var submitterWallet string
-	var submitterUsername string
 	var reviewerWallet string
-	var reviewerUsername string
 
 	submitterWallet = r.Application.Applicant
-	submitterUsername, err := UserModel.TryGetUsername(db, submitterWallet)
-	if err != nil {
-		return nil
-	}
 
 	auditlog := ApplicationAuditLog{}
 	err = db.Model(&ApplicationAuditLog{}).
@@ -212,11 +201,6 @@ func (r *jointAppEntityRslt) ToFrontedApplicationRecord(db *gorm.DB) *FrontendAp
 		}
 	} else {
 		reviewerWallet = auditlog.Operator
-		reviewerUsername, err = UserModel.TryGetUsername(db, reviewerWallet)
-		if err != nil {
-			log.Error().Msgf("Get username error: %+v", err)
-			return nil
-		}
 	}
 
 	var appSeasonRcd Season
@@ -240,9 +224,7 @@ func (r *jointAppEntityRslt) ToFrontedApplicationRecord(db *gorm.DB) *FrontendAp
 		DetailedType:     r.Application.DetailedType,
 		Comment:          r.Application.Comment,
 		SubmitterWallet:  submitterWallet,
-		SubmitterName:    submitterUsername,
 		ReviewerWallet:   reviewerWallet,
-		ReviewerName:     reviewerUsername,
 		TransactionIds:   r.Application.CompleteMessage,
 	}
 }
