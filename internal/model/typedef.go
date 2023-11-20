@@ -103,24 +103,34 @@ type NewRewardApplicationDetailedData struct {
 
 // FrontendApplicationRecord defines struct for application record that returns to frontend invoker
 type FrontendApplicationRecord struct {
-	ApplicationID    uint      `json:"application_id"`
-	SeasonName       string    `json:"season_name"`
-	EntityName       string    `json:"entity_name"` // name field value from specified entity table
-	CreatedAt        time.Time `json:"created_at"`
-	TargetUserWallet string    `json:"target_user_wallet"`
-	AssetName        string    `json:"asset_name"`
-	Amount           string    `json:"amount"`
-	BudgetSource     string    `json:"budget_source"` // the data is from name field of project or guild
-	Status           string    `json:"status"`        // application status
-	DetailedType     string    `json:"detailed_type"`
-	Comment          string    `json:"comment"`
-	SubmitterWallet  string    `json:"submitter_wallet"`
-	SubmitterName    string    `json:"submitter_name"`
-	ReviewerWallet   string    `json:"reviewer_wallet"`
-	ReviewerName     string    `json:"reviewer_name"`
-	TransactionIds   string    `json:"transaction_ids"`
-	CreateTs         int64     `json:"create_ts"`
-	UpdateTs         int64     `json:"update_ts"`
+	ApplicationID uint      `json:"application_id"`
+	SeasonName    string    `json:"season_name"`
+	EntityName    string    `json:"entity_name"` // name field value from specified entity table
+	CreatedAt     time.Time `json:"created_at"`
+	AssetName     string    `json:"asset_name"`
+	Amount        string    `json:"amount"`
+	BudgetSource  string    `json:"budget_source"` // the data is from name field of project or guild
+	Status        string    `json:"status"`        // application status
+	DetailedType  string    `json:"detailed_type"`
+	Comment       string    `json:"comment"`
+
+	TargetUserWallet string `json:"target_user_wallet"`
+	TargetUserAvatar string `json:"target_user_avatar"`
+	SubmitterWallet  string `json:"submitter_wallet"`
+	SubmitterName    string `json:"submitter_name"`
+	ApplicantAvatar  string `json:"applicant_avatar"`
+	ReviewerWallet   string `json:"reviewer_wallet"`
+	ReviewerName     string `json:"reviewer_name"`
+	ReviewerAvatar   string `json:"reviewer_avatar"`
+
+	// Timestamp related fields
+	ApplyTs   int64 `json:"apply_ts"`   // The timestamp this application been created
+	ReviewTs  int64 `json:"review_ts"`  // The timestamp this application been reviewed
+	ProcessTs int64 `json:"process_ts"` // The timestamp this application been processed
+
+	TransactionIds string `json:"transaction_ids"`
+	CreateTs       int64  `json:"create_ts"`
+	UpdateTs       int64  `json:"update_ts"`
 }
 
 func (r *FrontendApplicationRecord) ToCSV() []string {
