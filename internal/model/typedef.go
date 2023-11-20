@@ -114,17 +114,26 @@ type FrontendApplicationRecord struct {
 	DetailedType  string    `json:"detailed_type"`
 	Comment       string    `json:"comment"`
 
+	// target user data
 	TargetUserWallet string `json:"target_user_wallet"`
 	TargetUserAvatar string `json:"target_user_avatar"`
-	SubmitterWallet  string `json:"submitter_wallet"`
-	ApplicantAvatar  string `json:"applicant_avatar"`
-	ReviewerWallet   string `json:"reviewer_wallet"`
-	ReviewerAvatar   string `json:"reviewer_avatar"`
 
-	// Timestamp related fields
-	ApplyTs   int64 `json:"apply_ts"`   // The timestamp this application been created
-	ReviewTs  int64 `json:"review_ts"`  // The timestamp this application been reviewed
-	ProcessTs int64 `json:"process_ts"` // The timestamp this application been processed
+	// related users in the application process
+	ApplicantWallet string `json:"applicant_wallet"`
+	ApplicantAvatar string `json:"applicant_avatar"`
+	ApplyTs         int64  `json:"apply_ts"` // The timestamp this application been created
+
+	ReviewerWallet string `json:"reviewer_wallet"`
+	ReviewerAvatar string `json:"reviewer_avatar"`
+	ReviewTs       int64  `json:"review_ts"` // The timestamp this application been reviewed
+
+	ProcessorWallet string `json:"processor_wallet"`
+	ProcessorAvatar string `json:"processor_avatar"`
+	ProcessTs       int64  `json:"process_ts"` // The timestamp this application been processed
+
+	CompleterWallet string `json:"completer_wallet"`
+	CompleterAvatar string `json:"completer_avatar"`
+	CompleteTs      int64  `json:"complete_ts"` // The timestamp this application been marked as completed
 
 	TransactionIds string `json:"transaction_ids"`
 	CreateTs       int64  `json:"create_ts"`
@@ -148,7 +157,7 @@ func (r *FrontendApplicationRecord) ToCSV() []string {
 		r.BudgetSource,
 		r.Comment,
 		r.Status,
-		r.SubmitterWallet,
+		r.ApplicantWallet,
 		r.ReviewerWallet,
 	}
 }
@@ -170,7 +179,7 @@ func (r *FrontendApplicationRecord) ToXlsx() []any {
 		r.BudgetSource,
 		r.Comment,
 		r.Status,
-		r.SubmitterWallet,
+		r.ApplicantWallet,
 		r.ReviewerWallet,
 	}
 }
@@ -223,7 +232,7 @@ func (r *jointAppEntityRslt) ToFrontedApplicationRecord(db *gorm.DB) *FrontendAp
 		Status:           string(r.Application.State),
 		DetailedType:     r.Application.DetailedType,
 		Comment:          r.Application.Comment,
-		SubmitterWallet:  submitterWallet,
+		ApplicantWallet:  submitterWallet,
 		ReviewerWallet:   reviewerWallet,
 		TransactionIds:   r.Application.CompleteMessage,
 	}

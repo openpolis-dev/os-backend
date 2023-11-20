@@ -24,14 +24,22 @@ SELECT app.id                 as application_id,
            WHEN app.entity_type = 'project' THEN projects.name
            WHEN app.entity_type = 'guild' THEN guilds.name
            ELSE NULL END      AS budget_source,
-       completed_aal.operator as completer_wallet,
-       completed_aal.log_ts   as complete_ts,
+       apply_aal.operator     as applicant_wallet,
+       apply_aal.log_ts       as apply_ts,
+       applicant.avatar       as applicant_avatar,
+
+       review_aal.operator    as reviewer_wallet,
+       review_aal.log_ts      as review_ts,
+       reviewer.avatar        as reviewer_avatar,
+
        process_aal.operator   as processor_wallet,
        process_aal.log_ts     as process_ts,
-       approve_aal.operator   as reviewer_wallet,
-       approve_aal.log_ts     as review_ts,
-       new_aal.operator       as submitter_wallet,
-       new_aal.log_ts         as apply_ts,
+       processor.avatar       as processor_avatar,
+
+       completed_aal.operator as completer_wallet,
+       completed_aal.log_ts   as complete_ts,
+       completer.avatar       as completer_avatar,
+
        app.created_at         as created_at,
        app.create_ts          as create_ts,
        app.update_ts          as update_ts,
@@ -58,15 +66,20 @@ FROM applications as app
                                                                                                   from application_audit_logs aal
                                                                                                   where aal.application_id = app.id
                                                                                                     and aal.post_state = 'processing')
-         LEFT JOIN application_audit_logs approve_aal on app.id = approve_aal.application_id AND approve_aal.id =
-                                                                                                 (select max(id)
-                                                                                                  from application_audit_logs aal
-                                                                                                  where aal.application_id = app.id
-                                                                                                    and aal.post_state = 'approved')
-         LEFT JOIN application_audit_logs new_aal on app.id = new_aal.application_id AND new_aal.id = (select max(id)
-                                                                                                       from application_audit_logs aal
-                                                                                                       where aal.application_id = app.id
-                                                                                                         and aal.post_state = 'open')`
+         LEFT JOIN application_audit_logs review_aal on app.id = review_aal.application_id AND review_aal.id =
+                                                                                               (select max(id)
+                                                                                                from application_audit_logs aal
+                                                                                                where aal.application_id = app.id
+                                                                                                  and aal.post_state = 'approved')
+         LEFT JOIN application_audit_logs apply_aal
+                   on app.id = apply_aal.application_id AND apply_aal.id = (select max(id)
+                                                                            from application_audit_logs aal
+                                                                            where aal.application_id = app.id
+                                                                              and aal.post_state = 'open')
+         LEFT JOIN users applicant ON applicant.wallet = apply_aal.operator
+         LEFT JOIN users reviewer ON reviewer.wallet = review_aal.operator
+         LEFT JOIN users processor ON processor.wallet = process_aal.operator
+         LEFT JOIN users completer ON completer.wallet = completed_aal.operator`
 
 const QueryAppBundlesWithEntityNameBaseSQL = `SELECT app_bundles.*,
 CASE
