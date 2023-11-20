@@ -19,10 +19,10 @@ type TreasuryAsset struct {
 	SeasonId uint    `json:"season_id"`
 	Season   *Season `json:"season"`
 
-	CreatedAt time.Time `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt time.Time `json:"updated_at" gorm:"autoUpdateTime"`
-	CreateTs  int64     `json:"create_ts"`
-	UpdateTs  int64     `json:"update_ts"`
+	CreatedAt time.Time `json:"-" gorm:"autoCreateTime"`
+	UpdatedAt time.Time `json:"-" gorm:"autoUpdateTime"`
+	CreateTs  int64     `json:"create_ts" gorm:"index"`
+	UpdateTs  int64     `json:"update_ts" gorm:"index"`
 }
 
 type TreasuryDetailedRecord struct {
@@ -35,10 +35,10 @@ type TreasuryDetailedRecord struct {
 
 	AuditLogs []TreasuryAuditLog `json:"audit_logs"`
 
-	CreatedAt time.Time `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt time.Time `json:"updated_at" gorm:"autoUpdateTime"`
-	CreateTs  int64     `json:"create_ts"`
-	UpdateTs  int64     `json:"update_ts"`
+	CreatedAt time.Time `json:"-" gorm:"autoCreateTime"`
+	UpdatedAt time.Time `json:"-" gorm:"autoUpdateTime"`
+	CreateTs  int64     `json:"create_ts" gorm:"index"`
+	UpdateTs  int64     `json:"update_ts" gorm:"index"`
 }
 
 type TreasuryAuditLog struct {
@@ -52,10 +52,10 @@ type TreasuryAuditLog struct {
 
 	Message string `json:"message"`
 
-	CreatedAt time.Time `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt time.Time `json:"updated_at" gorm:"autoUpdateTime"`
-	CreateTs  int64     `json:"create_ts"`
-	UpdateTs  int64     `json:"update_ts"`
+	CreatedAt time.Time `json:"-" gorm:"autoCreateTime"`
+	UpdatedAt time.Time `json:"-" gorm:"autoUpdateTime"`
+	CreateTs  int64     `json:"create_ts" gorm:"index"`
+	UpdateTs  int64     `json:"update_ts" gorm:"index"`
 }
 
 func (r *TreasuryAsset) ToTreasuryAssetsResponse(db *gorm.DB) (*TreasuryAssetsResponse, error) {

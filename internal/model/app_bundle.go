@@ -35,8 +35,8 @@ type AppBundle struct {
 	CreatedAt time.Time `gorm:"autoCreateTime"`
 	UpdatedAt time.Time `gorm:"autoUpdateTime"`
 
-	CreateTs int64
-	UpdateTs int64
+	CreateTs int64 `gorm:"index"`
+	UpdateTs int64 `gorm:"index"`
 }
 
 // AppBundleAuditLog saves audit log for app bundles, the data structure is similar with ApplicationAuditLog.

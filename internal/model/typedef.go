@@ -106,7 +106,7 @@ type FrontendApplicationRecord struct {
 	ApplicationID    uint      `json:"application_id"`
 	SeasonName       string    `json:"season_name"`
 	EntityName       string    `json:"entity_name"` // name field value from specified entity table
-	CreatedAt        time.Time `json:"created_at"`
+	CreatedAt        time.Time `json:"-"`
 	AssetName        string    `json:"asset_name"`
 	Amount           string    `json:"amount"`
 	BudgetSource     string    `json:"budget_source"` // the data is from name field of project or guild

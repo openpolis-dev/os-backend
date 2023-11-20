@@ -40,7 +40,6 @@ SELECT app.id                 as application_id,
        completed_aal.log_ts   as complete_ts,
        completer.avatar       as completer_avatar,
 
-       app.created_at         as created_at,
        app.create_ts          as create_ts,
        app.update_ts          as update_ts,
        app.comment            as comment,
@@ -207,22 +206,6 @@ func GenerateFrontendApplicationRecords(db *gorm.DB, queryParams *ListApplicatio
 		whereParams["state"] = ApplicationState(clearState)
 	}
 
-	if queryParams.StartDate != "" && queryParams.EndDate != "" {
-		startDate, err := time.Parse(DateQueryFormat, queryParams.StartDate)
-		if err != nil {
-			return nil, 0, err
-		}
-
-		endDate, err := time.Parse(DateQueryFormat, queryParams.EndDate)
-		if err != nil {
-			return nil, 0, err
-		}
-
-		whereClause += " AND app.created_at >= @start_date AND app.created_at <= @end_date"
-		whereParams["start_date"] = startDate
-		whereParams["end_date"] = endDate
-	}
-
 	if len(strings.TrimSpace(queryParams.EntityId)) != 0 {
 		whereClause += " AND app.entity_id = @entity_id"
 		whereParams["entity_id"] = strings.TrimSpace(queryParams.EntityId)
@@ -242,10 +225,10 @@ func GenerateFrontendApplicationRecords(db *gorm.DB, queryParams *ListApplicatio
 		querySort := lo.Map(CloseProjectStateOrder, func(state string, index int) string {
 			return fmt.Sprintf("when app.state='%s' then %d\n", state, index+1)
 		})
-		orderByClause = fmt.Sprintf("case \n%s end asc, app.created_at desc", strings.Join(querySort, ""))
+		orderByClause = fmt.Sprintf("case \n%s end asc, app.create_ts desc", strings.Join(querySort, ""))
 	} else {
 		if queryParams.SortField == "" {
-			queryParams.SortField = "created_at"
+			queryParams.SortField = "create_ts"
 		}
 
 		if queryParams.SortOrder == "" {
@@ -324,7 +307,7 @@ func QueryAppBundleRecords(db *gorm.DB, queryParams *ListAppBundleQueryParams) (
 	}
 
 	if queryParams.SortField == "" {
-		queryParams.SortField = "created_at"
+		queryParams.SortField = "create_ts"
 	}
 
 	if queryParams.Size == 0 {
