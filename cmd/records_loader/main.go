@@ -107,10 +107,10 @@ func loadDetailSheet(filePath string) ([]*DetailRecordSchema, error) {
 
 	detailRecords := lo.Map(rows[2:], func(r []string, _ int) *DetailRecordSchema {
 		var dealDate time.Time
-		dealDate, err = time.Parse(DealDateLayoutFormat1, r[4])
+		dealDate, err = time.ParseInLocation(DealDateLayoutFormat1, r[4], internal.ProjectTimezone)
 		if err != nil {
 			// Try parse date time with another format
-			dealDate, err = time.Parse(DealDateLayoutFormat2, r[4])
+			dealDate, err = time.ParseInLocation(DealDateLayoutFormat2, r[4], internal.ProjectTimezone)
 			if err != nil {
 				panic(err)
 			}
@@ -210,7 +210,8 @@ func saveToDatabase(db *gorm.DB, rcds []*DetailRecordSchema, seasonRcds []*model
 	if cleanDbFlag {
 		var appRcdIds []uint
 		db.Model(&model.Application{}).Where("season_id IN ?", seasonIds).Select("id").Find(&appRcdIds)
-		err = db.Model(&model.ApplicationAuditLog{}).Where("application_id IN ?", appRcdIds).Delete(&model.ApplicationAuditLog{}).Error
+		log.Debug().Msgf("%d applications will be removed", len(appRcdIds))
+		err = db.Delete(&model.ApplicationAuditLog{}, "application_id IN ?", appRcdIds).Error
 		if err != nil {
 			panic(err)
 		}
@@ -260,8 +261,16 @@ func saveToDatabase(db *gorm.DB, rcds []*DetailRecordSchema, seasonRcds []*model
 	// DB tasks
 	// Create user record if not existing
 	err = db.Transaction(func(tx *gorm.DB) error {
-		for wallet, _ := range userWallets {
-			err = tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&model.User{Wallet: model.FormatUserWallet(wallet)}).Error
+		for wallet := range userWallets {
+			userRcd := model.User{
+				Wallet:    model.FormatUserWallet(wallet),
+				CreatedAt: time.Now().In(internal.ProjectTimezone),
+				UpdatedAt: time.Now().In(internal.ProjectTimezone),
+				CreateTs:  model.GetCurrentUtcEpochSecond(),
+				UpdateTs:  model.GetCurrentUtcEpochSecond(),
+			}
+
+			err = tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&userRcd).Error
 
 			if err != nil {
 				log.Error().Msgf("find or create user error: %+v", err)
@@ -322,14 +331,15 @@ func saveToDatabase(db *gorm.DB, rcds []*DetailRecordSchema, seasonRcds []*model
 			}
 
 			auditLogs := []*model.ApplicationAuditLog{
-				{ApplicationID: application.ID, LogTs: model.GetCurrentUtcEpochSecond(), PostState: model.ApplicationStateApproved},
-				{ApplicationID: application.ID, LogTs: model.GetCurrentUtcEpochSecond(), PreState: model.ApplicationStateOpen, PostState: model.ApplicationStateApproved},
-				{ApplicationID: application.ID, LogTs: model.GetCurrentUtcEpochSecond(), PreState: model.ApplicationStateApproved, PostState: model.ApplicationStateProcessing},
-				{ApplicationID: application.ID, LogTs: model.GetCurrentUtcEpochSecond(), PreState: model.ApplicationStateProcessing, PostState: model.ApplicationStateCompleted},
+				{ApplicationID: application.ID, Operation: model.AuditActionNew, LogTs: r.DealTs, PostState: model.ApplicationStateOpen},
+				{ApplicationID: application.ID, Operation: model.AuditActionApprove, LogTs: r.DealTs, PreState: model.ApplicationStateOpen, PostState: model.ApplicationStateApproved},
+				{ApplicationID: application.ID, Operation: model.AuditActionProcess, LogTs: r.DealTs, PreState: model.ApplicationStateApproved, PostState: model.ApplicationStateProcessing},
+				{ApplicationID: application.ID, Operation: model.AuditActionComplete, LogTs: r.DealTs, PreState: model.ApplicationStateProcessing, PostState: model.ApplicationStateCompleted},
 			}
 
 			err = tx.Save(auditLogs).Error
 			if err != nil {
+				log.Error().Msgf("Insert audit log for application %d error, audit logs: %+v, err: %+v", application.ID, auditLogs, err)
 				return err
 			}
 		}

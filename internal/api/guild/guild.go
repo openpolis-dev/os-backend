@@ -322,7 +322,7 @@ func Detail(ctx *gin.Context) {
 	}))
 }
 
-// List `GET /guilds?page=1&size=10&sort_field=created_at&sort_order=desc`
+// List `GET /guilds?page=1&size=10&sort_field=create_ts&sort_order=desc`
 //
 //	@Summary	List guilds
 //	@Tags		Guild
@@ -330,7 +330,7 @@ func Detail(ctx *gin.Context) {
 //	@Produce	json
 //	@Param		page		query		int		false	"page number, default: 1"
 //	@Param		size		query		int		false	"page size, default: 10"
-//	@Param		sort_field	query		string	false	"sort field, default: created_at"
+//	@Param		sort_field	query		string	false	"sort field, default: create_ts"
 //	@Param		sort_order	query		string	false	"sort order, default: desc"
 //	@Success	200			{object}	api.Reply{data=api.ListReplyData{rows=model.Guild}}
 //	@Router		/guilds [get]
@@ -355,7 +355,7 @@ func List(ctx *gin.Context) {
 
 // MyGuilds list my guilds
 //
-//	`GET /guilds/my?page=1&size=10&sort_field=created_at&sort_order=desc`
+//	`GET /guilds/my?page=1&size=10&sort_field=create_ts&sort_order=desc`
 //
 //	@Summary	list my guilds
 //	@Tags		Guild
@@ -363,7 +363,7 @@ func List(ctx *gin.Context) {
 //	@Produce	json
 //	@Param		page		query		int		false	"page number, default: 1"
 //	@Param		size		query		int		false	"page size, default: 10"
-//	@Param		sort_field	query		string	false	"sort field, default: created_at"
+//	@Param		sort_field	query		string	false	"sort field, default: create_ts"
 //	@Param		sort_order	query		string	false	"sort order, default: desc"
 //	@Success	200			{object}	api.Reply{data=api.ListReplyData{rows=model.Guild}}
 //	@Router		/guilds/my_guilds [get]

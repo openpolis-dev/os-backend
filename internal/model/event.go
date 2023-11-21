@@ -27,20 +27,20 @@ type Event struct {
 	// Information of the event
 	Title   string    `json:"title"`
 	Content string    `json:"content"`
-	StartAt time.Time `json:"start_at"`
-	EndAt   time.Time `json:"end_at"`
+	StartAt time.Time `json:"start_at" gorm:"index"`
+	EndAt   time.Time `json:"end_at" gorm:"index"`
 
-	StartTs int64 `json:"start_ts"`
-	EndTs   int64 `json:"end_ts"`
+	StartTs int64 `json:"start_ts" gorm:"index"`
+	EndTs   int64 `json:"end_ts" gorm:"index"`
 
 	RewardDetail string `json:"reward_detail"`
 
 	// Application state, which contains open/approved/rejected/processing/completed
 	State EventState `json:"state"`
 
-	CreatedAt time.Time `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt time.Time `json:"updated_at" gorm:"autoUpdateTime"`
+	CreatedAt time.Time `json:"-" gorm:"autoCreateTime"`
+	UpdatedAt time.Time `json:"-" gorm:"autoUpdateTime"`
 
 	CreateTs int64 `json:"create_ts" gorm:"index"`
-	UpdateTs int64 `json:"update_ts"`
+	UpdateTs int64 `json:"update_ts" gorm:"index"`
 }

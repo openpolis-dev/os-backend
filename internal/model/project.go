@@ -42,10 +42,10 @@ type Project struct {
 	IsSpecial   bool               `json:"is_special" gorm:"index"`
 	SpecialType SpecialProjectType `json:"special_type" gorm:"index"`
 
-	CreatedAt time.Time `json:"created_at" gorm:"index"`
-	UpdatedAt time.Time `json:"updated_at"`
-	CreateTs  int64     `json:"create_ts"`
-	UpdateTs  int64     `json:"update_ts"`
+	CreatedAt time.Time `json:"-" gorm:"index"`
+	UpdatedAt time.Time `json:"-"`
+	CreateTs  int64     `json:"create_ts" gorm:"index"`
+	UpdateTs  int64     `json:"update_ts" gorm:"index"`
 }
 
 type projectModel struct{}

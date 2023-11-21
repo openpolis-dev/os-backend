@@ -20,10 +20,10 @@ type UserAssetRecord struct {
 	AssetName        string          `json:"asset_name" gorm:"type:varchar(64)"`          // asset name
 	DealtAmount      decimal.Decimal `json:"dealt_amount" sql:"type:decimal(20,8);"`      // amount of asset that already dealt
 	ProcessingAmount decimal.Decimal `json:"processing_amount" sql:"type:decimal(20,8);"` // amount of asset that still need confirmation
-	CreatedAt        time.Time       `json:"created_at"`
-	UpdatedAt        time.Time       `json:"updated_at"`
-	CreateTs         int64           `json:"create_ts"`
-	UpdateTs         int64           `json:"update_ts"`
+	CreatedAt        time.Time       `json:"-"`
+	UpdatedAt        time.Time       `json:"-"`
+	CreateTs         int64           `json:"create_ts" gorm:"index"`
+	UpdateTs         int64           `json:"update_ts" gorm:"index"`
 }
 
 type userAssetRecordModel struct{}

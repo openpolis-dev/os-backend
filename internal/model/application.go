@@ -43,11 +43,11 @@ type Application struct {
 	// CompleteMessage saves
 	CompleteMessage string `json:"complete_message"`
 
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	CreatedAt time.Time `json:"-"`
+	UpdatedAt time.Time `json:"-"`
 
 	CreateTs int64 `json:"create_ts" gorm:"index"`
-	UpdateTs int64 `json:"update_ts"`
+	UpdateTs int64 `json:"update_ts" gorm:"index"`
 
 	// DetailedType means a sub category of this application
 	// Value for this field saves data from Excel data
