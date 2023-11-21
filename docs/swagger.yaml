@@ -85,8 +85,6 @@ definitions:
         type: array
       create_ts:
         type: integer
-      created_at:
-        type: string
       creator:
         type: string
       desc:
@@ -127,8 +125,6 @@ definitions:
         description: 'Status may have those values: open/pending_close/closed'
       update_ts:
         type: integer
-      updated_at:
-        type: string
     type: object
   city_hall.CityHallUpdateBudgetReq:
     properties:
@@ -226,8 +222,6 @@ definitions:
         type: array
       create_ts:
         type: integer
-      created_at:
-        type: string
       creator:
         type: string
       desc:
@@ -254,8 +248,6 @@ definitions:
         type: array
       update_ts:
         type: integer
-      updated_at:
-        type: string
     type: object
   guild.UpdateBudgetReq:
     properties:
@@ -329,8 +321,6 @@ definitions:
         type: string
       create_ts:
         type: integer
-      created_at:
-        type: string
       detailed_type:
         type: string
       entity_name:
@@ -369,8 +359,6 @@ definitions:
     properties:
       create_ts:
         type: integer
-      created_at:
-        type: string
       creator:
         type: string
       desc:
@@ -397,15 +385,11 @@ definitions:
         type: array
       update_ts:
         type: integer
-      updated_at:
-        type: string
     type: object
   model.GuildBudget:
     properties:
       create_ts:
         type: integer
-      created_at:
-        type: string
       guild_id:
         description: guild_id
         type: integer
@@ -421,8 +405,6 @@ definitions:
         type: number
       update_ts:
         type: integer
-      updated_at:
-        type: string
       used_amount:
         description: used_amount
         type: number
@@ -463,8 +445,6 @@ definitions:
     properties:
       create_ts:
         type: integer
-      created_at:
-        type: string
       creator:
         type: string
       desc:
@@ -505,15 +485,11 @@ definitions:
         description: 'Status may have those values: open/pending_close/closed'
       update_ts:
         type: integer
-      updated_at:
-        type: string
     type: object
   model.ProjectBudget:
     properties:
       create_ts:
         type: integer
-      created_at:
-        type: string
       id:
         type: integer
       name:
@@ -529,8 +505,6 @@ definitions:
         type: number
       update_ts:
         type: integer
-      updated_at:
-        type: string
       used_amount:
         description: used_amount
         type: number
@@ -547,8 +521,6 @@ definitions:
         type: string
       create_ts:
         type: integer
-      created_at:
-        type: string
       creator_wallet:
         type: string
       id:
@@ -566,8 +538,6 @@ definitions:
         type: string
       update_ts:
         type: integer
-      updated_at:
-        type: string
     type: object
   model.Season:
     properties:
@@ -621,8 +591,6 @@ definitions:
         type: string
       create_ts:
         type: integer
-      created_at:
-        type: string
       discord_profile:
         type: string
       email:
@@ -641,8 +609,6 @@ definitions:
         type: string
       update_ts:
         type: integer
-      updated_at:
-        type: string
       wallet:
         type: string
       wechat:
@@ -655,8 +621,6 @@ definitions:
         type: string
       create_ts:
         type: integer
-      created_at:
-        type: string
       dealt_amount:
         description: amount of asset that already dealt
         type: number
@@ -667,8 +631,6 @@ definitions:
         type: number
       update_ts:
         type: integer
-      updated_at:
-        type: string
       user_wallet:
         type: string
     type: object
@@ -736,8 +698,6 @@ definitions:
         type: array
       create_ts:
         type: integer
-      created_at:
-        type: string
       creator:
         type: string
       desc:
@@ -778,8 +738,6 @@ definitions:
         description: 'Status may have those values: open/pending_close/closed'
       update_ts:
         type: integer
-      updated_at:
-        type: string
     type: object
   project.UpdateBudgetReq:
     properties:
@@ -1202,6 +1160,25 @@ paths:
               $ref: '#/definitions/data_srv.CreditDetail'
             type: array
       summary: returns aggregated credit score and node calculation result
+  /download_applications:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  allOf:
+                  - $ref: '#/definitions/api.ListReplyData'
+                  - properties:
+                      rows:
+                        $ref: '#/definitions/model.FrontendApplicationRecord'
+                    type: object
+              type: object
+      summary: downloads all applications based on query params and sends Excel file
+        for downloading
   /guilds:
     get:
       consumes:
@@ -1215,7 +1192,7 @@ paths:
         in: query
         name: size
         type: integer
-      - description: 'sort field, default: created_at'
+      - description: 'sort field, default: create_ts'
         in: query
         name: sort_field
         type: string
@@ -1406,7 +1383,7 @@ paths:
         in: query
         name: size
         type: integer
-      - description: 'sort field, default: created_at'
+      - description: 'sort field, default: create_ts'
         in: query
         name: sort_field
         type: string
