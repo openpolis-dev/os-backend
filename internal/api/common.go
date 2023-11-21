@@ -150,10 +150,14 @@ func ParseAndConvertPageParam(ctx *gin.Context) *gormfind.Page {
 }
 
 func GetLangFromQuery(ctx *gin.Context, defaultLang string) string {
-	lang, found := ctx.GetQuery("lang")
+	return GetQueryParamsOrDefaultValue(ctx, "lang", "en")
+}
+
+func GetQueryParamsOrDefaultValue(ctx *gin.Context, paramKey string, defaultValue string) string {
+	value, found := ctx.GetQuery(paramKey)
 	if found {
-		return lang
+		return value
 	} else {
-		return defaultLang
+		return defaultValue
 	}
 }

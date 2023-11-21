@@ -345,6 +345,43 @@ const docTemplate = `{
                 }
             }
         },
+        "/download_applications": {
+            "get": {
+                "summary": "downloads all applications based on query params and sends Excel file for downloading",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Reply"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "allOf": [
+                                                {
+                                                    "$ref": "#/definitions/api.ListReplyData"
+                                                },
+                                                {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "rows": {
+                                                            "$ref": "#/definitions/model.FrontendApplicationRecord"
+                                                        }
+                                                    }
+                                                }
+                                            ]
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/guilds": {
             "get": {
                 "consumes": [
@@ -372,7 +409,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "sort field, default: created_at",
+                        "description": "sort field, default: create_ts",
                         "name": "sort_field",
                         "in": "query"
                     },
@@ -475,7 +512,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "sort field, default: created_at",
+                        "description": "sort field, default: create_ts",
                         "name": "sort_field",
                         "in": "query"
                     },
@@ -1989,9 +2026,6 @@ const docTemplate = `{
                 "create_ts": {
                     "type": "integer"
                 },
-                "created_at": {
-                    "type": "string"
-                },
                 "creator": {
                     "type": "string"
                 },
@@ -2053,9 +2087,6 @@ const docTemplate = `{
                 },
                 "update_ts": {
                     "type": "integer"
-                },
-                "updated_at": {
-                    "type": "string"
                 }
             }
         },
@@ -2204,9 +2235,6 @@ const docTemplate = `{
                 "create_ts": {
                     "type": "integer"
                 },
-                "created_at": {
-                    "type": "string"
-                },
                 "creator": {
                     "type": "string"
                 },
@@ -2245,9 +2273,6 @@ const docTemplate = `{
                 },
                 "update_ts": {
                     "type": "integer"
-                },
-                "updated_at": {
-                    "type": "string"
                 }
             }
         },
@@ -2358,9 +2383,6 @@ const docTemplate = `{
                 "create_ts": {
                     "type": "integer"
                 },
-                "created_at": {
-                    "type": "string"
-                },
                 "detailed_type": {
                     "type": "string"
                 },
@@ -2416,9 +2438,6 @@ const docTemplate = `{
                 "create_ts": {
                     "type": "integer"
                 },
-                "created_at": {
-                    "type": "string"
-                },
                 "creator": {
                     "type": "string"
                 },
@@ -2457,9 +2476,6 @@ const docTemplate = `{
                 },
                 "update_ts": {
                     "type": "integer"
-                },
-                "updated_at": {
-                    "type": "string"
                 }
             }
         },
@@ -2468,9 +2484,6 @@ const docTemplate = `{
             "properties": {
                 "create_ts": {
                     "type": "integer"
-                },
-                "created_at": {
-                    "type": "string"
                 },
                 "guild_id": {
                     "description": "guild_id",
@@ -2492,9 +2505,6 @@ const docTemplate = `{
                 },
                 "update_ts": {
                     "type": "integer"
-                },
-                "updated_at": {
-                    "type": "string"
                 },
                 "used_amount": {
                     "description": "used_amount",
@@ -2557,9 +2567,6 @@ const docTemplate = `{
                 "create_ts": {
                     "type": "integer"
                 },
-                "created_at": {
-                    "type": "string"
-                },
                 "creator": {
                     "type": "string"
                 },
@@ -2621,9 +2628,6 @@ const docTemplate = `{
                 },
                 "update_ts": {
                     "type": "integer"
-                },
-                "updated_at": {
-                    "type": "string"
                 }
             }
         },
@@ -2632,9 +2636,6 @@ const docTemplate = `{
             "properties": {
                 "create_ts": {
                     "type": "integer"
-                },
-                "created_at": {
-                    "type": "string"
                 },
                 "id": {
                     "type": "integer"
@@ -2656,9 +2657,6 @@ const docTemplate = `{
                 },
                 "update_ts": {
                     "type": "integer"
-                },
-                "updated_at": {
-                    "type": "string"
                 },
                 "used_amount": {
                     "description": "used_amount",
@@ -2684,9 +2682,6 @@ const docTemplate = `{
                 "create_ts": {
                     "type": "integer"
                 },
-                "created_at": {
-                    "type": "string"
-                },
                 "creator_wallet": {
                     "type": "string"
                 },
@@ -2710,9 +2705,6 @@ const docTemplate = `{
                 },
                 "update_ts": {
                     "type": "integer"
-                },
-                "updated_at": {
-                    "type": "string"
                 }
             }
         },
@@ -2787,9 +2779,6 @@ const docTemplate = `{
                 "create_ts": {
                     "type": "integer"
                 },
-                "created_at": {
-                    "type": "string"
-                },
                 "discord_profile": {
                     "type": "string"
                 },
@@ -2817,9 +2806,6 @@ const docTemplate = `{
                 "update_ts": {
                     "type": "integer"
                 },
-                "updated_at": {
-                    "type": "string"
-                },
                 "wallet": {
                     "type": "string"
                 },
@@ -2838,9 +2824,6 @@ const docTemplate = `{
                 "create_ts": {
                     "type": "integer"
                 },
-                "created_at": {
-                    "type": "string"
-                },
                 "dealt_amount": {
                     "description": "amount of asset that already dealt",
                     "type": "number"
@@ -2854,9 +2837,6 @@ const docTemplate = `{
                 },
                 "update_ts": {
                     "type": "integer"
-                },
-                "updated_at": {
-                    "type": "string"
                 },
                 "user_wallet": {
                     "type": "string"
@@ -2961,9 +2941,6 @@ const docTemplate = `{
                 "create_ts": {
                     "type": "integer"
                 },
-                "created_at": {
-                    "type": "string"
-                },
                 "creator": {
                     "type": "string"
                 },
@@ -3025,9 +3002,6 @@ const docTemplate = `{
                 },
                 "update_ts": {
                     "type": "integer"
-                },
-                "updated_at": {
-                    "type": "string"
                 }
             }
         },

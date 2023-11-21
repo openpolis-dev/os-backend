@@ -161,7 +161,7 @@ func GenerateFrontendApplicationRecordsByIds(db *gorm.DB, ids []uint64) ([]*Fron
 
 // GenerateFrontendApplicationRecords filter application records from DB with params and convert to predefined format used for frontend page
 // TODO: Check whether some generic function can be used to merge duplicated logic in this function and QueryAppBundleRecords
-func GenerateFrontendApplicationRecords(db *gorm.DB, queryParams *ListApplicationQueryParams) ([]*FrontendApplicationRecord, int64, error) {
+func GenerateFrontendApplicationRecords(db *gorm.DB, queryParams *ListApplicationQueryParams, pagedResult bool) ([]*FrontendApplicationRecord, int64, error) {
 	clearAppType := strings.ToLower(strings.TrimSpace(queryParams.Type))
 	clearEntity := strings.ToLower(strings.TrimSpace(queryParams.Entity))
 	clearState := strings.ToLower(strings.TrimSpace(queryParams.State))
@@ -252,9 +252,12 @@ func GenerateFrontendApplicationRecords(db *gorm.DB, queryParams *ListApplicatio
 	total := db.Raw(querySQL+whereClause, whereParams).Scan(&[]map[string]any{}).RowsAffected
 
 	// TODO: This is the mysql style, need to find way to get db schema here and implement pg way
-	whereClause += fmt.Sprintf("\nORDER BY %s LIMIT @offset, @limit", orderByClause)
-	whereParams["offset"] = (queryParams.Page - 1) * queryParams.Size
-	whereParams["limit"] = queryParams.Size
+	whereClause += fmt.Sprintf("\nORDER BY %s ", orderByClause)
+	if pagedResult {
+		whereClause += "LIMIT @offset, @limit"
+		whereParams["offset"] = (queryParams.Page - 1) * queryParams.Size
+		whereParams["limit"] = queryParams.Size
+	}
 
 	var rslt []*FrontendApplicationRecord
 	err := db.Raw(querySQL+whereClause, whereParams).Find(&rslt).Error
