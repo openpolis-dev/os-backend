@@ -5,11 +5,13 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
+	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk"
@@ -113,6 +115,8 @@ func Create(ctx *gin.Context) {
 		Members:   members,
 		Proposals: proposals,
 		Creator:   user.Wallet,
+		CreateTs:  model.GetCurrentUtcEpochSecond(),
+		UpdateTs:  model.GetCurrentUtcEpochSecond(),
 	}
 	err = model.GuildModel.CreateOrUpdate(tx, &guild)
 	if err != nil {
@@ -266,6 +270,8 @@ func Update(ctx *gin.Context) {
 	guild.Name = req.Name
 	guild.Intro = req.Intro
 	guild.Desc = req.Desc
+	guild.UpdateTs = model.GetCurrentUtcEpochSecond()
+	guild.UpdatedAt = time.Now().In(internal.ProjectTimezone)
 	err = model.GuildModel.CreateOrUpdate(db, guild)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
@@ -316,7 +322,7 @@ func Detail(ctx *gin.Context) {
 	}))
 }
 
-// List `GET /guilds?page=1&size=10&sort_field=created_at&sort_order=desc`
+// List `GET /guilds?page=1&size=10&sort_field=create_ts&sort_order=desc`
 //
 //	@Summary	List guilds
 //	@Tags		Guild
@@ -324,7 +330,7 @@ func Detail(ctx *gin.Context) {
 //	@Produce	json
 //	@Param		page		query		int		false	"page number, default: 1"
 //	@Param		size		query		int		false	"page size, default: 10"
-//	@Param		sort_field	query		string	false	"sort field, default: created_at"
+//	@Param		sort_field	query		string	false	"sort field, default: create_ts"
 //	@Param		sort_order	query		string	false	"sort order, default: desc"
 //	@Success	200			{object}	api.Reply{data=api.ListReplyData{rows=model.Guild}}
 //	@Router		/guilds [get]
@@ -349,7 +355,7 @@ func List(ctx *gin.Context) {
 
 // MyGuilds list my guilds
 //
-//	`GET /guilds/my?page=1&size=10&sort_field=created_at&sort_order=desc`
+//	`GET /guilds/my?page=1&size=10&sort_field=create_ts&sort_order=desc`
 //
 //	@Summary	list my guilds
 //	@Tags		Guild
@@ -357,7 +363,7 @@ func List(ctx *gin.Context) {
 //	@Produce	json
 //	@Param		page		query		int		false	"page number, default: 1"
 //	@Param		size		query		int		false	"page size, default: 10"
-//	@Param		sort_field	query		string	false	"sort field, default: created_at"
+//	@Param		sort_field	query		string	false	"sort field, default: create_ts"
 //	@Param		sort_order	query		string	false	"sort order, default: desc"
 //	@Success	200			{object}	api.Reply{data=api.ListReplyData{rows=model.Guild}}
 //	@Router		/guilds/my_guilds [get]
@@ -469,6 +475,8 @@ func UpdateStaffs(ctx *gin.Context) {
 			guild.Sponsors = lo.Uniq[string](guild.Sponsors)
 			// remove sponsors from members
 			guild.Sponsors = lo.Without[string](guild.Sponsors, guild.Members...)
+			guild.UpdateTs = model.GetCurrentUtcEpochSecond()
+			guild.UpdatedAt = time.Now().In(internal.ProjectTimezone)
 			err = model.GuildModel.CreateOrUpdate(tx, guild)
 			if err != nil {
 				tx.Rollback()
@@ -505,6 +513,8 @@ func UpdateStaffs(ctx *gin.Context) {
 			guild.Members = lo.Uniq[string](guild.Members)
 			// remove members from sponsors
 			guild.Members = lo.Without[string](guild.Members, guild.Sponsors...)
+			guild.UpdateTs = model.GetCurrentUtcEpochSecond()
+			guild.UpdatedAt = time.Now().In(internal.ProjectTimezone)
 			err = model.GuildModel.CreateOrUpdate(tx, guild)
 			if err != nil {
 				tx.Rollback()
@@ -545,6 +555,8 @@ func UpdateStaffs(ctx *gin.Context) {
 		if req.Sponsors != nil && len(req.Sponsors) != 0 {
 			// remove guild sponsors
 			guild.Sponsors = lo.Without[string](guild.Sponsors, sponsors...)
+			guild.UpdateTs = model.GetCurrentUtcEpochSecond()
+			guild.UpdatedAt = time.Now().In(internal.ProjectTimezone)
 			err = model.GuildModel.CreateOrUpdate(tx, guild)
 			if err != nil {
 				tx.Rollback()
@@ -577,6 +589,8 @@ func UpdateStaffs(ctx *gin.Context) {
 		if req.Members != nil && len(req.Members) != 0 {
 			// remove guild members
 			guild.Members = lo.Without[string](guild.Members, members...)
+			guild.UpdateTs = model.GetCurrentUtcEpochSecond()
+			guild.UpdatedAt = time.Now().In(internal.ProjectTimezone)
 			err = model.GuildModel.CreateOrUpdate(tx, guild)
 			if err != nil {
 				tx.Rollback()
@@ -723,6 +737,8 @@ func AddRelatedProposal(ctx *gin.Context) {
 	guild.Proposals = append(guild.Proposals, proposalIDs...)
 	// remove duplicate proposals
 	guild.Proposals = lo.Uniq[string](guild.Proposals)
+	guild.UpdateTs = model.GetCurrentUtcEpochSecond()
+	guild.UpdatedAt = time.Now().In(internal.ProjectTimezone)
 	err = model.GuildModel.CreateOrUpdate(db, guild)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))

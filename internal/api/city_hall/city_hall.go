@@ -9,6 +9,7 @@ import (
 	"github.com/casbin/casbin/v2"
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
+	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
 	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api"
@@ -64,6 +65,10 @@ func getOrCreateCityHallProject(db *gorm.DB, enforcer *casbin.Enforcer) (*model.
 func Info(ctx *gin.Context) {
 	_, enforcer, db, _ := api.ForContext(ctx)
 	cityHallProject, err := getOrCreateCityHallProject(db, enforcer)
+	cityHallProject.GroupedSponsors = lo.PickBy(cityHallProject.GroupedSponsors, func(_ string, members []string) bool {
+		return members != nil && len(members) != 0
+	})
+
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall record error")))
 		return
@@ -134,8 +139,10 @@ func UpdateBudget(ctx *gin.Context) {
 				TotalAmount:  req.TotalAmount,
 				UsedAmount:   decimal.Zero,
 				RemainAmount: req.TotalAmount,
-				CreatedAt:    time.Time{},
-				UpdatedAt:    time.Time{},
+				CreatedAt:    time.Now().In(internal.ProjectTimezone),
+				UpdatedAt:    time.Now().In(internal.ProjectTimezone),
+				CreateTs:     model.GetCurrentUtcEpochSecond(),
+				UpdateTs:     model.GetCurrentUtcEpochSecond(),
 			}
 			err = db.Create(&budget).Error
 			if err != nil {
@@ -151,6 +158,8 @@ func UpdateBudget(ctx *gin.Context) {
 	// update `TotalAmount`
 	budget.TotalAmount = req.TotalAmount
 	budget.RemainAmount = budget.TotalAmount.Sub(budget.UsedAmount)
+	budget.UpdatedAt = time.Now().In(internal.ProjectTimezone)
+	budget.UpdateTs = model.GetCurrentUtcEpochSecond()
 	err = model.ProjectBudgetModel.Update(db, &budget)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
@@ -385,6 +394,8 @@ func updateGroupedMembers(cityHallProject *model.Project, req *CityHallUpdateMem
 		cityHallProject.Sponsors = newSponsorsList
 	}
 
+	cityHallProject.UpdatedAt = time.Now().In(internal.ProjectTimezone)
+	cityHallProject.UpdateTs = model.GetCurrentUtcEpochSecond()
 	err = db.Save(cityHallProject).Error
 	if err != nil {
 		return http.StatusInternalServerError, err

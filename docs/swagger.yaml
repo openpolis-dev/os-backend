@@ -24,6 +24,8 @@ definitions:
         type: string
       apply_time:
         type: string
+      apply_ts:
+        type: integer
       assets:
         items:
           properties:
@@ -81,6 +83,8 @@ definitions:
         items:
           $ref: '#/definitions/model.ProjectBudget'
         type: array
+      create_ts:
+        type: integer
       created_at:
         type: string
       creator:
@@ -121,6 +125,8 @@ definitions:
         allOf:
         - $ref: '#/definitions/model.ProjectStatus'
         description: 'Status may have those values: open/pending_close/closed'
+      update_ts:
+        type: integer
       updated_at:
         type: string
     type: object
@@ -218,6 +224,8 @@ definitions:
         items:
           $ref: '#/definitions/model.GuildBudget'
         type: array
+      create_ts:
+        type: integer
       created_at:
         type: string
       creator:
@@ -244,6 +252,8 @@ definitions:
         items:
           type: string
         type: array
+      update_ts:
+        type: integer
       updated_at:
         type: string
     type: object
@@ -291,7 +301,17 @@ definitions:
     properties:
       amount:
         type: string
+      app_bundle_comment:
+        type: string
+      applicant_avatar:
+        type: string
+      applicant_wallet:
+        description: related users in the application process
+        type: string
       application_id:
+        type: integer
+      apply_ts:
+        description: The timestamp this application been created
         type: integer
       asset_name:
         type: string
@@ -300,6 +320,15 @@ definitions:
         type: string
       comment:
         type: string
+      complete_ts:
+        description: The timestamp this application been marked as completed
+        type: integer
+      completer_avatar:
+        type: string
+      completer_wallet:
+        type: string
+      create_ts:
+        type: integer
       created_at:
         type: string
       detailed_type:
@@ -307,7 +336,17 @@ definitions:
       entity_name:
         description: name field value from specified entity table
         type: string
-      reviewer_name:
+      process_ts:
+        description: The timestamp this application been processed
+        type: integer
+      processor_avatar:
+        type: string
+      processor_wallet:
+        type: string
+      review_ts:
+        description: The timestamp this application been reviewed
+        type: integer
+      reviewer_avatar:
         type: string
       reviewer_wallet:
         type: string
@@ -316,17 +355,20 @@ definitions:
       status:
         description: application status
         type: string
-      submitter_name:
-        type: string
-      submitter_wallet:
+      target_user_avatar:
         type: string
       target_user_wallet:
+        description: target user data
         type: string
       transaction_ids:
         type: string
+      update_ts:
+        type: integer
     type: object
   model.Guild:
     properties:
+      create_ts:
+        type: integer
       created_at:
         type: string
       creator:
@@ -353,11 +395,15 @@ definitions:
         items:
           type: string
         type: array
+      update_ts:
+        type: integer
       updated_at:
         type: string
     type: object
   model.GuildBudget:
     properties:
+      create_ts:
+        type: integer
       created_at:
         type: string
       guild_id:
@@ -373,6 +419,8 @@ definitions:
       total_amount:
         description: total_amount
         type: number
+      update_ts:
+        type: integer
       updated_at:
         type: string
       used_amount:
@@ -413,6 +461,8 @@ definitions:
     type: object
   model.Project:
     properties:
+      create_ts:
+        type: integer
       created_at:
         type: string
       creator:
@@ -453,11 +503,15 @@ definitions:
         allOf:
         - $ref: '#/definitions/model.ProjectStatus'
         description: 'Status may have those values: open/pending_close/closed'
+      update_ts:
+        type: integer
       updated_at:
         type: string
     type: object
   model.ProjectBudget:
     properties:
+      create_ts:
+        type: integer
       created_at:
         type: string
       id:
@@ -473,6 +527,8 @@ definitions:
       total_amount:
         description: total_amount = used_amount + remain_amount
         type: number
+      update_ts:
+        type: integer
       updated_at:
         type: string
       used_amount:
@@ -489,6 +545,8 @@ definitions:
     properties:
       content:
         type: string
+      create_ts:
+        type: integer
       created_at:
         type: string
       creator_wallet:
@@ -499,12 +557,15 @@ definitions:
         description: TODO support multi type, custom(JumpURL), xx(yy,zz)
         type: string
       push_date:
+        description: 'TODO: Verify whether this file need to be changed to epoch second'
         type: string
       status:
         type: integer
       title:
         description: TODO support multi language
         type: string
+      update_ts:
+        type: integer
       updated_at:
         type: string
     type: object
@@ -558,6 +619,8 @@ definitions:
         type: string
       bio:
         type: string
+      create_ts:
+        type: integer
       created_at:
         type: string
       discord_profile:
@@ -576,6 +639,8 @@ definitions:
         type: string
       twitter_profile:
         type: string
+      update_ts:
+        type: integer
       updated_at:
         type: string
       wallet:
@@ -588,6 +653,8 @@ definitions:
       asset_name:
         description: asset name
         type: string
+      create_ts:
+        type: integer
       created_at:
         type: string
       dealt_amount:
@@ -598,6 +665,8 @@ definitions:
       processing_amount:
         description: amount of asset that still need confirmation
         type: number
+      update_ts:
+        type: integer
       updated_at:
         type: string
       user_wallet:
@@ -665,6 +734,8 @@ definitions:
         items:
           $ref: '#/definitions/model.ProjectBudget'
         type: array
+      create_ts:
+        type: integer
       created_at:
         type: string
       creator:
@@ -705,6 +776,8 @@ definitions:
         allOf:
         - $ref: '#/definitions/model.ProjectStatus'
         description: 'Status may have those values: open/pending_close/closed'
+      update_ts:
+        type: integer
       updated_at:
         type: string
     type: object

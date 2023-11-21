@@ -123,7 +123,7 @@ func ParseAndConvertPageParam(ctx *gin.Context) *gormfind.Page {
 	sortOrder := ctx.Query("sort_order")
 
 	if sortField == "" {
-		sortField = "created_at"
+		sortField = "create_ts"
 	}
 
 	if sortOrder == "" {

@@ -76,6 +76,7 @@ type ListApplicationQueryParams struct {
 	Type       string `form:"type"`
 	Entity     string `form:"entity"`
 	EntityId   string `form:"entity_id"`
+	AssetName  string `form:"asset_name"`
 	StartDate  string `form:"start_date"`
 	EndDate    string `form:"end_date"`
 	Applicant  string `form:"applicant"`
@@ -105,17 +106,83 @@ type FrontendApplicationRecord struct {
 	ApplicationID    uint      `json:"application_id"`
 	SeasonName       string    `json:"season_name"`
 	EntityName       string    `json:"entity_name"` // name field value from specified entity table
-	CreatedAt        time.Time `json:"created_at"`
-	TargetUserWallet string    `json:"target_user_wallet"`
+	CreatedAt        time.Time `json:"-"`
 	AssetName        string    `json:"asset_name"`
 	Amount           string    `json:"amount"`
 	BudgetSource     string    `json:"budget_source"` // the data is from name field of project or guild
 	Status           string    `json:"status"`        // application status
 	DetailedType     string    `json:"detailed_type"`
 	Comment          string    `json:"comment"`
-	SubmitterWallet  string    `json:"submitter_wallet"`
-	ReviewerWallet   string    `json:"reviewer_wallet"`
-	TransactionIds   string    `json:"transaction_ids"`
+	AppBundleComment string    `json:"app_bundle_comment"`
+
+	// target user data
+	TargetUserWallet string `json:"target_user_wallet"`
+	TargetUserAvatar string `json:"target_user_avatar"`
+
+	// related users in the application process
+	ApplicantWallet string `json:"applicant_wallet"`
+	ApplicantAvatar string `json:"applicant_avatar"`
+	ApplyTs         int64  `json:"apply_ts"` // The timestamp this application been created
+
+	ReviewerWallet string `json:"reviewer_wallet"`
+	ReviewerAvatar string `json:"reviewer_avatar"`
+	ReviewTs       int64  `json:"review_ts"` // The timestamp this application been reviewed
+
+	ProcessorWallet string `json:"processor_wallet"`
+	ProcessorAvatar string `json:"processor_avatar"`
+	ProcessTs       int64  `json:"process_ts"` // The timestamp this application been processed
+
+	CompleterWallet string `json:"completer_wallet"`
+	CompleterAvatar string `json:"completer_avatar"`
+	CompleteTs      int64  `json:"complete_ts"` // The timestamp this application been marked as completed
+
+	TransactionIds string `json:"transaction_ids"`
+	CreateTs       int64  `json:"create_ts"`
+	UpdateTs       int64  `json:"update_ts"`
+}
+
+func (r *FrontendApplicationRecord) ToCSV() []string {
+	var createdAtStr string
+	var err error
+	createdAtStr, err = ConvertTimeToTzString(r.CreatedAt, ExportApplicationTimeZone, ExportApplicationTimeFormat)
+	if err != nil {
+		createdAtStr = r.CreatedAt.Format(time.RFC3339)
+	}
+
+	return []string{
+		createdAtStr,
+		r.TargetUserWallet,
+		r.AssetName,
+		r.Amount,
+		r.DetailedType,
+		r.BudgetSource,
+		r.Comment,
+		r.Status,
+		r.ApplicantWallet,
+		r.ReviewerWallet,
+	}
+}
+
+func (r *FrontendApplicationRecord) ToXlsx() []any {
+	var createdAtStr string
+	var err error
+	createdAtStr, err = ConvertTimeToTzString(r.CreatedAt, ExportApplicationTimeZone, ExportApplicationTimeFormat)
+	if err != nil {
+		createdAtStr = r.CreatedAt.Format(time.RFC3339)
+	}
+
+	return []any{
+		createdAtStr,
+		r.TargetUserWallet,
+		r.AssetName,
+		r.Amount,
+		r.DetailedType,
+		r.BudgetSource,
+		r.Comment,
+		r.Status,
+		r.ApplicantWallet,
+		r.ReviewerWallet,
+	}
 }
 
 // jointAppEntityRslt saves applications records by guild and project join query
@@ -158,6 +225,7 @@ func (r *jointAppEntityRslt) ToFrontedApplicationRecord(db *gorm.DB) *FrontendAp
 		SeasonName:       appSeasonRcd.Name,
 		EntityName:       r.Application.EntityType,
 		CreatedAt:        r.Application.CreatedAt,
+		CreateTs:         r.Application.CreateTs,
 		TargetUserWallet: r.Application.TargetUserWallet,
 		AssetName:        r.Application.AssetName,
 		Amount:           r.Application.AssetAmount.String(),
@@ -165,7 +233,7 @@ func (r *jointAppEntityRslt) ToFrontedApplicationRecord(db *gorm.DB) *FrontendAp
 		Status:           string(r.Application.State),
 		DetailedType:     r.Application.DetailedType,
 		Comment:          r.Application.Comment,
-		SubmitterWallet:  submitterWallet,
+		ApplicantWallet:  submitterWallet,
 		ReviewerWallet:   reviewerWallet,
 		TransactionIds:   r.Application.CompleteMessage,
 	}
