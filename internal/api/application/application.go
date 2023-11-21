@@ -259,7 +259,7 @@ func Download(ctx *gin.Context) {
 				r.SeasonName,
 				r.DetailedType,
 				r.BudgetSource,
-				r.SubmitterWallet,
+				r.ApplicantWallet,
 				r.Status,
 			})
 			if err != nil {
@@ -306,7 +306,7 @@ func Download(ctx *gin.Context) {
 				row.SeasonName,
 				row.DetailedType,
 				row.BudgetSource,
-				row.SubmitterWallet,
+				row.ApplicantWallet,
 				row.Status,
 			})
 			if err != nil {
