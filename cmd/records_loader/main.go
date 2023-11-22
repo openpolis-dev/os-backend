@@ -21,8 +21,9 @@ import (
 
 const DealDateLayoutFormat1 = "2006/1/2"
 const DealDateLayoutFormat2 = "2006-01-02 15:04:05"
+const DealDateLayoutFormat3 = "2006-01-02"
 
-const DetailSheetName = "明细"
+const DefaultDetailSheetName = "明细"
 const SummarizedSheetName = "数据透视"
 
 type DetailRecordSchema struct {
@@ -31,6 +32,7 @@ type DetailRecordSchema struct {
 	EntityName   string
 	UserWallet   string
 	DealDate     time.Time
+	DealTs       int64
 	AssetName    string
 	AssetAmount  decimal.Decimal
 	DetailedType string
@@ -98,21 +100,31 @@ func loadRows(filePath string, sheetName string) ([][]string, error) {
 	return rows, nil
 }
 
-func loadDetailSheet(filePath string) ([]*DetailRecordSchema, error) {
-	rows, err := loadRows(filePath, DetailSheetName)
+func tryParseDatetime(dateStr string) (time.Time, error) {
+	parsedDate, err := time.ParseInLocation(DealDateLayoutFormat1, dateStr, internal.ProjectTimezone)
+	if err != nil {
+		// Try parse date time with another format
+		parsedDate, err = time.ParseInLocation(DealDateLayoutFormat2, dateStr, internal.ProjectTimezone)
+		if err != nil {
+			parsedDate, err = time.ParseInLocation(DealDateLayoutFormat3, dateStr, internal.ProjectTimezone)
+			if err != nil {
+				return time.Time{}, err
+			}
+		}
+	}
+	return parsedDate, nil
+}
+
+func loadDetailSheet(filePath string, sheetName string, assets map[string]bool) ([]*DetailRecordSchema, error) {
+	rows, err := loadRows(filePath, sheetName)
 	if err != nil {
 		return nil, err
 	}
 
 	detailRecords := lo.Map(rows[2:], func(r []string, _ int) *DetailRecordSchema {
-		var dealDate time.Time
-		dealDate, err = time.Parse(DealDateLayoutFormat1, r[4])
+		dealDate, err := tryParseDatetime(r[4])
 		if err != nil {
-			// Try parse date time with another format
-			dealDate, err = time.Parse(DealDateLayoutFormat2, r[4])
-			if err != nil {
-				panic(err)
-			}
+			panic(err)
 		}
 		assetAmount, err := decimal.NewFromString(strings.ReplaceAll(r[6], ",", ""))
 		if err != nil {
@@ -140,6 +152,7 @@ func loadDetailSheet(filePath string) ([]*DetailRecordSchema, error) {
 			EntityName:   r[2],
 			UserWallet:   model.FormatUserWallet(r[3]),
 			DealDate:     dealDate.In(internal.ProjectTimezone),
+			DealTs:       dealDate.In(internal.ProjectTimezone).UTC().Unix(),
 			AssetName:    r[5],
 			AssetAmount:  assetAmount,
 			DetailedType: detailedType,
@@ -208,7 +221,8 @@ func saveToDatabase(db *gorm.DB, rcds []*DetailRecordSchema, seasonRcds []*model
 	if cleanDbFlag {
 		var appRcdIds []uint
 		db.Model(&model.Application{}).Where("season_id IN ?", seasonIds).Select("id").Find(&appRcdIds)
-		err = db.Model(&model.ApplicationAuditLog{}).Where("application_id IN ?", appRcdIds).Delete(&model.ApplicationAuditLog{}).Error
+		log.Debug().Msgf("%d applications will be removed", len(appRcdIds))
+		err = db.Delete(&model.ApplicationAuditLog{}, "application_id IN ?", appRcdIds).Error
 		if err != nil {
 			panic(err)
 		}
@@ -252,7 +266,7 @@ func saveToDatabase(db *gorm.DB, rcds []*DetailRecordSchema, seasonRcds []*model
 	}
 
 	if len(missingEntity) > 0 {
-		panic(fmt.Errorf("some entites are missing in DB: %+v", missingEntity))
+		panic(fmt.Errorf("some entites are missing in DB: %+v", strings.Join(lo.Keys(missingEntity), ", ")))
 	}
 
 	// DB tasks
@@ -318,14 +332,15 @@ func saveToDatabase(db *gorm.DB, rcds []*DetailRecordSchema, seasonRcds []*model
 			}
 
 			auditLogs := []*model.ApplicationAuditLog{
-				{ApplicationID: application.ID, LogTs: time.Now().In(internal.ProjectTimezone), PostState: model.ApplicationStateApproved},
-				{ApplicationID: application.ID, LogTs: time.Now().In(internal.ProjectTimezone), PreState: model.ApplicationStateOpen, PostState: model.ApplicationStateApproved},
-				{ApplicationID: application.ID, LogTs: time.Now().In(internal.ProjectTimezone), PreState: model.ApplicationStateApproved, PostState: model.ApplicationStateProcessing},
-				{ApplicationID: application.ID, LogTs: time.Now().In(internal.ProjectTimezone), PreState: model.ApplicationStateProcessing, PostState: model.ApplicationStateCompleted},
+				{ApplicationID: application.ID, Operation: model.AuditActionNew, LogTs: r.DealDate, PostState: model.ApplicationStateOpen},
+				{ApplicationID: application.ID, Operation: model.AuditActionApprove, LogTs: r.DealDate, PreState: model.ApplicationStateOpen, PostState: model.ApplicationStateApproved},
+				{ApplicationID: application.ID, Operation: model.AuditActionProcess, LogTs: r.DealDate, PreState: model.ApplicationStateApproved, PostState: model.ApplicationStateProcessing},
+				{ApplicationID: application.ID, Operation: model.AuditActionComplete, LogTs: r.DealDate, PreState: model.ApplicationStateProcessing, PostState: model.ApplicationStateCompleted},
 			}
 
 			err = tx.Save(auditLogs).Error
 			if err != nil {
+				log.Error().Msgf("Insert audit log for application %d error, audit logs: %+v, err: %+v", application.ID, auditLogs, err)
 				return err
 			}
 		}
@@ -338,6 +353,8 @@ func main() {
 	dsn := flag.String("dsn", "", "Database connect string")
 	mode := flag.String("mode", "load", "load data mode or verify data")
 	seasonName := flag.String("season", "", "Specify seasons the application will import, multiple seasons can be split by comma. If not given, the current season will be used. And pass `all` for processing all season records")
+	assetName := flag.String("asset", "", "Specify assets the application will import, multiple seasons can be split by comma. If not given, all assets will be imported")
+	detailSheetName := flag.String("detail-sheet", DefaultDetailSheetName, "Specify detail sheet name in the Excel file, the default value will be used if not given")
 	cleanDBFlag := flag.Bool("clean-db", false, "Clean the database with specified seasons before importing.")
 	//logLevelFlag := flag.Int("v", 0, "Log level: 0 for no logs, 1 for normal logs, 2 for verbose logs, 3 for very verbose logs.")
 	inputFile := flag.String("input", "summary.xsls", "Specify input xslx file")
@@ -365,11 +382,16 @@ func main() {
 		panic(err)
 	}
 
+	importAssets := make(map[string]bool)
+	for _, name := range strings.Split(*assetName, ",") {
+		importAssets[name] = true
+	}
+
 	switch *mode {
 	case "load":
 		// Read and parse xslx file
 		// The sheet used for loading is sheet with DetailSheetName.
-		detailedRecords, err := loadDetailSheet(*inputFile)
+		detailedRecords, err := loadDetailSheet(*inputFile, *detailSheetName, importAssets)
 		if err != nil {
 			panic(err)
 		}
@@ -392,7 +414,7 @@ func main() {
 		}
 
 		// Calculated summarized records from parsed detail worksheet
-		detailedRecords, err := loadDetailSheet(*inputFile)
+		detailedRecords, err := loadDetailSheet(*inputFile, *detailSheetName, importAssets)
 		if err != nil {
 			panic(err)
 		}
