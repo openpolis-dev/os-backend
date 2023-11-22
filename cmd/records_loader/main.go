@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
@@ -146,11 +147,16 @@ func loadDetailSheet(filePath string, sheetName string, assets map[string]bool) 
 			proposalLink = r[9]
 		}
 
+		userWallet := model.FormatUserWallet(r[3])
+		if !common.IsHexAddress(userWallet) {
+			panic(fmt.Errorf("user wallet %s is not a valid wallet", userWallet))
+		}
+
 		return &DetailRecordSchema{
 			SeasonName:   r[0],
 			Username:     r[1],
 			EntityName:   r[2],
-			UserWallet:   model.FormatUserWallet(r[3]),
+			UserWallet:   userWallet,
 			DealDate:     dealDate.In(internal.ProjectTimezone),
 			DealTs:       dealDate.In(internal.ProjectTimezone).UTC().Unix(),
 			AssetName:    r[5],
