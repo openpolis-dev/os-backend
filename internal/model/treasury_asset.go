@@ -6,6 +6,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"github.com/shopspring/decimal"
+	"github.com/theseed-labs/os-backend/internal"
 	"gorm.io/gorm"
 )
 
@@ -18,8 +19,10 @@ type TreasuryAsset struct {
 	SeasonId uint    `json:"season_id"`
 	Season   *Season `json:"season"`
 
-	CreatedAt time.Time `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt time.Time `json:"updated_at" gorm:"autoUpdateTime"`
+	CreatedAt time.Time `json:"-" gorm:"autoCreateTime"`
+	UpdatedAt time.Time `json:"-" gorm:"autoUpdateTime"`
+	CreateTs  int64     `json:"create_ts" gorm:"index"`
+	UpdateTs  int64     `json:"update_ts" gorm:"index"`
 }
 
 type TreasuryDetailedRecord struct {
@@ -32,8 +35,10 @@ type TreasuryDetailedRecord struct {
 
 	AuditLogs []TreasuryAuditLog `json:"audit_logs"`
 
-	CreatedAt time.Time `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt time.Time `json:"updated_at" gorm:"autoUpdateTime"`
+	CreatedAt time.Time `json:"-" gorm:"autoCreateTime"`
+	UpdatedAt time.Time `json:"-" gorm:"autoUpdateTime"`
+	CreateTs  int64     `json:"create_ts" gorm:"index"`
+	UpdateTs  int64     `json:"update_ts" gorm:"index"`
 }
 
 type TreasuryAuditLog struct {
@@ -47,8 +52,10 @@ type TreasuryAuditLog struct {
 
 	Message string `json:"message"`
 
-	CreatedAt time.Time `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt time.Time `json:"updated_at" gorm:"autoUpdateTime"`
+	CreatedAt time.Time `json:"-" gorm:"autoCreateTime"`
+	UpdatedAt time.Time `json:"-" gorm:"autoUpdateTime"`
+	CreateTs  int64     `json:"create_ts" gorm:"index"`
+	UpdateTs  int64     `json:"update_ts" gorm:"index"`
 }
 
 func (r *TreasuryAsset) ToTreasuryAssetsResponse(db *gorm.DB) (*TreasuryAssetsResponse, error) {
@@ -109,7 +116,11 @@ func (*treasuryAssetHelper) GetOrCreateCurrentSeasonRecord(db *gorm.DB) (*Treasu
 		return nil, err
 	}
 	var r TreasuryAsset
-	rslt := db.Preload("DetailedRecords").FirstOrInit(&r, TreasuryAsset{SeasonId: currSeason.ID})
+	rslt := db.Preload("DetailedRecords").FirstOrInit(&r, TreasuryAsset{
+		SeasonId:  currSeason.ID,
+		CreateTs:  GetCurrentUtcEpochSecond(),
+		CreatedAt: time.Now().In(internal.ProjectTimezone),
+	})
 	if rslt.Error != nil {
 		return nil, rslt.Error
 	} else if rslt.RowsAffected == 0 {
@@ -131,6 +142,10 @@ func (*treasuryAssetHelper) GetOrCreateCurrentSeasonDetailedRecord(db *gorm.DB, 
 	}).Attrs(TreasuryDetailedRecord{
 		TotalAmount:  totalAmount,
 		RemainAmount: totalAmount,
+		CreatedAt:    time.Now().In(internal.ProjectTimezone),
+		CreateTs:     GetCurrentUtcEpochSecond(),
+		UpdatedAt:    time.Now().In(internal.ProjectTimezone),
+		UpdateTs:     GetCurrentUtcEpochSecond(),
 	}).FirstOrInit(&r)
 
 	if rslt.Error != nil {

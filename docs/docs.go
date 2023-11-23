@@ -345,6 +345,43 @@ const docTemplate = `{
                 }
             }
         },
+        "/download_applications": {
+            "get": {
+                "summary": "downloads all applications based on query params and sends Excel file for downloading",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Reply"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "allOf": [
+                                                {
+                                                    "$ref": "#/definitions/api.ListReplyData"
+                                                },
+                                                {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "rows": {
+                                                            "$ref": "#/definitions/model.FrontendApplicationRecord"
+                                                        }
+                                                    }
+                                                }
+                                            ]
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/guilds": {
             "get": {
                 "consumes": [
@@ -372,7 +409,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "sort field, default: created_at",
+                        "description": "sort field, default: create_ts",
                         "name": "sort_field",
                         "in": "query"
                     },
@@ -475,7 +512,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "sort field, default: created_at",
+                        "description": "sort field, default: create_ts",
                         "name": "sort_field",
                         "in": "query"
                     },
@@ -1895,6 +1932,9 @@ const docTemplate = `{
                 "apply_time": {
                     "type": "string"
                 },
+                "apply_ts": {
+                    "type": "integer"
+                },
                 "assets": {
                     "type": "array",
                     "items": {
@@ -1983,8 +2023,8 @@ const docTemplate = `{
                         "$ref": "#/definitions/model.ProjectBudget"
                     }
                 },
-                "created_at": {
-                    "type": "string"
+                "create_ts": {
+                    "type": "integer"
                 },
                 "creator": {
                     "type": "string"
@@ -2045,8 +2085,8 @@ const docTemplate = `{
                         }
                     ]
                 },
-                "updated_at": {
-                    "type": "string"
+                "update_ts": {
+                    "type": "integer"
                 }
             }
         },
@@ -2192,8 +2232,8 @@ const docTemplate = `{
                         "$ref": "#/definitions/model.GuildBudget"
                     }
                 },
-                "created_at": {
-                    "type": "string"
+                "create_ts": {
+                    "type": "integer"
                 },
                 "creator": {
                     "type": "string"
@@ -2231,8 +2271,8 @@ const docTemplate = `{
                         "type": "string"
                     }
                 },
-                "updated_at": {
-                    "type": "string"
+                "update_ts": {
+                    "type": "integer"
                 }
             }
         },
@@ -2303,7 +2343,21 @@ const docTemplate = `{
                 "amount": {
                     "type": "string"
                 },
+                "app_bundle_comment": {
+                    "type": "string"
+                },
+                "applicant_avatar": {
+                    "type": "string"
+                },
+                "applicant_wallet": {
+                    "description": "related users in the application process",
+                    "type": "string"
+                },
                 "application_id": {
+                    "type": "integer"
+                },
+                "apply_ts": {
+                    "description": "The timestamp this application been created",
                     "type": "integer"
                 },
                 "asset_name": {
@@ -2316,8 +2370,18 @@ const docTemplate = `{
                 "comment": {
                     "type": "string"
                 },
-                "created_at": {
+                "complete_ts": {
+                    "description": "The timestamp this application been marked as completed",
+                    "type": "integer"
+                },
+                "completer_avatar": {
                     "type": "string"
+                },
+                "completer_wallet": {
+                    "type": "string"
+                },
+                "create_ts": {
+                    "type": "integer"
                 },
                 "detailed_type": {
                     "type": "string"
@@ -2326,7 +2390,21 @@ const docTemplate = `{
                     "description": "name field value from specified entity table",
                     "type": "string"
                 },
-                "reviewer_name": {
+                "process_ts": {
+                    "description": "The timestamp this application been processed",
+                    "type": "integer"
+                },
+                "processor_avatar": {
+                    "type": "string"
+                },
+                "processor_wallet": {
+                    "type": "string"
+                },
+                "review_ts": {
+                    "description": "The timestamp this application been reviewed",
+                    "type": "integer"
+                },
+                "reviewer_avatar": {
                     "type": "string"
                 },
                 "reviewer_wallet": {
@@ -2339,25 +2417,26 @@ const docTemplate = `{
                     "description": "application status",
                     "type": "string"
                 },
-                "submitter_name": {
-                    "type": "string"
-                },
-                "submitter_wallet": {
+                "target_user_avatar": {
                     "type": "string"
                 },
                 "target_user_wallet": {
+                    "description": "target user data",
                     "type": "string"
                 },
                 "transaction_ids": {
                     "type": "string"
+                },
+                "update_ts": {
+                    "type": "integer"
                 }
             }
         },
         "model.Guild": {
             "type": "object",
             "properties": {
-                "created_at": {
-                    "type": "string"
+                "create_ts": {
+                    "type": "integer"
                 },
                 "creator": {
                     "type": "string"
@@ -2395,16 +2474,16 @@ const docTemplate = `{
                         "type": "string"
                     }
                 },
-                "updated_at": {
-                    "type": "string"
+                "update_ts": {
+                    "type": "integer"
                 }
             }
         },
         "model.GuildBudget": {
             "type": "object",
             "properties": {
-                "created_at": {
-                    "type": "string"
+                "create_ts": {
+                    "type": "integer"
                 },
                 "guild_id": {
                     "description": "guild_id",
@@ -2424,8 +2503,8 @@ const docTemplate = `{
                     "description": "total_amount",
                     "type": "number"
                 },
-                "updated_at": {
-                    "type": "string"
+                "update_ts": {
+                    "type": "integer"
                 },
                 "used_amount": {
                     "description": "used_amount",
@@ -2485,8 +2564,8 @@ const docTemplate = `{
         "model.Project": {
             "type": "object",
             "properties": {
-                "created_at": {
-                    "type": "string"
+                "create_ts": {
+                    "type": "integer"
                 },
                 "creator": {
                     "type": "string"
@@ -2547,16 +2626,16 @@ const docTemplate = `{
                         }
                     ]
                 },
-                "updated_at": {
-                    "type": "string"
+                "update_ts": {
+                    "type": "integer"
                 }
             }
         },
         "model.ProjectBudget": {
             "type": "object",
             "properties": {
-                "created_at": {
-                    "type": "string"
+                "create_ts": {
+                    "type": "integer"
                 },
                 "id": {
                     "type": "integer"
@@ -2576,8 +2655,8 @@ const docTemplate = `{
                     "description": "total_amount = used_amount + remain_amount",
                     "type": "number"
                 },
-                "updated_at": {
-                    "type": "string"
+                "update_ts": {
+                    "type": "integer"
                 },
                 "used_amount": {
                     "description": "used_amount",
@@ -2600,8 +2679,8 @@ const docTemplate = `{
                 "content": {
                     "type": "string"
                 },
-                "created_at": {
-                    "type": "string"
+                "create_ts": {
+                    "type": "integer"
                 },
                 "creator_wallet": {
                     "type": "string"
@@ -2614,6 +2693,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "push_date": {
+                    "description": "TODO: Verify whether this file need to be changed to epoch second",
                     "type": "string"
                 },
                 "status": {
@@ -2623,8 +2703,8 @@ const docTemplate = `{
                     "description": "TODO support multi language",
                     "type": "string"
                 },
-                "updated_at": {
-                    "type": "string"
+                "update_ts": {
+                    "type": "integer"
                 }
             }
         },
@@ -2696,8 +2776,8 @@ const docTemplate = `{
                 "bio": {
                     "type": "string"
                 },
-                "created_at": {
-                    "type": "string"
+                "create_ts": {
+                    "type": "integer"
                 },
                 "discord_profile": {
                     "type": "string"
@@ -2723,8 +2803,8 @@ const docTemplate = `{
                 "twitter_profile": {
                     "type": "string"
                 },
-                "updated_at": {
-                    "type": "string"
+                "update_ts": {
+                    "type": "integer"
                 },
                 "wallet": {
                     "type": "string"
@@ -2741,8 +2821,8 @@ const docTemplate = `{
                     "description": "asset name",
                     "type": "string"
                 },
-                "created_at": {
-                    "type": "string"
+                "create_ts": {
+                    "type": "integer"
                 },
                 "dealt_amount": {
                     "description": "amount of asset that already dealt",
@@ -2755,8 +2835,8 @@ const docTemplate = `{
                     "description": "amount of asset that still need confirmation",
                     "type": "number"
                 },
-                "updated_at": {
-                    "type": "string"
+                "update_ts": {
+                    "type": "integer"
                 },
                 "user_wallet": {
                     "type": "string"
@@ -2858,8 +2938,8 @@ const docTemplate = `{
                         "$ref": "#/definitions/model.ProjectBudget"
                     }
                 },
-                "created_at": {
-                    "type": "string"
+                "create_ts": {
+                    "type": "integer"
                 },
                 "creator": {
                     "type": "string"
@@ -2920,8 +3000,8 @@ const docTemplate = `{
                         }
                     ]
                 },
-                "updated_at": {
-                    "type": "string"
+                "update_ts": {
+                    "type": "integer"
                 }
             }
         },

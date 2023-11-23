@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
@@ -146,11 +147,16 @@ func loadDetailSheet(filePath string, sheetName string, assets map[string]bool) 
 			proposalLink = r[9]
 		}
 
+		userWallet := model.FormatUserWallet(r[3])
+		if !common.IsHexAddress(userWallet) {
+			panic(fmt.Errorf("user wallet %s is not a valid wallet", userWallet))
+		}
+
 		return &DetailRecordSchema{
 			SeasonName:   r[0],
 			Username:     r[1],
 			EntityName:   r[2],
-			UserWallet:   model.FormatUserWallet(r[3]),
+			UserWallet:   userWallet,
 			DealDate:     dealDate.In(internal.ProjectTimezone),
 			DealTs:       dealDate.In(internal.ProjectTimezone).UTC().Unix(),
 			AssetName:    r[5],
@@ -272,8 +278,16 @@ func saveToDatabase(db *gorm.DB, rcds []*DetailRecordSchema, seasonRcds []*model
 	// DB tasks
 	// Create user record if not existing
 	err = db.Transaction(func(tx *gorm.DB) error {
-		for wallet, _ := range userWallets {
-			err = tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&model.User{Wallet: model.FormatUserWallet(wallet)}).Error
+		for wallet := range userWallets {
+			userRcd := model.User{
+				Wallet:    model.FormatUserWallet(wallet),
+				CreatedAt: time.Now().In(internal.ProjectTimezone),
+				UpdatedAt: time.Now().In(internal.ProjectTimezone),
+				CreateTs:  model.GetCurrentUtcEpochSecond(),
+				UpdateTs:  model.GetCurrentUtcEpochSecond(),
+			}
+
+			err = tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&userRcd).Error
 
 			if err != nil {
 				log.Error().Msgf("find or create user error: %+v", err)
@@ -315,6 +329,8 @@ func saveToDatabase(db *gorm.DB, rcds []*DetailRecordSchema, seasonRcds []*model
 				State:            model.ApplicationStateCompleted,
 				CreatedAt:        r.DealDate,
 				UpdatedAt:        r.DealDate,
+				CreateTs:         r.DealTs,
+				UpdateTs:         r.DealTs,
 				DetailedType:     r.DetailedType,
 				TargetUserWallet: model.FormatUserWallet(r.UserWallet),
 				AssetName:        r.AssetName,
@@ -332,10 +348,10 @@ func saveToDatabase(db *gorm.DB, rcds []*DetailRecordSchema, seasonRcds []*model
 			}
 
 			auditLogs := []*model.ApplicationAuditLog{
-				{ApplicationID: application.ID, Operation: model.AuditActionNew, LogTs: r.DealDate, PostState: model.ApplicationStateOpen},
-				{ApplicationID: application.ID, Operation: model.AuditActionApprove, LogTs: r.DealDate, PreState: model.ApplicationStateOpen, PostState: model.ApplicationStateApproved},
-				{ApplicationID: application.ID, Operation: model.AuditActionProcess, LogTs: r.DealDate, PreState: model.ApplicationStateApproved, PostState: model.ApplicationStateProcessing},
-				{ApplicationID: application.ID, Operation: model.AuditActionComplete, LogTs: r.DealDate, PreState: model.ApplicationStateProcessing, PostState: model.ApplicationStateCompleted},
+				{ApplicationID: application.ID, Operation: model.AuditActionNew, LogTs: r.DealTs, PostState: model.ApplicationStateOpen},
+				{ApplicationID: application.ID, Operation: model.AuditActionApprove, LogTs: r.DealTs, PreState: model.ApplicationStateOpen, PostState: model.ApplicationStateApproved},
+				{ApplicationID: application.ID, Operation: model.AuditActionProcess, LogTs: r.DealTs, PreState: model.ApplicationStateApproved, PostState: model.ApplicationStateProcessing},
+				{ApplicationID: application.ID, Operation: model.AuditActionComplete, LogTs: r.DealTs, PreState: model.ApplicationStateProcessing, PostState: model.ApplicationStateCompleted},
 			}
 
 			err = tx.Save(auditLogs).Error

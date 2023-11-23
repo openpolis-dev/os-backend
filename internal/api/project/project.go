@@ -12,6 +12,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
+	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk"
@@ -111,6 +112,10 @@ func Create(ctx *gin.Context) {
 		Members:   members,
 		Proposals: proposals,
 		Creator:   user.Wallet,
+		CreatedAt: time.Now().In(internal.ProjectTimezone),
+		UpdatedAt: time.Now().In(internal.ProjectTimezone),
+		CreateTs:  model.GetCurrentUtcEpochSecond(),
+		UpdateTs:  model.GetCurrentUtcEpochSecond(),
 	}
 	err = model.ProjectModel.CreateOrUpdate(tx, &proj)
 	if err != nil {
@@ -126,7 +131,10 @@ func Create(ctx *gin.Context) {
 			TotalAmount:  item.TotalAmount,
 			UsedAmount:   decimal.Zero,
 			RemainAmount: item.TotalAmount,
-		}
+			CreatedAt:    time.Now().In(internal.ProjectTimezone),
+			UpdatedAt:    time.Now().In(internal.ProjectTimezone),
+			CreateTs:     model.GetCurrentUtcEpochSecond(),
+			UpdateTs:     model.GetCurrentUtcEpochSecond()}
 	})
 	err = model.ProjectBudgetModel.Create(tx, budgets)
 	if err != nil {
@@ -281,6 +289,8 @@ func Update(ctx *gin.Context) {
 	proj.Name = req.Name
 	proj.Intro = req.Intro
 	proj.Desc = req.Desc
+	proj.UpdateTs = model.GetCurrentUtcEpochSecond()
+	proj.UpdatedAt = time.Now().In(internal.ProjectTimezone)
 	err = model.ProjectModel.CreateOrUpdate(db, proj)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
@@ -342,8 +352,10 @@ func Close(ctx *gin.Context) {
 			Type:       model.ApplicationCloseProject,
 			Applicant:  user.Wallet,
 			State:      model.ApplicationStateOpen,
-			CreatedAt:  time.Now(),
-			UpdatedAt:  time.Now(),
+			CreatedAt:  time.Now().In(internal.ProjectTimezone),
+			UpdatedAt:  time.Now().In(internal.ProjectTimezone),
+			CreateTs:   model.GetCurrentUtcEpochSecond(),
+			UpdateTs:   model.GetCurrentUtcEpochSecond(),
 			EntityType: "project",
 			EntityId:   project.ID,
 		}
@@ -352,6 +364,8 @@ func Close(ctx *gin.Context) {
 			return err
 		}
 		project.Status = model.ProjectStatusPendingClose
+		project.UpdatedAt = time.Now().In(internal.ProjectTimezone)
+		project.UpdateTs = model.GetCurrentUtcEpochSecond()
 		return tx.Save(project).Error
 	})
 
@@ -566,6 +580,8 @@ func UpdateStaffs(ctx *gin.Context) {
 			proj.Sponsors = lo.Uniq[string](proj.Sponsors)
 			// remove sponsors from members
 			proj.Sponsors = lo.Without[string](proj.Sponsors, proj.Members...)
+			proj.UpdateTs = model.GetCurrentUtcEpochSecond()
+			proj.UpdatedAt = time.Now().In(internal.ProjectTimezone)
 			err = model.ProjectModel.CreateOrUpdate(tx, proj)
 			if err != nil {
 				tx.Rollback()
@@ -602,6 +618,8 @@ func UpdateStaffs(ctx *gin.Context) {
 			proj.Members = lo.Uniq[string](proj.Members)
 			// remove members from sponsors
 			proj.Members = lo.Without[string](proj.Members, proj.Sponsors...)
+			proj.UpdateTs = model.GetCurrentUtcEpochSecond()
+			proj.UpdatedAt = time.Now().In(internal.ProjectTimezone)
 			err = model.ProjectModel.CreateOrUpdate(tx, proj)
 			if err != nil {
 				tx.Rollback()
@@ -674,6 +692,8 @@ func UpdateStaffs(ctx *gin.Context) {
 		if req.Members != nil && len(req.Members) != 0 {
 			// remove project members
 			proj.Members = lo.Without[string](proj.Members, members...)
+			proj.UpdateTs = model.GetCurrentUtcEpochSecond()
+			proj.UpdatedAt = time.Now().In(internal.ProjectTimezone)
 			err = model.ProjectModel.CreateOrUpdate(tx, proj)
 			if err != nil {
 				tx.Rollback()
@@ -780,6 +800,8 @@ func UpdateBudget(ctx *gin.Context) {
 	// update `TotalAmount`
 	budget.TotalAmount = req.TotalAmount
 	budget.RemainAmount = budget.TotalAmount.Sub(budget.UsedAmount)
+	budget.UpdateTs = model.GetCurrentUtcEpochSecond()
+	budget.UpdatedAt = time.Now().In(internal.ProjectTimezone)
 	err = model.ProjectBudgetModel.Update(db, budget)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
@@ -841,6 +863,8 @@ func AddRelatedProposal(ctx *gin.Context) {
 	proj.Proposals = append(proj.Proposals, proposalIDs...)
 	// remove duplicate proposals
 	proj.Proposals = lo.Uniq[string](proj.Proposals)
+	proj.UpdateTs = model.GetCurrentUtcEpochSecond()
+	proj.UpdatedAt = time.Now().In(internal.ProjectTimezone)
 	err = model.ProjectModel.CreateOrUpdate(db, proj)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))

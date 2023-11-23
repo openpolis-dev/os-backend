@@ -24,6 +24,8 @@ definitions:
         type: string
       apply_time:
         type: string
+      apply_ts:
+        type: integer
       assets:
         items:
           properties:
@@ -81,8 +83,8 @@ definitions:
         items:
           $ref: '#/definitions/model.ProjectBudget'
         type: array
-      created_at:
-        type: string
+      create_ts:
+        type: integer
       creator:
         type: string
       desc:
@@ -121,8 +123,8 @@ definitions:
         allOf:
         - $ref: '#/definitions/model.ProjectStatus'
         description: 'Status may have those values: open/pending_close/closed'
-      updated_at:
-        type: string
+      update_ts:
+        type: integer
     type: object
   city_hall.CityHallUpdateBudgetReq:
     properties:
@@ -218,8 +220,8 @@ definitions:
         items:
           $ref: '#/definitions/model.GuildBudget'
         type: array
-      created_at:
-        type: string
+      create_ts:
+        type: integer
       creator:
         type: string
       desc:
@@ -244,8 +246,8 @@ definitions:
         items:
           type: string
         type: array
-      updated_at:
-        type: string
+      update_ts:
+        type: integer
     type: object
   guild.UpdateBudgetReq:
     properties:
@@ -291,7 +293,17 @@ definitions:
     properties:
       amount:
         type: string
+      app_bundle_comment:
+        type: string
+      applicant_avatar:
+        type: string
+      applicant_wallet:
+        description: related users in the application process
+        type: string
       application_id:
+        type: integer
+      apply_ts:
+        description: The timestamp this application been created
         type: integer
       asset_name:
         type: string
@@ -300,14 +312,31 @@ definitions:
         type: string
       comment:
         type: string
-      created_at:
+      complete_ts:
+        description: The timestamp this application been marked as completed
+        type: integer
+      completer_avatar:
         type: string
+      completer_wallet:
+        type: string
+      create_ts:
+        type: integer
       detailed_type:
         type: string
       entity_name:
         description: name field value from specified entity table
         type: string
-      reviewer_name:
+      process_ts:
+        description: The timestamp this application been processed
+        type: integer
+      processor_avatar:
+        type: string
+      processor_wallet:
+        type: string
+      review_ts:
+        description: The timestamp this application been reviewed
+        type: integer
+      reviewer_avatar:
         type: string
       reviewer_wallet:
         type: string
@@ -316,19 +345,20 @@ definitions:
       status:
         description: application status
         type: string
-      submitter_name:
-        type: string
-      submitter_wallet:
+      target_user_avatar:
         type: string
       target_user_wallet:
+        description: target user data
         type: string
       transaction_ids:
         type: string
+      update_ts:
+        type: integer
     type: object
   model.Guild:
     properties:
-      created_at:
-        type: string
+      create_ts:
+        type: integer
       creator:
         type: string
       desc:
@@ -353,13 +383,13 @@ definitions:
         items:
           type: string
         type: array
-      updated_at:
-        type: string
+      update_ts:
+        type: integer
     type: object
   model.GuildBudget:
     properties:
-      created_at:
-        type: string
+      create_ts:
+        type: integer
       guild_id:
         description: guild_id
         type: integer
@@ -373,8 +403,8 @@ definitions:
       total_amount:
         description: total_amount
         type: number
-      updated_at:
-        type: string
+      update_ts:
+        type: integer
       used_amount:
         description: used_amount
         type: number
@@ -413,8 +443,8 @@ definitions:
     type: object
   model.Project:
     properties:
-      created_at:
-        type: string
+      create_ts:
+        type: integer
       creator:
         type: string
       desc:
@@ -453,13 +483,13 @@ definitions:
         allOf:
         - $ref: '#/definitions/model.ProjectStatus'
         description: 'Status may have those values: open/pending_close/closed'
-      updated_at:
-        type: string
+      update_ts:
+        type: integer
     type: object
   model.ProjectBudget:
     properties:
-      created_at:
-        type: string
+      create_ts:
+        type: integer
       id:
         type: integer
       name:
@@ -473,8 +503,8 @@ definitions:
       total_amount:
         description: total_amount = used_amount + remain_amount
         type: number
-      updated_at:
-        type: string
+      update_ts:
+        type: integer
       used_amount:
         description: used_amount
         type: number
@@ -489,8 +519,8 @@ definitions:
     properties:
       content:
         type: string
-      created_at:
-        type: string
+      create_ts:
+        type: integer
       creator_wallet:
         type: string
       id:
@@ -499,14 +529,15 @@ definitions:
         description: TODO support multi type, custom(JumpURL), xx(yy,zz)
         type: string
       push_date:
+        description: 'TODO: Verify whether this file need to be changed to epoch second'
         type: string
       status:
         type: integer
       title:
         description: TODO support multi language
         type: string
-      updated_at:
-        type: string
+      update_ts:
+        type: integer
     type: object
   model.Season:
     properties:
@@ -558,8 +589,8 @@ definitions:
         type: string
       bio:
         type: string
-      created_at:
-        type: string
+      create_ts:
+        type: integer
       discord_profile:
         type: string
       email:
@@ -576,8 +607,8 @@ definitions:
         type: string
       twitter_profile:
         type: string
-      updated_at:
-        type: string
+      update_ts:
+        type: integer
       wallet:
         type: string
       wechat:
@@ -588,8 +619,8 @@ definitions:
       asset_name:
         description: asset name
         type: string
-      created_at:
-        type: string
+      create_ts:
+        type: integer
       dealt_amount:
         description: amount of asset that already dealt
         type: number
@@ -598,8 +629,8 @@ definitions:
       processing_amount:
         description: amount of asset that still need confirmation
         type: number
-      updated_at:
-        type: string
+      update_ts:
+        type: integer
       user_wallet:
         type: string
     type: object
@@ -665,8 +696,8 @@ definitions:
         items:
           $ref: '#/definitions/model.ProjectBudget'
         type: array
-      created_at:
-        type: string
+      create_ts:
+        type: integer
       creator:
         type: string
       desc:
@@ -705,8 +736,8 @@ definitions:
         allOf:
         - $ref: '#/definitions/model.ProjectStatus'
         description: 'Status may have those values: open/pending_close/closed'
-      updated_at:
-        type: string
+      update_ts:
+        type: integer
     type: object
   project.UpdateBudgetReq:
     properties:
@@ -1129,6 +1160,25 @@ paths:
               $ref: '#/definitions/data_srv.CreditDetail'
             type: array
       summary: returns aggregated credit score and node calculation result
+  /download_applications:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  allOf:
+                  - $ref: '#/definitions/api.ListReplyData'
+                  - properties:
+                      rows:
+                        $ref: '#/definitions/model.FrontendApplicationRecord'
+                    type: object
+              type: object
+      summary: downloads all applications based on query params and sends Excel file
+        for downloading
   /guilds:
     get:
       consumes:
@@ -1142,7 +1192,7 @@ paths:
         in: query
         name: size
         type: integer
-      - description: 'sort field, default: created_at'
+      - description: 'sort field, default: create_ts'
         in: query
         name: sort_field
         type: string
@@ -1333,7 +1383,7 @@ paths:
         in: query
         name: size
         type: integer
-      - description: 'sort field, default: created_at'
+      - description: 'sort field, default: create_ts'
         in: query
         name: sort_field
         type: string
