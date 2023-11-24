@@ -44,6 +44,7 @@ SELECT app.id                 as application_id,
        app.update_ts          as update_ts,
        app.comment            as comment,
        app.target_user_wallet,
+       target_user.avatar as target_user_avatar,
        app.asset_name,
        app.asset_amount       as amount,
        app.state              as status,
@@ -80,6 +81,7 @@ FROM applications as app
          LEFT JOIN users reviewer ON reviewer.wallet = review_aal.operator
          LEFT JOIN users processor ON processor.wallet = process_aal.operator
          LEFT JOIN users completer ON completer.wallet = completed_aal.operator
+         LEFT JOIN users target_user ON target_user.wallet = app.target_user_wallet
          LEFT JOIN app_bundles ON app.bundle_id = app_bundles.id`
 
 const QueryAppBundlesWithEntityNameBaseSQL = `SELECT app_bundles.*,
