@@ -326,7 +326,7 @@ func saveToDatabase(db *gorm.DB, rcds []*DetailRecordSchema, seasonRcds []*model
 			application := model.Application{
 				Type:             model.ApplicationNewReward,
 				Applicant:        "",
-				State:            model.ApplicationStateCompleted,
+				State:            model.ApplicationStateApproved,
 				CreatedAt:        r.DealDate,
 				UpdatedAt:        r.DealDate,
 				CreateTs:         r.DealTs,
@@ -350,8 +350,8 @@ func saveToDatabase(db *gorm.DB, rcds []*DetailRecordSchema, seasonRcds []*model
 			auditLogs := []*model.ApplicationAuditLog{
 				{ApplicationID: application.ID, Operation: model.AuditActionNew, LogTs: r.DealTs, PostState: model.ApplicationStateOpen},
 				{ApplicationID: application.ID, Operation: model.AuditActionApprove, LogTs: r.DealTs, PreState: model.ApplicationStateOpen, PostState: model.ApplicationStateApproved},
-				{ApplicationID: application.ID, Operation: model.AuditActionProcess, LogTs: r.DealTs, PreState: model.ApplicationStateApproved, PostState: model.ApplicationStateProcessing},
-				{ApplicationID: application.ID, Operation: model.AuditActionComplete, LogTs: r.DealTs, PreState: model.ApplicationStateProcessing, PostState: model.ApplicationStateCompleted},
+				//{ApplicationID: application.ID, Operation: model.AuditActionProcess, LogTs: r.DealTs, PreState: model.ApplicationStateApproved, PostState: model.ApplicationStateProcessing},
+				//{ApplicationID: application.ID, Operation: model.AuditActionComplete, LogTs: r.DealTs, PreState: model.ApplicationStateProcessing, PostState: model.ApplicationStateCompleted},
 			}
 
 			err = tx.Save(auditLogs).Error
