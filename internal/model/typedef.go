@@ -68,20 +68,21 @@ var applicationStateMap = map[ApplicationState]map[AuditActionType]ApplicationSt
 }
 
 type ListApplicationQueryParams struct {
-	Page       int    `form:"page"`
-	Size       int    `form:"size"`
-	SortField  string `form:"sort_field"`
-	SortOrder  string `form:"sort_order"`
-	State      string `form:"state"`
-	Type       string `form:"type"`
-	Entity     string `form:"entity"`
-	EntityId   string `form:"entity_id"`
-	AssetName  string `form:"asset_name"`
-	StartDate  string `form:"start_date"`
-	EndDate    string `form:"end_date"`
-	Applicant  string `form:"applicant"`
-	UserWallet string `form:"user_wallet"`
-	SeasonId   int    `form:"season_id"`
+	Page         int    `form:"page"`
+	Size         int    `form:"size"`
+	SortField    string `form:"sort_field"`
+	SortOrder    string `form:"sort_order"`
+	State        string `form:"state"`
+	Type         string `form:"type"`
+	Entity       string `form:"entity"`
+	EntityId     string `form:"entity_id"`
+	AssetName    string `form:"asset_name"`
+	DetailedType string `form:"detailed_type"`
+	StartDate    string `form:"start_date"`
+	EndDate      string `form:"end_date"`
+	Applicant    string `form:"applicant"`
+	UserWallet   string `form:"user_wallet"`
+	SeasonId     int    `form:"season_id"`
 }
 
 type NewRewardAssetRecord struct {

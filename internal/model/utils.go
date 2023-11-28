@@ -173,6 +173,7 @@ func GenerateFrontendApplicationRecords(db *gorm.DB, queryParams *ListApplicatio
 	clearEntity := strings.ToLower(strings.TrimSpace(queryParams.Entity))
 	clearState := strings.ToLower(strings.TrimSpace(queryParams.State))
 	clearAssetName := strings.ToLower(strings.TrimSpace(queryParams.AssetName))
+	clearDetailedType := strings.TrimSpace(queryParams.DetailedType)
 
 	if !lo.Contains([]string{"close_project", "new_reward"}, clearAppType) {
 		return nil, 0, fmt.Errorf("unknown application type %s", queryParams.Type)
@@ -198,6 +199,10 @@ func GenerateFrontendApplicationRecords(db *gorm.DB, queryParams *ListApplicatio
 	if clearAssetName != "" {
 		whereClause += " AND LOWER(app.asset_name) = @asset_name"
 		whereParams["asset_name"] = clearAssetName
+	}
+
+	if clearDetailedType != "" {
+		whereClause += " AND app.detailed_type like '%" + clearDetailedType + "%'"
 	}
 
 	if queryParams.Applicant != "" {
