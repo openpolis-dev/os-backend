@@ -16,6 +16,11 @@ const DateQueryFormat = "2006-01-02"
 const QueryApplicationsWithEntityNameBaseSQL = `
 SELECT app.id                 as application_id,
        seasons.name           as season_name,
+       app.entity_type        as entity_type,
+       CASE
+           WHEN app.entity_type = 'project' THEN projects.id
+           WHEN app.entity_type = 'guild' THEN guilds.id
+           ELSE NULL END      AS entity_id,
        CASE
            WHEN app.entity_type = 'project' THEN projects.name
            WHEN app.entity_type = 'guild' THEN guilds.name
@@ -44,7 +49,7 @@ SELECT app.id                 as application_id,
        app.update_ts          as update_ts,
        app.comment            as comment,
        app.target_user_wallet,
-       target_user.avatar as target_user_avatar,
+       target_user.avatar     as target_user_avatar,
        app.asset_name,
        app.asset_amount       as amount,
        app.state              as status,
@@ -52,7 +57,7 @@ SELECT app.id                 as application_id,
        app.comment,
        completed_aal.operator as reviewer_wallet,
        app.complete_message   as transaction_ids,
-       app_bundles.comment as app_bundle_comment
+       app_bundles.comment    as app_bundle_comment
 FROM applications as app
          LEFT JOIN projects ON app.entity_type = 'project' AND app.entity_id = projects.id
          LEFT JOIN guilds ON app.entity_type = 'guild' AND app.entity_id = guilds.id
