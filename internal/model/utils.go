@@ -76,7 +76,7 @@ FROM applications as app
                                                                                                (select max(id)
                                                                                                 from application_audit_logs aal
                                                                                                 where aal.application_id = app.id
-                                                                                                  and aal.post_state = 'approved')
+                                                                                                  and aal.post_state IN ('approved', 'rejected'))
          LEFT JOIN application_audit_logs apply_aal
                    on app.id = apply_aal.application_id AND apply_aal.id = (select max(id)
                                                                             from application_audit_logs aal
