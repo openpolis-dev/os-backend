@@ -65,14 +65,7 @@ type (
 			Token   string `json:"token" yaml:"token"`
 			GuildID string `json:"guildID" yaml:"guildID"`
 		} `json:"discord" yaml:"discord"`
-		Contracts struct {
-			SCR  string `json:"scr" yaml:"scr"`
-			Seed string `json:"seed" yaml:"seed"`
-			Node string `json:"node" yaml:"node"`
-		} `json:"contracts" yaml:"contracts"`
-		CacheInSeconds int64  `json:"cacheInSeconds" yaml:"cacheInSeconds"`
-		MainnetRPC     string `json:"mainnetRPC" yaml:"mainnetRPC"`
-		SppIndexerHost string `json:"sppIndexerHost" yaml:"sppIndexerHost"`
+		CacheInSeconds int64 `json:"cacheInSeconds" yaml:"cacheInSeconds"`
 		Notion         struct {
 			APIToken string `json:"APIToken" yaml:"APIToken"`
 		} `json:"notion" yaml:"notion"`
