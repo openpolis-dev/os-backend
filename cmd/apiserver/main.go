@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 	"github.com/theseed-labs/os-backend/internal/api/data_srv"
@@ -147,6 +148,9 @@ func main() {
 		ctx.Next()
 		// --> after
 	})
+
+	r.Use(middleware.RequestMetricsRecord())
+	r.Use(middleware.ResponseMetricsRecord())
 
 	// v1
 	v1 := r.Group("/v1")
@@ -302,6 +306,7 @@ func main() {
 	}
 
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	r.GET("/prometheus_metrics", gin.WrapH(promhttp.Handler()))
 
 	_ = r.Run()
 }
