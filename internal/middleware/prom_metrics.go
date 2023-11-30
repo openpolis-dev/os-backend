@@ -11,23 +11,31 @@ import (
 
 var (
 	requestCount = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "request_count",
-		Help: "Total number of requests",
+		Namespace: "seedao",
+		Subsystem: "osbackend",
+		Name:      "request_count",
+		Help:      "Total number of requests",
 	})
 
 	requestDuration = promauto.NewHistogram(prometheus.HistogramOpts{
-		Name: "request_duration",
-		Help: "Duration of requests",
+		Namespace: "seedao",
+		Subsystem: "osbackend",
+		Name:      "request_duration",
+		Help:      "Duration of requests",
 	})
 
 	requestSize = promauto.NewHistogram(prometheus.HistogramOpts{
-		Name: "request_size",
-		Help: "Size of requests",
+		Namespace: "seedao",
+		Subsystem: "osbackend",
+		Name:      "request_size",
+		Help:      "Size of requests",
 	})
 
 	responseSize = promauto.NewHistogram(prometheus.HistogramOpts{
-		Name: "response_size",
-		Help: "Size of responses",
+		Namespace: "seedao",
+		Subsystem: "osbackend",
+		Name:      "response_size",
+		Help:      "Size of responses",
 	})
 )
 
