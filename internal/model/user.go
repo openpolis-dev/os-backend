@@ -31,7 +31,7 @@ type User struct {
 	CreateTs int64 `json:"create_ts" gorm:"index"`
 	UpdateTs int64 `json:"update_ts" gorm:"index"`
 
-	//Assets []*UserAssetRecord `json:"assets" gorm:"foreignKey:UserWallet;references:Wallet"`
+	Assets []*UserAssetRecord `json:"assets" gorm:"foreignKey:UserWallet;references:Wallet"`
 }
 
 type userModel struct{}
