@@ -371,7 +371,8 @@ func DownloadUploadTemplate(ctx *gin.Context) {
 	ctx.DataFromReader(http.StatusOK, int64(contentLength), "encoding/csv", reader, extraHeaders)
 }
 
-// Batch operations, the request body are ids
+// Batch operations, most of the request bodies are ids
+// For batch process logic, it handles all applications in approved state and process them, so no need to pass ids
 // TODO: Those batch actions contain similar logic, check whether it is possible to simplify them
 
 // BatchProcess exports application in approved state, and changes exported applications state to processing
@@ -402,7 +403,7 @@ func BatchProcess(ctx *gin.Context) {
 	}
 
 	var applications []model.Application
-	err = getBatchApplicationsOrReturnError(ctx, &applications)
+	err = db.Model(&model.Application{}).Where("state = ?", model.ApplicationStateApproved).Find(&applications).Error
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, api.Reply{Code: -1, Msg: err.Error()})
 		return
