@@ -252,13 +252,14 @@ func doAuditApplicationInTransaction(tx *gorm.DB, operatorWallet string, applica
 
 func processingApplication(tx *gorm.DB, application *Application) error {
 	if application.Type == ApplicationNewReward {
+		// TODO: UserAssetRecord is not using for now, need to confirm how to handle this in the future
 		// Changes in OS ver 2.0
 		// * No budget for project and guild
 		// * One application only saves one type of asset, and the fields are extracted from DetailedData
 		// Update user asset record
-		if err := UserAssetRecordModel.CreateOrUpdate(tx, application.TargetUserWallet, application.AssetName, application.AssetAmount, decimal.Zero); err != nil {
-			return err
-		}
+		//if err := UserAssetRecordModel.CreateOrUpdate(tx, application.TargetUserWallet, application.AssetName, application.AssetAmount, decimal.Zero); err != nil {
+		//	return err
+		//}
 	}
 	return nil
 }
@@ -324,13 +325,14 @@ func completeApplication(tx *gorm.DB, operatorWallet string, application *Applic
 			//}
 		}
 	} else if application.Type == ApplicationNewReward {
+		// TODO: UserAssetRecord is not using for now, need to confirm how to handle this in the future
 		// For new reward application, the `entity_type` is required to get related db table
 		// The main steps for the post complete operation are:
 		// * Add the amount to target user
 
-		if err := UserAssetRecordModel.CompleteAssetTransaction(tx, application.TargetUserWallet, application.AssetName, application.AssetAmount); err != nil {
-			return err
-		}
+		//if err := UserAssetRecordModel.CompleteAssetTransaction(tx, application.TargetUserWallet, application.AssetName, application.AssetAmount); err != nil {
+		//	return err
+		//}
 	}
 	return nil
 }
