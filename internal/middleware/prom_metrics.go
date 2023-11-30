@@ -36,6 +36,7 @@ var (
 		Subsystem: "osbackend",
 		Name:      "request_duration",
 		Help:      "Duration of requests",
+		Buckets:   prometheus.LinearBuckets(0, 50, 40),
 	})
 
 	postBodySize = promauto.NewHistogram(prometheus.HistogramOpts{
@@ -96,6 +97,7 @@ func IsSeedaoRequest(fullPath string) bool {
 
 func RequestMetricsRecord() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
+		startTime := time.Now()
 		if IsSeedaoRequest(ctx.FullPath()) {
 			requestCount.Inc()
 			if ctx.Request.Method == "GET" {
@@ -105,9 +107,6 @@ func RequestMetricsRecord() gin.HandlerFunc {
 				postBodySize.Observe(float64(ctx.Request.ContentLength))
 			}
 
-			ctx.Next()
-			// Calculate request and response time
-			startTime := time.Now()
 			ctx.Next()
 			elapsed := time.Since(startTime).Milliseconds()
 
