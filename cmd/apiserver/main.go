@@ -129,6 +129,10 @@ func main() {
 	}
 
 	r := gin.Default()
+	r.Use(middleware.RequestMetricsRecord())
+	r.Use(middleware.ResponseMetricsRecord())
+	r.GET("/prometheus_metrics", gin.WrapH(promhttp.Handler()))
+
 	r.Use(gzip.Gzip(gzip.DefaultCompression))
 
 	// setup cors refer: https://github.com/gin-contrib/cors
@@ -148,9 +152,6 @@ func main() {
 		ctx.Next()
 		// --> after
 	})
-
-	r.Use(middleware.RequestMetricsRecord())
-	r.Use(middleware.ResponseMetricsRecord())
 
 	// v1
 	v1 := r.Group("/v1")
@@ -306,7 +307,6 @@ func main() {
 	}
 
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-	r.GET("/prometheus_metrics", gin.WrapH(promhttp.Handler()))
 
 	_ = r.Run()
 }
