@@ -36,6 +36,32 @@ type RefreshNonceReply struct {
 	Nonce string `json:"nonce"`
 }
 
+// UserModelWithSbtAndSeed is a temporary solution for returning user data with sbt and seed data.
+// The new struct here is to keep old structure and add new sbt/seed data.
+type UserModelWithSbtAndSeed struct {
+	model.User
+
+	Seed []struct {
+		TokenId      string `json:"token_id"`
+		ContractAddr string `json:"contract_addr"`
+		ContractType string `json:"contract_type"`
+		ImageUri     string `json:"image_uri"`
+		TokenAmount  string `json:"token_amount"`
+	} `json:"seed"`
+
+	Sbt []struct {
+		TokenId        string `json:"token_id"`
+		ContractAddr   string `json:"contract_addr"`
+		ContractType   string `json:"contract_type"`
+		ImageUri       string `json:"image_uri"`
+		TokenAmount    string `json:"token_amount"`
+		CollectionName string `json:"collection_name"`
+		Name           string `json:"name"`
+		Symbol         string `json:"symbol"`
+		Metadata       any    `json:"metadata"`
+	} `json:"sbt"`
+}
+
 // RefreshNonce refresh nonce
 //
 //	@Summary	Refresh nonce
@@ -395,6 +421,7 @@ func Users(ctx *gin.Context) {
 	//})
 
 	db := api.ForContextOnlyDB(ctx)
+	sppClient := sdk.GetSppClient()
 
 	users, err := model.UserModel.List(db, wallets)
 	if err != nil {
@@ -413,7 +440,31 @@ func Users(ctx *gin.Context) {
 		}
 	}
 
-	ctx.JSON(http.StatusOK, api.Success(users))
+	var rslt []UserModelWithSbtAndSeed
+
+	// TODO: Query SeePASS to get user SBT and SEED info
+	for _, user := range users {
+		seepassResp, err := sppClient.GetSeepassData(user.Wallet)
+		if err != nil {
+			log.Warn().Msgf("query seepass data error, wallet: %s, error: %+v", user.Wallet, err)
+		}
+		if seepassResp != nil {
+			rslt = append(rslt, UserModelWithSbtAndSeed{
+				*user,
+				seepassResp.Seed,
+				seepassResp.Sbt,
+			})
+		} else {
+			rslt = append(rslt, UserModelWithSbtAndSeed{
+				*user,
+				nil,
+				nil,
+			})
+		}
+
+	}
+
+	ctx.JSON(http.StatusOK, api.Success(rslt))
 }
 
 // ------ ------ ------ ------ ------ ------ ------ ------ ------
