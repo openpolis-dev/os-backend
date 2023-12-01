@@ -287,6 +287,7 @@ func CreateAppBundle(ctx *gin.Context) {
 				ApplicationID: app.ID,
 				LogTs:         model.GetCurrentUtcEpochSecond(),
 				Operation:     model.AuditActionNew,
+				Operator:      model.FormatUserWallet(user.Wallet),
 				PreState:      "",
 				PostState:     model.ApplicationStateOpen,
 			}
@@ -302,7 +303,7 @@ func CreateAppBundle(ctx *gin.Context) {
 			AppBundle:   appBundle,
 			LogTs:       model.GetCurrentUtcEpochSecond(),
 			Operation:   model.AuditActionNew,
-			Operator:    user.Wallet,
+			Operator:    model.FormatUserWallet(user.Wallet),
 			PreState:    "",
 			PostState:   model.ApplicationStateOpen,
 			ExtraData:   "",

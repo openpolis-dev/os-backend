@@ -68,20 +68,21 @@ var applicationStateMap = map[ApplicationState]map[AuditActionType]ApplicationSt
 }
 
 type ListApplicationQueryParams struct {
-	Page       int    `form:"page"`
-	Size       int    `form:"size"`
-	SortField  string `form:"sort_field"`
-	SortOrder  string `form:"sort_order"`
-	State      string `form:"state"`
-	Type       string `form:"type"`
-	Entity     string `form:"entity"`
-	EntityId   string `form:"entity_id"`
-	AssetName  string `form:"asset_name"`
-	StartDate  string `form:"start_date"`
-	EndDate    string `form:"end_date"`
-	Applicant  string `form:"applicant"`
-	UserWallet string `form:"user_wallet"`
-	SeasonId   int    `form:"season_id"`
+	Page         int    `form:"page"`
+	Size         int    `form:"size"`
+	SortField    string `form:"sort_field"`
+	SortOrder    string `form:"sort_order"`
+	State        string `form:"state"`
+	Type         string `form:"type"`
+	Entity       string `form:"entity"`
+	EntityId     string `form:"entity_id"`
+	AssetName    string `form:"asset_name"`
+	DetailedType string `form:"detailed_type"`
+	StartDate    string `form:"start_date"`
+	EndDate      string `form:"end_date"`
+	Applicant    string `form:"applicant"`
+	UserWallet   string `form:"user_wallet"`
+	SeasonId     int    `form:"season_id"`
 }
 
 type NewRewardAssetRecord struct {
@@ -106,6 +107,8 @@ type FrontendApplicationRecord struct {
 	ApplicationID    uint      `json:"application_id"`
 	SeasonName       string    `json:"season_name"`
 	EntityName       string    `json:"entity_name"` // name field value from specified entity table
+	EntityId         string    `json:"entity_id"`   // id field value from specified entity table
+	EntityType       string    `json:"entity_type"` // entity type from applications
 	CreatedAt        time.Time `json:"-"`
 	AssetName        string    `json:"asset_name"`
 	Amount           string    `json:"amount"`

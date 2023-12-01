@@ -16,6 +16,11 @@ const DateQueryFormat = "2006-01-02"
 const QueryApplicationsWithEntityNameBaseSQL = `
 SELECT app.id                 as application_id,
        seasons.name           as season_name,
+       app.entity_type        as entity_type,
+       CASE
+           WHEN app.entity_type = 'project' THEN projects.id
+           WHEN app.entity_type = 'guild' THEN guilds.id
+           ELSE NULL END      AS entity_id,
        CASE
            WHEN app.entity_type = 'project' THEN projects.name
            WHEN app.entity_type = 'guild' THEN guilds.name
@@ -44,7 +49,7 @@ SELECT app.id                 as application_id,
        app.update_ts          as update_ts,
        app.comment            as comment,
        app.target_user_wallet,
-       target_user.avatar as target_user_avatar,
+       target_user.avatar     as target_user_avatar,
        app.asset_name,
        app.asset_amount       as amount,
        app.state              as status,
@@ -52,7 +57,7 @@ SELECT app.id                 as application_id,
        app.comment,
        completed_aal.operator as reviewer_wallet,
        app.complete_message   as transaction_ids,
-       app_bundles.comment as app_bundle_comment
+       app_bundles.comment    as app_bundle_comment
 FROM applications as app
          LEFT JOIN projects ON app.entity_type = 'project' AND app.entity_id = projects.id
          LEFT JOIN guilds ON app.entity_type = 'guild' AND app.entity_id = guilds.id
@@ -71,7 +76,7 @@ FROM applications as app
                                                                                                (select max(id)
                                                                                                 from application_audit_logs aal
                                                                                                 where aal.application_id = app.id
-                                                                                                  and aal.post_state = 'approved')
+                                                                                                  and aal.post_state IN ('approved', 'rejected'))
          LEFT JOIN application_audit_logs apply_aal
                    on app.id = apply_aal.application_id AND apply_aal.id = (select max(id)
                                                                             from application_audit_logs aal
@@ -168,6 +173,7 @@ func GenerateFrontendApplicationRecords(db *gorm.DB, queryParams *ListApplicatio
 	clearEntity := strings.ToLower(strings.TrimSpace(queryParams.Entity))
 	clearState := strings.ToLower(strings.TrimSpace(queryParams.State))
 	clearAssetName := strings.ToLower(strings.TrimSpace(queryParams.AssetName))
+	clearDetailedType := strings.TrimSpace(queryParams.DetailedType)
 
 	if !lo.Contains([]string{"close_project", "new_reward"}, clearAppType) {
 		return nil, 0, fmt.Errorf("unknown application type %s", queryParams.Type)
@@ -193,6 +199,10 @@ func GenerateFrontendApplicationRecords(db *gorm.DB, queryParams *ListApplicatio
 	if clearAssetName != "" {
 		whereClause += " AND LOWER(app.asset_name) = @asset_name"
 		whereParams["asset_name"] = clearAssetName
+	}
+
+	if clearDetailedType != "" {
+		whereClause += " AND app.detailed_type like '%" + clearDetailedType + "%'"
 	}
 
 	if queryParams.Applicant != "" {

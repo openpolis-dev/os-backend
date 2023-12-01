@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 	"github.com/theseed-labs/os-backend/internal/api/data_srv"
@@ -128,6 +129,10 @@ func main() {
 	}
 
 	r := gin.Default()
+	r.Use(middleware.RequestMetricsRecord())
+	r.Use(middleware.ResponseMetricsRecord())
+	r.GET("/prometheus_metrics", gin.WrapH(promhttp.Handler()))
+
 	r.Use(gzip.Gzip(gzip.DefaultCompression))
 
 	// setup cors refer: https://github.com/gin-contrib/cors
@@ -197,9 +202,6 @@ func main() {
 		// public data
 		publicData := v1.Group("/public_data")
 		publicData.GET("/discord_member_count", publicdata.DiscordData)
-		publicData.GET("/contract/seed", publicdata.SeedDataFromIndexer)
-		publicData.GET("/contract/scr", publicdata.SCRDataFromIndexer)
-		publicData.GET("/contract/node", publicdata.NodeDataFromIndexer)
 		publicData.GET("/notion/database/:id", publicdata.NotionDatabase)
 		publicData.GET("/notion/page/:id", publicdata.NotionPage)
 		publicData.GET("/notion/user/:id", publicdata.NotionUser)
