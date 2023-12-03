@@ -40,28 +40,7 @@ type RefreshNonceReply struct {
 // The new struct here is to keep both old structure and new added seepass data.
 type UserModelWithSomeSeepassData struct {
 	model.User
-
-	Seed []struct {
-		TokenId      string `json:"token_id"`
-		ContractAddr string `json:"contract_addr"`
-		ContractType string `json:"contract_type"`
-		ImageUri     string `json:"image_uri"`
-		TokenAmount  string `json:"token_amount"`
-	} `json:"seed"`
-
-	Sbt []struct {
-		TokenId        string `json:"token_id"`
-		ContractAddr   string `json:"contract_addr"`
-		ContractType   string `json:"contract_type"`
-		ImageUri       string `json:"image_uri"`
-		TokenAmount    string `json:"token_amount"`
-		CollectionName string `json:"collection_name"`
-		Name           string `json:"name"`
-		Symbol         string `json:"symbol"`
-		Metadata       any    `json:"metadata"`
-	} `json:"sbt"`
-
-	SocialAccounts []interface{} `json:"social_accounts"`
+	*sdk.SeepassResponse
 }
 
 // RefreshNonce refresh nonce
@@ -453,15 +432,11 @@ func Users(ctx *gin.Context) {
 		if seepassResp != nil {
 			rslt = append(rslt, UserModelWithSomeSeepassData{
 				*user,
-				seepassResp.Seed,
-				seepassResp.Sbt,
-				seepassResp.SocialAccounts,
+				seepassResp,
 			})
 		} else {
 			rslt = append(rslt, UserModelWithSomeSeepassData{
 				*user,
-				nil,
-				nil,
 				nil,
 			})
 		}
