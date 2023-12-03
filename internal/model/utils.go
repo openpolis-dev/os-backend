@@ -35,7 +35,7 @@ SELECT app.id                         as application_id,
 
        CASE
            when app.type = 'CLOSE_PROJECT' AND app.state = 'COMPLETED' then completed_aal.operator
-           ELSE review_aal.operator END as review_wallet,
+           ELSE review_aal.operator END as reviewer_wallet,
        CASE
            when app.type = 'CLOSE_PROJECT' AND app.state = 'COMPLETED' then completed_aal.log_ts
            ELSE review_aal.log_ts END as review_ts,
@@ -61,7 +61,6 @@ SELECT app.id                         as application_id,
        app.state                      as status,
        app.detailed_type,
        app.comment,
-       completed_aal.operator         as reviewer_wallet,
        app.complete_message           as transaction_ids,
        app_bundles.comment            as app_bundle_comment
 FROM applications as app
