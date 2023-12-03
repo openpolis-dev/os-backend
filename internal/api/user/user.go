@@ -40,7 +40,7 @@ type RefreshNonceReply struct {
 // The new struct here is to keep both old structure and new added seepass data.
 type UserModelWithSomeSeepassData struct {
 	model.User
-	*sdk.SeepassResponse
+	Sp *sdk.SeepassResponse `json:"sp"`
 }
 
 // RefreshNonce refresh nonce
