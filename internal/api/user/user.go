@@ -36,9 +36,9 @@ type RefreshNonceReply struct {
 	Nonce string `json:"nonce"`
 }
 
-// UserModelWithSbtAndSeed is a temporary solution for returning user data with sbt and seed data.
-// The new struct here is to keep old structure and add new sbt/seed data.
-type UserModelWithSbtAndSeed struct {
+// UserModelWithSomeSeepassData is a temporary solution for returning user data with some seepass data struct such as sb, seed and social network accounts.
+// The new struct here is to keep both old structure and new added seepass data.
+type UserModelWithSomeSeepassData struct {
 	model.User
 
 	Seed []struct {
@@ -60,6 +60,8 @@ type UserModelWithSbtAndSeed struct {
 		Symbol         string `json:"symbol"`
 		Metadata       any    `json:"metadata"`
 	} `json:"sbt"`
+
+	SocialAccounts []interface{} `json:"social_accounts"`
 }
 
 // RefreshNonce refresh nonce
@@ -316,7 +318,7 @@ func Detail(ctx *gin.Context) {
 
 	seepassResp.Scr.Amount = "0"
 
-	// TODO: Move the hardcoded data to some const data or configuraiton service
+	// TODO: Move the hardcoded data to some const data or configuration service
 	seepassResp.Level.CurrentLv = "0"
 	seepassResp.Level.NextLv = "1"
 	seepassResp.Level.ScrToNextLv = "5000"
@@ -440,7 +442,7 @@ func Users(ctx *gin.Context) {
 		}
 	}
 
-	var rslt []UserModelWithSbtAndSeed
+	var rslt []UserModelWithSomeSeepassData
 
 	// TODO: Query SeePASS to get user SBT and SEED info
 	for _, user := range users {
@@ -449,14 +451,16 @@ func Users(ctx *gin.Context) {
 			log.Warn().Msgf("query seepass data error, wallet: %s, error: %+v", user.Wallet, err)
 		}
 		if seepassResp != nil {
-			rslt = append(rslt, UserModelWithSbtAndSeed{
+			rslt = append(rslt, UserModelWithSomeSeepassData{
 				*user,
 				seepassResp.Seed,
 				seepassResp.Sbt,
+				seepassResp.SocialAccounts,
 			})
 		} else {
-			rslt = append(rslt, UserModelWithSbtAndSeed{
+			rslt = append(rslt, UserModelWithSomeSeepassData{
 				*user,
+				nil,
 				nil,
 				nil,
 			})
