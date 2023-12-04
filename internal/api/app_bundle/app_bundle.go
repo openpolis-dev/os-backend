@@ -159,7 +159,6 @@ func ListAppBundle(ctx *gin.Context) {
 			log.Error().Msgf("query application error: %+v", err)
 			return AppBundleResponseRecord{}
 		}
-		log.Error().Msgf("frontApplicationRecords: %+v", frontApplicationRecords)
 
 		return AppBundleResponseRecord{
 			ID:         jointAppBundleEntityRcd.AppBundle.ID,
