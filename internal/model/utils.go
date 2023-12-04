@@ -14,50 +14,55 @@ import (
 const DateQueryFormat = "2006-01-02"
 
 const QueryApplicationsWithEntityNameBaseSQL = `
-SELECT app.id                 as application_id,
-       seasons.name           as season_name,
-       app.entity_type        as entity_type,
+SELECT app.id                         as application_id,
+       seasons.name                   as season_name,
+       app.entity_type                as entity_type,
        CASE
            WHEN app.entity_type = 'project' THEN projects.id
            WHEN app.entity_type = 'guild' THEN guilds.id
-           ELSE NULL END      AS entity_id,
+           ELSE NULL END              AS entity_id,
        CASE
            WHEN app.entity_type = 'project' THEN projects.name
            WHEN app.entity_type = 'guild' THEN guilds.name
-           ELSE NULL END      AS entity_name,
+           ELSE NULL END              AS entity_name,
        CASE
            WHEN app.entity_type = 'project' THEN projects.name
            WHEN app.entity_type = 'guild' THEN guilds.name
-           ELSE NULL END      AS budget_source,
-       apply_aal.operator     as applicant_wallet,
-       apply_aal.log_ts       as apply_ts,
-       applicant.avatar       as applicant_avatar,
+           ELSE NULL END              AS budget_source,
+       apply_aal.operator             as applicant_wallet,
+       apply_aal.log_ts               as apply_ts,
+       applicant.avatar               as applicant_avatar,
 
-       review_aal.operator    as reviewer_wallet,
-       review_aal.log_ts      as review_ts,
-       reviewer.avatar        as reviewer_avatar,
+       CASE
+           when app.type = 'CLOSE_PROJECT' AND app.state = 'COMPLETED' then completed_aal.operator
+           ELSE review_aal.operator END as reviewer_wallet,
+       CASE
+           when app.type = 'CLOSE_PROJECT' AND app.state = 'COMPLETED' then completed_aal.log_ts
+           ELSE review_aal.log_ts END as review_ts,
+       CASE
+           when app.type = 'CLOSE_PROJECT' AND app.state = 'COMPLETED' then completer.avatar
+           ELSE reviewer.avatar END as reviewer_avatar,
 
-       process_aal.operator   as processor_wallet,
-       process_aal.log_ts     as process_ts,
-       processor.avatar       as processor_avatar,
+       process_aal.operator           as processor_wallet,
+       process_aal.log_ts             as process_ts,
+       processor.avatar               as processor_avatar,
 
-       completed_aal.operator as completer_wallet,
-       completed_aal.log_ts   as complete_ts,
-       completer.avatar       as completer_avatar,
+       completed_aal.operator         as completer_wallet,
+       completed_aal.log_ts           as complete_ts,
+       completer.avatar               as completer_avatar,
 
-       app.create_ts          as create_ts,
-       app.update_ts          as update_ts,
-       app.comment            as comment,
+       app.create_ts                  as create_ts,
+       app.update_ts                  as update_ts,
+       app.comment                    as comment,
        app.target_user_wallet,
-       target_user.avatar     as target_user_avatar,
+       target_user.avatar             as target_user_avatar,
        app.asset_name,
-       app.asset_amount       as amount,
-       app.state              as status,
+       app.asset_amount               as amount,
+       app.state                      as status,
        app.detailed_type,
        app.comment,
-       completed_aal.operator as reviewer_wallet,
-       app.complete_message   as transaction_ids,
-       app_bundles.comment    as app_bundle_comment
+       app.complete_message           as transaction_ids,
+       app_bundles.comment            as app_bundle_comment
 FROM applications as app
          LEFT JOIN projects ON app.entity_type = 'project' AND app.entity_id = projects.id
          LEFT JOIN guilds ON app.entity_type = 'guild' AND app.entity_id = guilds.id
@@ -148,19 +153,14 @@ func NewApplicationRecord(db *gorm.DB, application *Application) error {
 	})
 }
 
-func GenerateFrontendApplicationRecordsByIds(db *gorm.DB, ids []uint64) ([]*FrontendApplicationRecord, error) {
-	querySQL := QueryApplicationsWithEntityNameBaseSQL + " WHERE applications.id IN ?"
+func GenerateFrontendApplicationRecordsByIds(db *gorm.DB, ids []uint) ([]*FrontendApplicationRecord, error) {
+	querySQL := QueryApplicationsWithEntityNameBaseSQL + " WHERE app.id IN ?"
 
-	var projectRcds []jointAppEntityRslt
-	err := db.Raw(querySQL, ids).Find(&projectRcds).Error
+	var rslt []*FrontendApplicationRecord
+	err := db.Raw(querySQL, ids).Find(&rslt).Error
 	if err != nil {
-		log.Error().Msgf("query joint app entity error: %+v", err)
+		log.Error().Msgf("get application list error: %+v, query sql: %s, query params: %+v", err, querySQL, ids)
 		return nil, err
-	}
-
-	rslt := make([]*FrontendApplicationRecord, len(projectRcds))
-	for i, r := range projectRcds {
-		rslt[i] = r.ToFrontedApplicationRecord(db)
 	}
 
 	return rslt, nil

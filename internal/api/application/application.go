@@ -420,6 +420,20 @@ func BatchProcess(ctx *gin.Context) {
 		return
 	}
 
+	// TODO: Merge this logic with `BatchComplete`
+	appBundleIds := make(map[uint]bool)
+	for _, app := range applications {
+		appBundleIds[app.BundleId] = true
+	}
+	err = db.Model(&model.AppBundle{}).Where("id IN ?", lo.Keys(appBundleIds)).Update("state", model.ApplicationStateProcessing).Error
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, api.Reply{
+			Code: -1,
+			Msg:  fmt.Sprintf("process applications error: %+v", err),
+		})
+		return
+	}
+
 	ctx.JSON(http.StatusOK, api.Success(applications))
 }
 
@@ -528,6 +542,19 @@ func BatchComplete(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, api.Reply{
 			Code: -1,
 			Msg:  fmt.Sprintf("complete applications error: %+v", err),
+		})
+		return
+	}
+
+	appBundleIds := make(map[uint]bool)
+	for _, app := range applications {
+		appBundleIds[app.BundleId] = true
+	}
+	err = db.Model(&model.AppBundle{}).Where("id IN ?", lo.Keys(appBundleIds)).Update("state", model.ApplicationStateCompleted).Error
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, api.Reply{
+			Code: -1,
+			Msg:  fmt.Sprintf("process applications error: %+v", err),
 		})
 		return
 	}

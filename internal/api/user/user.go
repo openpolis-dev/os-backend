@@ -36,30 +36,11 @@ type RefreshNonceReply struct {
 	Nonce string `json:"nonce"`
 }
 
-// UserModelWithSbtAndSeed is a temporary solution for returning user data with sbt and seed data.
-// The new struct here is to keep old structure and add new sbt/seed data.
-type UserModelWithSbtAndSeed struct {
+// UserModelWithSomeSeepassData is a temporary solution for returning user data with some seepass data struct such as sb, seed and social network accounts.
+// The new struct here is to keep both old structure and new added seepass data.
+type UserModelWithSomeSeepassData struct {
 	model.User
-
-	Seed []struct {
-		TokenId      string `json:"token_id"`
-		ContractAddr string `json:"contract_addr"`
-		ContractType string `json:"contract_type"`
-		ImageUri     string `json:"image_uri"`
-		TokenAmount  string `json:"token_amount"`
-	} `json:"seed"`
-
-	Sbt []struct {
-		TokenId        string `json:"token_id"`
-		ContractAddr   string `json:"contract_addr"`
-		ContractType   string `json:"contract_type"`
-		ImageUri       string `json:"image_uri"`
-		TokenAmount    string `json:"token_amount"`
-		CollectionName string `json:"collection_name"`
-		Name           string `json:"name"`
-		Symbol         string `json:"symbol"`
-		Metadata       any    `json:"metadata"`
-	} `json:"sbt"`
+	Sp *sdk.SeepassResponse `json:"sp"`
 }
 
 // RefreshNonce refresh nonce
@@ -152,6 +133,8 @@ type LoginReply struct {
 	Token    string      `json:"token"`
 	TokenExp int64       `json:"token_exp"` // time unit: seconds
 	User     *model.User `json:"user"`
+
+	UserVerified bool `json:"user_verified"` // for unipass user,if wallet signature not verified, will be false
 }
 
 // Login user login
@@ -172,6 +155,9 @@ func Login(ctx *gin.Context) {
 	}
 
 	_, _, db, cfg := api.ForContext(ctx)
+
+	// user verified flag
+	userVerified := true
 
 	// verify sign
 	// --> query nonce
@@ -208,18 +194,30 @@ func Login(ctx *gin.Context) {
 			return
 		}
 
-		account := eth_common.HexToAddress(req.Wallet)
-		sig := eth_common.FromHex(req.Signature)
-		msg := []byte(req.Message)
-
-		ok, err := unipass_sigverify.VerifyMessageSignature(context.Background(), account, msg, sig, req.IsEIP191Prefix, client)
+		// get AA's bytecode
+		bytecode, err := client.CodeAt(context.Background(), eth_common.HexToAddress(req.Wallet), nil)
 		if err != nil {
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 			return
 		}
-		if !ok {
-			ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("signature not match")))
-			return
+		// if bytecode is not empty, means the wallet has deployed
+		// 2023/12/04: only verify signature when AA is deployed!
+		if len(bytecode) > 0 {
+			account := eth_common.HexToAddress(req.Wallet)
+			sig := eth_common.FromHex(req.Signature)
+			msg := []byte(req.Message)
+
+			ok, err := unipass_sigverify.VerifyMessageSignature(context.Background(), account, msg, sig, req.IsEIP191Prefix, client)
+			if err != nil {
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+				return
+			}
+			if !ok {
+				ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("signature not match")))
+				return
+			}
+		} else {
+			userVerified = false
 		}
 	}
 
@@ -254,9 +252,10 @@ func Login(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, api.Success(&LoginReply{
-		Token:    token,
-		TokenExp: tokenExp,
-		User:     user,
+		Token:        token,
+		TokenExp:     tokenExp,
+		User:         user,
+		UserVerified: userVerified,
 	}))
 }
 
@@ -316,7 +315,7 @@ func Detail(ctx *gin.Context) {
 
 	seepassResp.Scr.Amount = "0"
 
-	// TODO: Move the hardcoded data to some const data or configuraiton service
+	// TODO: Move the hardcoded data to some const data or configuration service
 	seepassResp.Level.CurrentLv = "0"
 	seepassResp.Level.NextLv = "1"
 	seepassResp.Level.ScrToNextLv = "5000"
@@ -440,7 +439,7 @@ func Users(ctx *gin.Context) {
 		}
 	}
 
-	var rslt []UserModelWithSbtAndSeed
+	var rslt []UserModelWithSomeSeepassData
 
 	// TODO: Query SeePASS to get user SBT and SEED info
 	for _, user := range users {
@@ -449,15 +448,13 @@ func Users(ctx *gin.Context) {
 			log.Warn().Msgf("query seepass data error, wallet: %s, error: %+v", user.Wallet, err)
 		}
 		if seepassResp != nil {
-			rslt = append(rslt, UserModelWithSbtAndSeed{
+			rslt = append(rslt, UserModelWithSomeSeepassData{
 				*user,
-				seepassResp.Seed,
-				seepassResp.Sbt,
+				seepassResp,
 			})
 		} else {
-			rslt = append(rslt, UserModelWithSbtAndSeed{
+			rslt = append(rslt, UserModelWithSomeSeepassData{
 				*user,
-				nil,
 				nil,
 			})
 		}
