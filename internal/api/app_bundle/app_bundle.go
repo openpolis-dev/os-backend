@@ -136,8 +136,7 @@ func ListAppBundle(ctx *gin.Context) {
 		assetSummary := make(map[string]decimal.Decimal)
 
 		var appRcds []*model.Application
-		err = db.Preload("Season").Model(&model.Application{}).
-			Where("bundle_id = ?", jointAppBundleEntityRcd.AppBundle.ID).
+		err = db.Where("bundle_id = ?", jointAppBundleEntityRcd.AppBundle.ID).
 			Find(&appRcds).
 			Error
 		if err != nil {
@@ -151,10 +150,21 @@ func ListAppBundle(ctx *gin.Context) {
 			assetSummary[appRcd.AssetName] = assetSummary[appRcd.AssetName].Add(appRcd.AssetAmount)
 		}
 
+		appIds := lo.Map(appRcds, func(appRcd *model.Application, index int) uint {
+			return appRcd.ID
+		})
+
+		frontApplicationRecords, err := model.GenerateFrontendApplicationRecordsByIds(db, appIds)
+		if err != nil {
+			log.Error().Msgf("query application error: %+v", err)
+			return AppBundleResponseRecord{}
+		}
+		log.Error().Msgf("frontApplicationRecords: %+v", frontApplicationRecords)
+
 		return AppBundleResponseRecord{
 			ID:         jointAppBundleEntityRcd.AppBundle.ID,
 			SeasonName: jointAppBundleEntityRcd.SeasonName,
-			Records:    model.ToFrontendApplicationRecordList(db, appRcds, jointAppBundleEntityRcd.EntityName),
+			Records:    frontApplicationRecords,
 			Entity: struct {
 				Id   uint   `json:"id"`
 				Name string `json:"name"`

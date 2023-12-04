@@ -153,19 +153,14 @@ func NewApplicationRecord(db *gorm.DB, application *Application) error {
 	})
 }
 
-func GenerateFrontendApplicationRecordsByIds(db *gorm.DB, ids []uint64) ([]*FrontendApplicationRecord, error) {
-	querySQL := QueryApplicationsWithEntityNameBaseSQL + " WHERE applications.id IN ?"
+func GenerateFrontendApplicationRecordsByIds(db *gorm.DB, ids []uint) ([]*FrontendApplicationRecord, error) {
+	querySQL := QueryApplicationsWithEntityNameBaseSQL + " WHERE app.id IN ?"
 
-	var projectRcds []jointAppEntityRslt
-	err := db.Raw(querySQL, ids).Find(&projectRcds).Error
+	var rslt []*FrontendApplicationRecord
+	err := db.Raw(querySQL, ids).Find(&rslt).Error
 	if err != nil {
-		log.Error().Msgf("query joint app entity error: %+v", err)
+		log.Error().Msgf("get application list error: %+v, query sql: %s, query params: %+v", err, querySQL, ids)
 		return nil, err
-	}
-
-	rslt := make([]*FrontendApplicationRecord, len(projectRcds))
-	for i, r := range projectRcds {
-		rslt[i] = r.ToFrontedApplicationRecord(db)
 	}
 
 	return rslt, nil
