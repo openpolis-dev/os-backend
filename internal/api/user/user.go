@@ -133,6 +133,8 @@ type LoginReply struct {
 	Token    string      `json:"token"`
 	TokenExp int64       `json:"token_exp"` // time unit: seconds
 	User     *model.User `json:"user"`
+
+	UserVerified bool `json:"user_verified"` // for unipass user,if wallet signature not verified, will be false
 }
 
 // Login user login
@@ -153,6 +155,9 @@ func Login(ctx *gin.Context) {
 	}
 
 	_, _, db, cfg := api.ForContext(ctx)
+
+	// user verified flag
+	userVerified := true
 
 	// verify sign
 	// --> query nonce
@@ -189,18 +194,30 @@ func Login(ctx *gin.Context) {
 			return
 		}
 
-		account := eth_common.HexToAddress(req.Wallet)
-		sig := eth_common.FromHex(req.Signature)
-		msg := []byte(req.Message)
-
-		ok, err := unipass_sigverify.VerifyMessageSignature(context.Background(), account, msg, sig, req.IsEIP191Prefix, client)
+		// get AA's bytecode
+		bytecode, err := client.CodeAt(context.Background(), eth_common.HexToAddress(req.Wallet), nil)
 		if err != nil {
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 			return
 		}
-		if !ok {
-			ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("signature not match")))
-			return
+		// if bytecode is not empty, means the wallet has deployed
+		// 2023/12/04: only verify signature when AA is deployed!
+		if len(bytecode) > 0 {
+			account := eth_common.HexToAddress(req.Wallet)
+			sig := eth_common.FromHex(req.Signature)
+			msg := []byte(req.Message)
+
+			ok, err := unipass_sigverify.VerifyMessageSignature(context.Background(), account, msg, sig, req.IsEIP191Prefix, client)
+			if err != nil {
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+				return
+			}
+			if !ok {
+				ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("signature not match")))
+				return
+			}
+		} else {
+			userVerified = false
 		}
 	}
 
@@ -235,9 +252,10 @@ func Login(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, api.Success(&LoginReply{
-		Token:    token,
-		TokenExp: tokenExp,
-		User:     user,
+		Token:        token,
+		TokenExp:     tokenExp,
+		User:         user,
+		UserVerified: userVerified,
 	}))
 }
 
