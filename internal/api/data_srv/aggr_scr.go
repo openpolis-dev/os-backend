@@ -10,6 +10,7 @@ import (
 	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
 	"github.com/theseed-labs/os-backend/internal/api"
+	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk"
 	"github.com/theseed-labs/os-backend/internal/static_data"
@@ -105,7 +106,7 @@ func getSeedHolderData(endTs int64) map[string]int {
 	seedCount := make(map[string]int)
 
 	for _, holderInfo := range seedHolderData {
-		seedCount[model.FormatUserWallet(holderInfo.Wallet)] += len(holderInfo.Ids)
+		seedCount[common.FormatUserWallet(holderInfo.Wallet)] += len(holderInfo.Ids)
 	}
 
 	return seedCount
@@ -175,7 +176,7 @@ func AggrScr(ctx *gin.Context) {
 	// * Category data with user wallet and fill data to UserCreditRecord
 	// * Calculate total seasons credits
 	for _, r := range aggregatedSeasonCredits {
-		wallet := model.FormatUserWallet(r.TargetUserWallet)
+		wallet := common.FormatUserWallet(r.TargetUserWallet)
 		model.SetDefaultMapValue(userCredits, wallet, UserCreditRecord{
 			TargetUserWallet:          wallet,
 			SeedCount:                 model.GetMapValueOrDefault(seedHolderCount, wallet, 0),

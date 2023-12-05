@@ -384,10 +384,6 @@ func GetMapValueOrDefault[K comparable, V any](origMap map[K]V, key K, defaultVa
 	}
 }
 
-func FormatUserWallet(wallet string) string {
-	return strings.TrimSpace(strings.ToLower(wallet))
-}
-
 func GetCurrentUtcEpochSecond() int64 {
 	return time.Now().UTC().Unix()
 }

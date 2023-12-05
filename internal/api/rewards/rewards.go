@@ -12,6 +12,7 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api"
+	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/storage"
 	"gorm.io/gorm"
@@ -54,7 +55,7 @@ func ApproveMintReward(ctx *gin.Context) {
 		appBundle := model.AppBundle{
 			AppRecords:   nil,
 			Comment:      fmt.Sprintf(MintRewardDetailTemplate, currentSeason.Name),
-			Applicant:    model.FormatUserWallet(user.Wallet),
+			Applicant:    common.FormatUserWallet(user.Wallet),
 			EntityType:   "project",
 			EntityId:     cityHallProject.ID,
 			SeasonId:     currentSeason.ID,
@@ -85,7 +86,7 @@ func ApproveMintReward(ctx *gin.Context) {
 			appRcds = append(appRcds, &model.Application{
 				Type:             model.ApplicationNewReward,
 				SubType:          "MintRewards",
-				Applicant:        model.FormatUserWallet(user.Wallet),
+				Applicant:        common.FormatUserWallet(user.Wallet),
 				State:            model.ApplicationStateOpen,
 				CreatedAt:        time.Now(),
 				UpdatedAt:        time.Now(),
@@ -95,7 +96,7 @@ func ApproveMintReward(ctx *gin.Context) {
 				Comment:          "",
 				AssetName:        "SCR",
 				AssetAmount:      rewardAmount,
-				TargetUserWallet: model.FormatUserWallet(wallet),
+				TargetUserWallet: common.FormatUserWallet(wallet),
 				EntityType:       "project",
 				EntityId:         cityHallProject.ID,
 				SeasonId:         currentSeason.ID,
@@ -137,7 +138,7 @@ func SnapshotSeed(ctx *gin.Context) {
 	}
 	currentSeason.SeedSnapshotSaved = true
 	currentSeason.SeedSnapshotAt = time.Now().Unix()
-	currentSeason.SeedSnapshotSubmitter = model.FormatUserWallet(user.Wallet)
+	currentSeason.SeedSnapshotSubmitter = common.FormatUserWallet(user.Wallet)
 	err = db.Save(currentSeason).Error
 
 	if err != nil {

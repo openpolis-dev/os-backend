@@ -13,6 +13,7 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api"
+	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"gorm.io/gorm"
 )
@@ -316,12 +317,12 @@ func updateGroupedMembers(cityHallProject *model.Project, req *CityHallUpdateMem
 	if req.GroupName != "" {
 		if sponsors, found := cityHallProject.GroupedSponsors[req.GroupName]; found {
 			for _, sponsorWallet := range sponsors {
-				sponsorsMap[model.FormatUserWallet(sponsorWallet)] = true
+				sponsorsMap[common.FormatUserWallet(sponsorWallet)] = true
 			}
 		}
 	} else {
 		for _, sponsorWallet := range cityHallProject.Sponsors {
-			sponsorsMap[model.FormatUserWallet(sponsorWallet)] = true
+			sponsorsMap[common.FormatUserWallet(sponsorWallet)] = true
 		}
 	}
 
@@ -332,8 +333,8 @@ func updateGroupedMembers(cityHallProject *model.Project, req *CityHallUpdateMem
 	// Add member to policy group
 	var addHallGroupingPolicy [][]string
 	for _, memberAddr := range req.AddMember {
-		sponsorsMap[model.FormatUserWallet(memberAddr)] = true
-		addHallGroupingPolicy = append(addHallGroupingPolicy, []string{model.FormatUserWallet(memberAddr), api.RoleHall})
+		sponsorsMap[common.FormatUserWallet(memberAddr)] = true
+		addHallGroupingPolicy = append(addHallGroupingPolicy, []string{common.FormatUserWallet(memberAddr), api.RoleHall})
 	}
 
 	// Add user to hall group
@@ -349,8 +350,8 @@ func updateGroupedMembers(cityHallProject *model.Project, req *CityHallUpdateMem
 	// Remove member from policy group
 	var removeHallGroupingPolicy [][]string
 	for _, memberAddr := range req.RemoveMember {
-		sponsorsMap[model.FormatUserWallet(memberAddr)] = false
-		removeHallGroupingPolicy = append(removeHallGroupingPolicy, []string{model.FormatUserWallet(memberAddr), api.RoleHall})
+		sponsorsMap[common.FormatUserWallet(memberAddr)] = false
+		removeHallGroupingPolicy = append(removeHallGroupingPolicy, []string{common.FormatUserWallet(memberAddr), api.RoleHall})
 	}
 
 	// Remove user from hall group

@@ -12,6 +12,7 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api"
+	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"gorm.io/gorm"
 )
@@ -296,7 +297,7 @@ func CreateAppBundle(ctx *gin.Context) {
 				ApplicationID: app.ID,
 				LogTs:         model.GetCurrentUtcEpochSecond(),
 				Operation:     model.AuditActionNew,
-				Operator:      model.FormatUserWallet(user.Wallet),
+				Operator:      common.FormatUserWallet(user.Wallet),
 				PreState:      "",
 				PostState:     model.ApplicationStateOpen,
 			}
@@ -312,7 +313,7 @@ func CreateAppBundle(ctx *gin.Context) {
 			AppBundle:   appBundle,
 			LogTs:       model.GetCurrentUtcEpochSecond(),
 			Operation:   model.AuditActionNew,
-			Operator:    model.FormatUserWallet(user.Wallet),
+			Operator:    common.FormatUserWallet(user.Wallet),
 			PreState:    "",
 			PostState:   model.ApplicationStateOpen,
 			ExtraData:   "",

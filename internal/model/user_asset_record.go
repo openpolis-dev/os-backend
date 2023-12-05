@@ -7,6 +7,7 @@ import (
 
 	"github.com/shopspring/decimal"
 	"github.com/theseed-labs/os-backend/internal"
+	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/xiaosongfu/gormfind"
 	"gorm.io/gorm"
 )
@@ -31,7 +32,7 @@ type userAssetRecordModel struct{}
 var UserAssetRecordModel userAssetRecordModel
 
 func (*userAssetRecordModel) FindWithUserWalletAndAssetProps(db *gorm.DB, userWallet string, assetName string) ([]*UserAssetRecord, error) {
-	formattedUserWallet := FormatUserWallet(userWallet)
+	formattedUserWallet := common.FormatUserWallet(userWallet)
 
 	// Create user record if not existing
 	var r User
