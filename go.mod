@@ -30,9 +30,12 @@ require (
 	github.com/xiaosongfu/ethsign v0.1.0
 	github.com/xiaosongfu/gormfind v0.1.0
 	github.com/xuri/excelize/v2 v2.8.0
+	golang.org/x/crypto v0.14.0
 	gopkg.in/yaml.v2 v2.4.0
 	gorm.io/datatypes v1.2.0
 	gorm.io/driver/mysql v1.5.2
+	gorm.io/driver/postgres v1.5.0
+	gorm.io/driver/sqlite v1.4.3
 	gorm.io/gorm v1.25.5
 )
 
@@ -95,6 +98,7 @@ require (
 	github.com/mailru/easyjson v0.7.6 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.19 // indirect
+	github.com/mattn/go-sqlite3 v1.14.16 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
 	github.com/microsoft/go-mssqldb v0.17.0 // indirect
 	github.com/mmcloughlin/addchain v0.4.0 // indirect
@@ -121,7 +125,6 @@ require (
 	github.com/xuri/efp v0.0.0-20230802181842-ad255f2331ca // indirect
 	github.com/xuri/nfp v0.0.0-20230819163627-dc951e3ffe1a // indirect
 	golang.org/x/arch v0.3.0 // indirect
-	golang.org/x/crypto v0.14.0 // indirect
 	golang.org/x/exp v0.0.0-20230905200255-921286631fa9 // indirect
 	golang.org/x/mod v0.12.0 // indirect
 	golang.org/x/net v0.17.0 // indirect
@@ -133,7 +136,6 @@ require (
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	gorm.io/driver/postgres v1.5.0 // indirect
 	gorm.io/driver/sqlserver v1.4.1 // indirect
 	gorm.io/plugin/dbresolver v1.3.0 // indirect
 	modernc.org/libc v1.22.5 // indirect
