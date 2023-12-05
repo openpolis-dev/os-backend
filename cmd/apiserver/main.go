@@ -98,7 +98,7 @@ func main() {
 	}
 
 	// setup database
-	storage.InitGormDB(cfg.DataSource.Dsn)
+	storage.InitGormDB(cfg.DataSource.Dsn, cfg.Casbin.DriverName)
 	storage.MigrateTables()
 	storage.SeedDbRecords()
 	db := storage.GetGormDB()

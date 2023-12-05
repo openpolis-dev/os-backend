@@ -7,6 +7,8 @@ import (
 
 	"github.com/theseed-labs/os-backend/internal/model"
 	"gorm.io/driver/mysql"
+	"gorm.io/driver/postgres"
+	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
@@ -14,7 +16,7 @@ import (
 var gormDB *gorm.DB
 
 // InitGormDB inits gorm database connector
-func InitGormDB(dsn string) {
+func InitGormDB(dsn string, dbSchema string) {
 	// default logger config: https://github.com/go-gorm/gorm/blob/master/logger/logger.go#L74
 	dbLogger := logger.New(log.New(os.Stdout, "\r\n", log.LstdFlags), logger.Config{
 		SlowThreshold:             20 * time.Millisecond,
@@ -24,7 +26,16 @@ func InitGormDB(dsn string) {
 	})
 
 	var err error
-	gormDB, err = gorm.Open(mysql.Open(dsn), &gorm.Config{Logger: dbLogger})
+	switch dbSchema {
+	case "sqlite":
+		gormDB, err = gorm.Open(sqlite.Open(dsn), &gorm.Config{Logger: dbLogger})
+	case "mysql":
+		gormDB, err = gorm.Open(mysql.Open(dsn), &gorm.Config{Logger: dbLogger})
+	case "postgres", "pg":
+		gormDB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{Logger: dbLogger})
+	default:
+		panic("unsupported db schema")
+	}
 	if err != nil {
 		panic("failed to connect database")
 	}
