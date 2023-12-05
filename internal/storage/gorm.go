@@ -8,7 +8,6 @@ import (
 	"github.com/theseed-labs/os-backend/internal/model"
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
@@ -27,8 +26,6 @@ func InitGormDB(dsn string, dbSchema string) {
 
 	var err error
 	switch dbSchema {
-	case "sqlite":
-		gormDB, err = gorm.Open(sqlite.Open(dsn), &gorm.Config{Logger: dbLogger})
 	case "mysql":
 		gormDB, err = gorm.Open(mysql.Open(dsn), &gorm.Config{Logger: dbLogger})
 	case "postgres", "pg":
