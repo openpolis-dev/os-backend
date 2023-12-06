@@ -7,7 +7,6 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/common"
-	"github.com/xiaosongfu/gormfind"
 	"gorm.io/gorm"
 )
 
@@ -51,7 +50,7 @@ func (*userAssetRecordModel) FindWithUserWalletAndAssetProps(db *gorm.DB, userWa
 	}
 
 	querySeg := db.Where(&UserAssetRecord{UserWallet: formattedUserWallet, AssetName: assetName})
-	return gormfind.Rows[UserAssetRecord](querySeg, nil)
+	return QueryRows[UserAssetRecord](querySeg, nil)
 }
 
 func (*userAssetRecordModel) CreateOrUpdate(db *gorm.DB, userWallet string, assetName string, processingAmount, dealtAmount decimal.Decimal) error {

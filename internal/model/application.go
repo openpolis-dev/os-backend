@@ -340,7 +340,7 @@ func completeApplication(tx *gorm.DB, operatorWallet string, application *Applic
 
 func (app *Application) ListAuditLogs(db *gorm.DB) ([]*ApplicationAuditLog, error) {
 	querySeg := db.Model(&ApplicationAuditLog{}).Where("application_id = ?", app.ID)
-	return gormfind.Rows[ApplicationAuditLog](querySeg, nil)
+	return QueryRows[ApplicationAuditLog](querySeg, nil)
 }
 
 func (app *Application) GetLatestAuditLog(db *gorm.DB) (*ApplicationAuditLog, error) {

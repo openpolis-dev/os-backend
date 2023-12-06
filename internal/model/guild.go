@@ -49,7 +49,7 @@ func (*guildModel) List(db *gorm.DB, page *gormfind.Page) (data []*Guild, total 
 		return
 	}
 
-	data, err = gormfind.Rows[Guild](querySeg, page)
+	data, err = QueryRows[Guild](querySeg, page)
 	if err != nil {
 		return
 	}
@@ -65,7 +65,7 @@ func (*guildModel) ListBySponsorOrMember(db *gorm.DB, wallet string, page *gormf
 	if err != nil {
 		return
 	}
-	data, err = gormfind.Rows[Guild](querySeg, page)
+	data, err = QueryRows[Guild](querySeg, page)
 	if err != nil {
 		return
 	}
@@ -79,7 +79,7 @@ func (*guildModel) ListBySponsor(db *gorm.DB, sponsor string, page *gormfind.Pag
 	if err != nil {
 		return
 	}
-	data, err = gormfind.Rows[Guild](querySeg, page)
+	data, err = QueryRows[Guild](querySeg, page)
 	if err != nil {
 		return
 	}

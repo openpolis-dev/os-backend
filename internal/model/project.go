@@ -79,7 +79,7 @@ func (*projectModel) List(db *gorm.DB, status string, page *gormfind.Page, showS
 		return
 	}
 
-	data, err = gormfind.Rows[Project](querySeg, page)
+	data, err = QueryRows[Project](querySeg, page)
 	if err != nil {
 		return
 	}
@@ -95,7 +95,7 @@ func (*projectModel) ListBySponsorOrMember(db *gorm.DB, wallet string, page *gor
 	if err != nil {
 		return
 	}
-	data, err = gormfind.Rows[Project](querySeg, page)
+	data, err = QueryRows[Project](querySeg, page)
 	if err != nil {
 		return
 	}
@@ -119,7 +119,7 @@ func (*projectModel) ListBySponsor(db *gorm.DB, sponsor string, status string, p
 	if err != nil {
 		return
 	}
-	data, err = gormfind.Rows[Project](querySeg, page)
+	data, err = QueryRows[Project](querySeg, page)
 	if err != nil {
 		return
 	}

@@ -252,7 +252,7 @@ func getMultipleRecords(page *gormfind.Page, querySeg *gorm.DB) (*api.ListReplyD
 		return nil, err
 	}
 
-	records, err := gormfind.Rows[model.Event](querySeg, page)
+	records, err := model.QueryRows[model.Event](querySeg, page)
 	if err != nil {
 		return nil, err
 	}

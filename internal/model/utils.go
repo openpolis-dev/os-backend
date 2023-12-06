@@ -9,6 +9,7 @@ import (
 	"github.com/samber/lo"
 	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/common"
+	"github.com/xiaosongfu/gormfind"
 	"gorm.io/gorm"
 )
 
@@ -387,4 +388,29 @@ func GetMapValueOrDefault[K comparable, V any](origMap map[K]V, key K, defaultVa
 
 func GetCurrentUtcEpochSecond() int64 {
 	return time.Now().UTC().Unix()
+}
+
+// QueryRows is a function that queries rows from the database based on the provided query segment and pagination parameters.
+//
+// querySeg: A pointer to the gorm.DB object representing the query segment.
+// page: A pointer to the gormfind.Page object representing the pagination parameters.
+//
+// Returns a slice of pointers to type T representing the queried rows and an error if any occurred.
+// Note: This function is copied from gormfind.Rows, but update the Order field.
+// gormfind adds back quote (`) around the field name, which is OK in MySQL but syntax error in Postgres
+func QueryRows[T any](querySeg *gorm.DB, page *gormfind.Page) ([]*T, error) {
+	if page != nil {
+		if page.SortField != nil && page.Order != nil {
+			querySeg.Order(fmt.Sprintf("%s %s", *page.SortField, *page.Order))
+		}
+
+		querySeg.Offset(page.Size * (page.Page - 1)).Limit(page.Size)
+	}
+
+	var d []*T
+	if err := querySeg.Find(&d).Error; err != nil {
+		return nil, err
+	}
+
+	return d, nil
 }

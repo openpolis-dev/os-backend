@@ -41,7 +41,7 @@ func (*guildBudgetModel) Detail(db *gorm.DB, id uint) (*GuildBudget, error) {
 
 func (*guildBudgetModel) ListByGuildId(db *gorm.DB, guildID uint) ([]*GuildBudget, error) {
 	querySeg := db.Where("guild_id = ?", guildID)
-	return gormfind.Rows[GuildBudget](querySeg, nil)
+	return QueryRows[GuildBudget](querySeg, nil)
 }
 
 func (*guildBudgetModel) QueryByGuildIdAndAssetName(db *gorm.DB, guildID uint, assetName string) (*GuildBudget, error) {
