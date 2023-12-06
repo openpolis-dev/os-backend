@@ -1,0 +1,12 @@
+type Guild {
+    id: Int!
+    logo: String!
+    name: String!
+    intro: String!
+    desc: String!
+}
+
+extend type Query {
+    availableGuilds: [Guild!]!
+}
+
