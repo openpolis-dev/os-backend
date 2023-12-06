@@ -55,3 +55,8 @@ func ToChecksumAddress(address string) string {
 func FormatUserWallet(wallet string) string {
 	return ToChecksumAddress(strings.TrimSpace(strings.ToLower(wallet)))
 }
+
+// ToFrontendWallet convert wallet address to frontend required format, currently the requirement is lowercased
+func ToFrontendWallet(wallet string) string {
+	return strings.ToLower(wallet)
+}

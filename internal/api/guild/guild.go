@@ -316,6 +316,14 @@ func Detail(ctx *gin.Context) {
 		return
 	}
 
+	guild.Members = lo.Map(guild.Members, func(m string, _ int) string {
+		return common.ToFrontendWallet(m)
+	})
+
+	guild.Sponsors = lo.Map(guild.Sponsors, func(m string, _ int) string {
+		return common.ToFrontendWallet(m)
+	})
+
 	ctx.JSON(http.StatusOK, api.Success(&DetailReply{
 		Guild:   *guild,
 		Budgets: budgets,

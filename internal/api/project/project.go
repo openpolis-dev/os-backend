@@ -414,6 +414,13 @@ func Detail(ctx *gin.Context) {
 		return
 	}
 
+	proj.Members = lo.Map(proj.Members, func(m string, _ int) string {
+		return common.ToFrontendWallet(m)
+	})
+	proj.Sponsors = lo.Map(proj.Sponsors, func(m string, _ int) string {
+		return common.ToFrontendWallet(m)
+	})
+
 	ctx.JSON(http.StatusOK, api.Success(&DetailReply{
 		Project: *proj,
 		Budgets: budgets,
