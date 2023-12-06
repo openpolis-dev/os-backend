@@ -62,7 +62,7 @@ func RefreshNonce(ctx *gin.Context) {
 
 	db := api.ForContextOnlyDB(ctx)
 
-	userNonce, err := model.UserNonceModel.Detail(db, req.Wallet)
+	userNonce, err := model.UserNonceModel.Detail(db, common.FormatUserWallet(req.Wallet))
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
