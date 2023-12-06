@@ -206,7 +206,7 @@ func GenerateFrontendApplicationRecords(db *gorm.DB, queryParams *ListApplicatio
 	}
 
 	if queryParams.Applicant != "" {
-		whereClause += " AND app.applicant = @applicant"
+		whereClause += " AND app.applicant = @applicant AND applicant.wallet IS NOT NULL"
 		whereParams["applicant"] = queryParams.Applicant
 	}
 
