@@ -292,7 +292,7 @@ func QueryAppBundleRecords(db *gorm.DB, queryParams *ListAppBundleQueryParams) (
 	}
 
 	querySQL := QueryAppBundlesWithEntityNameBaseSQL
-	whereClause := "\nHAVING app_bundles.shadow_record=false and type=@type"
+	whereClause := "\nWHERE app_bundles.shadow_record=false and type=@type"
 	whereParams := map[string]any{
 		"type": "NEW_REWARD",
 	}
