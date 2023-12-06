@@ -8,6 +8,8 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	"github.com/theseed-labs/os-backend/internal"
+	"github.com/theseed-labs/os-backend/internal/common"
+	"github.com/xiaosongfu/gormfind"
 	"gorm.io/gorm"
 )
 
@@ -252,7 +254,7 @@ func GenerateFrontendApplicationRecords(db *gorm.DB, queryParams *ListApplicatio
 
 	if queryParams.UserWallet != "" {
 		whereClause += " AND app.target_user_wallet = @target_user_wallet"
-		whereParams["target_user_wallet"] = strings.ToLower(strings.TrimSpace(queryParams.UserWallet))
+		whereParams["target_user_wallet"] = common.FormatUserWallet(queryParams.UserWallet)
 	}
 
 	if queryParams.SeasonId != 0 {
@@ -266,7 +268,7 @@ func GenerateFrontendApplicationRecords(db *gorm.DB, queryParams *ListApplicatio
 	// TODO: This is the mysql style, need to find way to get db schema here and implement pg way
 	whereClause += fmt.Sprintf("\nORDER BY %s ", orderByClause)
 	if pagedResult {
-		whereClause += "LIMIT @offset, @limit"
+		whereClause += "LIMIT @limit OFFSET @offset"
 		whereParams["offset"] = (queryParams.Page - 1) * queryParams.Size
 		whereParams["limit"] = queryParams.Size
 	}
@@ -292,7 +294,7 @@ func QueryAppBundleRecords(db *gorm.DB, queryParams *ListAppBundleQueryParams) (
 	}
 
 	querySQL := QueryAppBundlesWithEntityNameBaseSQL
-	whereClause := "\nHAVING app_bundles.shadow_record=false and type=@type"
+	whereClause := "\nWHERE app_bundles.shadow_record=false and type=@type"
 	whereParams := map[string]any{
 		"type": "NEW_REWARD",
 	}
@@ -347,7 +349,7 @@ func QueryAppBundleRecords(db *gorm.DB, queryParams *ListAppBundleQueryParams) (
 	total := db.Raw(querySQL+whereClause, whereParams).Scan(&[]map[string]any{}).RowsAffected
 
 	// TODO: This is the mysql style, need to find way to get db schema here and implement pg way
-	whereClause += fmt.Sprintf("\nORDER BY app_bundles.%s %s LIMIT @offset, @limit", queryParams.SortField, queryParams.SortOrder)
+	whereClause += fmt.Sprintf("\nORDER BY app_bundles.%s %s LIMIT @limit OFFSET @offset", queryParams.SortField, queryParams.SortOrder)
 	whereParams["offset"] = (queryParams.Page - 1) * queryParams.Size
 	whereParams["limit"] = queryParams.Size
 
@@ -384,10 +386,31 @@ func GetMapValueOrDefault[K comparable, V any](origMap map[K]V, key K, defaultVa
 	}
 }
 
-func FormatUserWallet(wallet string) string {
-	return strings.TrimSpace(strings.ToLower(wallet))
-}
-
 func GetCurrentUtcEpochSecond() int64 {
 	return time.Now().UTC().Unix()
+}
+
+// QueryRows is a function that queries rows from the database based on the provided query segment and pagination parameters.
+//
+// querySeg: A pointer to the gorm.DB object representing the query segment.
+// page: A pointer to the gormfind.Page object representing the pagination parameters.
+//
+// Returns a slice of pointers to type T representing the queried rows and an error if any occurred.
+// Note: This function is copied from gormfind.Rows, but update the Order field.
+// gormfind adds back quote (`) around the field name, which is OK in MySQL but syntax error in Postgres
+func QueryRows[T any](querySeg *gorm.DB, page *gormfind.Page) ([]*T, error) {
+	if page != nil {
+		if page.SortField != nil && page.Order != nil {
+			querySeg.Order(fmt.Sprintf("%s %s", *page.SortField, *page.Order))
+		}
+
+		querySeg.Offset(page.Size * (page.Page - 1)).Limit(page.Size)
+	}
+
+	var d []*T
+	if err := querySeg.Find(&d).Error; err != nil {
+		return nil, err
+	}
+
+	return d, nil
 }

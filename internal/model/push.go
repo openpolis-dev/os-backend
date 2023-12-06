@@ -53,7 +53,7 @@ func (*pushModel) List(db *gorm.DB, status *int, page *gormfind.Page) (data []*P
 		return
 	}
 
-	data, err = gormfind.Rows[Push](querySeg, page)
+	data, err = QueryRows[Push](querySeg, page)
 	if err != nil {
 		return
 	}

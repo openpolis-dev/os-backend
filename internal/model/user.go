@@ -52,7 +52,7 @@ func (*userModel) Detail(db *gorm.DB, wallet string) (*User, error) {
 
 func (*userModel) List(db *gorm.DB, wallets []string) ([]*User, error) {
 	querySeg := db.Preload("Assets").Where("wallet IN (?)", wallets)
-	return gormfind.Rows[User](querySeg, nil)
+	return QueryRows[User](querySeg, nil)
 }
 
 // TryGetUsername try to get username of passed in wallet address, and return "" if no user record found

@@ -9,6 +9,7 @@ import (
 
 	"github.com/samber/lo"
 	"github.com/theseed-labs/os-backend/internal/api"
+	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
 
 	"github.com/theseed-labs/os-backend/internal/graph/gmodel"
@@ -23,7 +24,8 @@ func (r *queryResolver) AvailableProjects(ctx context.Context) ([]*gmodel.Projec
 
 	user, enforcer, db, _ := api.ForContext(ginCtx)
 
-	ok, err := enforcer.HasRoleForUser(user.Wallet, api.RoleHall)
+	formattedWallet := common.FormatUserWallet(user.Wallet)
+	ok, err := enforcer.HasRoleForUser(formattedWallet, api.RoleHall)
 	if err != nil {
 		return nil, err
 	}
@@ -36,7 +38,7 @@ func (r *queryResolver) AvailableProjects(ctx context.Context) ([]*gmodel.Projec
 			return nil, err
 		}
 	} else {
-		projects, _, err = model.ProjectModel.ListBySponsor(db, user.Wallet, "open", nil, false)
+		projects, _, err = model.ProjectModel.ListBySponsor(db, formattedWallet, "open", nil, false)
 		if err != nil {
 			return nil, err
 		}

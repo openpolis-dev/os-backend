@@ -12,6 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
+	"github.com/theseed-labs/os-backend/internal/common"
 )
 
 type AwsClient struct {
@@ -103,7 +104,7 @@ func (c *AwsClient) UploadUserAvatar(userWallet string, b64ImgSrcWithType string
 		return "", err
 	}
 
-	fileKey := fmt.Sprintf("user_avatars/%s_%d.%s", userWallet, time.Now().UnixMilli(), fileExt)
+	fileKey := fmt.Sprintf("user_avatars/%s_%d.%s", common.FormatUserWallet(userWallet), time.Now().UnixMilli(), fileExt)
 
 	return c.uploadB64Image(imageData, contentType, fileKey)
 }

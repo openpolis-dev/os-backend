@@ -2,12 +2,11 @@ package model
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/shopspring/decimal"
 	"github.com/theseed-labs/os-backend/internal"
-	"github.com/xiaosongfu/gormfind"
+	"github.com/theseed-labs/os-backend/internal/common"
 	"gorm.io/gorm"
 )
 
@@ -31,7 +30,7 @@ type userAssetRecordModel struct{}
 var UserAssetRecordModel userAssetRecordModel
 
 func (*userAssetRecordModel) FindWithUserWalletAndAssetProps(db *gorm.DB, userWallet string, assetName string) ([]*UserAssetRecord, error) {
-	formattedUserWallet := FormatUserWallet(userWallet)
+	formattedUserWallet := common.FormatUserWallet(userWallet)
 
 	// Create user record if not existing
 	var r User
@@ -51,7 +50,7 @@ func (*userAssetRecordModel) FindWithUserWalletAndAssetProps(db *gorm.DB, userWa
 	}
 
 	querySeg := db.Where(&UserAssetRecord{UserWallet: formattedUserWallet, AssetName: assetName})
-	return gormfind.Rows[UserAssetRecord](querySeg, nil)
+	return QueryRows[UserAssetRecord](querySeg, nil)
 }
 
 func (*userAssetRecordModel) CreateOrUpdate(db *gorm.DB, userWallet string, assetName string, processingAmount, dealtAmount decimal.Decimal) error {
@@ -66,7 +65,7 @@ func (*userAssetRecordModel) CreateOrUpdate(db *gorm.DB, userWallet string, asse
 
 	if len(assetRecords) == 0 {
 		return db.Save(&UserAssetRecord{
-			UserWallet:       strings.TrimSpace(strings.ToLower(userWallet)),
+			UserWallet:       common.FormatUserWallet(userWallet),
 			AssetName:        assetName,
 			DealtAmount:      dealtAmount,
 			ProcessingAmount: processingAmount,
@@ -80,7 +79,7 @@ func (*userAssetRecordModel) CreateOrUpdate(db *gorm.DB, userWallet string, asse
 
 // Rollback extracts processing and dealt amount from records
 func (*userAssetRecordModel) Rollback(db *gorm.DB, userWallet string, assetName string, processingAmount, dealtAmount decimal.Decimal) error {
-	assetRecords, err := UserAssetRecordModel.FindWithUserWalletAndAssetProps(db, userWallet, assetName)
+	assetRecords, err := UserAssetRecordModel.FindWithUserWalletAndAssetProps(db, common.FormatUserWallet(userWallet), assetName)
 	if err != nil {
 		return err
 	}
@@ -96,13 +95,13 @@ func (*userAssetRecordModel) Rollback(db *gorm.DB, userWallet string, assetName 
 }
 
 func (*userAssetRecordModel) CompleteAssetTransaction(db *gorm.DB, userWallet string, assetName string, amountToBeDealt decimal.Decimal) error {
-	assetRecords, err := UserAssetRecordModel.FindWithUserWalletAndAssetProps(db, userWallet, assetName)
+	assetRecords, err := UserAssetRecordModel.FindWithUserWalletAndAssetProps(db, common.FormatUserWallet(userWallet), assetName)
 	if err != nil {
 		return err
 	}
 
 	if (len(assetRecords) != 1) || (assetRecords[0].ProcessingAmount.Cmp(amountToBeDealt) == -1) {
-		return fmt.Errorf("user %s has invalid record for asset %s, please contract admin", userWallet, assetName)
+		return fmt.Errorf("user %s has invalid record for asset %s, please contract admin", common.FormatUserWallet(userWallet), assetName)
 	}
 
 	assetRecords[0].DealtAmount = assetRecords[0].DealtAmount.Add(amountToBeDealt)

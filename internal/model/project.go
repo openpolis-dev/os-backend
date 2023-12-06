@@ -79,7 +79,7 @@ func (*projectModel) List(db *gorm.DB, status string, page *gormfind.Page, showS
 		return
 	}
 
-	data, err = gormfind.Rows[Project](querySeg, page)
+	data, err = QueryRows[Project](querySeg, page)
 	if err != nil {
 		return
 	}
@@ -89,13 +89,17 @@ func (*projectModel) List(db *gorm.DB, status string, page *gormfind.Page, showS
 
 func (*projectModel) ListBySponsorOrMember(db *gorm.DB, wallet string, page *gormfind.Page) (data []*Project, total int64, err error) {
 	w := fmt.Sprintf("%%\"%s\"%%", wallet) // value is: `%"0x123"%`
-	querySeg := db.Table("projects").Where("sponsors LIKE ?", w).Or("members LIKE ?", w)
+	// MySQL version
+	//querySeg := db.Table("projects").Where("sponsors LIKE ?", w).Or("members LIKE ?", w)
+
+	// PgVersion
+	querySeg := db.Table("projects").Where("sponsors::text ILIKE ?", w).Or("members::text ILIKE ?", w)
 
 	total, err = gormfind.Count(querySeg)
 	if err != nil {
 		return
 	}
-	data, err = gormfind.Rows[Project](querySeg, page)
+	data, err = QueryRows[Project](querySeg, page)
 	if err != nil {
 		return
 	}
@@ -119,7 +123,7 @@ func (*projectModel) ListBySponsor(db *gorm.DB, sponsor string, status string, p
 	if err != nil {
 		return
 	}
-	data, err = gormfind.Rows[Project](querySeg, page)
+	data, err = QueryRows[Project](querySeg, page)
 	if err != nil {
 		return
 	}
