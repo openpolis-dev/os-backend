@@ -347,7 +347,7 @@ func QueryAppBundleRecords(db *gorm.DB, queryParams *ListAppBundleQueryParams) (
 	total := db.Raw(querySQL+whereClause, whereParams).Scan(&[]map[string]any{}).RowsAffected
 
 	// TODO: This is the mysql style, need to find way to get db schema here and implement pg way
-	whereClause += fmt.Sprintf("\nORDER BY app_bundles.%s %s LIMIT @offset, @limit", queryParams.SortField, queryParams.SortOrder)
+	whereClause += fmt.Sprintf("\nORDER BY app_bundles.%s %s LIMIT @limit OFFSET @offset", queryParams.SortField, queryParams.SortOrder)
 	whereParams["offset"] = (queryParams.Page - 1) * queryParams.Size
 	whereParams["limit"] = queryParams.Size
 
