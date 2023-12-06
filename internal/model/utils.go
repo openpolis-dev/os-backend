@@ -266,7 +266,7 @@ func GenerateFrontendApplicationRecords(db *gorm.DB, queryParams *ListApplicatio
 	// TODO: This is the mysql style, need to find way to get db schema here and implement pg way
 	whereClause += fmt.Sprintf("\nORDER BY %s ", orderByClause)
 	if pagedResult {
-		whereClause += "LIMIT @offset, @limit"
+		whereClause += "LIMIT @limit OFFSET @offset"
 		whereParams["offset"] = (queryParams.Page - 1) * queryParams.Size
 		whereParams["limit"] = queryParams.Size
 	}
