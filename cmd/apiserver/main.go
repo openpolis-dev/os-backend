@@ -5,6 +5,7 @@ import (
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
+	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/graph/generated"
 	"github.com/theseed-labs/os-backend/internal/graph/resolver"
 
@@ -85,7 +86,7 @@ func main() {
 	}
 	// add default users
 	groupPolicies := lo.Map[string, []string](cfg.Casbin.SuperUsers, func(user string, _ int) []string {
-		return []string{user, api.RoleHall}
+		return []string{common.FormatUserWallet(user), api.RoleHall}
 	})
 	_, err = enforcer.AddGroupingPolicies(groupPolicies) // add default hall wallets
 	if err != nil {
