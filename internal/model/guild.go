@@ -59,7 +59,12 @@ func (*guildModel) List(db *gorm.DB, page *gormfind.Page) (data []*Guild, total 
 
 func (*guildModel) ListBySponsorOrMember(db *gorm.DB, wallet string, page *gormfind.Page) (data []*Guild, total int64, err error) {
 	w := fmt.Sprintf("%%\"%s\"%%", wallet) // value is: `%"0x123"%`
-	querySeg := db.Table("guilds").Where("sponsors LIKE ?", w).Or("members LIKE ?", w)
+
+	// MySQL version
+	//querySeg := db.Table("guilds").Where("sponsors LIKE ?", w).Or("members LIKE ?", w)
+
+	// PgVersion
+	querySeg := db.Table("guilds").Where("sponsors::text ILIKE ?", w).Or("members::text ILIKE ?", w)
 
 	total, err = gormfind.Count(querySeg)
 	if err != nil {
