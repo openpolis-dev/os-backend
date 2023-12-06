@@ -97,6 +97,7 @@ func Info(ctx *gin.Context) {
 //	@success	200			{string}	nil
 func UpdateBudget(ctx *gin.Context) {
 	user, enforcer, db, _ := api.ForContext(ctx)
+	formattedWallet := common.FormatUserWallet(user.Wallet)
 	cityHallProject, err := getOrCreateCityHallProject(db, enforcer)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall record error")))
@@ -111,7 +112,7 @@ func UpdateBudget(ctx *gin.Context) {
 	}
 
 	//  check permission
-	ok, err := enforcer.HasRoleForUser(user.Wallet, api.RoleHall)
+	ok, err := enforcer.HasRoleForUser(formattedWallet, api.RoleHall)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
@@ -178,7 +179,8 @@ func UpdateBudget(ctx *gin.Context) {
 //	@success	200			{string}	nil
 func UpdateMember(ctx *gin.Context) {
 	user, enforcer, db, _ := api.ForContext(ctx)
-	log.Debug().Msgf("update city hall request form user %s", user.Wallet)
+	formattedWallet := common.FormatUserWallet(user.Wallet)
+	log.Debug().Msgf("update city hall request form user %s", formattedWallet)
 	cityHallProject, err := getOrCreateCityHallProject(db, enforcer)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall record error")))
@@ -186,7 +188,7 @@ func UpdateMember(ctx *gin.Context) {
 	}
 
 	//  check permission
-	ok, err := enforcer.HasRoleForUser(user.Wallet, api.RoleHall)
+	ok, err := enforcer.HasRoleForUser(formattedWallet, api.RoleHall)
 	if err != nil {
 		log.Error().Msgf("check permission error %+v", err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
@@ -194,7 +196,7 @@ func UpdateMember(ctx *gin.Context) {
 	}
 
 	if !ok {
-		log.Warn().Msgf("permission deny for user %s", user.Wallet)
+		log.Warn().Msgf("permission deny for user %s", formattedWallet)
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
@@ -205,7 +207,7 @@ func UpdateMember(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
 		return
 	}
-	log.Debug().Msgf("city hall update member form user %s", user.Wallet)
+	log.Debug().Msgf("city hall update member form user %s", formattedWallet)
 
 	//if _, found := internal.CityhallGroupNames[req.GroupName]; !found {
 	//	ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("invalid group_name %s", req.GroupName)))
@@ -244,7 +246,8 @@ func UpdateMember(ctx *gin.Context) {
 //	@success	200			{string}	nil
 func BatchUpdateMembers(ctx *gin.Context) {
 	user, enforcer, db, _ := api.ForContext(ctx)
-	log.Debug().Msgf("update city hall request form user %s", user.Wallet)
+	formattedWallet := common.FormatUserWallet(user.Wallet)
+	log.Debug().Msgf("update city hall request form user %s", formattedWallet)
 	cityHallProject, err := getOrCreateCityHallProject(db, enforcer)
 	if err != nil {
 		log.Error().Msgf("get cityhall record error: %+v", err)
@@ -253,7 +256,7 @@ func BatchUpdateMembers(ctx *gin.Context) {
 	}
 
 	//  check permission
-	ok, err := enforcer.HasRoleForUser(user.Wallet, api.RoleHall)
+	ok, err := enforcer.HasRoleForUser(formattedWallet, api.RoleHall)
 	if err != nil {
 		log.Error().Msgf("check permission error %+v", err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
@@ -261,7 +264,7 @@ func BatchUpdateMembers(ctx *gin.Context) {
 	}
 
 	if !ok {
-		log.Warn().Msgf("permission deny for user %s", user.Wallet)
+		log.Warn().Msgf("permission deny for user %s", formattedWallet)
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
@@ -273,7 +276,7 @@ func BatchUpdateMembers(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
 		return
 	}
-	log.Debug().Msgf("city hall update member form user %s, request: %+v", user.Wallet, req)
+	log.Debug().Msgf("city hall update member form user %s, request: %+v", formattedWallet, req)
 
 	for _, updateMemberReq := range req {
 		statusCode, err := updateGroupedMembers(cityHallProject, updateMemberReq, db, enforcer)

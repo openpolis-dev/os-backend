@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/theseed-labs/os-backend/internal/api"
+	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"gorm.io/gorm"
 )
@@ -31,7 +32,7 @@ func GetOrCreateCurrentAssetRecords(ctx *gin.Context) {
 func UpdateAssets(ctx *gin.Context) {
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
-	ok, err := enforcer.Enforce(user.Wallet, api.ObjTreasury, api.ActUpdateAssertBudget)
+	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), api.ObjTreasury, api.ActUpdateAssertBudget)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
@@ -50,7 +51,7 @@ func UpdateAssets(ctx *gin.Context) {
 
 	err = db.Transaction(func(tx *gorm.DB) error {
 		for _, assetParam := range updateParams {
-			err = model.TreasuryAssetHelper.UpsertCurrentSeasonTreasuryDetailedRecord(tx, assetParam.AssetName, assetParam.TotalAmount, user.Wallet)
+			err = model.TreasuryAssetHelper.UpsertCurrentSeasonTreasuryDetailedRecord(tx, assetParam.AssetName, assetParam.TotalAmount, common.FormatUserWallet(user.Wallet))
 			if err != nil {
 				return err
 			}

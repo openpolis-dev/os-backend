@@ -4,7 +4,6 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -71,7 +70,7 @@ func MyList(ctx *gin.Context) {
 func Create(ctx *gin.Context) {
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
-	ok, err := enforcer.Enforce(user.Wallet, api.ObjEvent, api.ActCreateEvent)
+	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), api.ObjEvent, api.ActCreateEvent)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
@@ -110,7 +109,7 @@ func Create(ctx *gin.Context) {
 	}
 
 	eventRecord := model.Event{
-		Initiator: strings.ToLower(user.Wallet),
+		Initiator: common.FormatUserWallet(user.Wallet),
 		Title:     req.Title,
 		CoverImg:  req.CoverImg,
 		Content:   req.Content,
@@ -166,7 +165,7 @@ func Delete(ctx *gin.Context) {
 func Update(ctx *gin.Context) {
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
-	ok, err := enforcer.Enforce(user.Wallet, api.ObjEvent, api.ActCreateEvent)
+	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), api.ObjEvent, api.ActCreateEvent)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return

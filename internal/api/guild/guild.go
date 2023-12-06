@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -13,6 +12,7 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api"
+	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk"
 )
@@ -77,12 +77,12 @@ func Create(ctx *gin.Context) {
 		return
 	}
 
-	// convert all wallet to lower case
+	// convert all wallet to checksum address
 	sponsors := lo.Map[string](req.Sponsors, func(item string, _ int) string {
-		return strings.ToLower(item)
+		return common.FormatUserWallet(item)
 	})
 	members := lo.Map[string](req.Members, func(item string, _ int) string {
-		return strings.ToLower(item)
+		return common.FormatUserWallet(item)
 	})
 	// remove duplicate sponsors and members
 	sponsors = lo.Uniq[string](sponsors)
@@ -95,7 +95,7 @@ func Create(ctx *gin.Context) {
 
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
-	ok, err := enforcer.Enforce(user.Wallet, api.ObjGuild, api.ActCreate)
+	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), api.ObjGuild, api.ActCreate)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
@@ -114,7 +114,7 @@ func Create(ctx *gin.Context) {
 		Sponsors:  sponsors,
 		Members:   members,
 		Proposals: proposals,
-		Creator:   user.Wallet,
+		Creator:   common.FormatUserWallet(user.Wallet),
 		CreateTs:  model.GetCurrentUtcEpochSecond(),
 		UpdateTs:  model.GetCurrentUtcEpochSecond(),
 	}
@@ -177,7 +177,7 @@ func Create(ctx *gin.Context) {
 	// add roles
 	sponsorGroupingPolicies := lo.Map(req.Sponsors, func(sponsor string, _ int) []string {
 		// g, 0xc13..1283 guild_sponsor_1
-		return []string{strings.ToLower(sponsor), fmt.Sprintf("%s%d", api.RoleGuildSponsorPrefix, guild.ID)}
+		return []string{common.FormatUserWallet(sponsor), fmt.Sprintf("%s%d", api.RoleGuildSponsorPrefix, guild.ID)}
 	})
 	//memberGroupingPolicies := lo.Map(req.Members, func(member string, _ int) []string {
 	//	// g, 0xc13..1283 guild_member_1
@@ -238,7 +238,7 @@ func Update(ctx *gin.Context) {
 
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
-	ok, err := enforcer.Enforce(user.Wallet, fmt.Sprintf("%s%d", api.ObjGuildPrefix, id), api.ActModify)
+	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), fmt.Sprintf("%s%d", api.ObjGuildPrefix, id), api.ActModify)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
@@ -372,7 +372,7 @@ func MyGuilds(ctx *gin.Context) {
 
 	page := api.ParseAndConvertPageParam(ctx)
 
-	guilds, total, err := model.GuildModel.ListBySponsorOrMember(db, user.Wallet, page)
+	guilds, total, err := model.GuildModel.ListBySponsorOrMember(db, common.FormatUserWallet(user.Wallet), page)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
@@ -423,7 +423,7 @@ func UpdateStaffs(ctx *gin.Context) {
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
 	if req.Sponsors != nil && len(req.Sponsors) != 0 {
-		ok, err := enforcer.Enforce(user.Wallet, fmt.Sprintf("%s%d", api.ObjGuildPrefix, id), api.ActUpdateSponsor)
+		ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), fmt.Sprintf("%s%d", api.ObjGuildPrefix, id), api.ActUpdateSponsor)
 		if err != nil {
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 			return
@@ -434,7 +434,7 @@ func UpdateStaffs(ctx *gin.Context) {
 		}
 	}
 	if req.Members != nil && len(req.Members) != 0 {
-		ok, err := enforcer.Enforce(user.Wallet, fmt.Sprintf("%s%d", api.ObjGuildPrefix, id), api.ActUpdateMember)
+		ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), fmt.Sprintf("%s%d", api.ObjGuildPrefix, id), api.ActUpdateMember)
 		if err != nil {
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 			return
@@ -445,12 +445,12 @@ func UpdateStaffs(ctx *gin.Context) {
 		}
 	}
 
-	// convert all wallet to lower case
+	// convert all wallet to checksum address
 	sponsors := lo.Map[string](req.Sponsors, func(item string, _ int) string {
-		return strings.ToLower(item)
+		return common.FormatUserWallet(item)
 	})
 	members := lo.Map[string](req.Members, func(item string, _ int) string {
-		return strings.ToLower(item)
+		return common.FormatUserWallet(item)
 	})
 
 	guild, err := model.GuildModel.Detail(db, uint(id))
@@ -488,7 +488,7 @@ func UpdateStaffs(ctx *gin.Context) {
 			// add roles for new sponsors
 			newSponsorGroupingPolicies := lo.Map(req.Sponsors, func(sponsor string, _ int) []string {
 				// g, 0xc13..1283 guild_sponsor_1
-				return []string{strings.ToLower(sponsor), fmt.Sprintf("%s%d", api.RoleGuildSponsorPrefix, guild.ID)}
+				return []string{common.FormatUserWallet(sponsor), fmt.Sprintf("%s%d", api.RoleGuildSponsorPrefix, guild.ID)}
 			})
 			_, err = enforcer.AddGroupingPolicies(newSponsorGroupingPolicies)
 			if err != nil {
@@ -662,7 +662,7 @@ func UpdateBudget(ctx *gin.Context) {
 
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
-	ok, err := enforcer.Enforce(user.Wallet, fmt.Sprintf("%s%d", api.ObjGuildPrefix, id), api.ActUpdateBudget)
+	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), fmt.Sprintf("%s%d", api.ObjGuildPrefix, id), api.ActUpdateBudget)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
@@ -714,7 +714,7 @@ func AddRelatedProposal(ctx *gin.Context) {
 
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
-	ok, err := enforcer.Enforce(user.Wallet, fmt.Sprintf("%s%d", api.ObjGuildPrefix, id), api.ActModify)
+	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), fmt.Sprintf("%s%d", api.ObjGuildPrefix, id), api.ActModify)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return

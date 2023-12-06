@@ -7,6 +7,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/shopspring/decimal"
 	"github.com/theseed-labs/os-backend/internal"
+	"github.com/theseed-labs/os-backend/internal/common"
 	"gorm.io/gorm"
 )
 
@@ -199,12 +200,12 @@ func (*treasuryAssetHelper) UpsertCurrentSeasonTreasuryDetailedRecord(db *gorm.D
 
 // WithdrawTreasureAsset get asset from treasury record
 func (*treasuryAssetHelper) WithdrawTreasureAsset(db *gorm.DB, assetName string, deltaValue decimal.Decimal, userWallet string, auditMsg string) error {
-	return TreasuryAssetHelper.ChangeCQTreasuryAssetValue(db, assetName, deltaValue, userWallet, auditMsg)
+	return TreasuryAssetHelper.ChangeCQTreasuryAssetValue(db, assetName, deltaValue, common.FormatUserWallet(userWallet), auditMsg)
 }
 
 // DepositTreasureAsset save asset back to treasury record
 func (*treasuryAssetHelper) DepositTreasureAsset(db *gorm.DB, assetName string, deltaValue decimal.Decimal, userWallet string, auditMsg string) error {
-	return TreasuryAssetHelper.ChangeCQTreasuryAssetValue(db, assetName, deltaValue.Neg(), userWallet, auditMsg)
+	return TreasuryAssetHelper.ChangeCQTreasuryAssetValue(db, assetName, deltaValue.Neg(), common.FormatUserWallet(userWallet), auditMsg)
 }
 
 // ChangeCQTreasuryAssetValue update asset value for current quarter treasury record, the value passed in deltaValue allows both positive and negative value

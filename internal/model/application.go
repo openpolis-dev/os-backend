@@ -203,7 +203,7 @@ func doAuditApplicationInTransaction(tx *gorm.DB, operatorWallet string, applica
 		ApplicationID: application.ID,
 		LogTs:         GetCurrentUtcEpochSecond(),
 		Operation:     action,
-		Operator:      operatorWallet,
+		Operator:      common.FormatUserWallet(operatorWallet),
 		PreState:      application.State,
 		PostState:     nextState,
 		ExtraData:     extraMsg,

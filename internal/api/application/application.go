@@ -17,6 +17,7 @@ import (
 	"github.com/samber/lo"
 	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api"
+	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/xuri/excelize/v2"
 	"gorm.io/gorm"
@@ -134,7 +135,7 @@ func Create(ctx *gin.Context) {
 				If(req.Entity == "project", fmt.Sprintf("%s%d", api.ObjProjPrefix, req.EntityId)).
 				ElseIf(req.Entity == "guild", fmt.Sprintf("%s%d", api.ObjGuildPrefix, req.EntityId)).
 				Else("")
-			ok, err := enforcer.Enforce(user.Wallet, obj, api.ActCreateApplication)
+			ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), obj, api.ActCreateApplication)
 			if err != nil {
 				ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 				return err
@@ -150,7 +151,7 @@ func Create(ctx *gin.Context) {
 			}
 
 			appBundle := model.AppBundle{
-				Applicant:    user.Wallet,
+				Applicant:    common.FormatUserWallet(user.Wallet),
 				EntityType:   req.Entity,
 				EntityId:     req.EntityId,
 				SeasonId:     seasonRecord.ID,
@@ -169,7 +170,7 @@ func Create(ctx *gin.Context) {
 
 			app := &model.Application{
 				Type:         appType,
-				Applicant:    user.Wallet,
+				Applicant:    common.FormatUserWallet(user.Wallet),
 				State:        model.ApplicationStateOpen,
 				EntityType:   req.Entity,
 				EntityId:     req.EntityId,
@@ -381,7 +382,7 @@ func BatchProcess(ctx *gin.Context) {
 	user, enforcer, db, _ := api.ForContext(ctx)
 
 	//  check permission: `(0x..., proj_and_guild, audit_app)`
-	ok, err := enforcer.Enforce(user.Wallet, api.ObjProjAndGuild, api.ActAuditApplication)
+	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), api.ObjProjAndGuild, api.ActAuditApplication)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
@@ -411,7 +412,7 @@ func BatchProcess(ctx *gin.Context) {
 
 	push := api.ForContextOnlyPush(ctx)
 
-	err = model.BatchAuditApplication(db, user.Wallet, &applications, model.AuditActionProcess, "", enforcer, push)
+	err = model.BatchAuditApplication(db, common.FormatUserWallet(user.Wallet), &applications, model.AuditActionProcess, "", enforcer, push)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, api.Reply{
 			Code: -1,
@@ -448,7 +449,7 @@ func BatchApprove(ctx *gin.Context) {
 	user, enforcer, db, _ := api.ForContext(ctx)
 
 	//  check permission: `(0x..., proj_and_guild, audit_app)`
-	ok, err := enforcer.Enforce(user.Wallet, api.ObjProjAndGuild, api.ActAuditApplication)
+	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), api.ObjProjAndGuild, api.ActAuditApplication)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
@@ -459,7 +460,7 @@ func BatchApprove(ctx *gin.Context) {
 	}
 
 	push := api.ForContextOnlyPush(ctx)
-	err = model.BatchAuditApplication(db, user.Wallet, &applications, model.AuditActionApprove, "", enforcer, push)
+	err = model.BatchAuditApplication(db, common.FormatUserWallet(user.Wallet), &applications, model.AuditActionApprove, "", enforcer, push)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, api.Reply{
 			Code: -1,
@@ -483,7 +484,7 @@ func BatchReject(ctx *gin.Context) {
 	user, enforcer, db, _ := api.ForContext(ctx)
 
 	//  check permission: `(0x..., proj_and_guild, audit_app)`
-	ok, err := enforcer.Enforce(user.Wallet, api.ObjProjAndGuild, api.ActAuditApplication)
+	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), api.ObjProjAndGuild, api.ActAuditApplication)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
@@ -494,7 +495,7 @@ func BatchReject(ctx *gin.Context) {
 	}
 
 	push := api.ForContextOnlyPush(ctx)
-	err = model.BatchAuditApplication(db, user.Wallet, &applications, model.AuditActionReject, "", enforcer, push)
+	err = model.BatchAuditApplication(db, common.FormatUserWallet(user.Wallet), &applications, model.AuditActionReject, "", enforcer, push)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, api.Reply{
 			Code: -1,
@@ -513,7 +514,7 @@ func BatchComplete(ctx *gin.Context) {
 	user, enforcer, db, _ := api.ForContext(ctx)
 
 	//  check permission: `(0x..., proj_and_guild, audit_app)`
-	ok, err := enforcer.Enforce(user.Wallet, api.ObjProjAndGuild, api.ActAuditApplication)
+	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), api.ObjProjAndGuild, api.ActAuditApplication)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
@@ -537,7 +538,7 @@ func BatchComplete(ctx *gin.Context) {
 	}
 
 	push := api.ForContextOnlyPush(ctx)
-	err = model.BatchAuditApplication(db, user.Wallet, &applications, model.AuditActionComplete, reqBody.Message, enforcer, push)
+	err = model.BatchAuditApplication(db, common.FormatUserWallet(user.Wallet), &applications, model.AuditActionComplete, reqBody.Message, enforcer, push)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, api.Reply{
 			Code: -1,
@@ -613,7 +614,7 @@ func auditApplication(ctx *gin.Context, application *model.Application, auditAct
 	push := api.ForContextOnlyPush(ctx)
 
 	//  check permission: `(0x..., proj_and_guild, audit_app)`
-	ok, err := enforcer.Enforce(user.Wallet, api.ObjProjAndGuild, api.ActAuditApplication)
+	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), api.ObjProjAndGuild, api.ActAuditApplication)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
@@ -624,7 +625,7 @@ func auditApplication(ctx *gin.Context, application *model.Application, auditAct
 	}
 
 	if application.ValidateAuditAction(auditAction) {
-		err = model.AuditApplication(db, user.Wallet, application, auditAction, auditMsg, enforcer, push)
+		err = model.AuditApplication(db, common.FormatUserWallet(user.Wallet), application, auditAction, auditMsg, enforcer, push)
 		if err != nil {
 			ctx.JSON(http.StatusBadRequest, api.Reply{
 				Code: -1,
