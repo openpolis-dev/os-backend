@@ -17,17 +17,31 @@ import (
 	"github.com/theseed-labs/os-backend/internal/storage"
 )
 
+// MySQL version
+//const dbQuery = `select season_id,
+//       target_user_wallet,
+//       sum(asset_amount) as season_total,
+//       seasons.name      as season_name,
+//       seasons.idx       as season_idx
+//from applications
+//         join seasons on season_id = seasons.id
+//where applications.type = 'NEW_REWARD'
+//  and applications.asset_name = 'SCR'
+//  and applications.sub_type IN (NULL ,"")
+//GROUP by season_id, target_user_wallet`
+
+// Pg version
 const dbQuery = `select season_id,
        target_user_wallet,
-       sum(asset_amount) as season_total,
+       sum(asset_amount::Decimal(20, 8)) as season_total,
        seasons.name      as season_name,
        seasons.idx       as season_idx
 from applications
          join seasons on season_id = seasons.id
 where applications.type = 'NEW_REWARD'
   and applications.asset_name = 'SCR'
-  and applications.sub_type IN (NULL ,"")
-GROUP by season_id, target_user_wallet`
+  and applications.sub_type IN (NULL ,'')
+GROUP by season_id, target_user_wallet, season_name, season_idx`
 
 const MetaforoTotalCreditRatio = "0.05"
 

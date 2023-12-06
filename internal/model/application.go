@@ -26,11 +26,11 @@ type Application struct {
 	ID uint `json:"id" gorm:"primaryKey"`
 
 	// application type
-	Type ApplicationType `json:"type"`
+	Type ApplicationType `json:"type" gorm:index`
 
 	// SubType saves an optional type for the application.
 	// And the data currently is only used by backend code, no frontend logic should relay on this
-	SubType string `json:"sub_type"`
+	SubType string `json:"sub_type" gorm:"index"`
 
 	// Member send this application
 	Applicant string `json:"applicant"`
@@ -74,7 +74,7 @@ type Application struct {
 	EntityId   uint   `json:"entity_id" gorm:"index"`
 
 	// Season information of application
-	SeasonId uint    `json:"season_id"`
+	SeasonId uint    `json:"season_id" gorm:"index"`
 	Season   *Season `json:"season"`
 
 	BundleId uint `json:"bundle_id"`
