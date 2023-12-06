@@ -8,6 +8,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	"github.com/theseed-labs/os-backend/internal"
+	"github.com/theseed-labs/os-backend/internal/common"
 	"gorm.io/gorm"
 )
 
@@ -252,7 +253,7 @@ func GenerateFrontendApplicationRecords(db *gorm.DB, queryParams *ListApplicatio
 
 	if queryParams.UserWallet != "" {
 		whereClause += " AND app.target_user_wallet = @target_user_wallet"
-		whereParams["target_user_wallet"] = strings.ToLower(strings.TrimSpace(queryParams.UserWallet))
+		whereParams["target_user_wallet"] = common.FormatUserWallet(queryParams.UserWallet)
 	}
 
 	if queryParams.SeasonId != 0 {

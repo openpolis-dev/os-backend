@@ -53,5 +53,5 @@ func ToChecksumAddress(address string) string {
 }
 
 func FormatUserWallet(wallet string) string {
-	return strings.TrimSpace(strings.ToLower(wallet))
+	return ToChecksumAddress(strings.TrimSpace(strings.ToLower(wallet)))
 }

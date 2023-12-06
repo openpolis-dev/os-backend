@@ -14,6 +14,7 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api"
+	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/sdk"
 	"github.com/xiaosongfu/gormfind"
 	"gorm.io/datatypes"
@@ -349,7 +350,7 @@ func (app *Application) GetLatestAuditLog(db *gorm.DB) (*ApplicationAuditLog, er
 
 func userWalletRecordExisting(db *gorm.DB, walletAddr string) error {
 	userCnt := int64(0)
-	err := db.Model(&User{}).Where("wallet = ?", strings.ToLower(walletAddr)).Count(&userCnt).Error
+	err := db.Model(&User{}).Where("wallet = ?", common.FormatUserWallet(walletAddr)).Count(&userCnt).Error
 	if err != nil {
 		return err
 	}

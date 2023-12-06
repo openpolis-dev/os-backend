@@ -2,7 +2,6 @@ package model
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -67,7 +66,7 @@ func (*userAssetRecordModel) CreateOrUpdate(db *gorm.DB, userWallet string, asse
 
 	if len(assetRecords) == 0 {
 		return db.Save(&UserAssetRecord{
-			UserWallet:       strings.TrimSpace(strings.ToLower(userWallet)),
+			UserWallet:       common.FormatUserWallet(userWallet),
 			AssetName:        assetName,
 			DealtAmount:      dealtAmount,
 			ProcessingAmount: processingAmount,

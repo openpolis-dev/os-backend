@@ -10,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api"
+	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/xiaosongfu/gormfind"
 	"gorm.io/gorm"
@@ -51,7 +52,7 @@ func List(ctx *gin.Context) {
 func MyList(ctx *gin.Context) {
 	user, db := api.ForContextUserAndDB(ctx)
 	page := api.ParseAndConvertPageParam(ctx)
-	querySeg := db.Model(model.Event{}).Where(model.Event{Initiator: strings.ToLower(user.Wallet)})
+	querySeg := db.Model(model.Event{}).Where(model.Event{Initiator: common.FormatUserWallet(user.Wallet)})
 	querySeg, err := updateQuerySegByState(ctx, querySeg)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.BadRequest(err))

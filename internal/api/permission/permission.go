@@ -2,11 +2,11 @@ package permission
 
 import (
 	"net/http"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/samber/lo"
 	"github.com/theseed-labs/os-backend/internal/api"
+	"github.com/theseed-labs/os-backend/internal/common"
 )
 
 type GrantRoleReq struct {
@@ -19,6 +19,7 @@ type role struct {
 }
 
 // GrantRole role to user
+//
 //	@Summary	Grant role to user
 //	@Tags		Permission
 //	@Accept		json
@@ -47,7 +48,7 @@ func GrantRole(ctx *gin.Context) {
 
 	policies := lo.Map(req.Grants, func(r role, _ int) []string {
 		// g, 0xc13..1283 event_manager
-		return []string{strings.ToLower(r.Wallet), r.Role}
+		return []string{common.FormatUserWallet(r.Wallet), r.Role}
 	})
 	_, err = enforcer.AddGroupingPolicies(policies)
 	if err != nil {
@@ -68,6 +69,7 @@ type RevokeRoleReq struct {
 }
 
 // RevokeRole role from user
+//
 //	@Summary	Revoke role from user
 //	@Tags		Permission
 //	@Accept		json
@@ -96,7 +98,7 @@ func RevokeRole(ctx *gin.Context) {
 
 	policies := lo.Map(req.Revokes, func(r role, _ int) []string {
 		// g, 0xc13..1283 event_manager
-		return []string{strings.ToLower(r.Wallet), r.Role}
+		return []string{common.FormatUserWallet(r.Wallet), r.Role}
 	})
 	_, err = enforcer.RemoveGroupingPolicies(policies)
 	if err != nil {

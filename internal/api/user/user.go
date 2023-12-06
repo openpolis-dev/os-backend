@@ -161,7 +161,7 @@ func Login(ctx *gin.Context) {
 
 	// verify sign
 	// --> query nonce
-	userNonce, err := model.UserNonceModel.RecentNonce(db, strings.ToLower(req.Wallet), cfg.Auth.NonceLifespan)
+	userNonce, err := model.UserNonceModel.RecentNonce(db, common.FormatUserWallet(req.Wallet), cfg.Auth.NonceLifespan)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
@@ -222,14 +222,14 @@ func Login(ctx *gin.Context) {
 	}
 
 	// query user
-	user, err := model.UserModel.Detail(db, strings.ToLower(req.Wallet))
+	user, err := model.UserModel.Detail(db, common.FormatUserWallet(req.Wallet))
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
 	if user == nil {
 		user = &model.User{
-			Wallet: strings.ToLower(req.Wallet),
+			Wallet: common.FormatUserWallet(req.Wallet),
 		}
 		err = model.UserModel.CreateOrUpdate(db, user)
 		if err != nil {
