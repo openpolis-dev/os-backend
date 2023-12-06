@@ -73,7 +73,7 @@ func RefreshNonce(ctx *gin.Context) {
 	refreshAt := time.Now().UnixMilli()
 	// update with new value
 	if userNonce == nil {
-		userNonce = &model.UserNonce{Wallet: req.Wallet}
+		userNonce = &model.UserNonce{Wallet: common.FormatUserWallet(req.Wallet)}
 	}
 	userNonce.Nonce = nonce
 	userNonce.RefreshAt = refreshAt
