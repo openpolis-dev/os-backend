@@ -491,12 +491,16 @@ func GetFrontendPermission(ctx *gin.Context) {
 	for ptype := range eModel["p"] {
 		policy := eModel.GetPolicy("p", ptype)
 		for i := range policy {
+			fmt.Printf("ptype: %s, policy: %+v\n", ptype, policy[i])
 			policies = append(policies, append([]string{ptype}, policy[i]...))
 		}
 	}
 	for ptype := range eModel["g"] {
 		role := eModel.GetPolicy("g", ptype)
 		for i := range role {
+			if eth_common.IsHexAddress(role[i][0]) {
+				role[i][0] = common.ToFrontendWallet(role[i][0])
+			}
 			policies = append(policies, append([]string{ptype}, role[i]...))
 		}
 	}
