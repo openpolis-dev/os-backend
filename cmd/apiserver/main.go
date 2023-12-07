@@ -213,6 +213,7 @@ func main() {
 		// season data
 		seasonsData := v1.Group("/seasons")
 		seasonsData.GET("/", season.List)
+		seasonsData.GET("/current", season.Current)
 
 		// some data service
 		// TODO: Move to authorized group
