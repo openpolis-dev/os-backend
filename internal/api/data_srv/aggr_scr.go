@@ -221,7 +221,10 @@ func AggrScr(ctx *gin.Context) {
 
 	// TotalCurrentSeasonCredit * MetaforoCreditRatio / TotalMetaforoActions
 	totalMetaforoCredits := totalSeasonCreditWithoutMint.Mul(decimal.RequireFromString(MetaforoTotalCreditRatio))
-	metaforoVoteRewardUnit := totalMetaforoCredits.Div(decimal.NewFromInt(int64(totalMetaforoVotes)))
+	metaforoVoteRewardUnit := decimal.Zero
+	if totalMetaforoVotes > 0 {
+		metaforoVoteRewardUnit = totalMetaforoCredits.Div(decimal.NewFromInt(int64(totalMetaforoVotes)))
+	}
 
 	var detailRecords []*CreditDetail
 	mintRewardData := make(map[string]string)
