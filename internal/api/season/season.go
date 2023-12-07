@@ -23,7 +23,7 @@ type SeasonResponse struct {
 //	@Router		/seasons/ [get]
 //	@Tag		seasons
 //
-//	@Success	200	{object}	model.Season
+//	@Success	200	{object}	[]SeasonResponse
 func List(ctx *gin.Context) {
 	db := api.ForContextOnlyDB(ctx)
 	var seasonRcds []*model.Season
@@ -43,4 +43,26 @@ func List(ctx *gin.Context) {
 	})
 	ctx.JSON(http.StatusOK, api.Success(&resp))
 
+}
+
+// Current returns the current season.
+//
+//	@Summary	returns current season
+//	@Router		/seasons/curr [get]
+//	@Tag		seasons
+//
+//	@Success	200	{object}	SeasonResponse
+func Current(ctx *gin.Context) {
+	db := api.ForContextOnlyDB(ctx)
+	currSeason, err := model.GetCurrentSeason(db)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		return
+	}
+	ctx.JSON(http.StatusOK, api.Success(&SeasonResponse{
+		ID:      currSeason.ID,
+		Name:    currSeason.Name,
+		StartAt: fmt.Sprintf("%d", currSeason.StartAt),
+		EndAt:   fmt.Sprintf("%d", currSeason.EndAt),
+	}))
 }
