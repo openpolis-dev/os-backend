@@ -124,35 +124,6 @@ func Create(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
-	// save project budgets
-	budgets := lo.Map[*BudgetParam, *model.ProjectBudget](req.Budgets, func(item *BudgetParam, _ int) *model.ProjectBudget {
-		return &model.ProjectBudget{
-			ProjectID:    proj.ID,
-			AssetName:    item.Name,
-			TotalAmount:  item.TotalAmount,
-			UsedAmount:   decimal.Zero,
-			RemainAmount: item.TotalAmount,
-			CreatedAt:    time.Now().In(internal.ProjectTimezone),
-			UpdatedAt:    time.Now().In(internal.ProjectTimezone),
-			CreateTs:     model.GetCurrentUtcEpochSecond(),
-			UpdateTs:     model.GetCurrentUtcEpochSecond()}
-	})
-	err = model.ProjectBudgetModel.Create(tx, budgets)
-	if err != nil {
-		tx.Rollback()
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
-		return
-	}
-
-	// Withdraw asset from treasure
-	for _, budget := range budgets {
-		err = model.TreasuryAssetHelper.WithdrawTreasureAsset(tx, budget.AssetName, budget.TotalAmount, common.FormatUserWallet(user.Wallet), fmt.Sprintf("Create project %d by %s", proj.ID, common.FormatUserWallet(user.Wallet)))
-		if err != nil {
-			tx.Rollback()
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
-			return
-		}
-	}
 
 	// commit transaction
 	tx.Commit()

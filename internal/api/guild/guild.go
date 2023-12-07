@@ -124,21 +124,7 @@ func Create(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
-	// save guild budgets
-	budgets := lo.Map[*BudgetParam, *model.GuildBudget](req.Budgets, func(item *BudgetParam, _ int) *model.GuildBudget {
-		return &model.GuildBudget{
-			GuildID:      guild.ID,
-			Name:         item.Name,
-			TotalAmount:  item.TotalAmount,
-			RemainAmount: item.TotalAmount,
-		}
-	})
-	err = model.GuildBudgetModel.Create(tx, budgets)
-	if err != nil {
-		tx.Rollback()
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
-		return
-	}
+
 	// commit transaction
 	tx.Commit()
 
