@@ -323,8 +323,14 @@ definitions:
         type: integer
       detailed_type:
         type: string
+      entity_id:
+        description: id field value from specified entity table
+        type: string
       entity_name:
         description: name field value from specified entity table
+        type: string
+      entity_type:
+        description: entity type from applications
         type: string
       process_ts:
         description: The timestamp this application been processed
@@ -539,40 +545,6 @@ definitions:
       update_ts:
         type: integer
     type: object
-  model.Season:
-    properties:
-      endAt:
-        type: integer
-      id:
-        type: integer
-      idx:
-        description: Numeric index for the season, will be used to calculate latest
-          credits in current season
-        type: integer
-      mintRewardAppBundleId:
-        description: app bundle id saves application for this season's reward application
-        type: integer
-      mintRewardConfirmed:
-        description: Whether mint reward has been confirmed and the timestamp of confirmation
-        type: boolean
-      mintRewardConfirmedAt:
-        type: integer
-      name:
-        type: string
-      seedSnapshotAt:
-        type: integer
-      seedSnapshotSaved:
-        description: Whether seed data snapshot has been taken and the timestamp of
-          snapshot
-        type: boolean
-      seedSnapshotSubmitter:
-        description: submitter for the seed snapshot
-        type: string
-      startAt:
-        description: StartAt and EndAt saves epoch second to avoid complex logic of
-          timezone
-        type: integer
-    type: object
   model.SpecialProjectType:
     enum:
     - city_hall
@@ -784,16 +756,6 @@ definitions:
       name:
         type: string
     type: object
-  publicdata.node:
-    properties:
-      total_supply:
-        type: string
-    type: object
-  publicdata.scr:
-    properties:
-      total_supply:
-        type: string
-    type: object
   push.CreateReq:
     properties:
       content:
@@ -880,6 +842,17 @@ definitions:
       wallet:
         type: string
     type: object
+  season.SeasonResponse:
+    properties:
+      end_at:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      start_at:
+        type: string
+    type: object
   user.LoginReply:
     properties:
       token:
@@ -889,6 +862,9 @@ definitions:
         type: integer
       user:
         $ref: '#/definitions/model.User'
+      user_verified:
+        description: for unipass user,if wallet signature not verified, will be false
+        type: boolean
     type: object
   user.LoginReq:
     properties:
@@ -1690,51 +1666,6 @@ paths:
       summary: list my projects
       tags:
       - Project
-  /public_data/contract/node:
-    get:
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/api.Reply'
-            - properties:
-                data:
-                  $ref: '#/definitions/publicdata.node'
-              type: object
-      summary: query NODE data from spp-indexer
-      tags:
-      - PublicData
-  /public_data/contract/scr:
-    get:
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/api.Reply'
-            - properties:
-                data:
-                  $ref: '#/definitions/publicdata.scr'
-              type: object
-      summary: query CR data from spp-indexer
-      tags:
-      - PublicData
-  /public_data/contract/seed:
-    get:
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/api.Reply'
-            - properties:
-                data:
-                  $ref: '#/definitions/publicdata.scr'
-              type: object
-      summary: query SEED data from spp-indexer
-      tags:
-      - PublicData
   /public_data/discord_member_count:
     get:
       consumes:
@@ -1893,8 +1824,18 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/model.Season'
+            items:
+              $ref: '#/definitions/season.SeasonResponse'
+            type: array
       summary: returns all seasons currently existing in database
+  /seasons/curr:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/season.SeasonResponse'
+      summary: returns current season
   /user/casbin:
     get:
       consumes:
