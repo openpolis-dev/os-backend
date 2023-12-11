@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"time"
@@ -14,8 +15,7 @@ import (
 
 var gormDB *gorm.DB
 
-// InitGormDB inits gorm database connector
-func InitGormDB(dsn string, dbSchema string) {
+func BuildGormClient(dbSchema string, dsn string) (*gorm.DB, error) {
 	// default logger config: https://github.com/go-gorm/gorm/blob/master/logger/logger.go#L74
 	dbLogger := logger.New(log.New(os.Stdout, "\r\n", log.LstdFlags), logger.Config{
 		SlowThreshold:             20 * time.Millisecond,
@@ -24,17 +24,22 @@ func InitGormDB(dsn string, dbSchema string) {
 		Colorful:                  true,
 	})
 
-	var err error
 	switch dbSchema {
 	case "mysql":
-		gormDB, err = gorm.Open(mysql.Open(dsn), &gorm.Config{Logger: dbLogger})
+		return gorm.Open(mysql.Open(dsn), &gorm.Config{Logger: dbLogger})
 	case "postgres", "pg":
-		gormDB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{Logger: dbLogger})
+		return gorm.Open(postgres.Open(dsn), &gorm.Config{Logger: dbLogger})
 	default:
-		panic("unsupported db schema")
+		return nil, fmt.Errorf("unsupported db schema: %s, dsn: %s", dbSchema, dsn)
 	}
+}
+
+// InitGormDB inits gorm database connector
+func InitGormDB(dsn string, dbSchema string) {
+	var err error
+	gormDB, err = BuildGormClient(dbSchema, dsn)
 	if err != nil {
-		panic("failed to connect database")
+		panic(fmt.Errorf("init gorm connection error: %+v", err))
 	}
 }
 
