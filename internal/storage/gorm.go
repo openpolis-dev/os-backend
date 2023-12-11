@@ -15,11 +15,11 @@ import (
 
 var gormDB *gorm.DB
 
-func BuildGormClient(dbSchema string, dsn string) (*gorm.DB, error) {
+func BuildGormClient(dbSchema string, dsn string, logLevel logger.LogLevel) (*gorm.DB, error) {
 	// default logger config: https://github.com/go-gorm/gorm/blob/master/logger/logger.go#L74
 	dbLogger := logger.New(log.New(os.Stdout, "\r\n", log.LstdFlags), logger.Config{
 		SlowThreshold:             20 * time.Millisecond,
-		LogLevel:                  logger.Info,
+		LogLevel:                  logLevel,
 		IgnoreRecordNotFoundError: false,
 		Colorful:                  true,
 	})
@@ -37,7 +37,7 @@ func BuildGormClient(dbSchema string, dsn string) (*gorm.DB, error) {
 // InitGormDB inits gorm database connector
 func InitGormDB(dsn string, dbSchema string) {
 	var err error
-	gormDB, err = BuildGormClient(dbSchema, dsn)
+	gormDB, err = BuildGormClient(dbSchema, dsn, logger.Info)
 	if err != nil {
 		panic(fmt.Errorf("init gorm connection error: %+v", err))
 	}
