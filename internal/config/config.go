@@ -69,6 +69,10 @@ type (
 		Notion         struct {
 			APIToken string `json:"APIToken" yaml:"APIToken"`
 		} `json:"notion" yaml:"notion"`
+		SafeVaults []struct {
+			ChainId int    `json:"chainId" yaml:"chainId"`
+			Wallet  string `json:"wallet" yaml:"wallet"`
+		} `json:"safeVaults" yaml:"safeVaults"`
 	}
 )
 

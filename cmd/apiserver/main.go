@@ -211,6 +211,7 @@ func main() {
 		publicData.GET("/notion/database/:id", publicdata.NotionDatabase)
 		publicData.GET("/notion/page/:id", publicdata.NotionPage)
 		publicData.GET("/notion/user/:id", publicdata.NotionUser)
+		publicData.GET("/safe_vault", publicdata.SafeVault)
 
 		// webhook routers
 		webhookGroup := v1.Group("/webhook")

@@ -1,7 +1,6 @@
 package publicdata
 
 import (
-	"math/big"
 	"net/http"
 	"sync"
 	"time"
@@ -36,7 +35,7 @@ func cacheLogic[C any, D any](ctx *gin.Context, cache *dataCache[C, D], cacheInS
 		}
 	}
 
-	if time.Now().Unix()-discordCache.updateTime > cacheInSeconds {
+	if time.Now().Unix()-cache.updateTime > cacheInSeconds {
 		log.Debug().Msgf("querying data...")
 
 		data, err := d()
@@ -51,26 +50,4 @@ func cacheLogic[C any, D any](ctx *gin.Context, cache *dataCache[C, D], cacheInS
 	}
 
 	ctx.JSON(http.StatusOK, api.Success(cache.data))
-}
-
-// ------ ------ ------ ------ ------ ------ ------ ------ ------
-
-// convert big.Int to float64
-func parseBigIntOnChainBalance(balance *big.Int, decimal int64) float64 {
-	deci := new(big.Int).Exp(big.NewInt(10), big.NewInt(decimal), nil) // 10^n
-	y := new(big.Float).SetInt(deci)
-
-	z := new(big.Float)
-	z.SetInt(balance)
-	_ = z.Quo(z, y) // `Quo` sets z to the rounded quotient x/y and returns z
-
-	// big.Float convert to float64
-	r, _ := z.Float64()
-	return r
-}
-
-// ------ ------ ------ ------ ------ ------ ------ ------ ------
-
-type InsightReply struct {
-	TotalSupply string `json:"totalSupply"`
 }
