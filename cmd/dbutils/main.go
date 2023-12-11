@@ -5,11 +5,14 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"strings"
 
+	"github.com/samber/lo"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/storage"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 var err error
@@ -55,23 +58,77 @@ func autoMigrateDb(db *gorm.DB) error {
 }
 
 func updateWallet(db *gorm.DB, tableName string, walletField string, whereClause string) error {
-	var walletList []string
-	err := db.Table(tableName).Where(whereClause).Distinct().Pluck(walletField, &walletList).Error
+	if tableName != "projects" && tableName != "guilds" {
+		var walletList []string
+		err := db.Table(tableName).Where(whereClause).Distinct().Pluck(walletField, &walletList).Error
 
-	if err != nil {
-		return err
-	}
-
-	return db.Transaction(func(tx *gorm.DB) error {
-		for _, origWallet := range walletList {
-			err = tx.Table(tableName).Where(fmt.Sprintf("%s = ?", walletField), origWallet).Update(walletField, common.FormatUserWallet(origWallet)).Error
-			if err != nil {
-				tx.Rollback()
-				return err
-			}
+		if err != nil {
+			return err
 		}
+
+		return db.Transaction(func(tx *gorm.DB) error {
+			for _, origWallet := range walletList {
+				// Only processing lower cased wallet address
+				if strings.ToLower(origWallet) == origWallet {
+					err = tx.Table(tableName).Where(fmt.Sprintf("%s = ?", walletField), origWallet).Update(walletField, common.FormatUserWallet(origWallet)).Error
+					if err != nil {
+						tx.Rollback()
+						return err
+					}
+				}
+			}
+			return nil
+		})
+	} else {
+		// Projects and Guilds saves user wallet address in `members` and `sponsors` fields, which are list of JSON object
+		var projectList []*model.Project
+		err := db.Model(&model.Project{}).Distinct().Select("id", "members", "sponsors").Find(&projectList).Error
+		if err != nil {
+			return err
+		}
+
+		err = db.Transaction(func(tx *gorm.DB) error {
+			for _, r := range projectList {
+				updatedMembers := lo.Map(r.Members, func(wallet string, _ int) string {
+					return common.FormatUserWallet(wallet)
+				})
+				updatedSponsors := lo.Map(r.Sponsors, func(wallet string, _ int) string {
+					return common.FormatUserWallet(wallet)
+				})
+				err = tx.Model(&model.Project{}).Where("id = ?", r.ID).Updates(model.Project{Members: updatedMembers, Sponsors: updatedSponsors}).Error
+				if err != nil {
+					tx.Rollback()
+					return err
+				}
+			}
+			return nil
+		})
+
+		var guildList []*model.Guild
+		err = db.Model(&model.Guild{}).Distinct().Select("id", "members", "sponsors").Find(&guildList).Error
+		if err != nil {
+			return err
+		}
+
+		err = db.Transaction(func(tx *gorm.DB) error {
+			for _, r := range guildList {
+				updatedMembers := lo.Map(r.Members, func(wallet string, _ int) string {
+					return common.FormatUserWallet(wallet)
+				})
+				updatedSponsors := lo.Map(r.Sponsors, func(wallet string, _ int) string {
+					return common.FormatUserWallet(wallet)
+				})
+				err = tx.Model(&model.Guild{}).Where("id = ?", r.ID).Updates(model.Guild{Members: updatedMembers, Sponsors: updatedSponsors}).Error
+				if err != nil {
+					tx.Rollback()
+					return err
+				}
+			}
+			return nil
+		})
+
 		return nil
-	})
+	}
 }
 
 func MigrateDB(config *MigrateConfig) error {
@@ -80,14 +137,14 @@ func MigrateDB(config *MigrateConfig) error {
 	scheme := config.Scheme
 	fmt.Printf("migrate config %+v\n", config)
 	if scheme != "" {
-		gormDB, err = storage.BuildGormClient(config.Scheme, config.Dsn)
+		gormDB, err = storage.BuildGormClient(config.Scheme, config.Dsn, logger.Warn)
 		if err != nil {
 			return err
 		}
 	} else {
 		dbUrl, err := url.Parse(config.Dsn)
 		scheme = dbUrl.Scheme
-		gormDB, err = storage.BuildGormClient(dbUrl.Scheme, config.Dsn)
+		gormDB, err = storage.BuildGormClient(dbUrl.Scheme, config.Dsn, logger.Warn)
 		if err != nil {
 			return err
 		}
@@ -103,6 +160,11 @@ func MigrateDB(config *MigrateConfig) error {
 	if config.UpgradeWalletFlag {
 		if scheme == "mysql" {
 			err = gormDB.Exec("SET foreign_key_checks = 0;").Error
+			if err != nil {
+				return err
+			}
+		} else if scheme == "postgres" {
+			err = gormDB.Exec("SET session_replication_role = 'replica';").Error
 			if err != nil {
 				return err
 			}
@@ -126,12 +188,28 @@ func MigrateDB(config *MigrateConfig) error {
 		if err = updateWallet(gormDB, "applications", "target_user_wallet", "target_user_wallet is not null"); err != nil {
 			return err
 		}
-		if err = updateWallet(gormDB, "application_audit_logs", "target_user_wallet", "target_user_wallet is not null"); err != nil {
+		if err = updateWallet(gormDB, "applications", "applicant", "applicant not in ('', null)"); err != nil {
+			return err
+		}
+		if err = updateWallet(gormDB, "pushes", "creator_wallet", "creator_wallet is not null"); err != nil {
+			return err
+		}
+		if err = updateWallet(gormDB, "user_nonces", "wallet", "1=1"); err != nil {
+			return err
+		}
+
+		// The wallet record in Projects and Guilds table are list of string, need to be handled in other way
+		if err = updateWallet(gormDB, "projects", "", ""); err != nil {
 			return err
 		}
 
 		if scheme == "mysql" {
 			err = gormDB.Exec("SET foreign_key_checks = 1;").Error
+			if err != nil {
+				return err
+			}
+		} else if scheme == "postgres" {
+			err = gormDB.Exec("SET session_replication_role = 'origin';").Error
 			if err != nil {
 				return err
 			}
