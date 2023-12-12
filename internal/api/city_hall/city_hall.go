@@ -13,6 +13,7 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api"
+	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"gorm.io/gorm"
 )
@@ -96,6 +97,7 @@ func Info(ctx *gin.Context) {
 //	@success	200			{string}	nil
 func UpdateBudget(ctx *gin.Context) {
 	user, enforcer, db, _ := api.ForContext(ctx)
+	formattedWallet := common.FormatUserWallet(user.Wallet)
 	cityHallProject, err := getOrCreateCityHallProject(db, enforcer)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall record error")))
@@ -110,7 +112,7 @@ func UpdateBudget(ctx *gin.Context) {
 	}
 
 	//  check permission
-	ok, err := enforcer.HasRoleForUser(user.Wallet, api.RoleHall)
+	ok, err := enforcer.HasRoleForUser(formattedWallet, api.RoleHall)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
@@ -177,7 +179,8 @@ func UpdateBudget(ctx *gin.Context) {
 //	@success	200			{string}	nil
 func UpdateMember(ctx *gin.Context) {
 	user, enforcer, db, _ := api.ForContext(ctx)
-	log.Debug().Msgf("update city hall request form user %s", user.Wallet)
+	formattedWallet := common.FormatUserWallet(user.Wallet)
+	log.Debug().Msgf("update city hall request form user %s", formattedWallet)
 	cityHallProject, err := getOrCreateCityHallProject(db, enforcer)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall record error")))
@@ -185,7 +188,7 @@ func UpdateMember(ctx *gin.Context) {
 	}
 
 	//  check permission
-	ok, err := enforcer.HasRoleForUser(user.Wallet, api.RoleHall)
+	ok, err := enforcer.HasRoleForUser(formattedWallet, api.RoleHall)
 	if err != nil {
 		log.Error().Msgf("check permission error %+v", err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
@@ -193,7 +196,7 @@ func UpdateMember(ctx *gin.Context) {
 	}
 
 	if !ok {
-		log.Warn().Msgf("permission deny for user %s", user.Wallet)
+		log.Warn().Msgf("permission deny for user %s", formattedWallet)
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
@@ -204,7 +207,7 @@ func UpdateMember(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
 		return
 	}
-	log.Debug().Msgf("city hall update member form user %s", user.Wallet)
+	log.Debug().Msgf("city hall update member form user %s", formattedWallet)
 
 	//if _, found := internal.CityhallGroupNames[req.GroupName]; !found {
 	//	ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("invalid group_name %s", req.GroupName)))
@@ -243,7 +246,8 @@ func UpdateMember(ctx *gin.Context) {
 //	@success	200			{string}	nil
 func BatchUpdateMembers(ctx *gin.Context) {
 	user, enforcer, db, _ := api.ForContext(ctx)
-	log.Debug().Msgf("update city hall request form user %s", user.Wallet)
+	formattedWallet := common.FormatUserWallet(user.Wallet)
+	log.Debug().Msgf("update city hall request form user %s", formattedWallet)
 	cityHallProject, err := getOrCreateCityHallProject(db, enforcer)
 	if err != nil {
 		log.Error().Msgf("get cityhall record error: %+v", err)
@@ -252,7 +256,7 @@ func BatchUpdateMembers(ctx *gin.Context) {
 	}
 
 	//  check permission
-	ok, err := enforcer.HasRoleForUser(user.Wallet, api.RoleHall)
+	ok, err := enforcer.HasRoleForUser(formattedWallet, api.RoleHall)
 	if err != nil {
 		log.Error().Msgf("check permission error %+v", err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
@@ -260,7 +264,7 @@ func BatchUpdateMembers(ctx *gin.Context) {
 	}
 
 	if !ok {
-		log.Warn().Msgf("permission deny for user %s", user.Wallet)
+		log.Warn().Msgf("permission deny for user %s", formattedWallet)
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
@@ -272,7 +276,7 @@ func BatchUpdateMembers(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
 		return
 	}
-	log.Debug().Msgf("city hall update member form user %s, request: %+v", user.Wallet, req)
+	log.Debug().Msgf("city hall update member form user %s, request: %+v", formattedWallet, req)
 
 	for _, updateMemberReq := range req {
 		statusCode, err := updateGroupedMembers(cityHallProject, updateMemberReq, db, enforcer)
@@ -316,12 +320,12 @@ func updateGroupedMembers(cityHallProject *model.Project, req *CityHallUpdateMem
 	if req.GroupName != "" {
 		if sponsors, found := cityHallProject.GroupedSponsors[req.GroupName]; found {
 			for _, sponsorWallet := range sponsors {
-				sponsorsMap[model.FormatUserWallet(sponsorWallet)] = true
+				sponsorsMap[common.FormatUserWallet(sponsorWallet)] = true
 			}
 		}
 	} else {
 		for _, sponsorWallet := range cityHallProject.Sponsors {
-			sponsorsMap[model.FormatUserWallet(sponsorWallet)] = true
+			sponsorsMap[common.FormatUserWallet(sponsorWallet)] = true
 		}
 	}
 
@@ -332,8 +336,8 @@ func updateGroupedMembers(cityHallProject *model.Project, req *CityHallUpdateMem
 	// Add member to policy group
 	var addHallGroupingPolicy [][]string
 	for _, memberAddr := range req.AddMember {
-		sponsorsMap[model.FormatUserWallet(memberAddr)] = true
-		addHallGroupingPolicy = append(addHallGroupingPolicy, []string{model.FormatUserWallet(memberAddr), api.RoleHall})
+		sponsorsMap[common.FormatUserWallet(memberAddr)] = true
+		addHallGroupingPolicy = append(addHallGroupingPolicy, []string{common.FormatUserWallet(memberAddr), api.RoleHall})
 	}
 
 	// Add user to hall group
@@ -349,8 +353,8 @@ func updateGroupedMembers(cityHallProject *model.Project, req *CityHallUpdateMem
 	// Remove member from policy group
 	var removeHallGroupingPolicy [][]string
 	for _, memberAddr := range req.RemoveMember {
-		sponsorsMap[model.FormatUserWallet(memberAddr)] = false
-		removeHallGroupingPolicy = append(removeHallGroupingPolicy, []string{model.FormatUserWallet(memberAddr), api.RoleHall})
+		sponsorsMap[common.FormatUserWallet(memberAddr)] = false
+		removeHallGroupingPolicy = append(removeHallGroupingPolicy, []string{common.FormatUserWallet(memberAddr), api.RoleHall})
 	}
 
 	// Remove user from hall group

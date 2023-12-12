@@ -1209,90 +1209,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/public_data/contract/node": {
-            "get": {
-                "tags": [
-                    "PublicData"
-                ],
-                "summary": "query NODE data from spp-indexer",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/api.Reply"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/publicdata.node"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            }
-        },
-        "/public_data/contract/scr": {
-            "get": {
-                "tags": [
-                    "PublicData"
-                ],
-                "summary": "query CR data from spp-indexer",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/api.Reply"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/publicdata.scr"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            }
-        },
-        "/public_data/contract/seed": {
-            "get": {
-                "tags": [
-                    "PublicData"
-                ],
-                "summary": "query SEED data from spp-indexer",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/api.Reply"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/publicdata.scr"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            }
-        },
         "/public_data/discord_member_count": {
             "get": {
                 "consumes": [
@@ -1553,7 +1469,23 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/model.Season"
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/season.SeasonResponse"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/seasons/curr": {
+            "get": {
+                "summary": "returns current season",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/season.SeasonResponse"
                         }
                     }
                 }
@@ -2386,8 +2318,16 @@ const docTemplate = `{
                 "detailed_type": {
                     "type": "string"
                 },
+                "entity_id": {
+                    "description": "id field value from specified entity table",
+                    "type": "string"
+                },
                 "entity_name": {
                     "description": "name field value from specified entity table",
+                    "type": "string"
+                },
+                "entity_type": {
+                    "description": "entity type from applications",
                     "type": "string"
                 },
                 "process_ts": {
@@ -2704,50 +2644,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "update_ts": {
-                    "type": "integer"
-                }
-            }
-        },
-        "model.Season": {
-            "type": "object",
-            "properties": {
-                "endAt": {
-                    "type": "integer"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "idx": {
-                    "description": "Numeric index for the season, will be used to calculate latest credits in current season",
-                    "type": "integer"
-                },
-                "mintRewardAppBundleId": {
-                    "description": "app bundle id saves application for this season's reward application",
-                    "type": "integer"
-                },
-                "mintRewardConfirmed": {
-                    "description": "Whether mint reward has been confirmed and the timestamp of confirmation",
-                    "type": "boolean"
-                },
-                "mintRewardConfirmedAt": {
-                    "type": "integer"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "seedSnapshotAt": {
-                    "type": "integer"
-                },
-                "seedSnapshotSaved": {
-                    "description": "Whether seed data snapshot has been taken and the timestamp of snapshot",
-                    "type": "boolean"
-                },
-                "seedSnapshotSubmitter": {
-                    "description": "submitter for the seed snapshot",
-                    "type": "string"
-                },
-                "startAt": {
-                    "description": "StartAt and EndAt saves epoch second to avoid complex logic of timezone",
                     "type": "integer"
                 }
             }
@@ -3074,22 +2970,6 @@ const docTemplate = `{
                 }
             }
         },
-        "publicdata.node": {
-            "type": "object",
-            "properties": {
-                "total_supply": {
-                    "type": "string"
-                }
-            }
-        },
-        "publicdata.scr": {
-            "type": "object",
-            "properties": {
-                "total_supply": {
-                    "type": "string"
-                }
-            }
-        },
         "push.CreateReq": {
             "type": "object",
             "properties": {
@@ -3214,6 +3094,23 @@ const docTemplate = `{
                 }
             }
         },
+        "season.SeasonResponse": {
+            "type": "object",
+            "properties": {
+                "end_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "start_at": {
+                    "type": "string"
+                }
+            }
+        },
         "user.LoginReply": {
             "type": "object",
             "properties": {
@@ -3226,6 +3123,10 @@ const docTemplate = `{
                 },
                 "user": {
                     "$ref": "#/definitions/model.User"
+                },
+                "user_verified": {
+                    "description": "for unipass user,if wallet signature not verified, will be false",
+                    "type": "boolean"
                 }
             }
         },

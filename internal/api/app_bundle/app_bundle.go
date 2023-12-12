@@ -12,6 +12,7 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api"
+	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"gorm.io/gorm"
 )
@@ -53,7 +54,7 @@ type ListAvailableProjectAndGuildResp struct {
 func ListAvailableProjectsAndGuilds(ctx *gin.Context) {
 	user, enforcer, db, _ := api.ForContext(ctx)
 
-	ok, err := enforcer.HasRoleForUser(user.Wallet, api.RoleHall)
+	ok, err := enforcer.HasRoleForUser(common.FormatUserWallet(user.Wallet), api.RoleHall)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
@@ -75,13 +76,13 @@ func ListAvailableProjectsAndGuilds(ctx *gin.Context) {
 			return
 		}
 	} else {
-		guilds, _, err = model.GuildModel.ListBySponsor(db, user.Wallet, nil)
+		guilds, _, err = model.GuildModel.ListBySponsor(db, common.FormatUserWallet(user.Wallet), nil)
 		if err != nil {
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 			return
 		}
 
-		projects, _, err = model.ProjectModel.ListBySponsor(db, user.Wallet, "open", nil, false)
+		projects, _, err = model.ProjectModel.ListBySponsor(db, common.FormatUserWallet(user.Wallet), "open", nil, false)
 		if err != nil {
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 			return
@@ -159,7 +160,6 @@ func ListAppBundle(ctx *gin.Context) {
 			log.Error().Msgf("query application error: %+v", err)
 			return AppBundleResponseRecord{}
 		}
-		log.Error().Msgf("frontApplicationRecords: %+v", frontApplicationRecords)
 
 		return AppBundleResponseRecord{
 			ID:         jointAppBundleEntityRcd.AppBundle.ID,
@@ -230,7 +230,7 @@ func CreateAppBundle(ctx *gin.Context) {
 		If(newAppBundleReq.Entity == "project", fmt.Sprintf("%s%d", api.ObjProjPrefix, newAppBundleReq.EntityId)).
 		ElseIf(newAppBundleReq.Entity == "guild", fmt.Sprintf("%s%d", api.ObjGuildPrefix, newAppBundleReq.EntityId)).
 		Else("")
-	ok, err := enforcer.Enforce(user.Wallet, obj, api.ActCreateApplication)
+	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), obj, api.ActCreateApplication)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
@@ -250,7 +250,7 @@ func CreateAppBundle(ctx *gin.Context) {
 	err = db.Transaction(func(tx *gorm.DB) error {
 		appBundle := model.AppBundle{
 			Comment:      newAppBundleReq.Comment,
-			Applicant:    user.Wallet,
+			Applicant:    common.FormatUserWallet(user.Wallet),
 			EntityType:   newAppBundleReq.Entity,
 			EntityId:     newAppBundleReq.EntityId,
 			SeasonId:     seasonRecord.ID,
@@ -267,7 +267,7 @@ func CreateAppBundle(ctx *gin.Context) {
 		appBundle.AppRecords = lo.Map(newAppBundleReq.Records, func(appRcdRequest *model.NewApplicationRequest, index int) *model.Application {
 			return &model.Application{
 				Type:             model.ApplicationNewReward,
-				Applicant:        user.Wallet,
+				Applicant:        common.FormatUserWallet(user.Wallet),
 				State:            model.ApplicationStateOpen,
 				CreatedAt:        time.Now().In(internal.ProjectTimezone),
 				UpdatedAt:        time.Now().In(internal.ProjectTimezone),
@@ -297,7 +297,7 @@ func CreateAppBundle(ctx *gin.Context) {
 				ApplicationID: app.ID,
 				LogTs:         model.GetCurrentUtcEpochSecond(),
 				Operation:     model.AuditActionNew,
-				Operator:      model.FormatUserWallet(user.Wallet),
+				Operator:      common.FormatUserWallet(user.Wallet),
 				PreState:      "",
 				PostState:     model.ApplicationStateOpen,
 			}
@@ -313,7 +313,7 @@ func CreateAppBundle(ctx *gin.Context) {
 			AppBundle:   appBundle,
 			LogTs:       model.GetCurrentUtcEpochSecond(),
 			Operation:   model.AuditActionNew,
-			Operator:    model.FormatUserWallet(user.Wallet),
+			Operator:    common.FormatUserWallet(user.Wallet),
 			PreState:    "",
 			PostState:   model.ApplicationStateOpen,
 			ExtraData:   "",
@@ -385,7 +385,7 @@ func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState
 	}
 
 	user, enforcer, db, _ := api.ForContext(ctx)
-	ok, err := enforcer.Enforce(user.Wallet, api.ObjProjAndGuild, api.ActAuditApplication)
+	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), api.ObjProjAndGuild, api.ActAuditApplication)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
@@ -424,7 +424,7 @@ func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState
 				AppBundle:   appBundleRcd,
 				LogTs:       model.GetCurrentUtcEpochSecond(),
 				Operation:   action,
-				Operator:    user.Wallet,
+				Operator:    common.FormatUserWallet(user.Wallet),
 				PreState:    model.ApplicationStateOpen,
 				PostState:   newState,
 				ExtraData:   "",
@@ -434,7 +434,7 @@ func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState
 			}
 
 			for _, appRcd := range appBundleRcd.AppRecords {
-				err = model.AuditApplication(tx, user.Wallet, appRcd, action, "", enforcer, push)
+				err = model.AuditApplication(tx, common.FormatUserWallet(user.Wallet), appRcd, action, "", enforcer, push)
 				if err != nil {
 					log.Error().Msgf("update application state error: %+v, app bundle: %+v", err, appBundleRcd)
 					tx.Rollback()
@@ -446,7 +446,7 @@ func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState
 					AppBundle:   appBundleRcd,
 					LogTs:       model.GetCurrentUtcEpochSecond(),
 					Operation:   action,
-					Operator:    user.Wallet,
+					Operator:    common.FormatUserWallet(user.Wallet),
 					PreState:    model.ApplicationStateOpen,
 					PostState:   newState,
 					ExtraData:   "",

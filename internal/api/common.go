@@ -1,6 +1,8 @@
 package api
 
 import (
+	"context"
+	"fmt"
 	"strconv"
 
 	"github.com/casbin/casbin/v2"
@@ -110,6 +112,21 @@ func ForContextDBAndConfig(ctx *gin.Context) (db *gorm.DB, cfg *config.Config) {
 	cfg, _ = ctx.Value(middleware.CfgKey).(*config.Config)
 
 	return
+}
+
+func GinContextFromContext(ctx context.Context) (*gin.Context, error) {
+	ginContext := ctx.Value(middleware.GinCtxKey)
+	if ginContext == nil {
+		err := fmt.Errorf("could not retrieve gin.Context")
+		return nil, err
+	}
+
+	gc, ok := ginContext.(*gin.Context)
+	if !ok {
+		err := fmt.Errorf("gin.Context has wrong type")
+		return nil, err
+	}
+	return gc, nil
 }
 
 // ------ ------ ------ ------ ------ ------ ------ ------ ------

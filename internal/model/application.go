@@ -14,6 +14,7 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api"
+	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/sdk"
 	"github.com/xiaosongfu/gormfind"
 	"gorm.io/datatypes"
@@ -25,11 +26,11 @@ type Application struct {
 	ID uint `json:"id" gorm:"primaryKey"`
 
 	// application type
-	Type ApplicationType `json:"type"`
+	Type ApplicationType `json:"type" gorm:index`
 
 	// SubType saves an optional type for the application.
 	// And the data currently is only used by backend code, no frontend logic should relay on this
-	SubType string `json:"sub_type"`
+	SubType string `json:"sub_type" gorm:"index"`
 
 	// Member send this application
 	Applicant string `json:"applicant"`
@@ -73,7 +74,7 @@ type Application struct {
 	EntityId   uint   `json:"entity_id" gorm:"index"`
 
 	// Season information of application
-	SeasonId uint    `json:"season_id"`
+	SeasonId uint    `json:"season_id" gorm:"index"`
 	Season   *Season `json:"season"`
 
 	BundleId uint `json:"bundle_id"`
@@ -202,7 +203,7 @@ func doAuditApplicationInTransaction(tx *gorm.DB, operatorWallet string, applica
 		ApplicationID: application.ID,
 		LogTs:         GetCurrentUtcEpochSecond(),
 		Operation:     action,
-		Operator:      operatorWallet,
+		Operator:      common.FormatUserWallet(operatorWallet),
 		PreState:      application.State,
 		PostState:     nextState,
 		ExtraData:     extraMsg,
@@ -339,7 +340,7 @@ func completeApplication(tx *gorm.DB, operatorWallet string, application *Applic
 
 func (app *Application) ListAuditLogs(db *gorm.DB) ([]*ApplicationAuditLog, error) {
 	querySeg := db.Model(&ApplicationAuditLog{}).Where("application_id = ?", app.ID)
-	return gormfind.Rows[ApplicationAuditLog](querySeg, nil)
+	return QueryRows[ApplicationAuditLog](querySeg, nil)
 }
 
 func (app *Application) GetLatestAuditLog(db *gorm.DB) (*ApplicationAuditLog, error) {
@@ -349,7 +350,7 @@ func (app *Application) GetLatestAuditLog(db *gorm.DB) (*ApplicationAuditLog, er
 
 func userWalletRecordExisting(db *gorm.DB, walletAddr string) error {
 	userCnt := int64(0)
-	err := db.Model(&User{}).Where("wallet = ?", strings.ToLower(walletAddr)).Count(&userCnt).Error
+	err := db.Model(&User{}).Where("wallet = ?", common.FormatUserWallet(walletAddr)).Count(&userCnt).Error
 	if err != nil {
 		return err
 	}

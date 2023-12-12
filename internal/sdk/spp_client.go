@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/rs/zerolog/log"
+	"github.com/theseed-labs/os-backend/internal/common"
 )
 
 type SeepassResponse struct {
@@ -91,7 +91,7 @@ func GetSppClient() *SppClient {
 }
 
 func (c *SppClient) GetSeepassData(wallet string) (*SeepassResponse, error) {
-	_wallet := strings.ToLower(wallet)
+	_wallet := common.FormatUserWallet(wallet)
 	endpoint := fmt.Sprintf("%s/seepass/%s", c.ApiBase, _wallet)
 	log.Debug().Msgf("get SeePASS data, endpoint %s", endpoint)
 
@@ -116,7 +116,7 @@ func (c *SppClient) GetSeepassData(wallet string) (*SeepassResponse, error) {
 }
 
 func (c *SppClient) UpdateProfile(wallet string, sppUpdateObject *SppUpdateProfileRequest) error {
-	_wallet := strings.ToLower(wallet)
+	_wallet := common.FormatUserWallet(wallet)
 	endpoint := fmt.Sprintf("%s/profile/%s", c.ApiBase, _wallet)
 	log.Debug().Msgf("update spp profile, endpoint %s, req data: %+v", endpoint, sppUpdateObject)
 	payload, err := json.Marshal(sppUpdateObject)

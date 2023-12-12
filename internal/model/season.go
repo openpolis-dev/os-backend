@@ -10,10 +10,10 @@ import (
 type Season struct {
 	ID uint `gorm:"primaryKey"`
 
-	Name string `gorm:"uniqueIndex size:32"`
+	Name string `gorm:"uniqueIndex:season_name;size:32"`
 
 	// Numeric index for the season, will be used to calculate latest credits in current season
-	Idx uint `gorm:"uniqueIndex size:32"`
+	Idx uint `gorm:"uniqueIndex:season_idx;size:32"`
 
 	// Whether mint reward has been confirmed and the timestamp of confirmation
 	MintRewardConfirmed   bool

@@ -10,6 +10,7 @@ import (
 )
 
 // NotionDatabase returns the list of notion database
+//
 //	@Summary	NotionDatabase returns the list of notion database
 //	@Tags		PublicData
 //	@Accept		json
@@ -70,6 +71,7 @@ func NotionDatabase(ctx *gin.Context) {
 }
 
 // NotionPage returns the detail of a notion page
+//
 //	@Summary	NotionPage returns the detail of a notion page
 //	@Tags		PublicData
 //	@Accept		json
@@ -99,6 +101,7 @@ func NotionPage(ctx *gin.Context) {
 }
 
 // NotionUser returns the detail of a notion user
+//
 //	@Summary	NotionUser returns the detail of a notion user
 //	@Tags		PublicData
 //	@Accept		json

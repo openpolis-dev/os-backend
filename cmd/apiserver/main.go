@@ -3,6 +3,12 @@ package main
 import (
 	"flag"
 
+	"github.com/99designs/gqlgen/graphql/handler"
+	"github.com/99designs/gqlgen/graphql/playground"
+	"github.com/theseed-labs/os-backend/internal/common"
+	"github.com/theseed-labs/os-backend/internal/graph/generated"
+	"github.com/theseed-labs/os-backend/internal/graph/resolver"
+
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
@@ -80,7 +86,7 @@ func main() {
 	}
 	// add default users
 	groupPolicies := lo.Map[string, []string](cfg.Casbin.SuperUsers, func(user string, _ int) []string {
-		return []string{user, api.RoleHall}
+		return []string{common.FormatUserWallet(user), api.RoleHall}
 	})
 	_, err = enforcer.AddGroupingPolicies(groupPolicies) // add default hall wallets
 	if err != nil {
@@ -98,7 +104,7 @@ func main() {
 	}
 
 	// setup database
-	storage.InitGormDB(cfg.DataSource.Dsn)
+	storage.InitGormDB(cfg.DataSource.Dsn, cfg.Casbin.DriverName)
 	storage.MigrateTables()
 	storage.SeedDbRecords()
 	db := storage.GetGormDB()
@@ -205,6 +211,7 @@ func main() {
 		publicData.GET("/notion/database/:id", publicdata.NotionDatabase)
 		publicData.GET("/notion/page/:id", publicdata.NotionPage)
 		publicData.GET("/notion/user/:id", publicdata.NotionUser)
+		publicData.GET("/safe_vault", publicdata.SafeVault)
 
 		// webhook routers
 		webhookGroup := v1.Group("/webhook")
@@ -309,5 +316,28 @@ func main() {
 
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
+	r.POST("/graphql/query", middleware.GqlAuth, middleware.GinContextToContextMiddleware, graphqlHandler())
+	r.GET("/graphql", middleware.GqlAuth, middleware.GinContextToContextMiddleware, playgroundHandler())
+
 	_ = r.Run()
+}
+
+// defining the Graphql handler
+func graphqlHandler() gin.HandlerFunc {
+	// NewExecutableSchema and Config are in the generated.go file
+	// Resolver is in the resolver.go file
+	h := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: &resolver.Resolver{}}))
+
+	return func(c *gin.Context) {
+		h.ServeHTTP(c.Writer, c.Request)
+	}
+}
+
+// defining the Playground handler
+func playgroundHandler() gin.HandlerFunc {
+	h := playground.Handler("GraphQL", "/graphql/query")
+
+	return func(c *gin.Context) {
+		h.ServeHTTP(c.Writer, c.Request)
+	}
 }
