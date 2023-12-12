@@ -41,7 +41,7 @@ from applications
 where applications.type = 'NEW_REWARD'
   and applications.asset_name = 'SCR'
   and applications.sub_type IN (NULL ,'')
-GROUP by season_id, target_user_wallet, season_name, season_idx`
+GROUP by season_id, target_user_wallet, seasons.name, season_idx`
 
 const MetaforoTotalCreditRatio = "0.05"
 
