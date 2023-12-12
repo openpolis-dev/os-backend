@@ -14,10 +14,10 @@ import (
 var db *gorm.DB
 
 const (
-	aliceWallet = "0x_alice_wallet"
-	bobWallet   = "0x_bob_wallet"
-	carolWallet = "0x_carol_wallet"
-	daveWallet  = "0x_dave_wallet"
+	aliceWallet = "0xB5238ed5a631895024d5dD91EbC4361b59276455"
+	bobWallet   = "0x74d0398ad57D0Ccd484f9dd83bDa094b0708be3d"
+	carolWallet = "0x5D6d5701e836108a0f3898f5E672dB30Aec5695a"
+	daveWallet  = "0x55b8D71B7D7b267C4dD97AE36F1ACA7377784758"
 
 	token1Name = "TTT"
 	token2Name = "AAT"

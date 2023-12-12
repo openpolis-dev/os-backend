@@ -4,13 +4,15 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
+	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api"
+	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk"
 )
@@ -75,12 +77,12 @@ func Create(ctx *gin.Context) {
 		return
 	}
 
-	// convert all wallet to lower case
+	// convert all wallet to checksum address
 	sponsors := lo.Map[string](req.Sponsors, func(item string, _ int) string {
-		return strings.ToLower(item)
+		return common.FormatUserWallet(item)
 	})
 	members := lo.Map[string](req.Members, func(item string, _ int) string {
-		return strings.ToLower(item)
+		return common.FormatUserWallet(item)
 	})
 	// remove duplicate sponsors and members
 	sponsors = lo.Uniq[string](sponsors)
@@ -93,7 +95,7 @@ func Create(ctx *gin.Context) {
 
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
-	ok, err := enforcer.Enforce(user.Wallet, api.ObjGuild, api.ActCreate)
+	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), api.ObjGuild, api.ActCreate)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
@@ -112,7 +114,9 @@ func Create(ctx *gin.Context) {
 		Sponsors:  sponsors,
 		Members:   members,
 		Proposals: proposals,
-		Creator:   user.Wallet,
+		Creator:   common.FormatUserWallet(user.Wallet),
+		CreateTs:  model.GetCurrentUtcEpochSecond(),
+		UpdateTs:  model.GetCurrentUtcEpochSecond(),
 	}
 	err = model.GuildModel.CreateOrUpdate(tx, &guild)
 	if err != nil {
@@ -120,21 +124,7 @@ func Create(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
-	// save guild budgets
-	budgets := lo.Map[*BudgetParam, *model.GuildBudget](req.Budgets, func(item *BudgetParam, _ int) *model.GuildBudget {
-		return &model.GuildBudget{
-			GuildID:      guild.ID,
-			Name:         item.Name,
-			TotalAmount:  item.TotalAmount,
-			RemainAmount: item.TotalAmount,
-		}
-	})
-	err = model.GuildBudgetModel.Create(tx, budgets)
-	if err != nil {
-		tx.Rollback()
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
-		return
-	}
+
 	// commit transaction
 	tx.Commit()
 
@@ -173,7 +163,7 @@ func Create(ctx *gin.Context) {
 	// add roles
 	sponsorGroupingPolicies := lo.Map(req.Sponsors, func(sponsor string, _ int) []string {
 		// g, 0xc13..1283 guild_sponsor_1
-		return []string{strings.ToLower(sponsor), fmt.Sprintf("%s%d", api.RoleGuildSponsorPrefix, guild.ID)}
+		return []string{common.FormatUserWallet(sponsor), fmt.Sprintf("%s%d", api.RoleGuildSponsorPrefix, guild.ID)}
 	})
 	//memberGroupingPolicies := lo.Map(req.Members, func(member string, _ int) []string {
 	//	// g, 0xc13..1283 guild_member_1
@@ -234,7 +224,7 @@ func Update(ctx *gin.Context) {
 
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
-	ok, err := enforcer.Enforce(user.Wallet, fmt.Sprintf("%s%d", api.ObjGuildPrefix, id), api.ActModify)
+	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), fmt.Sprintf("%s%d", api.ObjGuildPrefix, id), api.ActModify)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
@@ -266,6 +256,8 @@ func Update(ctx *gin.Context) {
 	guild.Name = req.Name
 	guild.Intro = req.Intro
 	guild.Desc = req.Desc
+	guild.UpdateTs = model.GetCurrentUtcEpochSecond()
+	guild.UpdatedAt = time.Now().In(internal.ProjectTimezone)
 	err = model.GuildModel.CreateOrUpdate(db, guild)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
@@ -310,13 +302,21 @@ func Detail(ctx *gin.Context) {
 		return
 	}
 
+	guild.Members = lo.Map(guild.Members, func(m string, _ int) string {
+		return common.ToFrontendWallet(m)
+	})
+
+	guild.Sponsors = lo.Map(guild.Sponsors, func(m string, _ int) string {
+		return common.ToFrontendWallet(m)
+	})
+
 	ctx.JSON(http.StatusOK, api.Success(&DetailReply{
 		Guild:   *guild,
 		Budgets: budgets,
 	}))
 }
 
-// List `GET /guilds?page=1&size=10&sort_field=created_at&sort_order=desc`
+// List `GET /guilds?page=1&size=10&sort_field=create_ts&sort_order=desc`
 //
 //	@Summary	List guilds
 //	@Tags		Guild
@@ -324,7 +324,7 @@ func Detail(ctx *gin.Context) {
 //	@Produce	json
 //	@Param		page		query		int		false	"page number, default: 1"
 //	@Param		size		query		int		false	"page size, default: 10"
-//	@Param		sort_field	query		string	false	"sort field, default: created_at"
+//	@Param		sort_field	query		string	false	"sort field, default: create_ts"
 //	@Param		sort_order	query		string	false	"sort order, default: desc"
 //	@Success	200			{object}	api.Reply{data=api.ListReplyData{rows=model.Guild}}
 //	@Router		/guilds [get]
@@ -349,7 +349,7 @@ func List(ctx *gin.Context) {
 
 // MyGuilds list my guilds
 //
-//	`GET /guilds/my?page=1&size=10&sort_field=created_at&sort_order=desc`
+//	`GET /guilds/my?page=1&size=10&sort_field=create_ts&sort_order=desc`
 //
 //	@Summary	list my guilds
 //	@Tags		Guild
@@ -357,7 +357,7 @@ func List(ctx *gin.Context) {
 //	@Produce	json
 //	@Param		page		query		int		false	"page number, default: 1"
 //	@Param		size		query		int		false	"page size, default: 10"
-//	@Param		sort_field	query		string	false	"sort field, default: created_at"
+//	@Param		sort_field	query		string	false	"sort field, default: create_ts"
 //	@Param		sort_order	query		string	false	"sort order, default: desc"
 //	@Success	200			{object}	api.Reply{data=api.ListReplyData{rows=model.Guild}}
 //	@Router		/guilds/my_guilds [get]
@@ -366,7 +366,7 @@ func MyGuilds(ctx *gin.Context) {
 
 	page := api.ParseAndConvertPageParam(ctx)
 
-	guilds, total, err := model.GuildModel.ListBySponsorOrMember(db, user.Wallet, page)
+	guilds, total, err := model.GuildModel.ListBySponsorOrMember(db, common.FormatUserWallet(user.Wallet), page)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
@@ -417,7 +417,7 @@ func UpdateStaffs(ctx *gin.Context) {
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
 	if req.Sponsors != nil && len(req.Sponsors) != 0 {
-		ok, err := enforcer.Enforce(user.Wallet, fmt.Sprintf("%s%d", api.ObjGuildPrefix, id), api.ActUpdateSponsor)
+		ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), fmt.Sprintf("%s%d", api.ObjGuildPrefix, id), api.ActUpdateSponsor)
 		if err != nil {
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 			return
@@ -428,7 +428,7 @@ func UpdateStaffs(ctx *gin.Context) {
 		}
 	}
 	if req.Members != nil && len(req.Members) != 0 {
-		ok, err := enforcer.Enforce(user.Wallet, fmt.Sprintf("%s%d", api.ObjGuildPrefix, id), api.ActUpdateMember)
+		ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), fmt.Sprintf("%s%d", api.ObjGuildPrefix, id), api.ActUpdateMember)
 		if err != nil {
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 			return
@@ -439,12 +439,12 @@ func UpdateStaffs(ctx *gin.Context) {
 		}
 	}
 
-	// convert all wallet to lower case
+	// convert all wallet to checksum address
 	sponsors := lo.Map[string](req.Sponsors, func(item string, _ int) string {
-		return strings.ToLower(item)
+		return common.FormatUserWallet(item)
 	})
 	members := lo.Map[string](req.Members, func(item string, _ int) string {
-		return strings.ToLower(item)
+		return common.FormatUserWallet(item)
 	})
 
 	guild, err := model.GuildModel.Detail(db, uint(id))
@@ -469,6 +469,8 @@ func UpdateStaffs(ctx *gin.Context) {
 			guild.Sponsors = lo.Uniq[string](guild.Sponsors)
 			// remove sponsors from members
 			guild.Sponsors = lo.Without[string](guild.Sponsors, guild.Members...)
+			guild.UpdateTs = model.GetCurrentUtcEpochSecond()
+			guild.UpdatedAt = time.Now().In(internal.ProjectTimezone)
 			err = model.GuildModel.CreateOrUpdate(tx, guild)
 			if err != nil {
 				tx.Rollback()
@@ -480,7 +482,7 @@ func UpdateStaffs(ctx *gin.Context) {
 			// add roles for new sponsors
 			newSponsorGroupingPolicies := lo.Map(req.Sponsors, func(sponsor string, _ int) []string {
 				// g, 0xc13..1283 guild_sponsor_1
-				return []string{strings.ToLower(sponsor), fmt.Sprintf("%s%d", api.RoleGuildSponsorPrefix, guild.ID)}
+				return []string{common.FormatUserWallet(sponsor), fmt.Sprintf("%s%d", api.RoleGuildSponsorPrefix, guild.ID)}
 			})
 			_, err = enforcer.AddGroupingPolicies(newSponsorGroupingPolicies)
 			if err != nil {
@@ -505,6 +507,8 @@ func UpdateStaffs(ctx *gin.Context) {
 			guild.Members = lo.Uniq[string](guild.Members)
 			// remove members from sponsors
 			guild.Members = lo.Without[string](guild.Members, guild.Sponsors...)
+			guild.UpdateTs = model.GetCurrentUtcEpochSecond()
+			guild.UpdatedAt = time.Now().In(internal.ProjectTimezone)
 			err = model.GuildModel.CreateOrUpdate(tx, guild)
 			if err != nil {
 				tx.Rollback()
@@ -545,6 +549,8 @@ func UpdateStaffs(ctx *gin.Context) {
 		if req.Sponsors != nil && len(req.Sponsors) != 0 {
 			// remove guild sponsors
 			guild.Sponsors = lo.Without[string](guild.Sponsors, sponsors...)
+			guild.UpdateTs = model.GetCurrentUtcEpochSecond()
+			guild.UpdatedAt = time.Now().In(internal.ProjectTimezone)
 			err = model.GuildModel.CreateOrUpdate(tx, guild)
 			if err != nil {
 				tx.Rollback()
@@ -577,6 +583,8 @@ func UpdateStaffs(ctx *gin.Context) {
 		if req.Members != nil && len(req.Members) != 0 {
 			// remove guild members
 			guild.Members = lo.Without[string](guild.Members, members...)
+			guild.UpdateTs = model.GetCurrentUtcEpochSecond()
+			guild.UpdatedAt = time.Now().In(internal.ProjectTimezone)
 			err = model.GuildModel.CreateOrUpdate(tx, guild)
 			if err != nil {
 				tx.Rollback()
@@ -648,7 +656,7 @@ func UpdateBudget(ctx *gin.Context) {
 
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
-	ok, err := enforcer.Enforce(user.Wallet, fmt.Sprintf("%s%d", api.ObjGuildPrefix, id), api.ActUpdateBudget)
+	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), fmt.Sprintf("%s%d", api.ObjGuildPrefix, id), api.ActUpdateBudget)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
@@ -700,7 +708,7 @@ func AddRelatedProposal(ctx *gin.Context) {
 
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
-	ok, err := enforcer.Enforce(user.Wallet, fmt.Sprintf("%s%d", api.ObjGuildPrefix, id), api.ActModify)
+	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), fmt.Sprintf("%s%d", api.ObjGuildPrefix, id), api.ActModify)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
@@ -723,6 +731,8 @@ func AddRelatedProposal(ctx *gin.Context) {
 	guild.Proposals = append(guild.Proposals, proposalIDs...)
 	// remove duplicate proposals
 	guild.Proposals = lo.Uniq[string](guild.Proposals)
+	guild.UpdateTs = model.GetCurrentUtcEpochSecond()
+	guild.UpdatedAt = time.Now().In(internal.ProjectTimezone)
 	err = model.GuildModel.CreateOrUpdate(db, guild)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))

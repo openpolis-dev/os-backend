@@ -1,32 +1,45 @@
 package storage
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"time"
 
 	"github.com/theseed-labs/os-backend/internal/model"
 	"gorm.io/driver/mysql"
+	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
 
 var gormDB *gorm.DB
 
-// InitGormDB inits gorm database connector
-func InitGormDB(dsn string) {
+func BuildGormClient(dbSchema string, dsn string, logLevel logger.LogLevel) (*gorm.DB, error) {
 	// default logger config: https://github.com/go-gorm/gorm/blob/master/logger/logger.go#L74
 	dbLogger := logger.New(log.New(os.Stdout, "\r\n", log.LstdFlags), logger.Config{
 		SlowThreshold:             20 * time.Millisecond,
-		LogLevel:                  logger.Info,
+		LogLevel:                  logLevel,
 		IgnoreRecordNotFoundError: false,
 		Colorful:                  true,
 	})
 
+	switch dbSchema {
+	case "mysql":
+		return gorm.Open(mysql.Open(dsn), &gorm.Config{Logger: dbLogger})
+	case "postgres", "pg":
+		return gorm.Open(postgres.Open(dsn), &gorm.Config{Logger: dbLogger})
+	default:
+		return nil, fmt.Errorf("unsupported db schema: %s, dsn: %s", dbSchema, dsn)
+	}
+}
+
+// InitGormDB inits gorm database connector
+func InitGormDB(dsn string, dbSchema string) {
 	var err error
-	gormDB, err = gorm.Open(mysql.Open(dsn), &gorm.Config{Logger: dbLogger})
+	gormDB, err = BuildGormClient(dbSchema, dsn, logger.Info)
 	if err != nil {
-		panic("failed to connect database")
+		panic(fmt.Errorf("init gorm connection error: %+v", err))
 	}
 }
 

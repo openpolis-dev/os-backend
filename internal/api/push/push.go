@@ -6,7 +6,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
+	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api"
+	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk"
 )
@@ -42,7 +44,7 @@ func Create(ctx *gin.Context) {
 
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
-	ok, err := enforcer.Enforce(user.Wallet, api.ObjPush, api.ActCreatePush)
+	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), api.ObjPush, api.ActCreatePush)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
@@ -60,6 +62,10 @@ func Create(ctx *gin.Context) {
 		JumpURL:       req.JumpURL,
 		PushDate:      time.Now(),
 		//Status: 0,
+		CreatedAt: time.Now().In(internal.ProjectTimezone),
+		CreateTs:  model.GetCurrentUtcEpochSecond(),
+		UpdatedAt: time.Now().In(internal.ProjectTimezone),
+		UpdateTs:  model.GetCurrentUtcEpochSecond(),
 	}
 	err = model.PushModel.CreateOrUpdate(db, &push)
 	if err != nil {

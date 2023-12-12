@@ -1,6 +1,8 @@
 package api
 
 import (
+	"context"
+	"fmt"
 	"strconv"
 
 	"github.com/casbin/casbin/v2"
@@ -112,6 +114,21 @@ func ForContextDBAndConfig(ctx *gin.Context) (db *gorm.DB, cfg *config.Config) {
 	return
 }
 
+func GinContextFromContext(ctx context.Context) (*gin.Context, error) {
+	ginContext := ctx.Value(middleware.GinCtxKey)
+	if ginContext == nil {
+		err := fmt.Errorf("could not retrieve gin.Context")
+		return nil, err
+	}
+
+	gc, ok := ginContext.(*gin.Context)
+	if !ok {
+		err := fmt.Errorf("gin.Context has wrong type")
+		return nil, err
+	}
+	return gc, nil
+}
+
 // ------ ------ ------ ------ ------ ------ ------ ------ ------
 // ------ ------ ------ ------ ------ ------ ------ ------ ------
 
@@ -123,7 +140,7 @@ func ParseAndConvertPageParam(ctx *gin.Context) *gormfind.Page {
 	sortOrder := ctx.Query("sort_order")
 
 	if sortField == "" {
-		sortField = "created_at"
+		sortField = "create_ts"
 	}
 
 	if sortOrder == "" {
@@ -150,10 +167,14 @@ func ParseAndConvertPageParam(ctx *gin.Context) *gormfind.Page {
 }
 
 func GetLangFromQuery(ctx *gin.Context, defaultLang string) string {
-	lang, found := ctx.GetQuery("lang")
+	return GetQueryParamsOrDefaultValue(ctx, "lang", "en")
+}
+
+func GetQueryParamsOrDefaultValue(ctx *gin.Context, paramKey string, defaultValue string) string {
+	value, found := ctx.GetQuery(paramKey)
 	if found {
-		return lang
+		return value
 	} else {
-		return defaultLang
+		return defaultValue
 	}
 }

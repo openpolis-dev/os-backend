@@ -15,8 +15,10 @@ type ProjectBudget struct {
 	TotalAmount  decimal.Decimal `json:"total_amount" sql:"type:decimal(20,8);"`  // total_amount = used_amount + remain_amount
 	UsedAmount   decimal.Decimal `json:"used_amount" sql:"type:decimal(20,8);"`   // used_amount
 	RemainAmount decimal.Decimal `json:"remain_amount" sql:"type:decimal(20,8);"` // remain_amount
-	CreatedAt    time.Time       `json:"created_at"`
-	UpdatedAt    time.Time       `json:"updated_at"`
+	CreatedAt    time.Time       `json:"-"`
+	UpdatedAt    time.Time       `json:"-"`
+	CreateTs     int64           `json:"create_ts" gorm:"index"`
+	UpdateTs     int64           `json:"update_ts" gorm:"index"`
 }
 
 type projectBudgetModel struct{}
@@ -39,7 +41,7 @@ func (*projectBudgetModel) Detail(db *gorm.DB, id uint) (*ProjectBudget, error) 
 
 func (*projectBudgetModel) ListByProjectId(db *gorm.DB, projID uint) ([]*ProjectBudget, error) {
 	querySeg := db.Where("project_id = ?", projID)
-	return gormfind.Rows[ProjectBudget](querySeg, nil)
+	return QueryRows[ProjectBudget](querySeg, nil)
 }
 
 func (*projectBudgetModel) QueryByProjectIdAndBudgetProps(db *gorm.DB, projID uint, assetName string) (*ProjectBudget, error) {

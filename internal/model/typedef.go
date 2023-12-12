@@ -68,19 +68,21 @@ var applicationStateMap = map[ApplicationState]map[AuditActionType]ApplicationSt
 }
 
 type ListApplicationQueryParams struct {
-	Page       int    `form:"page"`
-	Size       int    `form:"size"`
-	SortField  string `form:"sort_field"`
-	SortOrder  string `form:"sort_order"`
-	State      string `form:"state"`
-	Type       string `form:"type"`
-	Entity     string `form:"entity"`
-	EntityId   string `form:"entity_id"`
-	StartDate  string `form:"start_date"`
-	EndDate    string `form:"end_date"`
-	Applicant  string `form:"applicant"`
-	UserWallet string `form:"user_wallet"`
-	SeasonId   int    `form:"season_id"`
+	Page         int    `form:"page"`
+	Size         int    `form:"size"`
+	SortField    string `form:"sort_field"`
+	SortOrder    string `form:"sort_order"`
+	State        string `form:"state"`
+	Type         string `form:"type"`
+	Entity       string `form:"entity"`
+	EntityId     string `form:"entity_id"`
+	AssetName    string `form:"asset_name"`
+	DetailedType string `form:"detailed_type"`
+	StartDate    string `form:"start_date"`
+	EndDate      string `form:"end_date"`
+	Applicant    string `form:"applicant"`
+	UserWallet   string `form:"user_wallet"`
+	SeasonId     int    `form:"season_id"`
 }
 
 type NewRewardAssetRecord struct {
@@ -105,67 +107,41 @@ type FrontendApplicationRecord struct {
 	ApplicationID    uint      `json:"application_id"`
 	SeasonName       string    `json:"season_name"`
 	EntityName       string    `json:"entity_name"` // name field value from specified entity table
-	CreatedAt        time.Time `json:"created_at"`
-	TargetUserWallet string    `json:"target_user_wallet"`
+	EntityId         string    `json:"entity_id"`   // id field value from specified entity table
+	EntityType       string    `json:"entity_type"` // entity type from applications
+	CreatedAt        time.Time `json:"-"`
 	AssetName        string    `json:"asset_name"`
 	Amount           string    `json:"amount"`
 	BudgetSource     string    `json:"budget_source"` // the data is from name field of project or guild
 	Status           string    `json:"status"`        // application status
 	DetailedType     string    `json:"detailed_type"`
 	Comment          string    `json:"comment"`
-	SubmitterWallet  string    `json:"submitter_wallet"`
-	SubmitterName    string    `json:"submitter_name"`
-	ReviewerWallet   string    `json:"reviewer_wallet"`
-	ReviewerName     string    `json:"reviewer_name"`
-	TransactionIds   string    `json:"transaction_ids"`
-}
+	AppBundleComment string    `json:"app_bundle_comment"`
 
-func (r *FrontendApplicationRecord) ToCSV() []string {
-	var createdAtStr string
-	var err error
-	createdAtStr, err = ConvertTimeToTzString(r.CreatedAt, ExportApplicationTimeZone, ExportApplicationTimeFormat)
-	if err != nil {
-		createdAtStr = r.CreatedAt.Format(time.RFC3339)
-	}
+	// target user data
+	TargetUserWallet string `json:"target_user_wallet"`
+	TargetUserAvatar string `json:"target_user_avatar"`
 
-	return []string{
-		createdAtStr,
-		r.TargetUserWallet,
-		r.AssetName,
-		r.Amount,
-		r.DetailedType,
-		r.BudgetSource,
-		r.Comment,
-		r.Status,
-		r.SubmitterName,
-		r.SubmitterWallet,
-		r.ReviewerName,
-		r.ReviewerWallet,
-	}
-}
+	// related users in the application process
+	ApplicantWallet string `json:"applicant_wallet"`
+	ApplicantAvatar string `json:"applicant_avatar"`
+	ApplyTs         int64  `json:"apply_ts"` // The timestamp this application been created
 
-func (r *FrontendApplicationRecord) ToXlsx() []any {
-	var createdAtStr string
-	var err error
-	createdAtStr, err = ConvertTimeToTzString(r.CreatedAt, ExportApplicationTimeZone, ExportApplicationTimeFormat)
-	if err != nil {
-		createdAtStr = r.CreatedAt.Format(time.RFC3339)
-	}
+	ReviewerWallet string `json:"reviewer_wallet"`
+	ReviewerAvatar string `json:"reviewer_avatar"`
+	ReviewTs       int64  `json:"review_ts"` // The timestamp this application been reviewed
 
-	return []any{
-		createdAtStr,
-		r.TargetUserWallet,
-		r.AssetName,
-		r.Amount,
-		r.DetailedType,
-		r.BudgetSource,
-		r.Comment,
-		r.Status,
-		r.SubmitterName,
-		r.SubmitterWallet,
-		r.ReviewerName,
-		r.ReviewerWallet,
-	}
+	ProcessorWallet string `json:"processor_wallet"`
+	ProcessorAvatar string `json:"processor_avatar"`
+	ProcessTs       int64  `json:"process_ts"` // The timestamp this application been processed
+
+	CompleterWallet string `json:"completer_wallet"`
+	CompleterAvatar string `json:"completer_avatar"`
+	CompleteTs      int64  `json:"complete_ts"` // The timestamp this application been marked as completed
+
+	TransactionIds string `json:"transaction_ids"`
+	CreateTs       int64  `json:"create_ts"`
+	UpdateTs       int64  `json:"update_ts"`
 }
 
 // jointAppEntityRslt saves applications records by guild and project join query
@@ -175,16 +151,11 @@ type jointAppEntityRslt struct {
 }
 
 func (r *jointAppEntityRslt) ToFrontedApplicationRecord(db *gorm.DB) *FrontendApplicationRecord {
+	var err error
 	var submitterWallet string
-	var submitterUsername string
 	var reviewerWallet string
-	var reviewerUsername string
 
 	submitterWallet = r.Application.Applicant
-	submitterUsername, err := UserModel.TryGetUsername(db, submitterWallet)
-	if err != nil {
-		return nil
-	}
 
 	auditlog := ApplicationAuditLog{}
 	err = db.Model(&ApplicationAuditLog{}).
@@ -199,11 +170,6 @@ func (r *jointAppEntityRslt) ToFrontedApplicationRecord(db *gorm.DB) *FrontendAp
 		}
 	} else {
 		reviewerWallet = auditlog.Operator
-		reviewerUsername, err = UserModel.TryGetUsername(db, reviewerWallet)
-		if err != nil {
-			log.Error().Msgf("Get username error: %+v", err)
-			return nil
-		}
 	}
 
 	var appSeasonRcd Season
@@ -218,6 +184,7 @@ func (r *jointAppEntityRslt) ToFrontedApplicationRecord(db *gorm.DB) *FrontendAp
 		SeasonName:       appSeasonRcd.Name,
 		EntityName:       r.Application.EntityType,
 		CreatedAt:        r.Application.CreatedAt,
+		CreateTs:         r.Application.CreateTs,
 		TargetUserWallet: r.Application.TargetUserWallet,
 		AssetName:        r.Application.AssetName,
 		Amount:           r.Application.AssetAmount.String(),
@@ -225,10 +192,8 @@ func (r *jointAppEntityRslt) ToFrontedApplicationRecord(db *gorm.DB) *FrontendAp
 		Status:           string(r.Application.State),
 		DetailedType:     r.Application.DetailedType,
 		Comment:          r.Application.Comment,
-		SubmitterWallet:  submitterWallet,
-		SubmitterName:    submitterUsername,
+		ApplicantWallet:  submitterWallet,
 		ReviewerWallet:   reviewerWallet,
-		ReviewerName:     reviewerUsername,
 		TransactionIds:   r.Application.CompleteMessage,
 	}
 }

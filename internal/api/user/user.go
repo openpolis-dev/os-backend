@@ -36,6 +36,13 @@ type RefreshNonceReply struct {
 	Nonce string `json:"nonce"`
 }
 
+// UserModelWithSomeSeepassData is a temporary solution for returning user data with some seepass data struct such as sb, seed and social network accounts.
+// The new struct here is to keep both old structure and new added seepass data.
+type UserModelWithSomeSeepassData struct {
+	model.User
+	Sp *sdk.SeepassResponse `json:"sp"`
+}
+
 // RefreshNonce refresh nonce
 //
 //	@Summary	Refresh nonce
@@ -55,7 +62,7 @@ func RefreshNonce(ctx *gin.Context) {
 
 	db := api.ForContextOnlyDB(ctx)
 
-	userNonce, err := model.UserNonceModel.Detail(db, req.Wallet)
+	userNonce, err := model.UserNonceModel.Detail(db, common.FormatUserWallet(req.Wallet))
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
@@ -66,7 +73,7 @@ func RefreshNonce(ctx *gin.Context) {
 	refreshAt := time.Now().UnixMilli()
 	// update with new value
 	if userNonce == nil {
-		userNonce = &model.UserNonce{Wallet: req.Wallet}
+		userNonce = &model.UserNonce{Wallet: common.FormatUserWallet(req.Wallet)}
 	}
 	userNonce.Nonce = nonce
 	userNonce.RefreshAt = refreshAt
@@ -126,6 +133,8 @@ type LoginReply struct {
 	Token    string      `json:"token"`
 	TokenExp int64       `json:"token_exp"` // time unit: seconds
 	User     *model.User `json:"user"`
+
+	UserVerified bool `json:"user_verified"` // for unipass user,if wallet signature not verified, will be false
 }
 
 // Login user login
@@ -147,9 +156,12 @@ func Login(ctx *gin.Context) {
 
 	_, _, db, cfg := api.ForContext(ctx)
 
+	// user verified flag
+	userVerified := true
+
 	// verify sign
 	// --> query nonce
-	userNonce, err := model.UserNonceModel.RecentNonce(db, strings.ToLower(req.Wallet), cfg.Auth.NonceLifespan)
+	userNonce, err := model.UserNonceModel.RecentNonce(db, common.FormatUserWallet(req.Wallet), cfg.Auth.NonceLifespan)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
@@ -182,30 +194,42 @@ func Login(ctx *gin.Context) {
 			return
 		}
 
-		account := eth_common.HexToAddress(req.Wallet)
-		sig := eth_common.FromHex(req.Signature)
-		msg := []byte(req.Message)
-
-		ok, err := unipass_sigverify.VerifyMessageSignature(context.Background(), account, msg, sig, req.IsEIP191Prefix, client)
+		// get AA's bytecode
+		bytecode, err := client.CodeAt(context.Background(), eth_common.HexToAddress(req.Wallet), nil)
 		if err != nil {
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 			return
 		}
-		if !ok {
-			ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("signature not match")))
-			return
+		// if bytecode is not empty, means the wallet has deployed
+		// 2023/12/04: only verify signature when AA is deployed!
+		if len(bytecode) > 0 {
+			account := eth_common.HexToAddress(req.Wallet)
+			sig := eth_common.FromHex(req.Signature)
+			msg := []byte(req.Message)
+
+			ok, err := unipass_sigverify.VerifyMessageSignature(context.Background(), account, msg, sig, req.IsEIP191Prefix, client)
+			if err != nil {
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+				return
+			}
+			if !ok {
+				ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("signature not match")))
+				return
+			}
+		} else {
+			userVerified = false
 		}
 	}
 
 	// query user
-	user, err := model.UserModel.Detail(db, strings.ToLower(req.Wallet))
+	user, err := model.UserModel.Detail(db, common.FormatUserWallet(req.Wallet))
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
 	if user == nil {
 		user = &model.User{
-			Wallet: strings.ToLower(req.Wallet),
+			Wallet: common.FormatUserWallet(req.Wallet),
 		}
 		err = model.UserModel.CreateOrUpdate(db, user)
 		if err != nil {
@@ -228,9 +252,10 @@ func Login(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, api.Success(&LoginReply{
-		Token:    token,
-		TokenExp: tokenExp,
-		User:     user,
+		Token:        token,
+		TokenExp:     tokenExp,
+		User:         user,
+		UserVerified: userVerified,
 	}))
 }
 
@@ -290,7 +315,7 @@ func Detail(ctx *gin.Context) {
 
 	seepassResp.Scr.Amount = "0"
 
-	// TODO: Move the hardcoded data to some const data or configuraiton service
+	// TODO: Move the hardcoded data to some const data or configuration service
 	seepassResp.Level.CurrentLv = "0"
 	seepassResp.Level.NextLv = "1"
 	seepassResp.Level.ScrToNextLv = "5000"
@@ -395,6 +420,7 @@ func Users(ctx *gin.Context) {
 	//})
 
 	db := api.ForContextOnlyDB(ctx)
+	sppClient := sdk.GetSppClient()
 
 	users, err := model.UserModel.List(db, wallets)
 	if err != nil {
@@ -413,7 +439,29 @@ func Users(ctx *gin.Context) {
 		}
 	}
 
-	ctx.JSON(http.StatusOK, api.Success(users))
+	var rslt []UserModelWithSomeSeepassData
+
+	// TODO: Query SeePASS to get user SBT and SEED info
+	for _, user := range users {
+		seepassResp, err := sppClient.GetSeepassData(user.Wallet)
+		if err != nil {
+			log.Warn().Msgf("query seepass data error, wallet: %s, error: %+v", user.Wallet, err)
+		}
+		if seepassResp != nil {
+			rslt = append(rslt, UserModelWithSomeSeepassData{
+				*user,
+				seepassResp,
+			})
+		} else {
+			rslt = append(rslt, UserModelWithSomeSeepassData{
+				*user,
+				nil,
+			})
+		}
+
+	}
+
+	ctx.JSON(http.StatusOK, api.Success(rslt))
 }
 
 // ------ ------ ------ ------ ------ ------ ------ ------ ------
@@ -443,12 +491,16 @@ func GetFrontendPermission(ctx *gin.Context) {
 	for ptype := range eModel["p"] {
 		policy := eModel.GetPolicy("p", ptype)
 		for i := range policy {
+			fmt.Printf("ptype: %s, policy: %+v\n", ptype, policy[i])
 			policies = append(policies, append([]string{ptype}, policy[i]...))
 		}
 	}
 	for ptype := range eModel["g"] {
 		role := eModel.GetPolicy("g", ptype)
 		for i := range role {
+			if eth_common.IsHexAddress(role[i][0]) {
+				role[i][0] = common.ToFrontendWallet(role[i][0])
+			}
 			policies = append(policies, append([]string{ptype}, role[i]...))
 		}
 	}

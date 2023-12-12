@@ -12,7 +12,9 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
+	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api"
+	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/sdk"
 	"github.com/xiaosongfu/gormfind"
 	"gorm.io/datatypes"
@@ -24,11 +26,11 @@ type Application struct {
 	ID uint `json:"id" gorm:"primaryKey"`
 
 	// application type
-	Type ApplicationType `json:"type"`
+	Type ApplicationType `json:"type" gorm:index`
 
 	// SubType saves an optional type for the application.
 	// And the data currently is only used by backend code, no frontend logic should relay on this
-	SubType string `json:"sub_type"`
+	SubType string `json:"sub_type" gorm:"index"`
 
 	// Member send this application
 	Applicant string `json:"applicant"`
@@ -42,8 +44,11 @@ type Application struct {
 	// CompleteMessage saves
 	CompleteMessage string `json:"complete_message"`
 
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	CreatedAt time.Time `json:"-"`
+	UpdatedAt time.Time `json:"-"`
+
+	CreateTs int64 `json:"create_ts" gorm:"index"`
+	UpdateTs int64 `json:"update_ts" gorm:"index"`
 
 	// DetailedType means a sub category of this application
 	// Value for this field saves data from Excel data
@@ -69,7 +74,7 @@ type Application struct {
 	EntityId   uint   `json:"entity_id" gorm:"index"`
 
 	// Season information of application
-	SeasonId uint    `json:"season_id"`
+	SeasonId uint    `json:"season_id" gorm:"index"`
 	Season   *Season `json:"season"`
 
 	BundleId uint `json:"bundle_id"`
@@ -82,7 +87,7 @@ type ApplicationAuditLog struct {
 	// Which application this audit log belongs to
 	ApplicationID uint `json:"application_id" gorm:"index"`
 
-	LogTs time.Time `json:"log_ts"`
+	LogTs int64 `json:"log_ts" gorm:"index"`
 
 	// Which operation this log record, which should be in new/approve/reject/process/complete
 	Operation AuditActionType `json:"operation"`
@@ -196,9 +201,9 @@ func doAuditApplicationInTransaction(tx *gorm.DB, operatorWallet string, applica
 	// Create audit log for application
 	if err := tx.Create(&ApplicationAuditLog{
 		ApplicationID: application.ID,
-		LogTs:         time.Now(),
+		LogTs:         GetCurrentUtcEpochSecond(),
 		Operation:     action,
-		Operator:      operatorWallet,
+		Operator:      common.FormatUserWallet(operatorWallet),
 		PreState:      application.State,
 		PostState:     nextState,
 		ExtraData:     extraMsg,
@@ -225,6 +230,8 @@ func doAuditApplicationInTransaction(tx *gorm.DB, operatorWallet string, applica
 		application.CompleteMessage = extraMsg
 	}
 
+	application.UpdatedAt = time.Now().In(internal.ProjectTimezone)
+	application.UpdateTs = GetCurrentUtcEpochSecond()
 	if err := tx.Save(&application).Error; err != nil {
 		return err
 	}
@@ -246,13 +253,14 @@ func doAuditApplicationInTransaction(tx *gorm.DB, operatorWallet string, applica
 
 func processingApplication(tx *gorm.DB, application *Application) error {
 	if application.Type == ApplicationNewReward {
+		// TODO: UserAssetRecord is not using for now, need to confirm how to handle this in the future
 		// Changes in OS ver 2.0
 		// * No budget for project and guild
 		// * One application only saves one type of asset, and the fields are extracted from DetailedData
 		// Update user asset record
-		if err := UserAssetRecordModel.CreateOrUpdate(tx, application.TargetUserWallet, application.AssetName, application.AssetAmount, decimal.Zero); err != nil {
-			return err
-		}
+		//if err := UserAssetRecordModel.CreateOrUpdate(tx, application.TargetUserWallet, application.AssetName, application.AssetAmount, decimal.Zero); err != nil {
+		//	return err
+		//}
 	}
 	return nil
 }
@@ -318,30 +326,31 @@ func completeApplication(tx *gorm.DB, operatorWallet string, application *Applic
 			//}
 		}
 	} else if application.Type == ApplicationNewReward {
+		// TODO: UserAssetRecord is not using for now, need to confirm how to handle this in the future
 		// For new reward application, the `entity_type` is required to get related db table
 		// The main steps for the post complete operation are:
 		// * Add the amount to target user
 
-		if err := UserAssetRecordModel.CompleteAssetTransaction(tx, application.TargetUserWallet, application.AssetName, application.AssetAmount); err != nil {
-			return err
-		}
+		//if err := UserAssetRecordModel.CompleteAssetTransaction(tx, application.TargetUserWallet, application.AssetName, application.AssetAmount); err != nil {
+		//	return err
+		//}
 	}
 	return nil
 }
 
 func (app *Application) ListAuditLogs(db *gorm.DB) ([]*ApplicationAuditLog, error) {
 	querySeg := db.Model(&ApplicationAuditLog{}).Where("application_id = ?", app.ID)
-	return gormfind.Rows[ApplicationAuditLog](querySeg, nil)
+	return QueryRows[ApplicationAuditLog](querySeg, nil)
 }
 
 func (app *Application) GetLatestAuditLog(db *gorm.DB) (*ApplicationAuditLog, error) {
-	querySeg := db.Model(&ApplicationAuditLog{}).Where("application_id = ?", app.ID).Order("log_ts desc")
+	querySeg := db.Model(&ApplicationAuditLog{}).Where("application_id = ?", app.ID).Order("log_ts desc").Order("id desc")
 	return gormfind.Row[ApplicationAuditLog](querySeg)
 }
 
 func userWalletRecordExisting(db *gorm.DB, walletAddr string) error {
 	userCnt := int64(0)
-	err := db.Model(&User{}).Where("wallet = ?", strings.ToLower(walletAddr)).Count(&userCnt).Error
+	err := db.Model(&User{}).Where("wallet = ?", common.FormatUserWallet(walletAddr)).Count(&userCnt).Error
 	if err != nil {
 		return err
 	}

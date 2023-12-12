@@ -3,6 +3,13 @@ package main
 import (
 	"flag"
 
+	"github.com/99designs/gqlgen/graphql/handler"
+	"github.com/99designs/gqlgen/graphql/playground"
+	"github.com/theseed-labs/os-backend/internal/common"
+	"github.com/theseed-labs/os-backend/internal/graph/generated"
+	"github.com/theseed-labs/os-backend/internal/graph/resolver"
+
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 	"github.com/theseed-labs/os-backend/internal/api/data_srv"
@@ -79,7 +86,7 @@ func main() {
 	}
 	// add default users
 	groupPolicies := lo.Map[string, []string](cfg.Casbin.SuperUsers, func(user string, _ int) []string {
-		return []string{user, api.RoleHall}
+		return []string{common.FormatUserWallet(user), api.RoleHall}
 	})
 	_, err = enforcer.AddGroupingPolicies(groupPolicies) // add default hall wallets
 	if err != nil {
@@ -97,7 +104,7 @@ func main() {
 	}
 
 	// setup database
-	storage.InitGormDB(cfg.DataSource.Dsn)
+	storage.InitGormDB(cfg.DataSource.Dsn, cfg.Casbin.DriverName)
 	storage.MigrateTables()
 	storage.SeedDbRecords()
 	db := storage.GetGormDB()
@@ -128,6 +135,10 @@ func main() {
 	}
 
 	r := gin.Default()
+	r.Use(middleware.RequestMetricsRecord())
+	r.Use(middleware.ResponseMetricsRecord())
+	r.GET("/prometheus_metrics", gin.WrapH(promhttp.Handler()))
+
 	r.Use(gzip.Gzip(gzip.DefaultCompression))
 
 	// setup cors refer: https://github.com/gin-contrib/cors
@@ -197,12 +208,10 @@ func main() {
 		// public data
 		publicData := v1.Group("/public_data")
 		publicData.GET("/discord_member_count", publicdata.DiscordData)
-		publicData.GET("/contract/seed", publicdata.SeedDataFromIndexer)
-		publicData.GET("/contract/scr", publicdata.SCRDataFromIndexer)
-		publicData.GET("/contract/node", publicdata.NodeDataFromIndexer)
 		publicData.GET("/notion/database/:id", publicdata.NotionDatabase)
 		publicData.GET("/notion/page/:id", publicdata.NotionPage)
 		publicData.GET("/notion/user/:id", publicdata.NotionUser)
+		publicData.GET("/safe_vault", publicdata.SafeVault)
 
 		// webhook routers
 		webhookGroup := v1.Group("/webhook")
@@ -292,6 +301,7 @@ func main() {
 		cityHallGroup := authorizedGroup.Group("/cityhall")
 		cityHallGroup.POST("/update_budget", city_hall.UpdateBudget)
 		cityHallGroup.POST("/update_members", city_hall.UpdateMember)
+		cityHallGroup.POST("/batch_update_members", city_hall.BatchUpdateMembers)
 
 		// push routers
 		pushGroup := authorizedGroup.Group("/push")
@@ -306,5 +316,28 @@ func main() {
 
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
+	r.POST("/graphql/query", middleware.GqlAuth, middleware.GinContextToContextMiddleware, graphqlHandler())
+	r.GET("/graphql", middleware.GqlAuth, middleware.GinContextToContextMiddleware, playgroundHandler())
+
 	_ = r.Run()
+}
+
+// defining the Graphql handler
+func graphqlHandler() gin.HandlerFunc {
+	// NewExecutableSchema and Config are in the generated.go file
+	// Resolver is in the resolver.go file
+	h := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: &resolver.Resolver{}}))
+
+	return func(c *gin.Context) {
+		h.ServeHTTP(c.Writer, c.Request)
+	}
+}
+
+// defining the Playground handler
+func playgroundHandler() gin.HandlerFunc {
+	h := playground.Handler("GraphQL", "/graphql/query")
+
+	return func(c *gin.Context) {
+		h.ServeHTTP(c.Writer, c.Request)
+	}
 }

@@ -4,12 +4,12 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api"
+	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/xiaosongfu/gormfind"
 	"gorm.io/gorm"
@@ -51,7 +51,7 @@ func List(ctx *gin.Context) {
 func MyList(ctx *gin.Context) {
 	user, db := api.ForContextUserAndDB(ctx)
 	page := api.ParseAndConvertPageParam(ctx)
-	querySeg := db.Model(model.Event{}).Where(model.Event{Initiator: strings.ToLower(user.Wallet)})
+	querySeg := db.Model(model.Event{}).Where(model.Event{Initiator: common.FormatUserWallet(user.Wallet)})
 	querySeg, err := updateQuerySegByState(ctx, querySeg)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.BadRequest(err))
@@ -70,7 +70,7 @@ func MyList(ctx *gin.Context) {
 func Create(ctx *gin.Context) {
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
-	ok, err := enforcer.Enforce(user.Wallet, api.ObjEvent, api.ActCreateEvent)
+	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), api.ObjEvent, api.ActCreateEvent)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
@@ -109,13 +109,17 @@ func Create(ctx *gin.Context) {
 	}
 
 	eventRecord := model.Event{
-		Initiator: strings.ToLower(user.Wallet),
+		Initiator: common.FormatUserWallet(user.Wallet),
 		Title:     req.Title,
 		CoverImg:  req.CoverImg,
 		Content:   req.Content,
 		StartAt:   startDate,
 		EndAt:     endDate,
 		Metadata:  req.Metadata,
+		CreatedAt: time.Now().In(internal.ProjectTimezone),
+		UpdatedAt: time.Now().In(internal.ProjectTimezone),
+		CreateTs:  model.GetCurrentUtcEpochSecond(),
+		UpdateTs:  model.GetCurrentUtcEpochSecond(),
 	}
 
 	err = db.Create(&eventRecord).Error
@@ -161,7 +165,7 @@ func Delete(ctx *gin.Context) {
 func Update(ctx *gin.Context) {
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
-	ok, err := enforcer.Enforce(user.Wallet, api.ObjEvent, api.ActCreateEvent)
+	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), api.ObjEvent, api.ActCreateEvent)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
@@ -199,6 +203,8 @@ func Update(ctx *gin.Context) {
 		return
 	}
 
+	eventRecord.UpdatedAt = time.Now().In(internal.ProjectTimezone)
+	eventRecord.UpdateTs = model.GetCurrentUtcEpochSecond()
 	err = db.Save(&eventRecord).Error
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.BadRequest(err))
@@ -245,7 +251,7 @@ func getMultipleRecords(page *gormfind.Page, querySeg *gorm.DB) (*api.ListReplyD
 		return nil, err
 	}
 
-	records, err := gormfind.Rows[model.Event](querySeg, page)
+	records, err := model.QueryRows[model.Event](querySeg, page)
 	if err != nil {
 		return nil, err
 	}

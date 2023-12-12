@@ -9,9 +9,11 @@ import (
 	"github.com/casbin/casbin/v2"
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
+	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
 	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api"
+	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"gorm.io/gorm"
 )
@@ -55,9 +57,19 @@ func getOrCreateCityHallProject(db *gorm.DB, enforcer *casbin.Enforcer) (*model.
 	return cityHallProject, err
 }
 
+// Info returns cityhall info
+//
+//	@summary	Return cityhall info
+//	@route		/cityhall/info [get]
+//
+//	@success	200	{object}	CityHallDetailReply
 func Info(ctx *gin.Context) {
 	_, enforcer, db, _ := api.ForContext(ctx)
 	cityHallProject, err := getOrCreateCityHallProject(db, enforcer)
+	cityHallProject.GroupedSponsors = lo.PickBy(cityHallProject.GroupedSponsors, func(_ string, members []string) bool {
+		return members != nil && len(members) != 0
+	})
+
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall record error")))
 		return
@@ -75,8 +87,17 @@ func Info(ctx *gin.Context) {
 	}))
 }
 
+// UpdateBudget updates cityhall budget for current season
+//
+//	@summary	updates cityhall budget for current season
+//	@route		/cityhall/update_budget [post]
+//
+//	@param		JsonBody	body		CityHallUpdateBudgetReq	true	"update budget request"
+//
+//	@success	200			{string}	nil
 func UpdateBudget(ctx *gin.Context) {
 	user, enforcer, db, _ := api.ForContext(ctx)
+	formattedWallet := common.FormatUserWallet(user.Wallet)
 	cityHallProject, err := getOrCreateCityHallProject(db, enforcer)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall record error")))
@@ -91,7 +112,7 @@ func UpdateBudget(ctx *gin.Context) {
 	}
 
 	//  check permission
-	ok, err := enforcer.HasRoleForUser(user.Wallet, api.RoleHall)
+	ok, err := enforcer.HasRoleForUser(formattedWallet, api.RoleHall)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
@@ -120,8 +141,10 @@ func UpdateBudget(ctx *gin.Context) {
 				TotalAmount:  req.TotalAmount,
 				UsedAmount:   decimal.Zero,
 				RemainAmount: req.TotalAmount,
-				CreatedAt:    time.Time{},
-				UpdatedAt:    time.Time{},
+				CreatedAt:    time.Now().In(internal.ProjectTimezone),
+				UpdatedAt:    time.Now().In(internal.ProjectTimezone),
+				CreateTs:     model.GetCurrentUtcEpochSecond(),
+				UpdateTs:     model.GetCurrentUtcEpochSecond(),
 			}
 			err = db.Create(&budget).Error
 			if err != nil {
@@ -137,6 +160,8 @@ func UpdateBudget(ctx *gin.Context) {
 	// update `TotalAmount`
 	budget.TotalAmount = req.TotalAmount
 	budget.RemainAmount = budget.TotalAmount.Sub(budget.UsedAmount)
+	budget.UpdatedAt = time.Now().In(internal.ProjectTimezone)
+	budget.UpdateTs = model.GetCurrentUtcEpochSecond()
 	err = model.ProjectBudgetModel.Update(db, &budget)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
@@ -146,9 +171,16 @@ func UpdateBudget(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, api.Success(nil))
 }
 
+// UpdateMember updates cityhall member, if group name existing in the request, the grouped sponsors field will be updated, otherwise the sponsors field will be updated
+//
+//	@summary	updates cityhall member, if group name existing in the request, the grouped sponsors field will be updated, otherwise the sponsors field will be updated
+//	@router		/cityhall/update_members [post]
+//	@param		JsonBody	body		CityHallUpdateMemberReq	true	"member data"
+//	@success	200			{string}	nil
 func UpdateMember(ctx *gin.Context) {
 	user, enforcer, db, _ := api.ForContext(ctx)
-	log.Debug().Msgf("update city hall request form user %s", user.Wallet)
+	formattedWallet := common.FormatUserWallet(user.Wallet)
+	log.Debug().Msgf("update city hall request form user %s", formattedWallet)
 	cityHallProject, err := getOrCreateCityHallProject(db, enforcer)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall record error")))
@@ -156,7 +188,7 @@ func UpdateMember(ctx *gin.Context) {
 	}
 
 	//  check permission
-	ok, err := enforcer.HasRoleForUser(user.Wallet, api.RoleHall)
+	ok, err := enforcer.HasRoleForUser(formattedWallet, api.RoleHall)
 	if err != nil {
 		log.Error().Msgf("check permission error %+v", err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
@@ -164,25 +196,121 @@ func UpdateMember(ctx *gin.Context) {
 	}
 
 	if !ok {
-		log.Warn().Msgf("permission deny for user %s", user.Wallet)
+		log.Warn().Msgf("permission deny for user %s", formattedWallet)
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
 
 	req := CityHallUpdateMemberReq{}
 	err = ctx.BindJSON(&req)
-	log.Debug().Msgf("city hall update member form user %s", user.Wallet)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
+		return
+	}
+	log.Debug().Msgf("city hall update member form user %s", formattedWallet)
 
 	//if _, found := internal.CityhallGroupNames[req.GroupName]; !found {
 	//	ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("invalid group_name %s", req.GroupName)))
 	//	return
 	//}
 
+	statusCode, err := updateGroupedMembers(cityHallProject, &req, db, enforcer)
+	switch statusCode {
+	case http.StatusBadRequest:
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
+		return
+	case http.StatusInternalServerError:
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		return
+	case http.StatusOK:
+		budgets, err := model.ProjectBudgetModel.ListByProjectId(db, cityHallProject.ID)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+			return
+		}
+
+		detail := &CityHallDetailReply{
+			Project: *cityHallProject,
+			Budgets: budgets,
+		}
+		ctx.JSON(http.StatusOK, api.Success(detail))
+		return
+	}
+}
+
+// BatchUpdateMembers updates multiple group member info in single request, the logic is same with single update
+//
+//	@summary	updates multiple group member info in single request, the logic is same with single update
+//	@router		/cityhall/batch_update_members [post]
+//	@param		JsonBody	body		[]CityHallUpdateMemberReq	true	"member data"
+//	@success	200			{string}	nil
+func BatchUpdateMembers(ctx *gin.Context) {
+	user, enforcer, db, _ := api.ForContext(ctx)
+	formattedWallet := common.FormatUserWallet(user.Wallet)
+	log.Debug().Msgf("update city hall request form user %s", formattedWallet)
+	cityHallProject, err := getOrCreateCityHallProject(db, enforcer)
+	if err != nil {
+		log.Error().Msgf("get cityhall record error: %+v", err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall record error")))
+		return
+	}
+
+	//  check permission
+	ok, err := enforcer.HasRoleForUser(formattedWallet, api.RoleHall)
+	if err != nil {
+		log.Error().Msgf("check permission error %+v", err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		return
+	}
+
+	if !ok {
+		log.Warn().Msgf("permission deny for user %s", formattedWallet)
+		ctx.JSON(http.StatusForbidden, api.Forbidden())
+		return
+	}
+
+	var req []*CityHallUpdateMemberReq
+	err = ctx.BindJSON(&req)
+	if err != nil {
+		log.Error().Msgf("parse body params error: %+v", err)
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
+		return
+	}
+	log.Debug().Msgf("city hall update member form user %s, request: %+v", formattedWallet, req)
+
+	for _, updateMemberReq := range req {
+		statusCode, err := updateGroupedMembers(cityHallProject, updateMemberReq, db, enforcer)
+		if err != nil {
+			switch statusCode {
+			case http.StatusBadRequest:
+				ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
+				return
+			case http.StatusInternalServerError:
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+				return
+			}
+		}
+	}
+	budgets, err := model.ProjectBudgetModel.ListByProjectId(db, cityHallProject.ID)
+	if err != nil {
+		log.Error().Msgf("get project budget error: %+v", err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		return
+	}
+
+	detail := &CityHallDetailReply{
+		Project: *cityHallProject,
+		Budgets: budgets,
+	}
+	ctx.JSON(http.StatusOK, api.Success(detail))
+}
+
+// updateGroupedMembers is used to parse CityHallUpdateMemberReq data and update city hall members
+func updateGroupedMembers(cityHallProject *model.Project, req *CityHallUpdateMemberReq, db *gorm.DB, enforcer *casbin.Enforcer) (int, error) {
 	// TODO: All checking groupName is "" is workaround logic for non grouped request, will be changed to grouped version after FE updated
 	if req.GroupName != "" {
 		if _, found := internal.CityhallGroupNames[req.GroupName]; !found {
-			ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("invalid group_name %s", req.GroupName)))
-			return
+			return http.StatusBadRequest, fmt.Errorf("invalid group_name %s", req.GroupName)
 		}
 	}
 
@@ -192,12 +320,12 @@ func UpdateMember(ctx *gin.Context) {
 	if req.GroupName != "" {
 		if sponsors, found := cityHallProject.GroupedSponsors[req.GroupName]; found {
 			for _, sponsorWallet := range sponsors {
-				sponsorsMap[model.FormatUserWallet(sponsorWallet)] = true
+				sponsorsMap[common.FormatUserWallet(sponsorWallet)] = true
 			}
 		}
 	} else {
 		for _, sponsorWallet := range cityHallProject.Sponsors {
-			sponsorsMap[model.FormatUserWallet(sponsorWallet)] = true
+			sponsorsMap[common.FormatUserWallet(sponsorWallet)] = true
 		}
 	}
 
@@ -208,44 +336,41 @@ func UpdateMember(ctx *gin.Context) {
 	// Add member to policy group
 	var addHallGroupingPolicy [][]string
 	for _, memberAddr := range req.AddMember {
-		sponsorsMap[model.FormatUserWallet(memberAddr)] = true
-		addHallGroupingPolicy = append(addHallGroupingPolicy, []string{model.FormatUserWallet(memberAddr), api.RoleHall})
+		sponsorsMap[common.FormatUserWallet(memberAddr)] = true
+		addHallGroupingPolicy = append(addHallGroupingPolicy, []string{common.FormatUserWallet(memberAddr), api.RoleHall})
 	}
 
 	// Add user to hall group
 	if len(addHallGroupingPolicy) > 0 {
 		log.Debug().Msgf("add hall group policy: %+v", addHallGroupingPolicy)
-		_, err = enforcer.AddGroupingPolicies(addHallGroupingPolicy)
+		_, err := enforcer.AddGroupingPolicies(addHallGroupingPolicy)
 		if err != nil {
 			log.Error().Msgf("add hall grouping policy error %+v, policy: %+v", err, addHallGroupingPolicy)
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
-			return
+			return http.StatusInternalServerError, err
 		}
 	}
 
 	// Remove member from policy group
 	var removeHallGroupingPolicy [][]string
 	for _, memberAddr := range req.RemoveMember {
-		sponsorsMap[model.FormatUserWallet(memberAddr)] = false
-		removeHallGroupingPolicy = append(removeHallGroupingPolicy, []string{model.FormatUserWallet(memberAddr), api.RoleHall})
+		sponsorsMap[common.FormatUserWallet(memberAddr)] = false
+		removeHallGroupingPolicy = append(removeHallGroupingPolicy, []string{common.FormatUserWallet(memberAddr), api.RoleHall})
 	}
 
 	// Remove user from hall group
 	if len(removeHallGroupingPolicy) > 0 {
 		log.Debug().Msgf("remove hall group policy: %+v", removeHallGroupingPolicy)
-		_, err = enforcer.RemoveGroupingPolicies(removeHallGroupingPolicy)
+		_, err := enforcer.RemoveGroupingPolicies(removeHallGroupingPolicy)
 		if err != nil {
 			log.Error().Msgf("remove hall grouping policy error %+v, policy: %+v", err, removeHallGroupingPolicy)
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
-			return
+			return http.StatusInternalServerError, err
 		}
 	}
 
 	// Save policy
-	err = enforcer.SavePolicy()
+	err := enforcer.SavePolicy()
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
-		return
+		return http.StatusInternalServerError, err
 	}
 
 	// Update sponsors record in DB
@@ -273,20 +398,12 @@ func UpdateMember(ctx *gin.Context) {
 		cityHallProject.Sponsors = newSponsorsList
 	}
 
+	cityHallProject.UpdatedAt = time.Now().In(internal.ProjectTimezone)
+	cityHallProject.UpdateTs = model.GetCurrentUtcEpochSecond()
 	err = db.Save(cityHallProject).Error
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
-		return
+		return http.StatusInternalServerError, err
 	}
 
-	budgets, err := model.ProjectBudgetModel.ListByProjectId(db, cityHallProject.ID)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
-		return
-	}
-
-	ctx.JSON(http.StatusOK, api.Success(&CityHallDetailReply{
-		Project: *cityHallProject,
-		Budgets: budgets,
-	}))
+	return http.StatusOK, nil
 }

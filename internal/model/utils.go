@@ -5,22 +5,96 @@ import (
 	"strings"
 	"time"
 
+	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	"github.com/theseed-labs/os-backend/internal"
+	"github.com/theseed-labs/os-backend/internal/common"
+	"github.com/xiaosongfu/gormfind"
 	"gorm.io/gorm"
 )
 
 const DateQueryFormat = "2006-01-02"
-const DateTimeFormat = "2006-01-02T15:04:05"
 
-const QueryApplicationsWithEntityNameBaseSQL = `SELECT applications.*,
-CASE
-   WHEN applications.entity_type = 'project' THEN projects.name
-   WHEN applications.entity_type = 'guild' THEN guilds.name
-   ELSE NULL END AS entity_name
-FROM applications
-   LEFT JOIN projects ON applications.entity_type = 'project' AND applications.entity_id = projects.id
-   LEFT JOIN guilds ON applications.entity_type = 'guild' AND applications.entity_id = guilds.id`
+const QueryApplicationsWithEntityNameBaseSQL = `
+SELECT app.id                         as application_id,
+       seasons.name                   as season_name,
+       app.entity_type                as entity_type,
+       CASE
+           WHEN app.entity_type = 'project' THEN projects.id
+           WHEN app.entity_type = 'guild' THEN guilds.id
+           ELSE NULL END              AS entity_id,
+       CASE
+           WHEN app.entity_type = 'project' THEN projects.name
+           WHEN app.entity_type = 'guild' THEN guilds.name
+           ELSE NULL END              AS entity_name,
+       CASE
+           WHEN app.entity_type = 'project' THEN projects.name
+           WHEN app.entity_type = 'guild' THEN guilds.name
+           ELSE NULL END              AS budget_source,
+       apply_aal.operator             as applicant_wallet,
+       apply_aal.log_ts               as apply_ts,
+       applicant.avatar               as applicant_avatar,
+
+       CASE
+           when app.type = 'CLOSE_PROJECT' AND app.state = 'COMPLETED' then completed_aal.operator
+           ELSE review_aal.operator END as reviewer_wallet,
+       CASE
+           when app.type = 'CLOSE_PROJECT' AND app.state = 'COMPLETED' then completed_aal.log_ts
+           ELSE review_aal.log_ts END as review_ts,
+       CASE
+           when app.type = 'CLOSE_PROJECT' AND app.state = 'COMPLETED' then completer.avatar
+           ELSE reviewer.avatar END as reviewer_avatar,
+
+       process_aal.operator           as processor_wallet,
+       process_aal.log_ts             as process_ts,
+       processor.avatar               as processor_avatar,
+
+       completed_aal.operator         as completer_wallet,
+       completed_aal.log_ts           as complete_ts,
+       completer.avatar               as completer_avatar,
+
+       app.create_ts                  as create_ts,
+       app.update_ts                  as update_ts,
+       app.comment                    as comment,
+       app.target_user_wallet,
+       target_user.avatar             as target_user_avatar,
+       app.asset_name,
+       app.asset_amount               as amount,
+       app.state                      as status,
+       app.detailed_type,
+       app.comment,
+       app.complete_message           as transaction_ids,
+       app_bundles.comment            as app_bundle_comment
+FROM applications as app
+         LEFT JOIN projects ON app.entity_type = 'project' AND app.entity_id = projects.id
+         LEFT JOIN guilds ON app.entity_type = 'guild' AND app.entity_id = guilds.id
+         LEFT JOIN seasons ON app.season_id = seasons.id
+         LEFT JOIN application_audit_logs completed_aal on app.id = completed_aal.application_id AND completed_aal.id =
+                                                                                                     (select max(id)
+                                                                                                      from application_audit_logs aal
+                                                                                                      where aal.application_id = app.id
+                                                                                                        and aal.post_state = 'completed')
+         LEFT JOIN application_audit_logs process_aal on app.id = process_aal.application_id AND process_aal.id =
+                                                                                                 (select max(id)
+                                                                                                  from application_audit_logs aal
+                                                                                                  where aal.application_id = app.id
+                                                                                                    and aal.post_state = 'processing')
+         LEFT JOIN application_audit_logs review_aal on app.id = review_aal.application_id AND review_aal.id =
+                                                                                               (select max(id)
+                                                                                                from application_audit_logs aal
+                                                                                                where aal.application_id = app.id
+                                                                                                  and aal.post_state IN ('approved', 'rejected'))
+         LEFT JOIN application_audit_logs apply_aal
+                   on app.id = apply_aal.application_id AND apply_aal.id = (select max(id)
+                                                                            from application_audit_logs aal
+                                                                            where aal.application_id = app.id
+                                                                              and aal.post_state = 'open')
+         LEFT JOIN users applicant ON applicant.wallet = apply_aal.operator
+         LEFT JOIN users reviewer ON reviewer.wallet = review_aal.operator
+         LEFT JOIN users processor ON processor.wallet = process_aal.operator
+         LEFT JOIN users completer ON completer.wallet = completed_aal.operator
+         LEFT JOIN users target_user ON target_user.wallet = app.target_user_wallet
+         LEFT JOIN app_bundles ON app.bundle_id = app_bundles.id`
 
 const QueryAppBundlesWithEntityNameBaseSQL = `SELECT app_bundles.*,
 CASE
@@ -64,7 +138,7 @@ func NewApplicationRecord(db *gorm.DB, application *Application) error {
 
 		if err := tx.Create(&ApplicationAuditLog{
 			ApplicationID: application.ID,
-			LogTs:         time.Now(),
+			LogTs:         GetCurrentUtcEpochSecond(),
 			Operation:     AuditActionNew,
 			Operator:      application.Applicant,
 			PreState:      "",
@@ -81,18 +155,14 @@ func NewApplicationRecord(db *gorm.DB, application *Application) error {
 	})
 }
 
-func GenerateFrontendApplicationRecordsByIds(db *gorm.DB, ids []uint64) ([]*FrontendApplicationRecord, error) {
-	querySQL := QueryApplicationsWithEntityNameBaseSQL + " WHERE applications.id IN ?"
+func GenerateFrontendApplicationRecordsByIds(db *gorm.DB, ids []uint) ([]*FrontendApplicationRecord, error) {
+	querySQL := QueryApplicationsWithEntityNameBaseSQL + " WHERE app.id IN ?"
 
-	var projectRcds []jointAppEntityRslt
-	err := db.Raw(querySQL, ids).Find(&projectRcds).Error
+	var rslt []*FrontendApplicationRecord
+	err := db.Raw(querySQL, ids).Find(&rslt).Error
 	if err != nil {
+		log.Error().Msgf("get application list error: %+v, query sql: %s, query params: %+v", err, querySQL, ids)
 		return nil, err
-	}
-
-	rslt := make([]*FrontendApplicationRecord, len(projectRcds))
-	for i, r := range projectRcds {
-		rslt[i] = r.ToFrontedApplicationRecord(db)
 	}
 
 	return rslt, nil
@@ -100,10 +170,12 @@ func GenerateFrontendApplicationRecordsByIds(db *gorm.DB, ids []uint64) ([]*Fron
 
 // GenerateFrontendApplicationRecords filter application records from DB with params and convert to predefined format used for frontend page
 // TODO: Check whether some generic function can be used to merge duplicated logic in this function and QueryAppBundleRecords
-func GenerateFrontendApplicationRecords(db *gorm.DB, queryParams *ListApplicationQueryParams) ([]*FrontendApplicationRecord, int64, error) {
+func GenerateFrontendApplicationRecords(db *gorm.DB, queryParams *ListApplicationQueryParams, pagedResult bool) ([]*FrontendApplicationRecord, int64, error) {
 	clearAppType := strings.ToLower(strings.TrimSpace(queryParams.Type))
 	clearEntity := strings.ToLower(strings.TrimSpace(queryParams.Entity))
 	clearState := strings.ToLower(strings.TrimSpace(queryParams.State))
+	clearAssetName := strings.ToLower(strings.TrimSpace(queryParams.AssetName))
+	clearDetailedType := strings.TrimSpace(queryParams.DetailedType)
 
 	if !lo.Contains([]string{"close_project", "new_reward"}, clearAppType) {
 		return nil, 0, fmt.Errorf("unknown application type %s", queryParams.Type)
@@ -118,45 +190,38 @@ func GenerateFrontendApplicationRecords(db *gorm.DB, queryParams *ListApplicatio
 	appType := MustParseApplicationType(queryParams.Type)
 
 	querySQL := QueryApplicationsWithEntityNameBaseSQL
-	whereClause := "\nWHERE applications.type = @app_type"
+	whereClause := "\nWHERE app.type = @app_type"
 	whereParams := map[string]any{"app_type": appType}
 
 	if clearEntity != "" {
-		whereClause += " AND applications.entity_type = @entity_type"
+		whereClause += " AND app.entity_type = @entity_type"
 		whereParams["entity_type"] = clearEntity
 	}
 
+	if clearAssetName != "" {
+		whereClause += " AND LOWER(app.asset_name) = @asset_name"
+		whereParams["asset_name"] = clearAssetName
+	}
+
+	if clearDetailedType != "" {
+		whereClause += " AND app.detailed_type like '%" + clearDetailedType + "%'"
+	}
+
 	if queryParams.Applicant != "" {
-		whereClause += " AND applications.applicant = @applicant"
-		whereParams["applicant"] = queryParams.Applicant
+		whereClause += " AND app.applicant = @applicant AND applicant.wallet IS NOT NULL"
+		whereParams["applicant"] = common.FormatUserWallet(queryParams.Applicant)
 	}
 
 	if queryParams.State != "" {
 		if !lo.Contains([]string{"open", "approved", "rejected", "processing", "completed"}, clearState) {
 			return nil, 0, fmt.Errorf("unknown state %s", queryParams.State)
 		}
-		whereClause += " AND applications.state = @state"
+		whereClause += " AND app.state = @state"
 		whereParams["state"] = ApplicationState(clearState)
 	}
 
-	if queryParams.StartDate != "" && queryParams.EndDate != "" {
-		startDate, err := time.Parse(DateQueryFormat, queryParams.StartDate)
-		if err != nil {
-			return nil, 0, err
-		}
-
-		endDate, err := time.Parse(DateQueryFormat, queryParams.EndDate)
-		if err != nil {
-			return nil, 0, err
-		}
-
-		whereClause += " AND applications.created_at >= @start_date AND applications.created_at <= @end_date"
-		whereParams["start_date"] = startDate
-		whereParams["end_date"] = endDate
-	}
-
 	if len(strings.TrimSpace(queryParams.EntityId)) != 0 {
-		whereClause += " AND applications.entity_id = @entity_id"
+		whereClause += " AND app.entity_id = @entity_id"
 		whereParams["entity_id"] = strings.TrimSpace(queryParams.EntityId)
 	}
 
@@ -172,28 +237,28 @@ func GenerateFrontendApplicationRecords(db *gorm.DB, queryParams *ListApplicatio
 	if clearAppType == "close_project" {
 		// For close_project type, the return records should have stable order
 		querySort := lo.Map(CloseProjectStateOrder, func(state string, index int) string {
-			return fmt.Sprintf("when applications.state='%s' then %d\n", state, index+1)
+			return fmt.Sprintf("when app.state='%s' then %d\n", state, index+1)
 		})
-		orderByClause = fmt.Sprintf("case \n%s end asc, applications.created_at desc", strings.Join(querySort, ""))
+		orderByClause = fmt.Sprintf("case \n%s end asc, app.create_ts desc", strings.Join(querySort, ""))
 	} else {
 		if queryParams.SortField == "" {
-			queryParams.SortField = "created_at"
+			queryParams.SortField = "create_ts"
 		}
 
 		if queryParams.SortOrder == "" {
 			queryParams.SortOrder = "desc"
 		}
 
-		orderByClause = fmt.Sprintf("applications.%s %s ", queryParams.SortField, queryParams.SortOrder)
+		orderByClause = fmt.Sprintf("app.%s %s ", queryParams.SortField, queryParams.SortOrder)
 	}
 
 	if queryParams.UserWallet != "" {
-		whereClause += " AND applications.target_user_wallet = @target_user_wallet"
-		whereParams["target_user_wallet"] = strings.ToLower(strings.TrimSpace(queryParams.UserWallet))
+		whereClause += " AND app.target_user_wallet = @target_user_wallet"
+		whereParams["target_user_wallet"] = common.FormatUserWallet(queryParams.UserWallet)
 	}
 
 	if queryParams.SeasonId != 0 {
-		whereClause += " AND applications.season_id = @season_id"
+		whereClause += " AND app.season_id = @season_id"
 		whereParams["season_id"] = queryParams.SeasonId
 	}
 
@@ -201,19 +266,20 @@ func GenerateFrontendApplicationRecords(db *gorm.DB, queryParams *ListApplicatio
 	total := db.Raw(querySQL+whereClause, whereParams).Scan(&[]map[string]any{}).RowsAffected
 
 	// TODO: This is the mysql style, need to find way to get db schema here and implement pg way
-	whereClause += fmt.Sprintf("\nORDER BY %s LIMIT @offset, @limit", orderByClause)
-	whereParams["offset"] = (queryParams.Page - 1) * queryParams.Size
-	whereParams["limit"] = queryParams.Size
+	whereClause += fmt.Sprintf("\nORDER BY %s ", orderByClause)
+	if pagedResult {
+		whereClause += "LIMIT @limit OFFSET @offset"
+		whereParams["offset"] = (queryParams.Page - 1) * queryParams.Size
+		whereParams["limit"] = queryParams.Size
+	}
 
-	var rcds []jointAppEntityRslt
-	err := db.Raw(querySQL+whereClause, whereParams).Find(&rcds).Error
+	var rslt []*FrontendApplicationRecord
+	err := db.Raw(querySQL+whereClause, whereParams).Find(&rslt).Error
 	if err != nil {
+		log.Error().Msgf("get application list error: %+v, query sql: %s, query params: %+v", err, querySQL+whereClause, whereParams)
 		return nil, 0, err
 	}
-	rslt := make([]*FrontendApplicationRecord, len(rcds))
-	for i, r := range rcds {
-		rslt[i] = r.ToFrontedApplicationRecord(db)
-	}
+
 	return rslt, total, nil
 }
 
@@ -228,7 +294,7 @@ func QueryAppBundleRecords(db *gorm.DB, queryParams *ListAppBundleQueryParams) (
 	}
 
 	querySQL := QueryAppBundlesWithEntityNameBaseSQL
-	whereClause := "\nHAVING app_bundles.shadow_record=false and type=@type"
+	whereClause := "\nWHERE app_bundles.shadow_record=false and type=@type"
 	whereParams := map[string]any{
 		"type": "NEW_REWARD",
 	}
@@ -258,7 +324,7 @@ func QueryAppBundleRecords(db *gorm.DB, queryParams *ListAppBundleQueryParams) (
 	}
 
 	if queryParams.SortField == "" {
-		queryParams.SortField = "created_at"
+		queryParams.SortField = "create_ts"
 	}
 
 	if queryParams.Size == 0 {
@@ -283,7 +349,7 @@ func QueryAppBundleRecords(db *gorm.DB, queryParams *ListAppBundleQueryParams) (
 	total := db.Raw(querySQL+whereClause, whereParams).Scan(&[]map[string]any{}).RowsAffected
 
 	// TODO: This is the mysql style, need to find way to get db schema here and implement pg way
-	whereClause += fmt.Sprintf("\nORDER BY app_bundles.%s %s LIMIT @offset, @limit", queryParams.SortField, queryParams.SortOrder)
+	whereClause += fmt.Sprintf("\nORDER BY app_bundles.%s %s LIMIT @limit OFFSET @offset", queryParams.SortField, queryParams.SortOrder)
 	whereParams["offset"] = (queryParams.Page - 1) * queryParams.Size
 	whereParams["limit"] = queryParams.Size
 
@@ -320,6 +386,31 @@ func GetMapValueOrDefault[K comparable, V any](origMap map[K]V, key K, defaultVa
 	}
 }
 
-func FormatUserWallet(wallet string) string {
-	return strings.TrimSpace(strings.ToLower(wallet))
+func GetCurrentUtcEpochSecond() int64 {
+	return time.Now().UTC().Unix()
+}
+
+// QueryRows is a function that queries rows from the database based on the provided query segment and pagination parameters.
+//
+// querySeg: A pointer to the gorm.DB object representing the query segment.
+// page: A pointer to the gormfind.Page object representing the pagination parameters.
+//
+// Returns a slice of pointers to type T representing the queried rows and an error if any occurred.
+// Note: This function is copied from gormfind.Rows, but update the Order field.
+// gormfind adds back quote (`) around the field name, which is OK in MySQL but syntax error in Postgres
+func QueryRows[T any](querySeg *gorm.DB, page *gormfind.Page) ([]*T, error) {
+	if page != nil {
+		if page.SortField != nil && page.Order != nil {
+			querySeg.Order(fmt.Sprintf("%s %s", *page.SortField, *page.Order))
+		}
+
+		querySeg.Offset(page.Size * (page.Page - 1)).Limit(page.Size)
+	}
+
+	var d []*T
+	if err := querySeg.Find(&d).Error; err != nil {
+		return nil, err
+	}
+
+	return d, nil
 }

@@ -12,6 +12,7 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api"
+	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"gorm.io/gorm"
 )
@@ -28,6 +29,7 @@ type AppBundleResponseRecord struct {
 	} `json:"entity"`
 	Applicant string                 `json:"applicant"`
 	ApplyTime time.Time              `json:"apply_time"`
+	ApplyTs   int64                  `json:"apply_ts"`
 	Reviewer  string                 `json:"reviewer"`
 	Comment   string                 `json:"comment"`
 	State     model.ApplicationState `json:"state"`
@@ -52,7 +54,7 @@ type ListAvailableProjectAndGuildResp struct {
 func ListAvailableProjectsAndGuilds(ctx *gin.Context) {
 	user, enforcer, db, _ := api.ForContext(ctx)
 
-	ok, err := enforcer.HasRoleForUser(user.Wallet, api.RoleHall)
+	ok, err := enforcer.HasRoleForUser(common.FormatUserWallet(user.Wallet), api.RoleHall)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
@@ -74,13 +76,13 @@ func ListAvailableProjectsAndGuilds(ctx *gin.Context) {
 			return
 		}
 	} else {
-		guilds, _, err = model.GuildModel.ListBySponsor(db, user.Wallet, nil)
+		guilds, _, err = model.GuildModel.ListBySponsor(db, common.FormatUserWallet(user.Wallet), nil)
 		if err != nil {
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 			return
 		}
 
-		projects, _, err = model.ProjectModel.ListBySponsor(db, user.Wallet, "open", nil, false)
+		projects, _, err = model.ProjectModel.ListBySponsor(db, common.FormatUserWallet(user.Wallet), "open", nil, false)
 		if err != nil {
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 			return
@@ -135,8 +137,7 @@ func ListAppBundle(ctx *gin.Context) {
 		assetSummary := make(map[string]decimal.Decimal)
 
 		var appRcds []*model.Application
-		err = db.Preload("Season").Model(&model.Application{}).
-			Where("bundle_id = ?", jointAppBundleEntityRcd.AppBundle.ID).
+		err = db.Where("bundle_id = ?", jointAppBundleEntityRcd.AppBundle.ID).
 			Find(&appRcds).
 			Error
 		if err != nil {
@@ -150,10 +151,20 @@ func ListAppBundle(ctx *gin.Context) {
 			assetSummary[appRcd.AssetName] = assetSummary[appRcd.AssetName].Add(appRcd.AssetAmount)
 		}
 
+		appIds := lo.Map(appRcds, func(appRcd *model.Application, index int) uint {
+			return appRcd.ID
+		})
+
+		frontApplicationRecords, err := model.GenerateFrontendApplicationRecordsByIds(db, appIds)
+		if err != nil {
+			log.Error().Msgf("query application error: %+v", err)
+			return AppBundleResponseRecord{}
+		}
+
 		return AppBundleResponseRecord{
 			ID:         jointAppBundleEntityRcd.AppBundle.ID,
 			SeasonName: jointAppBundleEntityRcd.SeasonName,
-			Records:    model.ToFrontendApplicationRecordList(db, appRcds, jointAppBundleEntityRcd.EntityName),
+			Records:    frontApplicationRecords,
 			Entity: struct {
 				Id   uint   `json:"id"`
 				Name string `json:"name"`
@@ -165,6 +176,7 @@ func ListAppBundle(ctx *gin.Context) {
 			},
 			Applicant: jointAppBundleEntityRcd.AppBundle.Applicant,
 			ApplyTime: jointAppBundleEntityRcd.AppBundle.CreatedAt,
+			ApplyTs:   jointAppBundleEntityRcd.AppBundle.CreateTs,
 			Comment:   jointAppBundleEntityRcd.AppBundle.Comment,
 			State:     jointAppBundleEntityRcd.AppBundle.State,
 			Assets: lo.MapToSlice(assetSummary, func(assetName string, amount decimal.Decimal) struct {
@@ -218,7 +230,7 @@ func CreateAppBundle(ctx *gin.Context) {
 		If(newAppBundleReq.Entity == "project", fmt.Sprintf("%s%d", api.ObjProjPrefix, newAppBundleReq.EntityId)).
 		ElseIf(newAppBundleReq.Entity == "guild", fmt.Sprintf("%s%d", api.ObjGuildPrefix, newAppBundleReq.EntityId)).
 		Else("")
-	ok, err := enforcer.Enforce(user.Wallet, obj, api.ActCreateApplication)
+	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), obj, api.ActCreateApplication)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
@@ -235,28 +247,38 @@ func CreateAppBundle(ctx *gin.Context) {
 		return
 	}
 
-	err = db.Transaction(func(tx *gorm.DB) error {
-		appBundle := model.AppBundle{
-			Comment:      newAppBundleReq.Comment,
-			Applicant:    user.Wallet,
-			EntityType:   newAppBundleReq.Entity,
-			EntityId:     newAppBundleReq.EntityId,
-			SeasonId:     seasonRecord.ID,
-			Season:       *seasonRecord,
-			State:        model.ApplicationStateOpen,
-			ShadowRecord: false,
-			CreatedAt:    time.Now().In(internal.ProjectTimezone),
-			UpdatedAt:    time.Now().In(internal.ProjectTimezone),
-			Type:         "NEW_REWARD",
-		}
+	appBundle := model.AppBundle{
+		Comment:      newAppBundleReq.Comment,
+		Applicant:    common.FormatUserWallet(user.Wallet),
+		EntityType:   newAppBundleReq.Entity,
+		EntityId:     newAppBundleReq.EntityId,
+		SeasonId:     seasonRecord.ID,
+		Season:       *seasonRecord,
+		State:        model.ApplicationStateOpen,
+		ShadowRecord: false,
+		CreatedAt:    time.Now().In(internal.ProjectTimezone),
+		UpdatedAt:    time.Now().In(internal.ProjectTimezone),
+		CreateTs:     model.GetCurrentUtcEpochSecond(),
+		UpdateTs:     model.GetCurrentUtcEpochSecond(),
+		Type:         "NEW_REWARD",
+	}
+	err = db.Model(model.AppBundle{}).Create(&appBundle).Error
+	if err != nil {
+		log.Error().Msgf("Create app bundle records error: %+v", err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create app bundle record error")))
+		return
+	}
 
+	err = db.Transaction(func(tx *gorm.DB) error {
 		appBundle.AppRecords = lo.Map(newAppBundleReq.Records, func(appRcdRequest *model.NewApplicationRequest, index int) *model.Application {
 			return &model.Application{
 				Type:             model.ApplicationNewReward,
-				Applicant:        user.Wallet,
+				Applicant:        common.FormatUserWallet(user.Wallet),
 				State:            model.ApplicationStateOpen,
 				CreatedAt:        time.Now().In(internal.ProjectTimezone),
 				UpdatedAt:        time.Now().In(internal.ProjectTimezone),
+				CreateTs:         model.GetCurrentUtcEpochSecond(),
+				UpdateTs:         model.GetCurrentUtcEpochSecond(),
 				DetailedType:     appRcdRequest.DetailedType,
 				Comment:          appRcdRequest.Comment,
 				TargetUserWallet: appRcdRequest.TargetUserWallet,
@@ -269,16 +291,35 @@ func CreateAppBundle(ctx *gin.Context) {
 			}
 		})
 
-		err = tx.Model(model.AppBundle{}).Create(&appBundle).Error
+		err = tx.Save(&appBundle).Error
 		if err != nil {
+			log.Error().Msgf("update app_bundle record error: %+v", err)
 			return err
 		}
+
+		// Create application audit logs
+		appAuditLogs := lo.Map(appBundle.AppRecords, func(app *model.Application, _ int) *model.ApplicationAuditLog {
+			return &model.ApplicationAuditLog{
+				ApplicationID: app.ID,
+				LogTs:         model.GetCurrentUtcEpochSecond(),
+				Operation:     model.AuditActionNew,
+				Operator:      common.FormatUserWallet(user.Wallet),
+				PreState:      "",
+				PostState:     model.ApplicationStateOpen,
+			}
+		})
+		err = tx.Model(model.ApplicationAuditLog{}).Create(&appAuditLogs).Error
+		if err != nil {
+			log.Error().Msgf("Create application audit log records error: %+v", err)
+			return err
+		}
+
 		return tx.Model(model.AppBundleAuditLog{}).Create(&model.AppBundleAuditLog{
 			AppBundleId: appBundle.ID,
 			AppBundle:   appBundle,
-			LogTs:       time.Now().In(internal.ProjectTimezone),
+			LogTs:       model.GetCurrentUtcEpochSecond(),
 			Operation:   model.AuditActionNew,
-			Operator:    user.Wallet,
+			Operator:    common.FormatUserWallet(user.Wallet),
 			PreState:    "",
 			PostState:   model.ApplicationStateOpen,
 			ExtraData:   "",
@@ -286,7 +327,8 @@ func CreateAppBundle(ctx *gin.Context) {
 	})
 
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		log.Error().Msgf("Transaction error: %+v", err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create application error")))
 		return
 	}
 
@@ -350,7 +392,7 @@ func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState
 	}
 
 	user, enforcer, db, _ := api.ForContext(ctx)
-	ok, err := enforcer.Enforce(user.Wallet, api.ObjProjAndGuild, api.ActAuditApplication)
+	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), api.ObjProjAndGuild, api.ActAuditApplication)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
@@ -377,6 +419,8 @@ func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState
 		for _, appBundleRcd := range appBundleRcds {
 
 			appBundleRcd.State = newState
+			appBundleRcd.UpdateTs = model.GetCurrentUtcEpochSecond()
+			appBundleRcd.UpdatedAt = time.Now().In(internal.ProjectTimezone)
 			err = tx.Save(&appBundleRcd).Error
 			if err != nil {
 				return err
@@ -385,9 +429,9 @@ func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState
 			err = tx.Model(model.AppBundleAuditLog{}).Create(&model.AppBundleAuditLog{
 				AppBundleId: appBundleRcd.ID,
 				AppBundle:   appBundleRcd,
-				LogTs:       time.Now().In(internal.ProjectTimezone),
+				LogTs:       model.GetCurrentUtcEpochSecond(),
 				Operation:   action,
-				Operator:    user.Wallet,
+				Operator:    common.FormatUserWallet(user.Wallet),
 				PreState:    model.ApplicationStateOpen,
 				PostState:   newState,
 				ExtraData:   "",
@@ -397,7 +441,7 @@ func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState
 			}
 
 			for _, appRcd := range appBundleRcd.AppRecords {
-				err = model.AuditApplication(tx, user.Wallet, appRcd, action, "", enforcer, push)
+				err = model.AuditApplication(tx, common.FormatUserWallet(user.Wallet), appRcd, action, "", enforcer, push)
 				if err != nil {
 					log.Error().Msgf("update application state error: %+v, app bundle: %+v", err, appBundleRcd)
 					tx.Rollback()
@@ -407,9 +451,9 @@ func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState
 				err = tx.Model(model.AppBundleAuditLog{}).Create(&model.AppBundleAuditLog{
 					AppBundleId: appBundleRcd.ID,
 					AppBundle:   appBundleRcd,
-					LogTs:       time.Now().In(internal.ProjectTimezone),
+					LogTs:       model.GetCurrentUtcEpochSecond(),
 					Operation:   action,
-					Operator:    user.Wallet,
+					Operator:    common.FormatUserWallet(user.Wallet),
 					PreState:    model.ApplicationStateOpen,
 					PostState:   newState,
 					ExtraData:   "",

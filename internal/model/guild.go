@@ -21,8 +21,11 @@ type Guild struct {
 
 	Creator string `json:"creator"`
 
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	CreatedAt time.Time `json:"-"`
+	UpdatedAt time.Time `json:"-"`
+
+	CreateTs int64 `json:"create_ts" gorm:"index"`
+	UpdateTs int64 `json:"update_ts" gorm:"index"`
 }
 
 type guildModel struct{}
@@ -46,7 +49,7 @@ func (*guildModel) List(db *gorm.DB, page *gormfind.Page) (data []*Guild, total 
 		return
 	}
 
-	data, err = gormfind.Rows[Guild](querySeg, page)
+	data, err = QueryRows[Guild](querySeg, page)
 	if err != nil {
 		return
 	}
@@ -56,13 +59,18 @@ func (*guildModel) List(db *gorm.DB, page *gormfind.Page) (data []*Guild, total 
 
 func (*guildModel) ListBySponsorOrMember(db *gorm.DB, wallet string, page *gormfind.Page) (data []*Guild, total int64, err error) {
 	w := fmt.Sprintf("%%\"%s\"%%", wallet) // value is: `%"0x123"%`
-	querySeg := db.Table("guilds").Where("sponsors LIKE ?", w).Or("members LIKE ?", w)
+
+	// MySQL version
+	//querySeg := db.Table("guilds").Where("sponsors LIKE ?", w).Or("members LIKE ?", w)
+
+	// PgVersion
+	querySeg := db.Table("guilds").Where("sponsors::text ILIKE ?", w).Or("members::text ILIKE ?", w)
 
 	total, err = gormfind.Count(querySeg)
 	if err != nil {
 		return
 	}
-	data, err = gormfind.Rows[Guild](querySeg, page)
+	data, err = QueryRows[Guild](querySeg, page)
 	if err != nil {
 		return
 	}
@@ -76,7 +84,7 @@ func (*guildModel) ListBySponsor(db *gorm.DB, sponsor string, page *gormfind.Pag
 	if err != nil {
 		return
 	}
-	data, err = gormfind.Rows[Guild](querySeg, page)
+	data, err = QueryRows[Guild](querySeg, page)
 	if err != nil {
 		return
 	}

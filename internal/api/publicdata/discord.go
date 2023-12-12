@@ -16,6 +16,7 @@ type discord struct {
 var discordCache dataCache[discordgo.Session, discord]
 
 // DiscordData returns the data of the discord server
+//
 //	@Summary	DiscordData returns the data of the discord server
 //	@Tags		PublicData
 //	@Accept		json

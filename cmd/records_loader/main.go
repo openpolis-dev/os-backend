@@ -3,15 +3,16 @@ package main
 import (
 	"flag"
 	"fmt"
+	"net/url"
 	"os"
 	"strings"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
 	"github.com/theseed-labs/os-backend/internal"
+	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/storage"
 	"github.com/xuri/excelize/v2"
@@ -26,6 +27,51 @@ const DealDateLayoutFormat3 = "2006-01-02"
 
 const DefaultDetailSheetName = "明细"
 const SummarizedSheetName = "数据透视"
+
+var DefaultSeasonRecords = []map[string]any{
+	{"Name": "S0",
+		"Idx":     0,
+		"StartAt": time.Date(2022, 9, 26, 0, 0, 0, 0, internal.ProjectTimezone).Unix(),
+		"EndAt":   time.Date(2022, 11, 3, 0, 0, 0, 0, internal.ProjectTimezone).Unix(),
+	}, {
+		"Name":    "S1",
+		"Idx":     1,
+		"StartAt": time.Date(2022, 11, 3, 0, 0, 0, 0, internal.ProjectTimezone).Unix(),
+		"EndAt":   time.Date(2023, 2, 26, 0, 0, 0, 0, internal.ProjectTimezone).Unix(),
+	}, {
+		"Name":    "S2",
+		"Idx":     2,
+		"StartAt": time.Date(2023, 2, 28, 0, 0, 0, 0, internal.ProjectTimezone).Unix(),
+		"EndAt":   time.Date(2023, 6, 2, 0, 0, 0, 0, internal.ProjectTimezone).Unix(),
+	}, {
+		"Name":    "S3",
+		"Idx":     3,
+		"StartAt": time.Date(2023, 6, 3, 0, 0, 0, 0, internal.ProjectTimezone).Unix(),
+		"EndAt":   time.Date(2023, 9, 5, 0, 0, 0, 0, internal.ProjectTimezone).Unix(),
+	}, {
+		"Name":    "S4",
+		"Idx":     4,
+		"StartAt": time.Date(2023, 9, 6, 0, 0, 0, 0, internal.ProjectTimezone).Unix(),
+		"EndAt":   time.Date(2023, 12, 1, 0, 0, 0, 0, internal.ProjectTimezone).Unix(),
+		//}, {
+		//	Name:    "S5",
+		//	Idx:     5,
+		//	StartAt: time.Date(2023, 11, 2, 0, 0, 0, 0, ProjectTimezone).Unix(),
+		//	EndAt:   time.Date(2024, 1, 1, 0, 0, 0, 0, ProjectTimezone).Unix(),
+	},
+}
+
+type LoaderConfig struct {
+	Dsn              string
+	Mode             string
+	SeasonName       string
+	AssetName        string
+	DetailSheetName  string
+	CleanDBFlag      bool
+	CreateSeasonFlag bool
+	LogLevel         int
+	InputFile        string
+}
 
 type DetailRecordSchema struct {
 	SeasonName   string
@@ -51,6 +97,26 @@ type EntityProps struct {
 	EntityType string
 	Id         uint
 	Name       string
+}
+
+func CreateSeasons(db *gorm.DB) {
+	err := db.Transaction(func(tx *gorm.DB) error {
+		for _, season := range DefaultSeasonRecords {
+			err := db.Model(&model.Season{}).
+				Clauses(clause.OnConflict{
+					Columns:   []clause.Column{{Name: "idx"}},
+					DoUpdates: clause.AssignmentColumns([]string{"start_at", "end_at"})}).
+				Create(&season).Error
+			if err != nil {
+				tx.Rollback()
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		panic(err)
+	}
 }
 
 func parseSeasonParams(db *gorm.DB, seasonParamValue string) ([]*model.Season, error) {
@@ -97,6 +163,7 @@ func loadRows(filePath string, sheetName string) ([][]string, error) {
 		log.Error().Msgf("Failed to get rows from sheet '%s': %v", sheetName, err)
 		return nil, err
 	}
+	log.Debug().Msgf("rows length: %d", len(rows))
 
 	return rows, nil
 }
@@ -147,10 +214,7 @@ func loadDetailSheet(filePath string, sheetName string, assets map[string]bool) 
 			proposalLink = r[9]
 		}
 
-		userWallet := model.FormatUserWallet(r[3])
-		if !common.IsHexAddress(userWallet) {
-			panic(fmt.Errorf("user wallet %s is not a valid wallet", userWallet))
-		}
+		userWallet := common.ToChecksumAddress(r[3])
 
 		return &DetailRecordSchema{
 			SeasonName:   r[0],
@@ -203,7 +267,7 @@ func loadSummarizedSheet(filePath string) ([]*SummarizedRecordSchema, error) {
 		}
 
 		return &SummarizedRecordSchema{
-			Wallet:        model.FormatUserWallet(r[0]),
+			Wallet:        common.ToChecksumAddress(r[0]),
 			SeasonsCredit: seasonCredits,
 			Total:         totalCredit,
 		}
@@ -242,10 +306,14 @@ func saveToDatabase(db *gorm.DB, rcds []*DetailRecordSchema, seasonRcds []*model
 	var dbEntities []EntityProps
 	dbEntityMap := make(map[string]EntityProps)
 
-	db.Raw("? UNION ?",
-		db.Select("id, name, 'project' as 'entity_type'").Model(&model.Project{}),
-		db.Select("id, name, 'guild' as 'entity_type'").Model(&model.Guild{}),
-	).Find(&dbEntities)
+	err = db.Raw("? UNION ?",
+		db.Model(&model.Project{}).Select("id, name, 'project' as entity_type"),
+		db.Model(&model.Guild{}).Select("id, name, 'guild' as entity_type"),
+	).Find(&dbEntities).Error
+
+	if err != nil {
+		panic(err)
+	}
 
 	// TODO: check whether there are records with same name but different entity_type
 	for _, entity := range dbEntities {
@@ -278,8 +346,16 @@ func saveToDatabase(db *gorm.DB, rcds []*DetailRecordSchema, seasonRcds []*model
 	// DB tasks
 	// Create user record if not existing
 	err = db.Transaction(func(tx *gorm.DB) error {
-		for wallet, _ := range userWallets {
-			err = tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&model.User{Wallet: model.FormatUserWallet(wallet)}).Error
+		for wallet := range userWallets {
+			userRcd := model.User{
+				Wallet:    common.ToChecksumAddress(wallet),
+				CreatedAt: time.Now().In(internal.ProjectTimezone),
+				UpdatedAt: time.Now().In(internal.ProjectTimezone),
+				CreateTs:  model.GetCurrentUtcEpochSecond(),
+				UpdateTs:  model.GetCurrentUtcEpochSecond(),
+			}
+
+			err = tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&userRcd).Error
 
 			if err != nil {
 				log.Error().Msgf("find or create user error: %+v", err)
@@ -318,11 +394,13 @@ func saveToDatabase(db *gorm.DB, rcds []*DetailRecordSchema, seasonRcds []*model
 			application := model.Application{
 				Type:             model.ApplicationNewReward,
 				Applicant:        "",
-				State:            model.ApplicationStateCompleted,
+				State:            model.ApplicationStateApproved,
 				CreatedAt:        r.DealDate,
 				UpdatedAt:        r.DealDate,
+				CreateTs:         r.DealTs,
+				UpdateTs:         r.DealTs,
 				DetailedType:     r.DetailedType,
-				TargetUserWallet: model.FormatUserWallet(r.UserWallet),
+				TargetUserWallet: common.ToChecksumAddress(r.UserWallet),
 				AssetName:        r.AssetName,
 				AssetAmount:      r.AssetAmount,
 				EntityType:       entityInfo.EntityType,
@@ -338,10 +416,10 @@ func saveToDatabase(db *gorm.DB, rcds []*DetailRecordSchema, seasonRcds []*model
 			}
 
 			auditLogs := []*model.ApplicationAuditLog{
-				{ApplicationID: application.ID, Operation: model.AuditActionNew, LogTs: r.DealDate, PostState: model.ApplicationStateOpen},
-				{ApplicationID: application.ID, Operation: model.AuditActionApprove, LogTs: r.DealDate, PreState: model.ApplicationStateOpen, PostState: model.ApplicationStateApproved},
-				{ApplicationID: application.ID, Operation: model.AuditActionProcess, LogTs: r.DealDate, PreState: model.ApplicationStateApproved, PostState: model.ApplicationStateProcessing},
-				{ApplicationID: application.ID, Operation: model.AuditActionComplete, LogTs: r.DealDate, PreState: model.ApplicationStateProcessing, PostState: model.ApplicationStateCompleted},
+				{ApplicationID: application.ID, Operation: model.AuditActionNew, LogTs: r.DealTs, PostState: model.ApplicationStateOpen},
+				{ApplicationID: application.ID, Operation: model.AuditActionApprove, LogTs: r.DealTs, PreState: model.ApplicationStateOpen, PostState: model.ApplicationStateApproved},
+				//{ApplicationID: application.ID, Operation: model.AuditActionProcess, LogTs: r.DealTs, PreState: model.ApplicationStateApproved, PostState: model.ApplicationStateProcessing},
+				//{ApplicationID: application.ID, Operation: model.AuditActionComplete, LogTs: r.DealTs, PreState: model.ApplicationStateProcessing, PostState: model.ApplicationStateCompleted},
 			}
 
 			err = tx.Save(auditLogs).Error
@@ -356,53 +434,66 @@ func saveToDatabase(db *gorm.DB, rcds []*DetailRecordSchema, seasonRcds []*model
 
 func main() {
 	// Define the command-line flags
-	dsn := flag.String("dsn", "", "Database connect string")
-	mode := flag.String("mode", "load", "load data mode or verify data")
-	seasonName := flag.String("season", "", "Specify seasons the application will import, multiple seasons can be split by comma. If not given, the current season will be used. And pass `all` for processing all season records")
-	assetName := flag.String("asset", "", "Specify assets the application will import, multiple seasons can be split by comma. If not given, all assets will be imported")
-	detailSheetName := flag.String("detail-sheet", DefaultDetailSheetName, "Specify detail sheet name in the Excel file, the default value will be used if not given")
-	cleanDBFlag := flag.Bool("clean-db", false, "Clean the database with specified seasons before importing.")
-	//logLevelFlag := flag.Int("v", 0, "Log level: 0 for no logs, 1 for normal logs, 2 for verbose logs, 3 for very verbose logs.")
-	inputFile := flag.String("input", "summary.xsls", "Specify input xslx file")
+	var config LoaderConfig
+	flag.StringVar(&config.Dsn, "dsn", "", "Database connect string")
+	flag.StringVar(&config.Mode, "mode", "load", "load data mode or verify data")
+	flag.StringVar(&config.SeasonName, "season", "", "Specify seasons the application will import, multiple seasons can be split by comma. If not given, the current season will be used. And pass `all` for processing all season records")
+	flag.StringVar(&config.AssetName, "asset", "", "Specify assets the application will import, multiple seasons can be split by comma. If not given, all assets will be imported")
+	flag.StringVar(&config.DetailSheetName, "detail-sheet", DefaultDetailSheetName, "Specify detail sheet name in the Excel file, the default value will be used if not given")
+	flag.BoolVar(&config.CleanDBFlag, "clean-db", false, "Clean the database with specified seasons before importing.")
+	flag.BoolVar(&config.CreateSeasonFlag, "create-season", false, "Clean the database with specified seasons before importing.")
+	flag.IntVar(&config.LogLevel, "v", 0, "Log level: 0 for no logs, 1 for normal logs, 2 for verbose logs, 3 for very verbose logs.")
+	flag.StringVar(&config.InputFile, "input", "summary.xsls", "Specify input xslx file")
 
 	// Parse the command-line flags
 	flag.Parse()
 
 	// Prepare db connection
-	dbDsn := *dsn
+	dbDsn := config.Dsn
 	if dbDsn == "" {
 		envDbUrl := os.Getenv("DATABASE_URL")
 		if envDbUrl != "" {
 			dbDsn = envDbUrl
 		} else {
-			dbDsn = "localhost:3306/mysql"
+			dbDsn = "sqlite://./os-backend.db"
 		}
 	}
-	storage.InitGormDB(dbDsn)
+
+	parsedURI, err := url.Parse(dbDsn)
+	if err != nil {
+		panic(fmt.Errorf("parse database URI %s error, please confirm", dbDsn))
+	}
+
+	storage.InitGormDB(dbDsn, parsedURI.Scheme)
+	storage.MigrateTables()
 	db := storage.GetGormDB()
 	db.Logger = logger.Default.LogMode(logger.Silent)
 
+	if config.CreateSeasonFlag {
+		CreateSeasons(db)
+	}
+
 	// parse season data
-	seasons, err := parseSeasonParams(db, *seasonName)
+	seasons, err := parseSeasonParams(db, config.SeasonName)
 	if err != nil {
 		panic(err)
 	}
 
 	importAssets := make(map[string]bool)
-	for _, name := range strings.Split(*assetName, ",") {
+	for _, name := range strings.Split(config.AssetName, ",") {
 		importAssets[name] = true
 	}
 
-	switch *mode {
+	switch config.Mode {
 	case "load":
 		// Read and parse xslx file
 		// The sheet used for loading is sheet with DetailSheetName.
-		detailedRecords, err := loadDetailSheet(*inputFile, *detailSheetName, importAssets)
+		detailedRecords, err := loadDetailSheet(config.InputFile, config.DetailSheetName, importAssets)
 		if err != nil {
 			panic(err)
 		}
 
-		err = saveToDatabase(db, detailedRecords, seasons, *cleanDBFlag)
+		err = saveToDatabase(db, detailedRecords, seasons, config.CleanDBFlag)
 		if err != nil {
 			panic(err)
 		}
@@ -410,7 +501,7 @@ func main() {
 		// verify uses first sheet
 		// Get summarized records from Excel worksheet
 		log.Warn().Msgf("Note: Please verify the summary sheet name and structure")
-		summarizedRecords, err := loadSummarizedSheet(*inputFile)
+		summarizedRecords, err := loadSummarizedSheet(config.InputFile)
 		if err != nil {
 			panic(err)
 		}
@@ -420,7 +511,7 @@ func main() {
 		}
 
 		// Calculated summarized records from parsed detail worksheet
-		detailedRecords, err := loadDetailSheet(*inputFile, *detailSheetName, importAssets)
+		detailedRecords, err := loadDetailSheet(config.InputFile, config.DetailSheetName, importAssets)
 		if err != nil {
 			panic(err)
 		}
@@ -429,13 +520,13 @@ func main() {
 
 		// aggregate detailed records
 		for _, detailedRcd := range detailedRecords {
-			model.SetDefaultMapValue(aggrUserTotal, model.FormatUserWallet(detailedRcd.UserWallet), decimal.Zero)
-			aggrUserTotal[model.FormatUserWallet(detailedRcd.UserWallet)] = aggrUserTotal[detailedRcd.UserWallet].Add(detailedRcd.AssetAmount)
+			model.SetDefaultMapValue(aggrUserTotal, common.ToChecksumAddress(detailedRcd.UserWallet), decimal.Zero)
+			aggrUserTotal[common.ToChecksumAddress(detailedRcd.UserWallet)] = aggrUserTotal[detailedRcd.UserWallet].Add(detailedRcd.AssetAmount)
 		}
 
 		// Verify whether calculated result is same with Excel result
 		for wallet, amount := range aggrUserTotal {
-			_wallet := model.FormatUserWallet(wallet)
+			_wallet := common.ToChecksumAddress(wallet)
 			if !totalSummaryMap[_wallet].Equal(amount) {
 				log.Error().Msgf("record not equal, wallet: %s, excel amount: %s, calc amount: %s", _wallet, totalSummaryMap[_wallet], amount)
 			}

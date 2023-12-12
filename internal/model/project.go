@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/shopspring/decimal"
+	"github.com/theseed-labs/os-backend/internal"
 	"github.com/xiaosongfu/gormfind"
 	"gorm.io/gorm"
 )
@@ -41,8 +42,10 @@ type Project struct {
 	IsSpecial   bool               `json:"is_special" gorm:"index"`
 	SpecialType SpecialProjectType `json:"special_type" gorm:"index"`
 
-	CreatedAt time.Time `json:"created_at" gorm:"index"`
-	UpdatedAt time.Time `json:"updated_at"`
+	CreatedAt time.Time `json:"-" gorm:"index"`
+	UpdatedAt time.Time `json:"-"`
+	CreateTs  int64     `json:"create_ts" gorm:"index"`
+	UpdateTs  int64     `json:"update_ts" gorm:"index"`
 }
 
 type projectModel struct{}
@@ -76,7 +79,7 @@ func (*projectModel) List(db *gorm.DB, status string, page *gormfind.Page, showS
 		return
 	}
 
-	data, err = gormfind.Rows[Project](querySeg, page)
+	data, err = QueryRows[Project](querySeg, page)
 	if err != nil {
 		return
 	}
@@ -86,13 +89,17 @@ func (*projectModel) List(db *gorm.DB, status string, page *gormfind.Page, showS
 
 func (*projectModel) ListBySponsorOrMember(db *gorm.DB, wallet string, page *gormfind.Page) (data []*Project, total int64, err error) {
 	w := fmt.Sprintf("%%\"%s\"%%", wallet) // value is: `%"0x123"%`
-	querySeg := db.Table("projects").Where("sponsors LIKE ?", w).Or("members LIKE ?", w)
+	// MySQL version
+	//querySeg := db.Table("projects").Where("sponsors LIKE ?", w).Or("members LIKE ?", w)
+
+	// PgVersion
+	querySeg := db.Table("projects").Where("sponsors::text ILIKE ?", w).Or("members::text ILIKE ?", w)
 
 	total, err = gormfind.Count(querySeg)
 	if err != nil {
 		return
 	}
-	data, err = gormfind.Rows[Project](querySeg, page)
+	data, err = QueryRows[Project](querySeg, page)
 	if err != nil {
 		return
 	}
@@ -116,7 +123,7 @@ func (*projectModel) ListBySponsor(db *gorm.DB, sponsor string, status string, p
 	if err != nil {
 		return
 	}
-	data, err = gormfind.Rows[Project](querySeg, page)
+	data, err = QueryRows[Project](querySeg, page)
 	if err != nil {
 		return
 	}
@@ -228,8 +235,10 @@ func createCityHallProject(db *gorm.DB, cityHallUsers []string) (*Project, error
 		IsSpecial:   true,
 		SpecialType: SpecialProjectCityHall,
 		Sponsors:    cityHallUsers,
-		CreatedAt:   time.Time{},
-		UpdatedAt:   time.Time{},
+		CreatedAt:   time.Now().In(internal.ProjectTimezone),
+		UpdatedAt:   time.Now().In(internal.ProjectTimezone),
+		CreateTs:    GetCurrentUtcEpochSecond(),
+		UpdateTs:    GetCurrentUtcEpochSecond(),
 	}
 	err := db.Create(&project).Error
 

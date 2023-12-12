@@ -12,7 +12,9 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
+	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api"
+	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk"
 	"gorm.io/gorm"
@@ -72,12 +74,12 @@ func Create(ctx *gin.Context) {
 		return
 	}
 
-	// convert all wallet to lower case
+	// convert all wallet to checksum address
 	sponsors := lo.Map[string](req.Sponsors, func(item string, _ int) string {
-		return strings.ToLower(item)
+		return common.FormatUserWallet(item)
 	})
 	members := lo.Map[string](req.Members, func(item string, _ int) string {
-		return strings.ToLower(item)
+		return common.FormatUserWallet(item)
 	})
 	// remove duplicate sponsors and members
 	sponsors = lo.Uniq[string](sponsors)
@@ -90,7 +92,7 @@ func Create(ctx *gin.Context) {
 
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
-	ok, err := enforcer.Enforce(user.Wallet, api.ObjProj, api.ActCreate)
+	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), api.ObjProj, api.ActCreate)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
@@ -110,39 +112,17 @@ func Create(ctx *gin.Context) {
 		Sponsors:  sponsors,
 		Members:   members,
 		Proposals: proposals,
-		Creator:   user.Wallet,
+		Creator:   common.FormatUserWallet(user.Wallet),
+		CreatedAt: time.Now().In(internal.ProjectTimezone),
+		UpdatedAt: time.Now().In(internal.ProjectTimezone),
+		CreateTs:  model.GetCurrentUtcEpochSecond(),
+		UpdateTs:  model.GetCurrentUtcEpochSecond(),
 	}
 	err = model.ProjectModel.CreateOrUpdate(tx, &proj)
 	if err != nil {
 		tx.Rollback()
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
-	}
-	// save project budgets
-	budgets := lo.Map[*BudgetParam, *model.ProjectBudget](req.Budgets, func(item *BudgetParam, _ int) *model.ProjectBudget {
-		return &model.ProjectBudget{
-			ProjectID:    proj.ID,
-			AssetName:    item.Name,
-			TotalAmount:  item.TotalAmount,
-			UsedAmount:   decimal.Zero,
-			RemainAmount: item.TotalAmount,
-		}
-	})
-	err = model.ProjectBudgetModel.Create(tx, budgets)
-	if err != nil {
-		tx.Rollback()
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
-		return
-	}
-
-	// Withdraw asset from treasure
-	for _, budget := range budgets {
-		err = model.TreasuryAssetHelper.WithdrawTreasureAsset(tx, budget.AssetName, budget.TotalAmount, user.Wallet, fmt.Sprintf("Create project %d by %s", proj.ID, user.Wallet))
-		if err != nil {
-			tx.Rollback()
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
-			return
-		}
 	}
 
 	// commit transaction
@@ -183,7 +163,7 @@ func Create(ctx *gin.Context) {
 	// add roles
 	sponsorGroupingPolicies := lo.Map(req.Sponsors, func(sponsor string, _ int) []string {
 		// g, 0xc13..1283 proj_sponsor_1
-		return []string{strings.ToLower(sponsor), fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, proj.ID)}
+		return []string{common.FormatUserWallet(sponsor), fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, proj.ID)}
 	})
 	//memberGroupingPolicies := lo.Map(req.Members, func(member string, _ int) []string {
 	//	// g, 0xc13..1283 proj_member_1
@@ -244,7 +224,7 @@ func Update(ctx *gin.Context) {
 
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
-	ok, err := enforcer.Enforce(user.Wallet, fmt.Sprintf("%s%d", api.ObjProjPrefix, id), api.ActModify)
+	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), fmt.Sprintf("%s%d", api.ObjProjPrefix, id), api.ActModify)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
@@ -281,6 +261,8 @@ func Update(ctx *gin.Context) {
 	proj.Name = req.Name
 	proj.Intro = req.Intro
 	proj.Desc = req.Desc
+	proj.UpdateTs = model.GetCurrentUtcEpochSecond()
+	proj.UpdatedAt = time.Now().In(internal.ProjectTimezone)
 	err = model.ProjectModel.CreateOrUpdate(db, proj)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
@@ -310,7 +292,7 @@ func Close(ctx *gin.Context) {
 
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
-	ok, err := enforcer.Enforce(user.Wallet, api.ObjProj, api.ActClose)
+	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), api.ObjProj, api.ActClose)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
@@ -340,10 +322,12 @@ func Close(ctx *gin.Context) {
 	err = db.Transaction(func(tx *gorm.DB) error {
 		application := model.Application{
 			Type:       model.ApplicationCloseProject,
-			Applicant:  user.Wallet,
+			Applicant:  common.FormatUserWallet(user.Wallet),
 			State:      model.ApplicationStateOpen,
-			CreatedAt:  time.Now(),
-			UpdatedAt:  time.Now(),
+			CreatedAt:  time.Now().In(internal.ProjectTimezone),
+			UpdatedAt:  time.Now().In(internal.ProjectTimezone),
+			CreateTs:   model.GetCurrentUtcEpochSecond(),
+			UpdateTs:   model.GetCurrentUtcEpochSecond(),
 			EntityType: "project",
 			EntityId:   project.ID,
 		}
@@ -352,6 +336,8 @@ func Close(ctx *gin.Context) {
 			return err
 		}
 		project.Status = model.ProjectStatusPendingClose
+		project.UpdatedAt = time.Now().In(internal.ProjectTimezone)
+		project.UpdateTs = model.GetCurrentUtcEpochSecond()
 		return tx.Save(project).Error
 	})
 
@@ -398,6 +384,13 @@ func Detail(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
+
+	proj.Members = lo.Map(proj.Members, func(m string, _ int) string {
+		return common.ToFrontendWallet(m)
+	})
+	proj.Sponsors = lo.Map(proj.Sponsors, func(m string, _ int) string {
+		return common.ToFrontendWallet(m)
+	})
 
 	ctx.JSON(http.StatusOK, api.Success(&DetailReply{
 		Project: *proj,
@@ -460,7 +453,7 @@ func MyProjects(ctx *gin.Context) {
 
 	page := api.ParseAndConvertPageParam(ctx)
 
-	projects, total, err := model.ProjectModel.ListBySponsorOrMember(db, user.Wallet, page)
+	projects, total, err := model.ProjectModel.ListBySponsorOrMember(db, common.FormatUserWallet(user.Wallet), page)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
@@ -508,7 +501,7 @@ func UpdateStaffs(ctx *gin.Context) {
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
 	if req.Sponsors != nil && len(req.Sponsors) != 0 {
-		ok, err := enforcer.Enforce(user.Wallet, fmt.Sprintf("%s%d", api.ObjProjPrefix, id), api.ActUpdateSponsor)
+		ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), fmt.Sprintf("%s%d", api.ObjProjPrefix, id), api.ActUpdateSponsor)
 		if err != nil {
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 			return
@@ -519,7 +512,7 @@ func UpdateStaffs(ctx *gin.Context) {
 		}
 	}
 	if req.Members != nil && len(req.Members) != 0 {
-		ok, err := enforcer.Enforce(user.Wallet, fmt.Sprintf("%s%d", api.ObjProjPrefix, id), api.ActUpdateMember)
+		ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), fmt.Sprintf("%s%d", api.ObjProjPrefix, id), api.ActUpdateMember)
 		if err != nil {
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 			return
@@ -530,12 +523,12 @@ func UpdateStaffs(ctx *gin.Context) {
 		}
 	}
 
-	// convert all wallet to lower case
+	// convert all wallet to checksum address
 	sponsors := lo.Map[string](req.Sponsors, func(item string, _ int) string {
-		return strings.ToLower(item)
+		return common.FormatUserWallet(item)
 	})
 	members := lo.Map[string](req.Members, func(item string, _ int) string {
-		return strings.ToLower(item)
+		return common.FormatUserWallet(item)
 	})
 
 	proj, err := model.ProjectModel.Detail(db, uint(id))
@@ -566,6 +559,8 @@ func UpdateStaffs(ctx *gin.Context) {
 			proj.Sponsors = lo.Uniq[string](proj.Sponsors)
 			// remove sponsors from members
 			proj.Sponsors = lo.Without[string](proj.Sponsors, proj.Members...)
+			proj.UpdateTs = model.GetCurrentUtcEpochSecond()
+			proj.UpdatedAt = time.Now().In(internal.ProjectTimezone)
 			err = model.ProjectModel.CreateOrUpdate(tx, proj)
 			if err != nil {
 				tx.Rollback()
@@ -577,7 +572,7 @@ func UpdateStaffs(ctx *gin.Context) {
 			// add roles for new sponsors
 			newSponsorGroupingPolicies := lo.Map(req.Sponsors, func(sponsor string, _ int) []string {
 				// g, 0xc13..1283 proj_sponsor_1
-				return []string{strings.ToLower(sponsor), fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, proj.ID)}
+				return []string{common.FormatUserWallet(sponsor), fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, proj.ID)}
 			})
 			_, err = enforcer.AddGroupingPolicies(newSponsorGroupingPolicies)
 			if err != nil {
@@ -602,6 +597,8 @@ func UpdateStaffs(ctx *gin.Context) {
 			proj.Members = lo.Uniq[string](proj.Members)
 			// remove members from sponsors
 			proj.Members = lo.Without[string](proj.Members, proj.Sponsors...)
+			proj.UpdateTs = model.GetCurrentUtcEpochSecond()
+			proj.UpdatedAt = time.Now().In(internal.ProjectTimezone)
 			err = model.ProjectModel.CreateOrUpdate(tx, proj)
 			if err != nil {
 				tx.Rollback()
@@ -674,6 +671,8 @@ func UpdateStaffs(ctx *gin.Context) {
 		if req.Members != nil && len(req.Members) != 0 {
 			// remove project members
 			proj.Members = lo.Without[string](proj.Members, members...)
+			proj.UpdateTs = model.GetCurrentUtcEpochSecond()
+			proj.UpdatedAt = time.Now().In(internal.ProjectTimezone)
 			err = model.ProjectModel.CreateOrUpdate(tx, proj)
 			if err != nil {
 				tx.Rollback()
@@ -745,7 +744,7 @@ func UpdateBudget(ctx *gin.Context) {
 
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
-	ok, err := enforcer.Enforce(user.Wallet, fmt.Sprintf("%s%d", api.ObjProjPrefix, id), api.ActUpdateBudget)
+	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), fmt.Sprintf("%s%d", api.ObjProjPrefix, id), api.ActUpdateBudget)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
@@ -780,6 +779,8 @@ func UpdateBudget(ctx *gin.Context) {
 	// update `TotalAmount`
 	budget.TotalAmount = req.TotalAmount
 	budget.RemainAmount = budget.TotalAmount.Sub(budget.UsedAmount)
+	budget.UpdateTs = model.GetCurrentUtcEpochSecond()
+	budget.UpdatedAt = time.Now().In(internal.ProjectTimezone)
 	err = model.ProjectBudgetModel.Update(db, budget)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
@@ -812,7 +813,7 @@ func AddRelatedProposal(ctx *gin.Context) {
 
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
-	ok, err := enforcer.Enforce(user.Wallet, fmt.Sprintf("%s%d", api.ObjProjPrefix, id), api.ActModify)
+	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), fmt.Sprintf("%s%d", api.ObjProjPrefix, id), api.ActModify)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
@@ -841,6 +842,8 @@ func AddRelatedProposal(ctx *gin.Context) {
 	proj.Proposals = append(proj.Proposals, proposalIDs...)
 	// remove duplicate proposals
 	proj.Proposals = lo.Uniq[string](proj.Proposals)
+	proj.UpdateTs = model.GetCurrentUtcEpochSecond()
+	proj.UpdatedAt = time.Now().In(internal.ProjectTimezone)
 	err = model.ProjectModel.CreateOrUpdate(db, proj)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))

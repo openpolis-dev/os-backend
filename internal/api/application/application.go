@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
@@ -18,6 +17,7 @@ import (
 	"github.com/samber/lo"
 	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api"
+	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/xuri/excelize/v2"
 	"gorm.io/gorm"
@@ -74,7 +74,7 @@ func List(ctx *gin.Context) {
 		return
 	}
 
-	rcds, total, err := model.GenerateFrontendApplicationRecords(db, &queryParams)
+	rcds, total, err := model.GenerateFrontendApplicationRecords(db, &queryParams, true)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.Reply{
 			Code: -1,
@@ -135,7 +135,7 @@ func Create(ctx *gin.Context) {
 				If(req.Entity == "project", fmt.Sprintf("%s%d", api.ObjProjPrefix, req.EntityId)).
 				ElseIf(req.Entity == "guild", fmt.Sprintf("%s%d", api.ObjGuildPrefix, req.EntityId)).
 				Else("")
-			ok, err := enforcer.Enforce(user.Wallet, obj, api.ActCreateApplication)
+			ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), obj, api.ActCreateApplication)
 			if err != nil {
 				ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 				return err
@@ -151,13 +151,15 @@ func Create(ctx *gin.Context) {
 			}
 
 			appBundle := model.AppBundle{
-				Applicant:    user.Wallet,
+				Applicant:    common.FormatUserWallet(user.Wallet),
 				EntityType:   req.Entity,
 				EntityId:     req.EntityId,
 				SeasonId:     seasonRecord.ID,
 				State:        model.ApplicationStateOpen,
-				CreatedAt:    time.Time{},
-				UpdatedAt:    time.Time{},
+				CreatedAt:    time.Now().In(internal.ProjectTimezone),
+				UpdatedAt:    time.Now().In(internal.ProjectTimezone),
+				CreateTs:     model.GetCurrentUtcEpochSecond(),
+				UpdateTs:     model.GetCurrentUtcEpochSecond(),
 				ShadowRecord: true,
 				Type:         "CLOSE_PROJECT",
 			}
@@ -168,15 +170,17 @@ func Create(ctx *gin.Context) {
 
 			app := &model.Application{
 				Type:         appType,
-				Applicant:    user.Wallet,
+				Applicant:    common.FormatUserWallet(user.Wallet),
 				State:        model.ApplicationStateOpen,
 				EntityType:   req.Entity,
 				EntityId:     req.EntityId,
 				SeasonId:     seasonRecord.ID,
 				DetailedType: req.DetailedType,
 				Comment:      req.Comment,
-				CreatedAt:    time.Now(),
-				UpdatedAt:    time.Now(),
+				CreatedAt:    time.Now().In(internal.ProjectTimezone),
+				UpdatedAt:    time.Now().In(internal.ProjectTimezone),
+				CreateTs:     model.GetCurrentUtcEpochSecond(),
+				UpdateTs:     model.GetCurrentUtcEpochSecond(),
 				BundleId:     appBundle.ID,
 			}
 
@@ -199,52 +203,43 @@ func Create(ctx *gin.Context) {
 	ctx.JSON(http.StatusCreated, api.Success(nil))
 }
 
-// Download get lists from passed in IDs and generate file and send to invoker
+// Download downloads all applications based on query params and sends Excel file for downloading
+//
+//	@summary	downloads all applications based on query params and sends Excel file for downloading
+//	@router		/download_applications [get]
+//	@success	200	{object}	api.Reply{data=api.ListReplyData{rows=model.FrontendApplicationRecord}}
 func Download(ctx *gin.Context) {
-	fileFormat := ""
-	fileFormat = strings.ToLower(ctx.Query("format"))
-	if fileFormat == "" {
-		fileFormat = "xlsx"
-	}
-
+	var err error
 	db := api.ForContextOnlyDB(ctx)
 
-	idList := ctx.Query("ids")
-
-	if len(idList) == 0 {
-		ctx.JSON(http.StatusBadRequest,
-			api.ServerError(fmt.Errorf("pass application id in ids query param with format 1,2,3,4")))
+	queryParams := model.ListApplicationQueryParams{}
+	if err := ctx.Bind(&queryParams); err != nil {
+		ctx.JSON(http.StatusBadRequest, api.Reply{
+			Code: -1,
+			Msg:  fmt.Sprintf("query params error: %+v", err),
+		})
 		return
 	}
 
-	var err error
-	err = nil
-
-	ids := lo.Map(strings.Split(idList, ","), func(idStr string, _ int) uint64 {
-		val, err := strconv.ParseUint(idStr, 10, 64)
-		if err != nil {
-			err = fmt.Errorf("invalid application id %s", idStr)
-			return 0
-		}
-		return val
-	})
-
+	rcds, _, err := model.GenerateFrontendApplicationRecords(db, &queryParams, false)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		ctx.JSON(http.StatusInternalServerError, api.Reply{
+			Code: -1,
+			Msg:  fmt.Sprintf("query result error: %+v", err),
+		})
+		return
 	}
 
-	rcds, err := model.GenerateFrontendApplicationRecordsByIds(db, ids)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
-	}
-
+	// Generated header with passed in lang
 	lang := api.GetLangFromQuery(ctx, "en")
 	headerStr := internal.ApplicationDownloadHeader[lang]
 	if header, found := internal.ApplicationDownloadHeader[lang]; found {
 		headerStr = header
 	}
-
 	csvHeaderList := strings.Split(headerStr, ",")
+
+	// Get file format will be generated
+	fileFormat := strings.ToLower(api.GetQueryParamsOrDefaultValue(ctx, "format", "xlsx"))
 
 	if fileFormat == "csv" {
 		buf := new(bytes.Buffer)
@@ -252,15 +247,25 @@ func Download(ctx *gin.Context) {
 		err = w.Write(csvHeaderList)
 		if err != nil {
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+			return
 		}
+
 		for _, r := range rcds {
-			fmt.Printf("TTT: rcd: %+v\n", r)
 			if r == nil {
 				continue
 			}
-			err = w.Write(r.ToCSV())
+			err = w.Write([]string{
+				r.TargetUserWallet,
+				fmt.Sprintf("%s %s", r.Amount, r.AssetName),
+				r.SeasonName,
+				r.DetailedType,
+				r.BudgetSource,
+				r.ApplicantWallet,
+				r.Status,
+			})
 			if err != nil {
 				ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+				return
 			}
 		}
 		w.Flush()
@@ -282,6 +287,7 @@ func Download(ctx *gin.Context) {
 		streamWriter, err := f.NewStreamWriter("Sheet1")
 		if err != nil {
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+			return
 		}
 
 		// write first row
@@ -289,12 +295,21 @@ func Download(ctx *gin.Context) {
 		title := lo.Map(csvHeaderList, func(item string, _ int) any { return item })
 		if err := streamWriter.SetRow(cell, title); err != nil {
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+			return
 		}
 
 		rowId := 2
 		for _, row := range rcds {
 			cell, _ := excelize.CoordinatesToCellName(1, rowId)
-			err = streamWriter.SetRow(cell, row.ToXlsx())
+			err = streamWriter.SetRow(cell, []any{
+				row.TargetUserWallet,
+				fmt.Sprintf("%s %s", row.Amount, row.AssetName),
+				row.SeasonName,
+				row.DetailedType,
+				row.BudgetSource,
+				row.ApplicantWallet,
+				row.Status,
+			})
 			if err != nil {
 				log.Error().Msgf("write excel row[%d] failed: %s", rowId, err)
 			}
@@ -307,6 +322,7 @@ func Download(ctx *gin.Context) {
 		if err = streamWriter.Flush(); err != nil {
 			log.Error().Msgf("flush writer [%s] failed: %s", fileName, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+			return
 		}
 
 		// write to response
@@ -323,11 +339,13 @@ func Download(ctx *gin.Context) {
 		jsonBytes, err := json.Marshal(rcds)
 		if err != nil {
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+			return
 		}
 
 		err = os.WriteFile(tmpFile.Name(), jsonBytes, 0777)
 		if err != nil {
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+			return
 		}
 
 		ctx.FileAttachment(tmpFile.Name(), fileBaseName)
@@ -354,7 +372,8 @@ func DownloadUploadTemplate(ctx *gin.Context) {
 	ctx.DataFromReader(http.StatusOK, int64(contentLength), "encoding/csv", reader, extraHeaders)
 }
 
-// Batch operations, the request body are ids
+// Batch operations, most of the request bodies are ids
+// For batch process logic, it handles all applications in approved state and process them, so no need to pass ids
 // TODO: Those batch actions contain similar logic, check whether it is possible to simplify them
 
 // BatchProcess exports application in approved state, and changes exported applications state to processing
@@ -363,7 +382,7 @@ func BatchProcess(ctx *gin.Context) {
 	user, enforcer, db, _ := api.ForContext(ctx)
 
 	//  check permission: `(0x..., proj_and_guild, audit_app)`
-	ok, err := enforcer.Enforce(user.Wallet, api.ObjProjAndGuild, api.ActAuditApplication)
+	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), api.ObjProjAndGuild, api.ActAuditApplication)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
@@ -385,7 +404,7 @@ func BatchProcess(ctx *gin.Context) {
 	}
 
 	var applications []model.Application
-	err = getBatchApplicationsOrReturnError(ctx, &applications)
+	err = db.Model(&model.Application{}).Where("state = ?", model.ApplicationStateApproved).Find(&applications).Error
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, api.Reply{Code: -1, Msg: err.Error()})
 		return
@@ -393,7 +412,21 @@ func BatchProcess(ctx *gin.Context) {
 
 	push := api.ForContextOnlyPush(ctx)
 
-	err = model.BatchAuditApplication(db, user.Wallet, &applications, model.AuditActionProcess, "", enforcer, push)
+	err = model.BatchAuditApplication(db, common.FormatUserWallet(user.Wallet), &applications, model.AuditActionProcess, "", enforcer, push)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, api.Reply{
+			Code: -1,
+			Msg:  fmt.Sprintf("process applications error: %+v", err),
+		})
+		return
+	}
+
+	// TODO: Merge this logic with `BatchComplete`
+	appBundleIds := make(map[uint]bool)
+	for _, app := range applications {
+		appBundleIds[app.BundleId] = true
+	}
+	err = db.Model(&model.AppBundle{}).Where("id IN ?", lo.Keys(appBundleIds)).Update("state", model.ApplicationStateProcessing).Error
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, api.Reply{
 			Code: -1,
@@ -416,7 +449,7 @@ func BatchApprove(ctx *gin.Context) {
 	user, enforcer, db, _ := api.ForContext(ctx)
 
 	//  check permission: `(0x..., proj_and_guild, audit_app)`
-	ok, err := enforcer.Enforce(user.Wallet, api.ObjProjAndGuild, api.ActAuditApplication)
+	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), api.ObjProjAndGuild, api.ActAuditApplication)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
@@ -427,7 +460,7 @@ func BatchApprove(ctx *gin.Context) {
 	}
 
 	push := api.ForContextOnlyPush(ctx)
-	err = model.BatchAuditApplication(db, user.Wallet, &applications, model.AuditActionApprove, "", enforcer, push)
+	err = model.BatchAuditApplication(db, common.FormatUserWallet(user.Wallet), &applications, model.AuditActionApprove, "", enforcer, push)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, api.Reply{
 			Code: -1,
@@ -451,7 +484,7 @@ func BatchReject(ctx *gin.Context) {
 	user, enforcer, db, _ := api.ForContext(ctx)
 
 	//  check permission: `(0x..., proj_and_guild, audit_app)`
-	ok, err := enforcer.Enforce(user.Wallet, api.ObjProjAndGuild, api.ActAuditApplication)
+	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), api.ObjProjAndGuild, api.ActAuditApplication)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
@@ -462,7 +495,7 @@ func BatchReject(ctx *gin.Context) {
 	}
 
 	push := api.ForContextOnlyPush(ctx)
-	err = model.BatchAuditApplication(db, user.Wallet, &applications, model.AuditActionReject, "", enforcer, push)
+	err = model.BatchAuditApplication(db, common.FormatUserWallet(user.Wallet), &applications, model.AuditActionReject, "", enforcer, push)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, api.Reply{
 			Code: -1,
@@ -481,7 +514,7 @@ func BatchComplete(ctx *gin.Context) {
 	user, enforcer, db, _ := api.ForContext(ctx)
 
 	//  check permission: `(0x..., proj_and_guild, audit_app)`
-	ok, err := enforcer.Enforce(user.Wallet, api.ObjProjAndGuild, api.ActAuditApplication)
+	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), api.ObjProjAndGuild, api.ActAuditApplication)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
@@ -505,11 +538,24 @@ func BatchComplete(ctx *gin.Context) {
 	}
 
 	push := api.ForContextOnlyPush(ctx)
-	err = model.BatchAuditApplication(db, user.Wallet, &applications, model.AuditActionComplete, reqBody.Message, enforcer, push)
+	err = model.BatchAuditApplication(db, common.FormatUserWallet(user.Wallet), &applications, model.AuditActionComplete, reqBody.Message, enforcer, push)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, api.Reply{
 			Code: -1,
 			Msg:  fmt.Sprintf("complete applications error: %+v", err),
+		})
+		return
+	}
+
+	appBundleIds := make(map[uint]bool)
+	for _, app := range applications {
+		appBundleIds[app.BundleId] = true
+	}
+	err = db.Model(&model.AppBundle{}).Where("id IN ?", lo.Keys(appBundleIds)).Update("state", model.ApplicationStateCompleted).Error
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, api.Reply{
+			Code: -1,
+			Msg:  fmt.Sprintf("process applications error: %+v", err),
 		})
 		return
 	}
@@ -568,7 +614,7 @@ func auditApplication(ctx *gin.Context, application *model.Application, auditAct
 	push := api.ForContextOnlyPush(ctx)
 
 	//  check permission: `(0x..., proj_and_guild, audit_app)`
-	ok, err := enforcer.Enforce(user.Wallet, api.ObjProjAndGuild, api.ActAuditApplication)
+	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), api.ObjProjAndGuild, api.ActAuditApplication)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
@@ -579,7 +625,7 @@ func auditApplication(ctx *gin.Context, application *model.Application, auditAct
 	}
 
 	if application.ValidateAuditAction(auditAction) {
-		err = model.AuditApplication(db, user.Wallet, application, auditAction, auditMsg, enforcer, push)
+		err = model.AuditApplication(db, common.FormatUserWallet(user.Wallet), application, auditAction, auditMsg, enforcer, push)
 		if err != nil {
 			ctx.JSON(http.StatusBadRequest, api.Reply{
 				Code: -1,

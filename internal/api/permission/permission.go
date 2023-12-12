@@ -2,11 +2,11 @@ package permission
 
 import (
 	"net/http"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/samber/lo"
 	"github.com/theseed-labs/os-backend/internal/api"
+	"github.com/theseed-labs/os-backend/internal/common"
 )
 
 type GrantRoleReq struct {
@@ -19,6 +19,7 @@ type role struct {
 }
 
 // GrantRole role to user
+//
 //	@Summary	Grant role to user
 //	@Tags		Permission
 //	@Accept		json
@@ -28,7 +29,8 @@ type role struct {
 //	@Router		/permission/grant_role [post]
 func GrantRole(ctx *gin.Context) {
 	user, enforcer, _, _ := api.ForContext(ctx)
-	ok, err := enforcer.HasRoleForUser(user.Wallet, api.RoleHall)
+	formattedWallet := common.FormatUserWallet(user.Wallet)
+	ok, err := enforcer.HasRoleForUser(formattedWallet, api.RoleHall)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
@@ -47,7 +49,7 @@ func GrantRole(ctx *gin.Context) {
 
 	policies := lo.Map(req.Grants, func(r role, _ int) []string {
 		// g, 0xc13..1283 event_manager
-		return []string{strings.ToLower(r.Wallet), r.Role}
+		return []string{common.FormatUserWallet(r.Wallet), r.Role}
 	})
 	_, err = enforcer.AddGroupingPolicies(policies)
 	if err != nil {
@@ -68,6 +70,7 @@ type RevokeRoleReq struct {
 }
 
 // RevokeRole role from user
+//
 //	@Summary	Revoke role from user
 //	@Tags		Permission
 //	@Accept		json
@@ -77,7 +80,7 @@ type RevokeRoleReq struct {
 //	@Router		/permission/revoke_role [post]
 func RevokeRole(ctx *gin.Context) {
 	user, enforcer, _, _ := api.ForContext(ctx)
-	ok, err := enforcer.HasRoleForUser(user.Wallet, api.RoleHall)
+	ok, err := enforcer.HasRoleForUser(common.FormatUserWallet(user.Wallet), api.RoleHall)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
@@ -96,7 +99,7 @@ func RevokeRole(ctx *gin.Context) {
 
 	policies := lo.Map(req.Revokes, func(r role, _ int) []string {
 		// g, 0xc13..1283 event_manager
-		return []string{strings.ToLower(r.Wallet), r.Role}
+		return []string{common.FormatUserWallet(r.Wallet), r.Role}
 	})
 	_, err = enforcer.RemoveGroupingPolicies(policies)
 	if err != nil {

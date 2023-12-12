@@ -24,6 +24,8 @@ definitions:
         type: string
       apply_time:
         type: string
+      apply_ts:
+        type: integer
       assets:
         items:
           properties:
@@ -58,6 +60,15 @@ definitions:
         $ref: '#/definitions/model.ApplicationState'
     type: object
   app_bundle.ListAvailableProjectAndGuildResp:
+    properties:
+      guilds:
+        items:
+          $ref: '#/definitions/model.Guild'
+        type: array
+      projects:
+        items:
+          $ref: '#/definitions/model.Project'
+        type: array
     type: object
   application.ApplicantListResponse:
     properties:
@@ -65,6 +76,77 @@ definitions:
         type: string
       name:
         type: string
+    type: object
+  city_hall.CityHallDetailReply:
+    properties:
+      budgets:
+        items:
+          $ref: '#/definitions/model.ProjectBudget'
+        type: array
+      create_ts:
+        type: integer
+      creator:
+        type: string
+      desc:
+        type: string
+      grouped_sponsors:
+        additionalProperties:
+          items:
+            type: string
+          type: array
+        type: object
+      id:
+        type: integer
+      intro:
+        type: string
+      is_special:
+        type: boolean
+      logo:
+        type: string
+      members:
+        items:
+          type: string
+        type: array
+      name:
+        type: string
+      proposals:
+        items:
+          type: string
+        type: array
+      special_type:
+        $ref: '#/definitions/model.SpecialProjectType'
+      sponsors:
+        items:
+          type: string
+        type: array
+      status:
+        allOf:
+        - $ref: '#/definitions/model.ProjectStatus'
+        description: 'Status may have those values: open/pending_close/closed'
+      update_ts:
+        type: integer
+    type: object
+  city_hall.CityHallUpdateBudgetReq:
+    properties:
+      asset_name:
+        type: string
+      asset_type:
+        type: string
+      total_amount:
+        type: number
+    type: object
+  city_hall.CityHallUpdateMemberReq:
+    properties:
+      add:
+        items:
+          type: string
+        type: array
+      group_name:
+        type: string
+      remove:
+        items:
+          type: string
+        type: array
     type: object
   data_srv.CreditDetail:
     properties:
@@ -98,8 +180,6 @@ definitions:
     type: object
   guild.BudgetParam:
     properties:
-      budget_type:
-        $ref: '#/definitions/model.BudgetType'
       name:
         type: string
       total_amount:
@@ -140,8 +220,8 @@ definitions:
         items:
           $ref: '#/definitions/model.GuildBudget'
         type: array
-      created_at:
-        type: string
+      create_ts:
+        type: integer
       creator:
         type: string
       desc:
@@ -166,8 +246,8 @@ definitions:
         items:
           type: string
         type: array
-      updated_at:
-        type: string
+      update_ts:
+        type: integer
     type: object
   guild.UpdateBudgetReq:
     properties:
@@ -209,17 +289,21 @@ definitions:
     type: string
     x-enum-varnames:
     - ApplicationStateOpen
-  model.BudgetType:
-    enum:
-    - credit
-    type: string
-    x-enum-varnames:
-    - BudgetTypeCredit
   model.FrontendApplicationRecord:
     properties:
       amount:
         type: string
+      app_bundle_comment:
+        type: string
+      applicant_avatar:
+        type: string
+      applicant_wallet:
+        description: related users in the application process
+        type: string
       application_id:
+        type: integer
+      apply_ts:
+        description: The timestamp this application been created
         type: integer
       asset_name:
         type: string
@@ -228,14 +312,37 @@ definitions:
         type: string
       comment:
         type: string
-      created_at:
+      complete_ts:
+        description: The timestamp this application been marked as completed
+        type: integer
+      completer_avatar:
         type: string
+      completer_wallet:
+        type: string
+      create_ts:
+        type: integer
       detailed_type:
+        type: string
+      entity_id:
+        description: id field value from specified entity table
         type: string
       entity_name:
         description: name field value from specified entity table
         type: string
-      reviewer_name:
+      entity_type:
+        description: entity type from applications
+        type: string
+      process_ts:
+        description: The timestamp this application been processed
+        type: integer
+      processor_avatar:
+        type: string
+      processor_wallet:
+        type: string
+      review_ts:
+        description: The timestamp this application been reviewed
+        type: integer
+      reviewer_avatar:
         type: string
       reviewer_wallet:
         type: string
@@ -244,19 +351,20 @@ definitions:
       status:
         description: application status
         type: string
-      submitter_name:
-        type: string
-      submitter_wallet:
+      target_user_avatar:
         type: string
       target_user_wallet:
+        description: target user data
         type: string
       transaction_ids:
         type: string
+      update_ts:
+        type: integer
     type: object
   model.Guild:
     properties:
-      created_at:
-        type: string
+      create_ts:
+        type: integer
       creator:
         type: string
       desc:
@@ -281,13 +389,13 @@ definitions:
         items:
           type: string
         type: array
-      updated_at:
-        type: string
+      update_ts:
+        type: integer
     type: object
   model.GuildBudget:
     properties:
-      created_at:
-        type: string
+      create_ts:
+        type: integer
       guild_id:
         description: guild_id
         type: integer
@@ -301,12 +409,8 @@ definitions:
       total_amount:
         description: total_amount
         type: number
-      type:
-        allOf:
-        - $ref: '#/definitions/model.BudgetType'
-        description: budget type, credit or token
-      updated_at:
-        type: string
+      update_ts:
+        type: integer
       used_amount:
         description: used_amount
         type: number
@@ -345,12 +449,18 @@ definitions:
     type: object
   model.Project:
     properties:
-      created_at:
-        type: string
+      create_ts:
+        type: integer
       creator:
         type: string
       desc:
         type: string
+      grouped_sponsors:
+        additionalProperties:
+          items:
+            type: string
+          type: array
+        type: object
       id:
         type: integer
       intro:
@@ -379,13 +489,13 @@ definitions:
         allOf:
         - $ref: '#/definitions/model.ProjectStatus'
         description: 'Status may have those values: open/pending_close/closed'
-      updated_at:
-        type: string
+      update_ts:
+        type: integer
     type: object
   model.ProjectBudget:
     properties:
-      created_at:
-        type: string
+      create_ts:
+        type: integer
       id:
         type: integer
       name:
@@ -399,12 +509,8 @@ definitions:
       total_amount:
         description: total_amount = used_amount + remain_amount
         type: number
-      type:
-        allOf:
-        - $ref: '#/definitions/model.BudgetType'
-        description: budget type, credit or token
-      updated_at:
-        type: string
+      update_ts:
+        type: integer
       used_amount:
         description: used_amount
         type: number
@@ -419,8 +525,8 @@ definitions:
     properties:
       content:
         type: string
-      created_at:
-        type: string
+      create_ts:
+        type: integer
       creator_wallet:
         type: string
       id:
@@ -429,47 +535,14 @@ definitions:
         description: TODO support multi type, custom(JumpURL), xx(yy,zz)
         type: string
       push_date:
+        description: 'TODO: Verify whether this file need to be changed to epoch second'
         type: string
       status:
         type: integer
       title:
         description: TODO support multi language
         type: string
-      updated_at:
-        type: string
-    type: object
-  model.Season:
-    properties:
-      endAt:
-        type: integer
-      id:
-        type: integer
-      idx:
-        description: Numeric index for the season, will be used to calculate latest
-          credits in current season
-        type: integer
-      mintRewardAppBundleId:
-        description: app bundle id saves application for this season's reward application
-        type: integer
-      mintRewardConfirmed:
-        description: Whether mint reward has been confirmed and the timestamp of confirmation
-        type: boolean
-      mintRewardConfirmedAt:
-        type: integer
-      name:
-        type: string
-      seedSnapshotAt:
-        type: integer
-      seedSnapshotSaved:
-        description: Whether seed data snapshot has been taken and the timestamp of
-          snapshot
-        type: boolean
-      seedSnapshotSubmitter:
-        description: submitter for the seed snapshot
-        type: string
-      startAt:
-        description: StartAt and EndAt saves epoch second to avoid complex logic of
-          timezone
+      update_ts:
         type: integer
     type: object
   model.SpecialProjectType:
@@ -488,8 +561,8 @@ definitions:
         type: string
       bio:
         type: string
-      created_at:
-        type: string
+      create_ts:
+        type: integer
       discord_profile:
         type: string
       email:
@@ -506,8 +579,8 @@ definitions:
         type: string
       twitter_profile:
         type: string
-      updated_at:
-        type: string
+      update_ts:
+        type: integer
       wallet:
         type: string
       wechat:
@@ -518,12 +591,8 @@ definitions:
       asset_name:
         description: asset name
         type: string
-      asset_type:
-        allOf:
-        - $ref: '#/definitions/model.BudgetType'
-        description: type of the asset, credit or token
-      created_at:
-        type: string
+      create_ts:
+        type: integer
       dealt_amount:
         description: amount of asset that already dealt
         type: number
@@ -532,8 +601,8 @@ definitions:
       processing_amount:
         description: amount of asset that still need confirmation
         type: number
-      updated_at:
-        type: string
+      update_ts:
+        type: integer
       user_wallet:
         type: string
     type: object
@@ -560,8 +629,6 @@ definitions:
     type: object
   project.BudgetParam:
     properties:
-      budget_type:
-        $ref: '#/definitions/model.BudgetType'
       name:
         type: string
       total_amount:
@@ -601,12 +668,18 @@ definitions:
         items:
           $ref: '#/definitions/model.ProjectBudget'
         type: array
-      created_at:
-        type: string
+      create_ts:
+        type: integer
       creator:
         type: string
       desc:
         type: string
+      grouped_sponsors:
+        additionalProperties:
+          items:
+            type: string
+          type: array
+        type: object
       id:
         type: integer
       intro:
@@ -635,8 +708,8 @@ definitions:
         allOf:
         - $ref: '#/definitions/model.ProjectStatus'
         description: 'Status may have those values: open/pending_close/closed'
-      updated_at:
-        type: string
+      update_ts:
+        type: integer
     type: object
   project.UpdateBudgetReq:
     properties:
@@ -681,16 +754,6 @@ definitions:
       id:
         type: string
       name:
-        type: string
-    type: object
-  publicdata.node:
-    properties:
-      total_supply:
-        type: string
-    type: object
-  publicdata.scr:
-    properties:
-      total_supply:
         type: string
     type: object
   push.CreateReq:
@@ -779,6 +842,17 @@ definitions:
       wallet:
         type: string
     type: object
+  season.SeasonResponse:
+    properties:
+      end_at:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      start_at:
+        type: string
+    type: object
   user.LoginReply:
     properties:
       token:
@@ -788,6 +862,9 @@ definitions:
         type: integer
       user:
         $ref: '#/definitions/model.User'
+      user_verified:
+        description: for unipass user,if wallet signature not verified, will be false
+        type: boolean
     type: object
   user.LoginReq:
     properties:
@@ -1014,6 +1091,41 @@ paths:
       summary: List available projects and guilds for current user
       tags:
       - app_bundle
+  /cityhall/batch_update_members:
+    post:
+      parameters:
+      - description: member data
+        in: body
+        name: JsonBody
+        required: true
+        schema:
+          items:
+            $ref: '#/definitions/city_hall.CityHallUpdateMemberReq'
+          type: array
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: updates multiple group member info in single request, the logic is
+        same with single update
+  /cityhall/update_members:
+    post:
+      parameters:
+      - description: member data
+        in: body
+        name: JsonBody
+        required: true
+        schema:
+          $ref: '#/definitions/city_hall.CityHallUpdateMemberReq'
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: updates cityhall member, if group name existing in the request, the
+        grouped sponsors field will be updated, otherwise the sponsors field will
+        be updated
   /data_srv/aggr_scr:
     get:
       responses:
@@ -1024,6 +1136,25 @@ paths:
               $ref: '#/definitions/data_srv.CreditDetail'
             type: array
       summary: returns aggregated credit score and node calculation result
+  /download_applications:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  allOf:
+                  - $ref: '#/definitions/api.ListReplyData'
+                  - properties:
+                      rows:
+                        $ref: '#/definitions/model.FrontendApplicationRecord'
+                    type: object
+              type: object
+      summary: downloads all applications based on query params and sends Excel file
+        for downloading
   /guilds:
     get:
       consumes:
@@ -1037,7 +1168,7 @@ paths:
         in: query
         name: size
         type: integer
-      - description: 'sort field, default: created_at'
+      - description: 'sort field, default: create_ts'
         in: query
         name: sort_field
         type: string
@@ -1228,7 +1359,7 @@ paths:
         in: query
         name: size
         type: integer
-      - description: 'sort field, default: created_at'
+      - description: 'sort field, default: create_ts'
         in: query
         name: sort_field
         type: string
@@ -1535,51 +1666,6 @@ paths:
       summary: list my projects
       tags:
       - Project
-  /public_data/contract/node:
-    get:
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/api.Reply'
-            - properties:
-                data:
-                  $ref: '#/definitions/publicdata.node'
-              type: object
-      summary: query NODE data from spp-indexer
-      tags:
-      - PublicData
-  /public_data/contract/scr:
-    get:
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/api.Reply'
-            - properties:
-                data:
-                  $ref: '#/definitions/publicdata.scr'
-              type: object
-      summary: query CR data from spp-indexer
-      tags:
-      - PublicData
-  /public_data/contract/seed:
-    get:
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/api.Reply'
-            - properties:
-                data:
-                  $ref: '#/definitions/publicdata.scr'
-              type: object
-      summary: query SEED data from spp-indexer
-      tags:
-      - PublicData
   /public_data/discord_member_count:
     get:
       consumes:
@@ -1738,8 +1824,18 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/model.Season'
+            items:
+              $ref: '#/definitions/season.SeasonResponse'
+            type: array
       summary: returns all seasons currently existing in database
+  /seasons/curr:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/season.SeasonResponse'
+      summary: returns current season
   /user/casbin:
     get:
       consumes:
