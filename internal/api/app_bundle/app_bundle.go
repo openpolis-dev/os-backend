@@ -247,23 +247,29 @@ func CreateAppBundle(ctx *gin.Context) {
 		return
 	}
 
-	err = db.Transaction(func(tx *gorm.DB) error {
-		appBundle := model.AppBundle{
-			Comment:      newAppBundleReq.Comment,
-			Applicant:    common.FormatUserWallet(user.Wallet),
-			EntityType:   newAppBundleReq.Entity,
-			EntityId:     newAppBundleReq.EntityId,
-			SeasonId:     seasonRecord.ID,
-			Season:       *seasonRecord,
-			State:        model.ApplicationStateOpen,
-			ShadowRecord: false,
-			CreatedAt:    time.Now().In(internal.ProjectTimezone),
-			UpdatedAt:    time.Now().In(internal.ProjectTimezone),
-			CreateTs:     model.GetCurrentUtcEpochSecond(),
-			UpdateTs:     model.GetCurrentUtcEpochSecond(),
-			Type:         "NEW_REWARD",
-		}
+	appBundle := model.AppBundle{
+		Comment:      newAppBundleReq.Comment,
+		Applicant:    common.FormatUserWallet(user.Wallet),
+		EntityType:   newAppBundleReq.Entity,
+		EntityId:     newAppBundleReq.EntityId,
+		SeasonId:     seasonRecord.ID,
+		Season:       *seasonRecord,
+		State:        model.ApplicationStateOpen,
+		ShadowRecord: false,
+		CreatedAt:    time.Now().In(internal.ProjectTimezone),
+		UpdatedAt:    time.Now().In(internal.ProjectTimezone),
+		CreateTs:     model.GetCurrentUtcEpochSecond(),
+		UpdateTs:     model.GetCurrentUtcEpochSecond(),
+		Type:         "NEW_REWARD",
+	}
+	err = db.Model(model.AppBundle{}).Create(&appBundle).Error
+	if err != nil {
+		log.Error().Msgf("Create app bundle records error: %+v", err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create app bundle record error")))
+		return
+	}
 
+	err = db.Transaction(func(tx *gorm.DB) error {
 		appBundle.AppRecords = lo.Map(newAppBundleReq.Records, func(appRcdRequest *model.NewApplicationRequest, index int) *model.Application {
 			return &model.Application{
 				Type:             model.ApplicationNewReward,
@@ -285,9 +291,9 @@ func CreateAppBundle(ctx *gin.Context) {
 			}
 		})
 
-		err = tx.Model(model.AppBundle{}).Create(&appBundle).Error
+		err = tx.Save(&appBundle).Error
 		if err != nil {
-			log.Error().Msgf("Create app_bundle record error: %+v", err)
+			log.Error().Msgf("update app_bundle record error: %+v", err)
 			return err
 		}
 
@@ -321,7 +327,8 @@ func CreateAppBundle(ctx *gin.Context) {
 	})
 
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		log.Error().Msgf("Transaction error: %+v", err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create application error")))
 		return
 	}
 
