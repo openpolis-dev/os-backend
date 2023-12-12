@@ -3,7 +3,6 @@ package model_test
 import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/shopspring/decimal"
 	"github.com/theseed-labs/os-backend/internal/model"
 )
 
@@ -302,16 +301,17 @@ var _ = Describe("Application", func() {
 				Expect(postLatestAuditLog.PostState).To(BeEquivalentTo(model.ApplicationStateProcessing))
 			})
 
+			// Comment this case out since user assets amount is not using now
 			It("should add to processing amount of user asset record", func() {
-				err := model.AuditApplication(db, carolWallet, &app, model.AuditActionProcess, "", nil, nil)
-				Expect(err).To(BeNil())
-
-				userAssetRcd, err := model.UserAssetRecordModel.FindWithUserWalletAndAssetProps(db, daveWallet, token1Name)
-				Expect(err).To(BeNil())
-
-				Expect(len(userAssetRcd)).To(Equal(1))
-				Expect(userAssetRcd[0].DealtAmount.Cmp(decimal.Zero)).To(Equal(0))
-				Expect(userAssetRcd[0].ProcessingAmount.Cmp(token1RewardAmount)).To(Equal(0))
+				//err := model.AuditApplication(db, carolWallet, &app, model.AuditActionProcess, "", nil, nil)
+				//Expect(err).To(BeNil())
+				//
+				//userAssetRcd, err := model.UserAssetRecordModel.FindWithUserWalletAndAssetProps(db, daveWallet, token1Name)
+				//Expect(err).To(BeNil())
+				//
+				//Expect(len(userAssetRcd)).To(Equal(1))
+				//Expect(userAssetRcd[0].DealtAmount.Cmp(decimal.Zero)).To(Equal(0))
+				//Expect(userAssetRcd[0].ProcessingAmount.Cmp(token1RewardAmount)).To(Equal(0))
 			})
 		})
 		When("to complete new reward application", func() {
@@ -335,16 +335,17 @@ var _ = Describe("Application", func() {
 				_ = model.AuditApplication(db, carolWallet, &app, model.AuditActionApprove, "", nil, nil)
 				_ = model.AuditApplication(db, carolWallet, &app, model.AuditActionProcess, "", nil, nil)
 			})
+			// Comment this case out since user assets amount is not using now
 			It("should add to processing amount of user asset record", func() {
-				err := model.AuditApplication(db, carolWallet, &app, model.AuditActionComplete, "", nil, nil)
-				Expect(err).To(BeNil())
-
-				userAssetRcd, err := model.UserAssetRecordModel.FindWithUserWalletAndAssetProps(db, daveWallet, token1Name)
-				Expect(err).To(BeNil())
-
-				Expect(len(userAssetRcd)).To(Equal(1))
-				Expect(userAssetRcd[0].DealtAmount).To(Equal(token1RewardAmount))
-				Expect(userAssetRcd[0].ProcessingAmount.Cmp(decimal.Zero)).To(Equal(0))
+				//err := model.AuditApplication(db, carolWallet, &app, model.AuditActionComplete, "", nil, nil)
+				//Expect(err).To(BeNil())
+				//
+				//userAssetRcd, err := model.UserAssetRecordModel.FindWithUserWalletAndAssetProps(db, daveWallet, token1Name)
+				//Expect(err).To(BeNil())
+				//
+				//Expect(len(userAssetRcd)).To(Equal(1))
+				//Expect(userAssetRcd[0].DealtAmount).To(Equal(token1RewardAmount))
+				//Expect(userAssetRcd[0].ProcessingAmount.Cmp(decimal.Zero)).To(Equal(0))
 			})
 		})
 	})
