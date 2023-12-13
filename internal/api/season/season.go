@@ -1,6 +1,7 @@
 package season
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -8,6 +9,7 @@ import (
 	"github.com/samber/lo"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/model"
+	"github.com/theseed-labs/os-backend/internal/sdk"
 )
 
 type SeasonResponse struct {
@@ -30,7 +32,8 @@ func List(ctx *gin.Context) {
 	err := db.Model(&model.Season{}).Find(&seasonRcds).Error
 
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get seasons error")))
 	}
 
 	resp := lo.Map(seasonRcds, func(seasonRcd *model.Season, _ int) *SeasonResponse {
@@ -56,7 +59,8 @@ func Current(ctx *gin.Context) {
 	db := api.ForContextOnlyDB(ctx)
 	currSeason, err := model.GetCurrentSeason(db)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get current season error")))
 		return
 	}
 	ctx.JSON(http.StatusOK, api.Success(&SeasonResponse{

@@ -11,6 +11,7 @@ import (
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
+	"github.com/theseed-labs/os-backend/internal/sdk"
 	"github.com/xiaosongfu/gormfind"
 	"gorm.io/gorm"
 )
@@ -72,10 +73,12 @@ func Create(ctx *gin.Context) {
 	//  check permission
 	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), api.ObjEvent, api.ActCreateEvent)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 		return
 	}
 	if !ok {
+		sdk.LogForbiddenError(ctx, user.Wallet, api.ObjEvent, api.ActCreateEvent)
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
@@ -124,7 +127,8 @@ func Create(ctx *gin.Context) {
 
 	err = db.Create(&eventRecord).Error
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create event error")))
 	} else {
 		ctx.JSON(http.StatusCreated, api.Success(eventRecord))
 	}
@@ -134,7 +138,8 @@ func Detail(ctx *gin.Context) {
 	db := api.ForContextOnlyDB(ctx)
 	eventRecord, err := getRecord(db, ctx.Param("id"))
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get event error")))
 		return
 	}
 	if eventRecord == nil {
@@ -156,7 +161,8 @@ func Delete(ctx *gin.Context) {
 	eventRecord, err := getRecord(db, ctx.Param("id"))
 	err = db.Delete(&eventRecord).Error
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("delete event error")))
 		return
 	}
 	ctx.JSON(http.StatusOK, api.Success(eventRecord))
@@ -167,10 +173,12 @@ func Update(ctx *gin.Context) {
 	//  check permission
 	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), api.ObjEvent, api.ActCreateEvent)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 		return
 	}
 	if !ok {
+		sdk.LogForbiddenError(ctx, user.Wallet, api.ObjEvent, api.ActCreateEvent)
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
@@ -184,7 +192,8 @@ func Update(ctx *gin.Context) {
 
 	eventRecord, err := getRecord(db, ctx.Param("id"))
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get event error")))
 		return
 	}
 

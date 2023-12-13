@@ -137,6 +137,9 @@ func main() {
 	r := gin.Default()
 	r.Use(middleware.RequestMetricsRecord())
 	r.Use(middleware.ResponseMetricsRecord())
+
+	sdk.InitSentry(r, cfg)
+
 	r.GET("/prometheus_metrics", gin.WrapH(promhttp.Handler()))
 
 	r.Use(gzip.Gzip(gzip.DefaultCompression))

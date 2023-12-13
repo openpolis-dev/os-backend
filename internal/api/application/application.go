@@ -19,6 +19,7 @@ import (
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
+	"github.com/theseed-labs/os-backend/internal/sdk"
 	"github.com/xuri/excelize/v2"
 	"gorm.io/gorm"
 )
@@ -49,7 +50,8 @@ func ListApplicants(ctx *gin.Context) {
 		Select("applications.applicant, users.name").
 		Find(&rslt).Error
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("query applications error")))
 		return
 	}
 
@@ -67,19 +69,15 @@ func List(ctx *gin.Context) {
 
 	queryParams := model.ListApplicationQueryParams{}
 	if err := ctx.Bind(&queryParams); err != nil {
-		ctx.JSON(http.StatusBadRequest, api.Reply{
-			Code: -1,
-			Msg:  fmt.Sprintf("query params error: %+v", err),
-		})
+		sdk.LogUserSideError(ctx, err)
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("query params error: %+v", err)))
 		return
 	}
 
 	rcds, total, err := model.GenerateFrontendApplicationRecords(db, &queryParams, true)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.Reply{
-			Code: -1,
-			Msg:  fmt.Sprintf("query result error: %+v", err),
-		})
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("query result error")))
 		return
 	}
 
@@ -102,10 +100,8 @@ func Create(ctx *gin.Context) {
 	var newApplicationReqs []model.NewApplicationRequest
 	if err := ctx.BindJSON(&newApplicationReqs); err != nil {
 		if err != nil {
-			ctx.JSON(http.StatusBadRequest, api.Reply{
-				Code: -1,
-				Msg:  fmt.Sprintf("passed in data error: %+v", err),
-			})
+			sdk.LogUserSideError(ctx, err)
+			ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("passed in data error: %+v", err)))
 		}
 		return
 	}
@@ -137,10 +133,12 @@ func Create(ctx *gin.Context) {
 				Else("")
 			ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), obj, api.ActCreateApplication)
 			if err != nil {
-				ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+				sdk.LogServerErrorToSentry(ctx, err)
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 				return err
 			}
 			if !ok {
+				sdk.LogForbiddenError(ctx, user.Wallet, obj, api.ActCreateApplication)
 				ctx.JSON(http.StatusForbidden, api.Forbidden())
 				return err
 			}
@@ -193,10 +191,8 @@ func Create(ctx *gin.Context) {
 	})
 
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.Reply{
-			Code: -1,
-			Msg:  fmt.Sprintf("creation application records error, %+v", err),
-		})
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("creation application records error")))
 		return
 	}
 
@@ -214,19 +210,15 @@ func Download(ctx *gin.Context) {
 
 	queryParams := model.ListApplicationQueryParams{}
 	if err := ctx.Bind(&queryParams); err != nil {
-		ctx.JSON(http.StatusBadRequest, api.Reply{
-			Code: -1,
-			Msg:  fmt.Sprintf("query params error: %+v", err),
-		})
+		sdk.LogUserSideError(ctx, err)
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("query params error: %+v", err)))
 		return
 	}
 
 	rcds, _, err := model.GenerateFrontendApplicationRecords(db, &queryParams, false)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.Reply{
-			Code: -1,
-			Msg:  fmt.Sprintf("query result error: %+v", err),
-		})
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("query result error")))
 		return
 	}
 
@@ -246,7 +238,8 @@ func Download(ctx *gin.Context) {
 		w := csv.NewWriter(buf)
 		err = w.Write(csvHeaderList)
 		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+			sdk.LogServerErrorToSentry(ctx, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("write csv header error")))
 			return
 		}
 
@@ -264,7 +257,8 @@ func Download(ctx *gin.Context) {
 				r.Status,
 			})
 			if err != nil {
-				ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+				sdk.LogServerErrorToSentry(ctx, err)
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("write csv row error")))
 				return
 			}
 		}
@@ -286,7 +280,8 @@ func Download(ctx *gin.Context) {
 		f := excelize.NewFile()
 		streamWriter, err := f.NewStreamWriter("Sheet1")
 		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+			sdk.LogServerErrorToSentry(ctx, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create excel stream writer error")))
 			return
 		}
 
@@ -294,7 +289,8 @@ func Download(ctx *gin.Context) {
 		cell, _ := excelize.CoordinatesToCellName(1, 1)
 		title := lo.Map(csvHeaderList, func(item string, _ int) any { return item })
 		if err := streamWriter.SetRow(cell, title); err != nil {
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+			sdk.LogServerErrorToSentry(ctx, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("write excel header error")))
 			return
 		}
 
@@ -321,14 +317,16 @@ func Download(ctx *gin.Context) {
 		// flush writer
 		if err = streamWriter.Flush(); err != nil {
 			log.Error().Msgf("flush writer [%s] failed: %s", fileName, err)
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+			sdk.LogServerErrorToSentry(ctx, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("flush excel writer error")))
 			return
 		}
 
 		// write to response
 		err = f.Write(ctx.Writer)
 		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+			sdk.LogServerErrorToSentry(ctx, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("write excel to response error")))
 		}
 	} else if fileFormat == "json" {
 		tmpFile, err := os.CreateTemp(os.TempDir(), "application-list-*.json")
@@ -338,13 +336,15 @@ func Download(ctx *gin.Context) {
 
 		jsonBytes, err := json.Marshal(rcds)
 		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+			sdk.LogServerErrorToSentry(ctx, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("marshal json error")))
 			return
 		}
 
 		err = os.WriteFile(tmpFile.Name(), jsonBytes, 0777)
 		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+			sdk.LogServerErrorToSentry(ctx, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("write json error")))
 			return
 		}
 
@@ -384,10 +384,12 @@ func BatchProcess(ctx *gin.Context) {
 	//  check permission: `(0x..., proj_and_guild, audit_app)`
 	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), api.ObjProjAndGuild, api.ActAuditApplication)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 		return
 	}
 	if !ok {
+		sdk.LogForbiddenError(ctx, user.Wallet, api.ObjProjAndGuild, api.ActCreateApplication)
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
@@ -396,17 +398,16 @@ func BatchProcess(ctx *gin.Context) {
 	db.Model(&model.Application{}).Where("state = ?", model.ApplicationStateProcessing).Count(&processingRecordCount)
 
 	if processingRecordCount > 0 {
-		ctx.JSON(http.StatusBadRequest, &api.Reply{
-			Code: -1,
-			Msg:  "applications in processing state should be processed before exporting new list",
-		})
+		sdk.LogUserSideError(ctx, errors.New("applications in processing state should be processed before exporting new list"))
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("applications in processing state should be processed before exporting new list")))
 		return
 	}
 
 	var applications []model.Application
 	err = db.Model(&model.Application{}).Where("state = ?", model.ApplicationStateApproved).Find(&applications).Error
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, api.Reply{Code: -1, Msg: err.Error()})
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("query approved applications error")))
 		return
 	}
 
@@ -414,10 +415,8 @@ func BatchProcess(ctx *gin.Context) {
 
 	err = model.BatchAuditApplication(db, common.FormatUserWallet(user.Wallet), &applications, model.AuditActionProcess, "", enforcer, push)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, api.Reply{
-			Code: -1,
-			Msg:  fmt.Sprintf("process applications error: %+v", err),
-		})
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("process applications error")))
 		return
 	}
 
@@ -428,10 +427,8 @@ func BatchProcess(ctx *gin.Context) {
 	}
 	err = db.Model(&model.AppBundle{}).Where("id IN ?", lo.Keys(appBundleIds)).Update("state", model.ApplicationStateProcessing).Error
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, api.Reply{
-			Code: -1,
-			Msg:  fmt.Sprintf("process applications error: %+v", err),
-		})
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("process applications error")))
 		return
 	}
 
@@ -442,7 +439,8 @@ func BatchApprove(ctx *gin.Context) {
 	var applications []model.Application
 	err := getBatchApplicationsOrReturnError(ctx, &applications)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, api.Reply{Code: -1, Msg: err.Error()})
+		sdk.LogUserSideError(ctx, err)
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("parse request data error")))
 		return
 	}
 
@@ -451,10 +449,12 @@ func BatchApprove(ctx *gin.Context) {
 	//  check permission: `(0x..., proj_and_guild, audit_app)`
 	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), api.ObjProjAndGuild, api.ActAuditApplication)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 		return
 	}
 	if !ok {
+		sdk.LogForbiddenError(ctx, user.Wallet, api.ObjProjAndGuild, api.ActCreateApplication)
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
@@ -462,10 +462,8 @@ func BatchApprove(ctx *gin.Context) {
 	push := api.ForContextOnlyPush(ctx)
 	err = model.BatchAuditApplication(db, common.FormatUserWallet(user.Wallet), &applications, model.AuditActionApprove, "", enforcer, push)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, api.Reply{
-			Code: -1,
-			Msg:  fmt.Sprintf("approve applications error: %+v", err),
-		})
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("approve applications error")))
 		return
 	}
 
@@ -477,7 +475,8 @@ func BatchReject(ctx *gin.Context) {
 	var applications []model.Application
 	err := getBatchApplicationsOrReturnError(ctx, &applications)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, api.Reply{Code: -1, Msg: err.Error()})
+		sdk.LogUserSideError(ctx, err)
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("parse request data error")))
 		return
 	}
 
@@ -486,10 +485,12 @@ func BatchReject(ctx *gin.Context) {
 	//  check permission: `(0x..., proj_and_guild, audit_app)`
 	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), api.ObjProjAndGuild, api.ActAuditApplication)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 		return
 	}
 	if !ok {
+		sdk.LogForbiddenError(ctx, user.Wallet, api.ObjProjAndGuild, api.ActCreateApplication)
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
@@ -497,10 +498,8 @@ func BatchReject(ctx *gin.Context) {
 	push := api.ForContextOnlyPush(ctx)
 	err = model.BatchAuditApplication(db, common.FormatUserWallet(user.Wallet), &applications, model.AuditActionReject, "", enforcer, push)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, api.Reply{
-			Code: -1,
-			Msg:  fmt.Sprintf("reject applications error: %+v", err),
-		})
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusBadRequest, api.ServerError(errors.New("reject applications error")))
 		return
 	}
 
@@ -516,10 +515,12 @@ func BatchComplete(ctx *gin.Context) {
 	//  check permission: `(0x..., proj_and_guild, audit_app)`
 	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), api.ObjProjAndGuild, api.ActAuditApplication)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 		return
 	}
 	if !ok {
+		sdk.LogForbiddenError(ctx, user.Wallet, api.ObjProjAndGuild, api.ActCreateApplication)
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
@@ -530,20 +531,16 @@ func BatchComplete(ctx *gin.Context) {
 	reqBody := AuditRequestBody{}
 	err = ctx.Bind(&reqBody)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, api.Reply{
-			Code: -1,
-			Msg:  "parse request data error",
-		})
+		sdk.LogUserSideError(ctx, err)
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("parse request data error")))
 		return
 	}
 
 	push := api.ForContextOnlyPush(ctx)
 	err = model.BatchAuditApplication(db, common.FormatUserWallet(user.Wallet), &applications, model.AuditActionComplete, reqBody.Message, enforcer, push)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, api.Reply{
-			Code: -1,
-			Msg:  fmt.Sprintf("complete applications error: %+v", err),
-		})
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusBadRequest, api.ServerError(errors.New("complete applications error")))
 		return
 	}
 
@@ -553,10 +550,8 @@ func BatchComplete(ctx *gin.Context) {
 	}
 	err = db.Model(&model.AppBundle{}).Where("id IN ?", lo.Keys(appBundleIds)).Update("state", model.ApplicationStateCompleted).Error
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, api.Reply{
-			Code: -1,
-			Msg:  fmt.Sprintf("process applications error: %+v", err),
-		})
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusBadRequest, api.ServerError(errors.New("complete applications error")))
 		return
 	}
 
@@ -616,7 +611,8 @@ func auditApplication(ctx *gin.Context, application *model.Application, auditAct
 	//  check permission: `(0x..., proj_and_guild, audit_app)`
 	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), api.ObjProjAndGuild, api.ActAuditApplication)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 		return
 	}
 	if !ok {
@@ -627,17 +623,14 @@ func auditApplication(ctx *gin.Context, application *model.Application, auditAct
 	if application.ValidateAuditAction(auditAction) {
 		err = model.AuditApplication(db, common.FormatUserWallet(user.Wallet), application, auditAction, auditMsg, enforcer, push)
 		if err != nil {
-			ctx.JSON(http.StatusBadRequest, api.Reply{
-				Code: -1,
-				Msg:  fmt.Sprintf("approve application failed, error: %s, please check and resubmit request", err.Error()),
-			})
+			sdk.LogServerErrorToSentry(ctx, err)
+			ctx.JSON(http.StatusBadRequest, api.ServerError(errors.New("approve application error")))
 			return
 		}
 	} else {
-		ctx.JSON(http.StatusBadRequest, api.Reply{
-			Code: -1,
-			Msg:  fmt.Sprintf("application currently is at state %s, which is not suit for approve", application.State),
-		})
+		err := fmt.Errorf("application currently is at state %s, which is not suit for approve", application.State)
+		sdk.LogUserSideError(ctx, err)
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
 		return
 	}
 }
@@ -648,10 +641,9 @@ func getRecordOrReturnNotFound(ctx *gin.Context, application *model.Application)
 	tx := db.First(&application, id)
 
 	if errors.Is(tx.Error, gorm.ErrRecordNotFound) {
-		ctx.JSON(http.StatusNotFound, api.Reply{
-			Code: -1,
-			Msg:  fmt.Sprintf("application with id %s not found", id),
-		})
+		err := fmt.Errorf("application with id %s not found", id)
+		sdk.LogUserSideError(ctx, err)
+		ctx.JSON(http.StatusNotFound, api.BadRequest(err))
 		return
 	}
 }

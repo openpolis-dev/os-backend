@@ -1,6 +1,7 @@
 package push
 
 import (
+	"errors"
 	"net/http"
 	"time"
 
@@ -46,10 +47,12 @@ func Create(ctx *gin.Context) {
 	//  check permission
 	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), api.ObjPush, api.ActCreatePush)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 		return
 	}
 	if !ok {
+		sdk.LogForbiddenError(ctx, user.Wallet, api.ObjPush, api.ActCreatePush)
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
@@ -69,7 +72,8 @@ func Create(ctx *gin.Context) {
 	}
 	err = model.PushModel.CreateOrUpdate(db, &push)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create push error")))
 		return
 	}
 
@@ -111,7 +115,8 @@ func List(ctx *gin.Context) {
 
 	pushes, total, err := model.PushModel.List(db, nil, page)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("list push error")))
 		return
 	}
 
