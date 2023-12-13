@@ -326,7 +326,7 @@ func Detail(ctx *gin.Context) {
 	})
 
 	ctx.JSON(http.StatusOK, api.Success(&DetailReply{
-		Guild:   *guild,
+		Guild:   *NormalizeWalletAddrInGuild(guild),
 		Budgets: budgets,
 	}))
 }
@@ -359,7 +359,9 @@ func List(ctx *gin.Context) {
 		Page:  page.Page,
 		Size:  page.Size,
 		Total: total,
-		Rows:  guilds,
+		Rows: lo.Map(guilds, func(m *model.Guild, _ int) *model.Guild {
+			return NormalizeWalletAddrInGuild(m)
+		}),
 	}))
 }
 
@@ -393,7 +395,9 @@ func MyGuilds(ctx *gin.Context) {
 		Page:  page.Page,
 		Size:  page.Size,
 		Total: total,
-		Rows:  guilds,
+		Rows: lo.Map(guilds, func(m *model.Guild, _ int) *model.Guild {
+			return NormalizeWalletAddrInGuild(m)
+		}),
 	}))
 }
 
@@ -786,4 +790,15 @@ func AddRelatedProposal(ctx *gin.Context) {
 
 func buildGuildPermObject(guildId int) string {
 	return fmt.Sprintf("%s%d", api.ObjGuildPrefix, guildId)
+}
+
+func NormalizeWalletAddrInGuild(guild *model.Guild) *model.Guild {
+	guild.Sponsors = lo.Map[string](guild.Sponsors, func(wallet string, _ int) string {
+		return common.ToFrontendWallet(wallet)
+	})
+	guild.Members = lo.Map[string](guild.Members, func(wallet string, _ int) string {
+		return common.ToFrontendWallet(wallet)
+	})
+
+	return guild
 }

@@ -13,6 +13,7 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api"
+	"github.com/theseed-labs/os-backend/internal/api/project"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk"
@@ -424,21 +425,8 @@ func updateGroupedMembers(cityHallProject *model.Project, req *CityHallUpdateMem
 }
 
 func generateCityHallDetailReply(cityHallProject *model.Project, budgets []*model.ProjectBudget) *CityHallDetailReply {
-	cityHallProject.Members = lo.Map(cityHallProject.Members, func(m string, _ int) string {
-		return common.ToFrontendWallet(m)
-	})
-	cityHallProject.Sponsors = lo.Map(cityHallProject.Sponsors, func(m string, _ int) string {
-		return common.ToFrontendWallet(m)
-	})
-
-	for grpName, wallets := range cityHallProject.GroupedSponsors {
-		cityHallProject.GroupedSponsors[grpName] = lo.Map(wallets, func(m string, _ int) string {
-			return common.ToFrontendWallet(m)
-		})
-	}
-
 	return &CityHallDetailReply{
-		Project: *cityHallProject,
+		Project: *project.NormalizeWalletAddrInProject(cityHallProject),
 		Budgets: budgets,
 	}
 }

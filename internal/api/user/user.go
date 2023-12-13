@@ -424,7 +424,7 @@ func Update(ctx *gin.Context) {
 //	@Accept		json
 //	@Produce	json
 //	@Param		wallets	query		[]string	true	"wallets"
-//	@Success	200		{object}	api.Reply{data=[]model.User}
+//	@Success	200		{object}	api.Reply{data=[]UserModelWithSomeSeepassData}
 //	@Router		/user/users [get]
 func Users(ctx *gin.Context) {
 	wallets := ctx.QueryArray("wallets")
@@ -459,6 +459,7 @@ func Users(ctx *gin.Context) {
 	// TODO: Query SeePASS to get user SBT and SEED info
 	for _, user := range users {
 		seepassResp, err := sppClient.GetSeepassData(user.Wallet)
+		user.Wallet = common.ToFrontendWallet(user.Wallet)
 		if err != nil {
 			log.Warn().Msgf("query seepass data error, wallet: %s, error: %+v", user.Wallet, err)
 		}

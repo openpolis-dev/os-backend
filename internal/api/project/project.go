@@ -400,15 +400,8 @@ func Detail(ctx *gin.Context) {
 		return
 	}
 
-	proj.Members = lo.Map(proj.Members, func(m string, _ int) string {
-		return common.ToFrontendWallet(m)
-	})
-	proj.Sponsors = lo.Map(proj.Sponsors, func(m string, _ int) string {
-		return common.ToFrontendWallet(m)
-	})
-
 	ctx.JSON(http.StatusOK, api.Success(&DetailReply{
-		Project: *proj,
+		Project: *NormalizeWalletAddrInProject(proj),
 		Budgets: budgets,
 	}))
 }
@@ -446,7 +439,9 @@ func List(ctx *gin.Context) {
 		Page:  page.Page,
 		Size:  page.Size,
 		Total: total,
-		Rows:  projects,
+		Rows: lo.Map(projects, func(project *model.Project, _ int) model.Project {
+			return *NormalizeWalletAddrInProject(project)
+		}),
 	}))
 }
 
@@ -480,7 +475,9 @@ func MyProjects(ctx *gin.Context) {
 		Page:  page.Page,
 		Size:  page.Size,
 		Total: total,
-		Rows:  projects,
+		Rows: lo.Map(projects, func(project *model.Project, _ int) model.Project {
+			return *NormalizeWalletAddrInProject(project)
+		}),
 	}))
 }
 
@@ -898,4 +895,20 @@ func AddRelatedProposal(ctx *gin.Context) {
 
 func buildProjectPermObject(projectId int) string {
 	return fmt.Sprintf("%s%d", api.ObjProjPrefix, projectId)
+}
+
+func NormalizeWalletAddrInProject(project *model.Project) *model.Project {
+	project.Sponsors = lo.Map[string](project.Sponsors, func(wallet string, _ int) string {
+		return common.ToFrontendWallet(wallet)
+	})
+	project.Members = lo.Map[string](project.Members, func(wallet string, _ int) string {
+		return common.ToFrontendWallet(wallet)
+	})
+	for grpName, wallets := range project.GroupedSponsors {
+		project.GroupedSponsors[grpName] = lo.Map(wallets, func(wallet string, _ int) string {
+			return common.ToFrontendWallet(wallet)
+		})
+	}
+
+	return project
 }
