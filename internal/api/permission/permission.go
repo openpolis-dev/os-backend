@@ -1,12 +1,14 @@
 package permission
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/samber/lo"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/common"
+	"github.com/theseed-labs/os-backend/internal/sdk"
 )
 
 type GrantRoleReq struct {
@@ -32,10 +34,12 @@ func GrantRole(ctx *gin.Context) {
 	formattedWallet := common.FormatUserWallet(user.Wallet)
 	ok, err := enforcer.HasRoleForUser(formattedWallet, api.RoleHall)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 		return
 	}
 	if !ok {
+		sdk.LogForbiddenError(ctx, user.Wallet, api.RoleHall, "access")
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
@@ -53,12 +57,14 @@ func GrantRole(ctx *gin.Context) {
 	})
 	_, err = enforcer.AddGroupingPolicies(policies)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("grant role error")))
 		return
 	}
 	err = enforcer.SavePolicy()
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("grant role error")))
 		return
 	}
 
@@ -82,10 +88,12 @@ func RevokeRole(ctx *gin.Context) {
 	user, enforcer, _, _ := api.ForContext(ctx)
 	ok, err := enforcer.HasRoleForUser(common.FormatUserWallet(user.Wallet), api.RoleHall)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 		return
 	}
 	if !ok {
+		sdk.LogForbiddenError(ctx, user.Wallet, api.RoleHall, "access")
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
@@ -103,12 +111,14 @@ func RevokeRole(ctx *gin.Context) {
 	})
 	_, err = enforcer.RemoveGroupingPolicies(policies)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("revoke role error")))
 		return
 	}
 	err = enforcer.SavePolicy()
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("revoke role error")))
 		return
 	}
 

@@ -1,6 +1,7 @@
 package guild
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -97,10 +98,12 @@ func Create(ctx *gin.Context) {
 	//  check permission
 	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), api.ObjGuild, api.ActCreate)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 		return
 	}
 	if !ok {
+		sdk.LogForbiddenError(ctx, user.Wallet, api.ObjGuild, api.ActCreate)
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
@@ -121,7 +124,8 @@ func Create(ctx *gin.Context) {
 	err = model.GuildModel.CreateOrUpdate(tx, &guild)
 	if err != nil {
 		tx.Rollback()
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("save guild error")))
 		return
 	}
 
@@ -131,12 +135,14 @@ func Create(ctx *gin.Context) {
 	// Save logo image to S3
 	logoUrl, err := sdk.GetAwsClient().UploadEntityLogo(guild.ID, "guild", req.LogoStr)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("save logo image error")))
 		return
 	}
 	err = db.Model(&guild).Update("logo", logoUrl).Error
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("save guild error")))
 		return
 	}
 
@@ -157,7 +163,8 @@ func Create(ctx *gin.Context) {
 	}
 	_, err = enforcer.AddPolicies(policies)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("add policies error")))
 		return
 	}
 	// add roles
@@ -172,12 +179,14 @@ func Create(ctx *gin.Context) {
 	//groupingPolicies := append(memberGroupingPolicies, sponsorGroupingPolicies...)
 	_, err = enforcer.AddGroupingPolicies(sponsorGroupingPolicies)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("add grouping policies error")))
 		return
 	}
 	err = enforcer.SavePolicy()
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("save policy error")))
 		return
 	}
 
@@ -224,19 +233,23 @@ func Update(ctx *gin.Context) {
 
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
-	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), fmt.Sprintf("%s%d", api.ObjGuildPrefix, id), api.ActModify)
+	permObject := buildGuildPermObject(id)
+	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), permObject, api.ActModify)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 		return
 	}
 	if !ok {
+		sdk.LogForbiddenError(ctx, user.Wallet, permObject, api.ActModify)
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
 
 	guild, err := model.GuildModel.Detail(db, uint(id))
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get guild error")))
 		return
 	}
 	if guild == nil {
@@ -260,7 +273,8 @@ func Update(ctx *gin.Context) {
 	guild.UpdatedAt = time.Now().In(internal.ProjectTimezone)
 	err = model.GuildModel.CreateOrUpdate(db, guild)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("update guild error")))
 		return
 	}
 
@@ -288,7 +302,8 @@ func Detail(ctx *gin.Context) {
 
 	guild, err := model.GuildModel.Detail(db, uint(id))
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get guild error")))
 		return
 	}
 	if guild == nil {
@@ -298,7 +313,8 @@ func Detail(ctx *gin.Context) {
 
 	budgets, err := model.GuildBudgetModel.ListByGuildId(db, guild.ID)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get guild budgets error")))
 		return
 	}
 
@@ -311,7 +327,7 @@ func Detail(ctx *gin.Context) {
 	})
 
 	ctx.JSON(http.StatusOK, api.Success(&DetailReply{
-		Guild:   *guild,
+		Guild:   *NormalizeWalletAddrInGuild(guild),
 		Budgets: budgets,
 	}))
 }
@@ -335,7 +351,8 @@ func List(ctx *gin.Context) {
 
 	guilds, total, err := model.GuildModel.List(db, page)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("list guilds error")))
 		return
 	}
 
@@ -343,7 +360,9 @@ func List(ctx *gin.Context) {
 		Page:  page.Page,
 		Size:  page.Size,
 		Total: total,
-		Rows:  guilds,
+		Rows: lo.Map(guilds, func(m *model.Guild, _ int) *model.Guild {
+			return NormalizeWalletAddrInGuild(m)
+		}),
 	}))
 }
 
@@ -368,7 +387,8 @@ func MyGuilds(ctx *gin.Context) {
 
 	guilds, total, err := model.GuildModel.ListBySponsorOrMember(db, common.FormatUserWallet(user.Wallet), page)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("list guilds error")))
 		return
 	}
 
@@ -376,7 +396,9 @@ func MyGuilds(ctx *gin.Context) {
 		Page:  page.Page,
 		Size:  page.Size,
 		Total: total,
-		Rows:  guilds,
+		Rows: lo.Map(guilds, func(m *model.Guild, _ int) *model.Guild {
+			return NormalizeWalletAddrInGuild(m)
+		}),
 	}))
 }
 
@@ -417,23 +439,29 @@ func UpdateStaffs(ctx *gin.Context) {
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
 	if req.Sponsors != nil && len(req.Sponsors) != 0 {
-		ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), fmt.Sprintf("%s%d", api.ObjGuildPrefix, id), api.ActUpdateSponsor)
+		permObject := buildGuildPermObject(id)
+		ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), permObject, api.ActUpdateSponsor)
 		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+			sdk.LogServerErrorToSentry(ctx, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("list guilds error")))
 			return
 		}
 		if !ok {
+			sdk.LogForbiddenError(ctx, user.Wallet, permObject, api.ActUpdateSponsor)
 			ctx.JSON(http.StatusForbidden, api.Forbidden())
 			return
 		}
 	}
 	if req.Members != nil && len(req.Members) != 0 {
-		ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), fmt.Sprintf("%s%d", api.ObjGuildPrefix, id), api.ActUpdateMember)
+		permObject := buildGuildPermObject(id)
+		ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), permObject, api.ActUpdateMember)
 		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+			sdk.LogServerErrorToSentry(ctx, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("list guilds error")))
 			return
 		}
 		if !ok {
+			sdk.LogForbiddenError(ctx, user.Wallet, permObject, api.ActUpdateMember)
 			ctx.JSON(http.StatusForbidden, api.Forbidden())
 			return
 		}
@@ -449,7 +477,8 @@ func UpdateStaffs(ctx *gin.Context) {
 
 	guild, err := model.GuildModel.Detail(db, uint(id))
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get guild error")))
 		return
 	}
 	if guild == nil {
@@ -475,7 +504,8 @@ func UpdateStaffs(ctx *gin.Context) {
 			if err != nil {
 				tx.Rollback()
 
-				ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+				sdk.LogServerErrorToSentry(ctx, err)
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("update guild error")))
 				return
 			}
 
@@ -488,14 +518,16 @@ func UpdateStaffs(ctx *gin.Context) {
 			if err != nil {
 				tx.Rollback()
 
-				ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+				sdk.LogServerErrorToSentry(ctx, err)
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("update guild error")))
 				return
 			}
 			err = enforcer.SavePolicy()
 			if err != nil {
 				tx.Rollback()
 
-				ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+				sdk.LogServerErrorToSentry(ctx, err)
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("update guild error")))
 				return
 			}
 		}
@@ -513,7 +545,8 @@ func UpdateStaffs(ctx *gin.Context) {
 			if err != nil {
 				tx.Rollback()
 
-				ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+				sdk.LogServerErrorToSentry(ctx, err)
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("update guild error")))
 				return
 			}
 
@@ -555,7 +588,8 @@ func UpdateStaffs(ctx *gin.Context) {
 			if err != nil {
 				tx.Rollback()
 
-				ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+				sdk.LogServerErrorToSentry(ctx, err)
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("update guild error")))
 				return
 			}
 
@@ -568,14 +602,16 @@ func UpdateStaffs(ctx *gin.Context) {
 			if err != nil {
 				tx.Rollback()
 
-				ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+				sdk.LogServerErrorToSentry(ctx, err)
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("update guild error")))
 				return
 			}
 			err = enforcer.SavePolicy()
 			if err != nil {
 				tx.Rollback()
 
-				ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+				sdk.LogServerErrorToSentry(ctx, err)
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("update guild error")))
 				return
 			}
 		}
@@ -589,7 +625,8 @@ func UpdateStaffs(ctx *gin.Context) {
 			if err != nil {
 				tx.Rollback()
 
-				ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+				sdk.LogServerErrorToSentry(ctx, err)
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("update guild error")))
 				return
 			}
 
@@ -656,26 +693,31 @@ func UpdateBudget(ctx *gin.Context) {
 
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
-	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), fmt.Sprintf("%s%d", api.ObjGuildPrefix, id), api.ActUpdateBudget)
+	permObject := buildGuildPermObject(id)
+	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), permObject, api.ActUpdateBudget)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 		return
 	}
 	if !ok {
+		sdk.LogForbiddenError(ctx, user.Wallet, permObject, api.ActModify)
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
 
 	budget, err := model.GuildBudgetModel.Detail(db, req.Id)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get guild budget error")))
 		return
 	}
 	// update `TotalAmount`
 	budget.TotalAmount = req.TotalAmount
 	err = model.GuildBudgetModel.Update(db, budget)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("update guild budget error")))
 		return
 	}
 
@@ -708,19 +750,23 @@ func AddRelatedProposal(ctx *gin.Context) {
 
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
-	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), fmt.Sprintf("%s%d", api.ObjGuildPrefix, id), api.ActModify)
+	permObject := buildGuildPermObject(id)
+	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), permObject, api.ActModify)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 		return
 	}
 	if !ok {
+		sdk.LogForbiddenError(ctx, user.Wallet, permObject, api.ActModify)
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
 
 	guild, err := model.GuildModel.Detail(db, uint(id))
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get guild error")))
 		return
 	}
 	if guild == nil {
@@ -735,9 +781,25 @@ func AddRelatedProposal(ctx *gin.Context) {
 	guild.UpdatedAt = time.Now().In(internal.ProjectTimezone)
 	err = model.GuildModel.CreateOrUpdate(db, guild)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("update guild error")))
 		return
 	}
 
 	ctx.JSON(http.StatusOK, api.Success(nil))
+}
+
+func buildGuildPermObject(guildId int) string {
+	return fmt.Sprintf("%s%d", api.ObjGuildPrefix, guildId)
+}
+
+func NormalizeWalletAddrInGuild(guild *model.Guild) *model.Guild {
+	guild.Sponsors = lo.Map[string](guild.Sponsors, func(wallet string, _ int) string {
+		return common.ToFrontendWallet(wallet)
+	})
+	guild.Members = lo.Map[string](guild.Members, func(wallet string, _ int) string {
+		return common.ToFrontendWallet(wallet)
+	})
+
+	return guild
 }

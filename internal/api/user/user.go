@@ -64,7 +64,8 @@ func RefreshNonce(ctx *gin.Context) {
 
 	userNonce, err := model.UserNonceModel.Detail(db, common.FormatUserWallet(req.Wallet))
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("nonce not found")))
 		return
 	}
 
@@ -79,7 +80,8 @@ func RefreshNonce(ctx *gin.Context) {
 	userNonce.RefreshAt = refreshAt
 	err = model.UserNonceModel.CreateOrUpdate(db, userNonce)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("update nonce error")))
 		return
 	}
 
@@ -108,7 +110,8 @@ func RetrieveNonce(ctx *gin.Context) {
 
 	userNonce, err := model.UserNonceModel.RecentNonce(db, wallet, cfg.Auth.NonceLifespan)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("nonce not found")))
 		return
 	}
 
@@ -163,7 +166,8 @@ func Login(ctx *gin.Context) {
 	// --> query nonce
 	userNonce, err := model.UserNonceModel.RecentNonce(db, common.FormatUserWallet(req.Wallet), cfg.Auth.NonceLifespan)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("nonce not found")))
 		return
 	}
 	if userNonce == nil {
@@ -190,14 +194,16 @@ func Login(ctx *gin.Context) {
 	} else if strings.EqualFold(req.WalletType, "AA") {
 		client, err := ethclient.Dial(cfg.Auth.PolygonRPC)
 		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+			sdk.LogServerErrorToSentry(ctx, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("failed to connect to polygon rpc")))
 			return
 		}
 
 		// get AA's bytecode
 		bytecode, err := client.CodeAt(context.Background(), eth_common.HexToAddress(req.Wallet), nil)
 		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+			sdk.LogServerErrorToSentry(ctx, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("failed to get bytecode")))
 			return
 		}
 		// if bytecode is not empty, means the wallet has deployed
@@ -209,7 +215,8 @@ func Login(ctx *gin.Context) {
 
 			ok, err := unipass_sigverify.VerifyMessageSignature(context.Background(), account, msg, sig, req.IsEIP191Prefix, client)
 			if err != nil {
-				ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+				sdk.LogServerErrorToSentry(ctx, err)
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("failed to verify signature")))
 				return
 			}
 			if !ok {
@@ -224,7 +231,8 @@ func Login(ctx *gin.Context) {
 	// query user
 	user, err := model.UserModel.Detail(db, common.FormatUserWallet(req.Wallet))
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("user not found")))
 		return
 	}
 	if user == nil {
@@ -233,7 +241,8 @@ func Login(ctx *gin.Context) {
 		}
 		err = model.UserModel.CreateOrUpdate(db, user)
 		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+			sdk.LogServerErrorToSentry(ctx, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("failed to create user")))
 			return
 		}
 	}
@@ -247,7 +256,8 @@ func Login(ctx *gin.Context) {
 		cfg.Jwt.Secret,
 	)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("failed to generate jwt token")))
 		return
 	}
 
@@ -297,7 +307,8 @@ func Detail(ctx *gin.Context) {
 
 	u, err := model.UserModel.Detail(db, user.Wallet)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("user not found")))
 		return
 	}
 	if u == nil {
@@ -358,7 +369,8 @@ func Update(ctx *gin.Context) {
 
 	u, err := model.UserModel.Detail(db, user.Wallet)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("user not found")))
 		return
 	}
 	if u == nil {
@@ -380,14 +392,16 @@ func Update(ctx *gin.Context) {
 	// Only upload image when data is b64 image string (start with `data:image`)
 	avatarUrl, err := sdk.GetAwsClient().UploadUserAvatar(u.Wallet, req.Avatar)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("upload avatar error")))
 		return
 	}
 	u.Avatar = avatarUrl
 
 	err = model.UserModel.CreateOrUpdate(db, u)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("update user error")))
 		return
 	}
 
@@ -410,7 +424,7 @@ func Update(ctx *gin.Context) {
 //	@Accept		json
 //	@Produce	json
 //	@Param		wallets	query		[]string	true	"wallets"
-//	@Success	200		{object}	api.Reply{data=[]model.User}
+//	@Success	200		{object}	api.Reply{data=[]UserModelWithSomeSeepassData}
 //	@Router		/user/users [get]
 func Users(ctx *gin.Context) {
 	wallets := ctx.QueryArray("wallets")
@@ -424,7 +438,8 @@ func Users(ctx *gin.Context) {
 
 	users, err := model.UserModel.List(db, wallets)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("query users error")))
 		return
 	}
 
@@ -444,6 +459,7 @@ func Users(ctx *gin.Context) {
 	// TODO: Query SeePASS to get user SBT and SEED info
 	for _, user := range users {
 		seepassResp, err := sppClient.GetSeepassData(user.Wallet)
+		user.Wallet = common.ToFrontendWallet(user.Wallet)
 		if err != nil {
 			log.Warn().Msgf("query seepass data error, wallet: %s, error: %+v", user.Wallet, err)
 		}
@@ -491,7 +507,6 @@ func GetFrontendPermission(ctx *gin.Context) {
 	for ptype := range eModel["p"] {
 		policy := eModel.GetPolicy("p", ptype)
 		for i := range policy {
-			fmt.Printf("ptype: %s, policy: %+v\n", ptype, policy[i])
 			policies = append(policies, append([]string{ptype}, policy[i]...))
 		}
 	}
@@ -510,7 +525,8 @@ func GetFrontendPermission(ctx *gin.Context) {
 	encoder.SetEscapeHTML(false)
 	err := encoder.Encode(m)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("query frontend permission error")))
 		return
 	}
 
