@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
@@ -137,6 +138,9 @@ func main() {
 	r := gin.Default()
 	r.Use(middleware.RequestMetricsRecord())
 	r.Use(middleware.ResponseMetricsRecord())
+
+	sdk.InitSentry(r, cfg)
+
 	r.GET("/prometheus_metrics", gin.WrapH(promhttp.Handler()))
 
 	r.Use(gzip.Gzip(gzip.DefaultCompression))
@@ -153,6 +157,10 @@ func main() {
 		ctx.Set(middleware.CfgKey, cfg)
 		ctx.Set(middleware.EnforcerKey, enforcer)
 		ctx.Set(middleware.PushKey, pushSDK)
+
+		sdk.LogMessageToSentry(ctx, fmt.Sprintf("dbkey: %v", db), map[string]string{
+			"type": "test",
+		})
 
 		// <-- before
 		ctx.Next()
