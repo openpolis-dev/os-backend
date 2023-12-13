@@ -325,10 +325,9 @@ func Close(ctx *gin.Context) {
 	}
 
 	if project.Status != model.ProjectStatusOpen {
-		ctx.JSON(http.StatusBadRequest, api.Reply{
-			Code: -1,
-			Msg:  fmt.Sprintf("project %d status is not suit for closing", id),
-		})
+		err := fmt.Errorf("project %d current status %s is not suit for closing", id, project.Status)
+		sdk.LogUserSideError(ctx, err)
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
 	}
 
 	err = db.Transaction(func(tx *gorm.DB) error {
@@ -354,10 +353,8 @@ func Close(ctx *gin.Context) {
 	})
 
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.Reply{
-			Code: -1,
-			Msg:  fmt.Sprintf("update project status error: %s", err.Error()),
-		})
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("close project failed")))
 	}
 
 	ctx.JSON(http.StatusOK, api.Success(nil))

@@ -123,19 +123,15 @@ func ListAppBundle(ctx *gin.Context) {
 
 	queryParams := model.ListAppBundleQueryParams{}
 	if err := ctx.Bind(&queryParams); err != nil {
-		ctx.JSON(http.StatusBadRequest, api.Reply{
-			Code: -1,
-			Msg:  fmt.Sprintf("query params error: %+v", err),
-		})
+		sdk.LogUserSideError(ctx, err)
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("query params error: %+v", err)))
 		return
 	}
 
 	appBundleRecords, total, err := model.QueryAppBundleRecords(db, &queryParams)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.Reply{
-			Code: -1,
-			Msg:  fmt.Sprintf("query result error: %+v", err),
-		})
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("query result error")))
 		return
 	}
 
@@ -220,10 +216,8 @@ func CreateAppBundle(ctx *gin.Context) {
 	var newAppBundleReq model.NewAppBundleRequest
 	if err := ctx.BindJSON(&newAppBundleReq); err != nil {
 		if err != nil {
-			ctx.JSON(http.StatusBadRequest, api.Reply{
-				Code: -1,
-				Msg:  fmt.Sprintf("passed in data error: %+v", err),
-			})
+			sdk.LogUserSideError(ctx, err)
+			ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("parse request error: %+v", err)))
 		}
 		return
 	}
@@ -374,29 +368,24 @@ func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState
 	var idList []int
 	err := ctx.Bind(&idList)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, api.Reply{
-			Code: -1,
-			Msg:  fmt.Sprintf("parse app bundle ids error"),
-		})
+		sdk.LogUserSideError(ctx, err)
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("parse request error: %+v", err)))
 		return
 	}
 
 	var appBundleRcds []model.AppBundle
 	err = db.Preload("AppRecords").Find(&appBundleRcds, idList).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		ctx.JSON(http.StatusNotFound, api.Reply{
-			Code: -1,
-			Msg:  fmt.Sprintf("application with id %+v not found", idList),
-		})
+		sdk.LogUserSideError(ctx, err)
+		ctx.JSON(http.StatusNotFound, api.BadRequest(errors.New("app bundle record not found")))
 		return
 	}
 
 	for _, r := range appBundleRcds {
 		if r.State != model.ApplicationStateOpen && r.State != model.ApplicationStateRejected {
-			ctx.JSON(http.StatusBadRequest, api.Reply{
-				Code: -1,
-				Msg:  fmt.Sprintf("app bundle %+v is at processable state", r),
-			})
+			err := fmt.Errorf("app bundle %+v is at processable state", r)
+			sdk.LogUserSideError(ctx, err)
+			ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
 			return
 		}
 	}

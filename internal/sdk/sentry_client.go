@@ -58,5 +58,9 @@ func LogMessageToSentry(ctx *gin.Context, msg string, tags map[string]string) {
 }
 
 func LogServerErrorToSentry(ctx *gin.Context, err error) {
-	LogMessageToSentry(ctx, err.Error(), map[string]string{"type": "error"})
+	LogMessageToSentry(ctx, err.Error(), map[string]string{"error_scope": "server"})
+}
+
+func LogUserSideError(ctx *gin.Context, err error) {
+	LogMessageToSentry(ctx, err.Error(), map[string]string{"error_scope": "user"})
 }
