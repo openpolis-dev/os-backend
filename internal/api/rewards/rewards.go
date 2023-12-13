@@ -3,6 +3,7 @@ package rewards
 import (
 	"bytes"
 	gob "encoding/gob"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -14,6 +15,7 @@ import (
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
+	"github.com/theseed-labs/os-backend/internal/sdk"
 	"github.com/theseed-labs/os-backend/internal/storage"
 	"gorm.io/gorm"
 )
@@ -29,13 +31,15 @@ func ApproveMintReward(ctx *gin.Context) {
 
 	currentSeason, err := model.GetCurrentSeason(db)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get current season error")))
 		return
 	}
 
 	metaforoRewardsBytes, err := storage.GetCachedData(storage.MetaforoRewardCacheKey(currentSeason.Idx))
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get metaforo rewards error")))
 		return
 	}
 
@@ -45,7 +49,8 @@ func ApproveMintReward(ctx *gin.Context) {
 	var metaforoRewards map[string]string
 	err = bufDecoder.Decode(&metaforoRewards)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("decode metaforo rewards error")))
 		return
 	}
 	cityHallProject, err := model.GetCityHallProject(db)
@@ -117,7 +122,8 @@ func ApproveMintReward(ctx *gin.Context) {
 	})
 
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("mint rewards error")))
 		return
 	}
 
@@ -133,7 +139,8 @@ func SnapshotSeed(ctx *gin.Context) {
 
 	currentSeason, err := model.GetCurrentSeason(db)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get current season error")))
 		return
 	}
 	currentSeason.SeedSnapshotSaved = true
@@ -142,7 +149,8 @@ func SnapshotSeed(ctx *gin.Context) {
 	err = db.Save(currentSeason).Error
 
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("snapshot seed error")))
 	} else {
 		ctx.JSON(http.StatusOK, api.Success(fmt.Sprintf("SEED snapshoted at %d", currentSeason.SeedSnapshotAt)))
 	}

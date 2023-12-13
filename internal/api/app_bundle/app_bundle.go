@@ -14,6 +14,7 @@ import (
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
+	"github.com/theseed-labs/os-backend/internal/sdk"
 	"gorm.io/gorm"
 )
 
@@ -56,7 +57,8 @@ func ListAvailableProjectsAndGuilds(ctx *gin.Context) {
 
 	ok, err := enforcer.HasRoleForUser(common.FormatUserWallet(user.Wallet), api.RoleHall)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 		return
 	}
 
@@ -66,25 +68,29 @@ func ListAvailableProjectsAndGuilds(ctx *gin.Context) {
 	if ok {
 		guilds, _, err = model.GuildModel.List(db, nil)
 		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+			sdk.LogServerErrorToSentry(ctx, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("list guilds error")))
 			return
 		}
 
 		projects, _, err = model.ProjectModel.List(db, "open", nil, false)
 		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+			sdk.LogServerErrorToSentry(ctx, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("list projects error")))
 			return
 		}
 	} else {
 		guilds, _, err = model.GuildModel.ListBySponsor(db, common.FormatUserWallet(user.Wallet), nil)
 		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+			sdk.LogServerErrorToSentry(ctx, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("list guilds error")))
 			return
 		}
 
 		projects, _, err = model.ProjectModel.ListBySponsor(db, common.FormatUserWallet(user.Wallet), "open", nil, false)
 		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+			sdk.LogServerErrorToSentry(ctx, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("list projects error")))
 			return
 		}
 	}
@@ -117,19 +123,15 @@ func ListAppBundle(ctx *gin.Context) {
 
 	queryParams := model.ListAppBundleQueryParams{}
 	if err := ctx.Bind(&queryParams); err != nil {
-		ctx.JSON(http.StatusBadRequest, api.Reply{
-			Code: -1,
-			Msg:  fmt.Sprintf("query params error: %+v", err),
-		})
+		sdk.LogUserSideError(ctx, err)
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("query params error: %+v", err)))
 		return
 	}
 
 	appBundleRecords, total, err := model.QueryAppBundleRecords(db, &queryParams)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.Reply{
-			Code: -1,
-			Msg:  fmt.Sprintf("query result error: %+v", err),
-		})
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("query result error")))
 		return
 	}
 
@@ -214,10 +216,8 @@ func CreateAppBundle(ctx *gin.Context) {
 	var newAppBundleReq model.NewAppBundleRequest
 	if err := ctx.BindJSON(&newAppBundleReq); err != nil {
 		if err != nil {
-			ctx.JSON(http.StatusBadRequest, api.Reply{
-				Code: -1,
-				Msg:  fmt.Sprintf("passed in data error: %+v", err),
-			})
+			sdk.LogUserSideError(ctx, err)
+			ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("parse request error: %+v", err)))
 		}
 		return
 	}
@@ -232,10 +232,12 @@ func CreateAppBundle(ctx *gin.Context) {
 		Else("")
 	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), obj, api.ActCreateApplication)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 		return
 	}
 	if !ok {
+		sdk.LogForbiddenError(ctx, user.Wallet, obj, api.ActCreateApplication)
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
@@ -243,7 +245,8 @@ func CreateAppBundle(ctx *gin.Context) {
 	// TODO: Need confirm about season number for application bundles
 	seasonRecord, err := model.GetCurrentSeason(db)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get current season error")))
 		return
 	}
 
@@ -265,6 +268,7 @@ func CreateAppBundle(ctx *gin.Context) {
 	err = db.Model(model.AppBundle{}).Create(&appBundle).Error
 	if err != nil {
 		log.Error().Msgf("Create app bundle records error: %+v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create app bundle record error")))
 		return
 	}
@@ -328,6 +332,7 @@ func CreateAppBundle(ctx *gin.Context) {
 
 	if err != nil {
 		log.Error().Msgf("Transaction error: %+v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create application error")))
 		return
 	}
@@ -364,29 +369,24 @@ func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState
 	var idList []int
 	err := ctx.Bind(&idList)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, api.Reply{
-			Code: -1,
-			Msg:  fmt.Sprintf("parse app bundle ids error"),
-		})
+		sdk.LogUserSideError(ctx, err)
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("parse request error: %+v", err)))
 		return
 	}
 
 	var appBundleRcds []model.AppBundle
 	err = db.Preload("AppRecords").Find(&appBundleRcds, idList).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		ctx.JSON(http.StatusNotFound, api.Reply{
-			Code: -1,
-			Msg:  fmt.Sprintf("application with id %+v not found", idList),
-		})
+		sdk.LogUserSideError(ctx, err)
+		ctx.JSON(http.StatusNotFound, api.BadRequest(errors.New("app bundle record not found")))
 		return
 	}
 
 	for _, r := range appBundleRcds {
 		if r.State != model.ApplicationStateOpen && r.State != model.ApplicationStateRejected {
-			ctx.JSON(http.StatusBadRequest, api.Reply{
-				Code: -1,
-				Msg:  fmt.Sprintf("app bundle %+v is at processable state", r),
-			})
+			err := fmt.Errorf("app bundle %+v is at processable state", r)
+			sdk.LogUserSideError(ctx, err)
+			ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
 			return
 		}
 	}
@@ -394,10 +394,12 @@ func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState
 	user, enforcer, db, _ := api.ForContext(ctx)
 	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), api.ObjProjAndGuild, api.ActAuditApplication)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 		return
 	}
 	if !ok {
+		sdk.LogForbiddenError(ctx, user.Wallet, api.ObjProjAndGuild, api.ActCreateApplication)
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
@@ -469,7 +471,8 @@ func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState
 	})
 
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("update app bundle state error")))
 		return
 	}
 
