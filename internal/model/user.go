@@ -4,7 +4,9 @@ import (
 	"errors"
 	"time"
 
+	"github.com/samber/lo"
 	"github.com/theseed-labs/os-backend/internal"
+	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/sdk"
 	"github.com/xiaosongfu/gormfind"
 	"gorm.io/gorm"
@@ -41,23 +43,26 @@ var UserModel userModel
 func (*userModel) CreateOrUpdate(db *gorm.DB, user *User) error {
 	user.UpdateTs = GetCurrentUtcEpochSecond()
 	user.UpdatedAt = time.Now().In(internal.ProjectTimezone)
+	user.Wallet = common.FormatUserWallet(user.Wallet)
 
 	return db.Save(user).Error
 }
 
 func (*userModel) Detail(db *gorm.DB, wallet string) (*User, error) {
-	querySeg := db.Preload("Assets").Where("wallet = ?", wallet)
+	querySeg := db.Preload("Assets").Where("wallet = ?", common.FormatUserWallet(wallet))
 	return gormfind.Row[User](querySeg)
 }
 
 func (*userModel) List(db *gorm.DB, wallets []string) ([]*User, error) {
-	querySeg := db.Preload("Assets").Where("wallet IN (?)", wallets)
+	querySeg := db.Preload("Assets").Where("wallet IN (?)", lo.Map(wallets, func(wallet string, _ int) interface{} {
+		return common.FormatUserWallet(wallet)
+	}))
 	return QueryRows[User](querySeg, nil)
 }
 
 // TryGetUsername try to get username of passed in wallet address, and return "" if no user record found
 func (*userModel) TryGetUsername(db *gorm.DB, wallet string) (string, error) {
-	querySeg := db.Where("wallet = ?", wallet)
+	querySeg := db.Where("wallet = ?", common.FormatUserWallet(wallet))
 	user, err := gormfind.Row[User](querySeg)
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return "", err
