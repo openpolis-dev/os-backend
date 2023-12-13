@@ -141,6 +141,7 @@ func AggrScr(ctx *gin.Context) {
 	// Fetch current season data from database
 	currentSeason, err := model.GetCurrentSeason(db)
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
@@ -277,11 +278,13 @@ func AggrScr(ctx *gin.Context) {
 	err = bufEncoder.Encode(mintRewardData)
 	log.Error().Msgf("TTT: Write buf size: %d", buffer.Len())
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
 	err = storage.StoreCachedData(storage.MetaforoRewardCacheKey(currentSeason.Idx), buffer.Bytes())
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}

@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
 	"github.com/theseed-labs/os-backend/internal/api"
+	"github.com/theseed-labs/os-backend/internal/sdk"
 )
 
 type dataCache[C any, D any] struct {
@@ -30,6 +31,7 @@ func cacheLogic[C any, D any](ctx *gin.Context, cache *dataCache[C, D], cacheInS
 
 		cache.client, err = c()
 		if err != nil {
+			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 			return
 		}
@@ -40,10 +42,10 @@ func cacheLogic[C any, D any](ctx *gin.Context, cache *dataCache[C, D], cacheInS
 
 		data, err := d()
 		if err != nil {
+			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 			return
 		}
-		//log.Debug().Msgf("%+v", d)
 
 		cache.data = data
 		cache.updateTime = time.Now().Unix()

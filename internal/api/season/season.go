@@ -8,6 +8,7 @@ import (
 	"github.com/samber/lo"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/model"
+	"github.com/theseed-labs/os-backend/internal/sdk"
 )
 
 type SeasonResponse struct {
@@ -30,6 +31,7 @@ func List(ctx *gin.Context) {
 	err := db.Model(&model.Season{}).Find(&seasonRcds).Error
 
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 	}
 
@@ -56,6 +58,7 @@ func Current(ctx *gin.Context) {
 	db := api.ForContextOnlyDB(ctx)
 	currSeason, err := model.GetCurrentSeason(db)
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}

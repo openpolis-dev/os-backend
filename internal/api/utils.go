@@ -33,6 +33,7 @@ func PreSignedUrlForS3(ctx *gin.Context) {
 	uploadUrl, err := sdk.GetAwsClient().GetS3PreSignedURL(fileName, contentType)
 
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, ServerError(err))
 	}
 

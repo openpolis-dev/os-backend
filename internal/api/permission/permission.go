@@ -7,6 +7,7 @@ import (
 	"github.com/samber/lo"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/common"
+	"github.com/theseed-labs/os-backend/internal/sdk"
 )
 
 type GrantRoleReq struct {
@@ -32,6 +33,7 @@ func GrantRole(ctx *gin.Context) {
 	formattedWallet := common.FormatUserWallet(user.Wallet)
 	ok, err := enforcer.HasRoleForUser(formattedWallet, api.RoleHall)
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
@@ -53,11 +55,13 @@ func GrantRole(ctx *gin.Context) {
 	})
 	_, err = enforcer.AddGroupingPolicies(policies)
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
 	err = enforcer.SavePolicy()
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
@@ -82,6 +86,7 @@ func RevokeRole(ctx *gin.Context) {
 	user, enforcer, _, _ := api.ForContext(ctx)
 	ok, err := enforcer.HasRoleForUser(common.FormatUserWallet(user.Wallet), api.RoleHall)
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
@@ -103,11 +108,13 @@ func RevokeRole(ctx *gin.Context) {
 	})
 	_, err = enforcer.RemoveGroupingPolicies(policies)
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
 	err = enforcer.SavePolicy()
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}

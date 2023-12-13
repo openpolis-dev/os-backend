@@ -19,6 +19,7 @@ import (
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
+	"github.com/theseed-labs/os-backend/internal/sdk"
 	"github.com/xuri/excelize/v2"
 	"gorm.io/gorm"
 )
@@ -49,6 +50,7 @@ func ListApplicants(ctx *gin.Context) {
 		Select("applications.applicant, users.name").
 		Find(&rslt).Error
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
@@ -137,6 +139,7 @@ func Create(ctx *gin.Context) {
 				Else("")
 			ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), obj, api.ActCreateApplication)
 			if err != nil {
+				sdk.LogServerErrorToSentry(ctx, err)
 				ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 				return err
 			}
@@ -246,6 +249,7 @@ func Download(ctx *gin.Context) {
 		w := csv.NewWriter(buf)
 		err = w.Write(csvHeaderList)
 		if err != nil {
+			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 			return
 		}
@@ -264,6 +268,7 @@ func Download(ctx *gin.Context) {
 				r.Status,
 			})
 			if err != nil {
+				sdk.LogServerErrorToSentry(ctx, err)
 				ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 				return
 			}
@@ -286,6 +291,7 @@ func Download(ctx *gin.Context) {
 		f := excelize.NewFile()
 		streamWriter, err := f.NewStreamWriter("Sheet1")
 		if err != nil {
+			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 			return
 		}
@@ -294,6 +300,7 @@ func Download(ctx *gin.Context) {
 		cell, _ := excelize.CoordinatesToCellName(1, 1)
 		title := lo.Map(csvHeaderList, func(item string, _ int) any { return item })
 		if err := streamWriter.SetRow(cell, title); err != nil {
+			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 			return
 		}
@@ -321,6 +328,7 @@ func Download(ctx *gin.Context) {
 		// flush writer
 		if err = streamWriter.Flush(); err != nil {
 			log.Error().Msgf("flush writer [%s] failed: %s", fileName, err)
+			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 			return
 		}
@@ -328,6 +336,7 @@ func Download(ctx *gin.Context) {
 		// write to response
 		err = f.Write(ctx.Writer)
 		if err != nil {
+			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		}
 	} else if fileFormat == "json" {
@@ -338,12 +347,14 @@ func Download(ctx *gin.Context) {
 
 		jsonBytes, err := json.Marshal(rcds)
 		if err != nil {
+			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 			return
 		}
 
 		err = os.WriteFile(tmpFile.Name(), jsonBytes, 0777)
 		if err != nil {
+			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 			return
 		}
@@ -384,6 +395,7 @@ func BatchProcess(ctx *gin.Context) {
 	//  check permission: `(0x..., proj_and_guild, audit_app)`
 	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), api.ObjProjAndGuild, api.ActAuditApplication)
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
@@ -451,6 +463,7 @@ func BatchApprove(ctx *gin.Context) {
 	//  check permission: `(0x..., proj_and_guild, audit_app)`
 	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), api.ObjProjAndGuild, api.ActAuditApplication)
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
@@ -486,6 +499,7 @@ func BatchReject(ctx *gin.Context) {
 	//  check permission: `(0x..., proj_and_guild, audit_app)`
 	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), api.ObjProjAndGuild, api.ActAuditApplication)
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
@@ -516,6 +530,7 @@ func BatchComplete(ctx *gin.Context) {
 	//  check permission: `(0x..., proj_and_guild, audit_app)`
 	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), api.ObjProjAndGuild, api.ActAuditApplication)
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
@@ -616,6 +631,7 @@ func auditApplication(ctx *gin.Context, application *model.Application, auditAct
 	//  check permission: `(0x..., proj_and_guild, audit_app)`
 	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), api.ObjProjAndGuild, api.ActAuditApplication)
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}

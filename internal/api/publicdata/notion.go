@@ -26,12 +26,14 @@ func NotionDatabase(ctx *gin.Context) {
 
 	body, err := ctx.GetRawData()
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusBadRequest, api.ServerError(err))
 		return
 	}
 
 	data, err := sdk.NotionDatabase(databaseId, cfg.PublicData.Notion.APIToken, body)
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
@@ -39,6 +41,7 @@ func NotionDatabase(ctx *gin.Context) {
 	var databaseData sdk.NotionDatabaseData
 	err = json.Unmarshal(data, &databaseData)
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
@@ -86,6 +89,7 @@ func NotionPage(ctx *gin.Context) {
 
 	data, err := sdk.NotionPage(pageId, cfg.PublicData.Notion.APIToken)
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
@@ -93,6 +97,7 @@ func NotionPage(ctx *gin.Context) {
 	var pageData map[string]any
 	err = json.Unmarshal(data, &pageData)
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
@@ -116,6 +121,7 @@ func NotionUser(ctx *gin.Context) {
 
 	data, err := sdk.NotionUser(userId, cfg.PublicData.Notion.APIToken)
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
@@ -123,6 +129,7 @@ func NotionUser(ctx *gin.Context) {
 	var pageData map[string]any
 	err = json.Unmarshal(data, &pageData)
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}

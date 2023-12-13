@@ -97,6 +97,7 @@ func Create(ctx *gin.Context) {
 	//  check permission
 	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), api.ObjGuild, api.ActCreate)
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
@@ -121,6 +122,7 @@ func Create(ctx *gin.Context) {
 	err = model.GuildModel.CreateOrUpdate(tx, &guild)
 	if err != nil {
 		tx.Rollback()
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
@@ -131,11 +133,13 @@ func Create(ctx *gin.Context) {
 	// Save logo image to S3
 	logoUrl, err := sdk.GetAwsClient().UploadEntityLogo(guild.ID, "guild", req.LogoStr)
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
 	err = db.Model(&guild).Update("logo", logoUrl).Error
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
@@ -157,6 +161,7 @@ func Create(ctx *gin.Context) {
 	}
 	_, err = enforcer.AddPolicies(policies)
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
@@ -172,11 +177,13 @@ func Create(ctx *gin.Context) {
 	//groupingPolicies := append(memberGroupingPolicies, sponsorGroupingPolicies...)
 	_, err = enforcer.AddGroupingPolicies(sponsorGroupingPolicies)
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
 	err = enforcer.SavePolicy()
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
@@ -226,6 +233,7 @@ func Update(ctx *gin.Context) {
 	//  check permission
 	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), fmt.Sprintf("%s%d", api.ObjGuildPrefix, id), api.ActModify)
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
@@ -236,6 +244,7 @@ func Update(ctx *gin.Context) {
 
 	guild, err := model.GuildModel.Detail(db, uint(id))
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
@@ -260,6 +269,7 @@ func Update(ctx *gin.Context) {
 	guild.UpdatedAt = time.Now().In(internal.ProjectTimezone)
 	err = model.GuildModel.CreateOrUpdate(db, guild)
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
@@ -288,6 +298,7 @@ func Detail(ctx *gin.Context) {
 
 	guild, err := model.GuildModel.Detail(db, uint(id))
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
@@ -298,6 +309,7 @@ func Detail(ctx *gin.Context) {
 
 	budgets, err := model.GuildBudgetModel.ListByGuildId(db, guild.ID)
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
@@ -335,6 +347,7 @@ func List(ctx *gin.Context) {
 
 	guilds, total, err := model.GuildModel.List(db, page)
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
@@ -368,6 +381,7 @@ func MyGuilds(ctx *gin.Context) {
 
 	guilds, total, err := model.GuildModel.ListBySponsorOrMember(db, common.FormatUserWallet(user.Wallet), page)
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
@@ -419,6 +433,7 @@ func UpdateStaffs(ctx *gin.Context) {
 	if req.Sponsors != nil && len(req.Sponsors) != 0 {
 		ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), fmt.Sprintf("%s%d", api.ObjGuildPrefix, id), api.ActUpdateSponsor)
 		if err != nil {
+			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 			return
 		}
@@ -430,6 +445,7 @@ func UpdateStaffs(ctx *gin.Context) {
 	if req.Members != nil && len(req.Members) != 0 {
 		ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), fmt.Sprintf("%s%d", api.ObjGuildPrefix, id), api.ActUpdateMember)
 		if err != nil {
+			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 			return
 		}
@@ -449,6 +465,7 @@ func UpdateStaffs(ctx *gin.Context) {
 
 	guild, err := model.GuildModel.Detail(db, uint(id))
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
@@ -475,6 +492,7 @@ func UpdateStaffs(ctx *gin.Context) {
 			if err != nil {
 				tx.Rollback()
 
+				sdk.LogServerErrorToSentry(ctx, err)
 				ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 				return
 			}
@@ -488,6 +506,7 @@ func UpdateStaffs(ctx *gin.Context) {
 			if err != nil {
 				tx.Rollback()
 
+				sdk.LogServerErrorToSentry(ctx, err)
 				ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 				return
 			}
@@ -495,6 +514,7 @@ func UpdateStaffs(ctx *gin.Context) {
 			if err != nil {
 				tx.Rollback()
 
+				sdk.LogServerErrorToSentry(ctx, err)
 				ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 				return
 			}
@@ -513,6 +533,7 @@ func UpdateStaffs(ctx *gin.Context) {
 			if err != nil {
 				tx.Rollback()
 
+				sdk.LogServerErrorToSentry(ctx, err)
 				ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 				return
 			}
@@ -555,6 +576,7 @@ func UpdateStaffs(ctx *gin.Context) {
 			if err != nil {
 				tx.Rollback()
 
+				sdk.LogServerErrorToSentry(ctx, err)
 				ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 				return
 			}
@@ -568,6 +590,7 @@ func UpdateStaffs(ctx *gin.Context) {
 			if err != nil {
 				tx.Rollback()
 
+				sdk.LogServerErrorToSentry(ctx, err)
 				ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 				return
 			}
@@ -575,6 +598,7 @@ func UpdateStaffs(ctx *gin.Context) {
 			if err != nil {
 				tx.Rollback()
 
+				sdk.LogServerErrorToSentry(ctx, err)
 				ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 				return
 			}
@@ -589,6 +613,7 @@ func UpdateStaffs(ctx *gin.Context) {
 			if err != nil {
 				tx.Rollback()
 
+				sdk.LogServerErrorToSentry(ctx, err)
 				ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 				return
 			}
@@ -658,6 +683,7 @@ func UpdateBudget(ctx *gin.Context) {
 	//  check permission
 	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), fmt.Sprintf("%s%d", api.ObjGuildPrefix, id), api.ActUpdateBudget)
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
@@ -668,6 +694,7 @@ func UpdateBudget(ctx *gin.Context) {
 
 	budget, err := model.GuildBudgetModel.Detail(db, req.Id)
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
@@ -675,6 +702,7 @@ func UpdateBudget(ctx *gin.Context) {
 	budget.TotalAmount = req.TotalAmount
 	err = model.GuildBudgetModel.Update(db, budget)
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
@@ -710,6 +738,7 @@ func AddRelatedProposal(ctx *gin.Context) {
 	//  check permission
 	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), fmt.Sprintf("%s%d", api.ObjGuildPrefix, id), api.ActModify)
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
@@ -720,6 +749,7 @@ func AddRelatedProposal(ctx *gin.Context) {
 
 	guild, err := model.GuildModel.Detail(db, uint(id))
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
@@ -735,6 +765,7 @@ func AddRelatedProposal(ctx *gin.Context) {
 	guild.UpdatedAt = time.Now().In(internal.ProjectTimezone)
 	err = model.GuildModel.CreateOrUpdate(db, guild)
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}

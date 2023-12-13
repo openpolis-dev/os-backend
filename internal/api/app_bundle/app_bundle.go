@@ -14,6 +14,7 @@ import (
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
+	"github.com/theseed-labs/os-backend/internal/sdk"
 	"gorm.io/gorm"
 )
 
@@ -56,6 +57,7 @@ func ListAvailableProjectsAndGuilds(ctx *gin.Context) {
 
 	ok, err := enforcer.HasRoleForUser(common.FormatUserWallet(user.Wallet), api.RoleHall)
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
@@ -66,24 +68,28 @@ func ListAvailableProjectsAndGuilds(ctx *gin.Context) {
 	if ok {
 		guilds, _, err = model.GuildModel.List(db, nil)
 		if err != nil {
+			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 			return
 		}
 
 		projects, _, err = model.ProjectModel.List(db, "open", nil, false)
 		if err != nil {
+			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 			return
 		}
 	} else {
 		guilds, _, err = model.GuildModel.ListBySponsor(db, common.FormatUserWallet(user.Wallet), nil)
 		if err != nil {
+			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 			return
 		}
 
 		projects, _, err = model.ProjectModel.ListBySponsor(db, common.FormatUserWallet(user.Wallet), "open", nil, false)
 		if err != nil {
+			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 			return
 		}
@@ -232,6 +238,7 @@ func CreateAppBundle(ctx *gin.Context) {
 		Else("")
 	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), obj, api.ActCreateApplication)
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
@@ -243,6 +250,7 @@ func CreateAppBundle(ctx *gin.Context) {
 	// TODO: Need confirm about season number for application bundles
 	seasonRecord, err := model.GetCurrentSeason(db)
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
@@ -265,6 +273,7 @@ func CreateAppBundle(ctx *gin.Context) {
 	err = db.Model(model.AppBundle{}).Create(&appBundle).Error
 	if err != nil {
 		log.Error().Msgf("Create app bundle records error: %+v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create app bundle record error")))
 		return
 	}
@@ -328,6 +337,7 @@ func CreateAppBundle(ctx *gin.Context) {
 
 	if err != nil {
 		log.Error().Msgf("Transaction error: %+v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create application error")))
 		return
 	}
@@ -394,6 +404,7 @@ func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState
 	user, enforcer, db, _ := api.ForContext(ctx)
 	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), api.ObjProjAndGuild, api.ActAuditApplication)
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
@@ -469,6 +480,7 @@ func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState
 	})
 
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}

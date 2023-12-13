@@ -11,6 +11,7 @@ import (
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
+	"github.com/theseed-labs/os-backend/internal/sdk"
 	"github.com/xiaosongfu/gormfind"
 	"gorm.io/gorm"
 )
@@ -72,6 +73,7 @@ func Create(ctx *gin.Context) {
 	//  check permission
 	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), api.ObjEvent, api.ActCreateEvent)
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
@@ -124,6 +126,7 @@ func Create(ctx *gin.Context) {
 
 	err = db.Create(&eventRecord).Error
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 	} else {
 		ctx.JSON(http.StatusCreated, api.Success(eventRecord))
@@ -134,6 +137,7 @@ func Detail(ctx *gin.Context) {
 	db := api.ForContextOnlyDB(ctx)
 	eventRecord, err := getRecord(db, ctx.Param("id"))
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
@@ -156,6 +160,7 @@ func Delete(ctx *gin.Context) {
 	eventRecord, err := getRecord(db, ctx.Param("id"))
 	err = db.Delete(&eventRecord).Error
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
@@ -167,6 +172,7 @@ func Update(ctx *gin.Context) {
 	//  check permission
 	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), api.ObjEvent, api.ActCreateEvent)
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
@@ -184,6 +190,7 @@ func Update(ctx *gin.Context) {
 
 	eventRecord, err := getRecord(db, ctx.Param("id"))
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}

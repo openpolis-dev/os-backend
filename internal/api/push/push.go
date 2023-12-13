@@ -46,6 +46,7 @@ func Create(ctx *gin.Context) {
 	//  check permission
 	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), api.ObjPush, api.ActCreatePush)
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
@@ -69,6 +70,7 @@ func Create(ctx *gin.Context) {
 	}
 	err = model.PushModel.CreateOrUpdate(db, &push)
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
@@ -111,6 +113,7 @@ func List(ctx *gin.Context) {
 
 	pushes, total, err := model.PushModel.List(db, nil, page)
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}

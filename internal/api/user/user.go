@@ -64,6 +64,7 @@ func RefreshNonce(ctx *gin.Context) {
 
 	userNonce, err := model.UserNonceModel.Detail(db, common.FormatUserWallet(req.Wallet))
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
@@ -79,6 +80,7 @@ func RefreshNonce(ctx *gin.Context) {
 	userNonce.RefreshAt = refreshAt
 	err = model.UserNonceModel.CreateOrUpdate(db, userNonce)
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
@@ -108,6 +110,7 @@ func RetrieveNonce(ctx *gin.Context) {
 
 	userNonce, err := model.UserNonceModel.RecentNonce(db, wallet, cfg.Auth.NonceLifespan)
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
@@ -163,6 +166,7 @@ func Login(ctx *gin.Context) {
 	// --> query nonce
 	userNonce, err := model.UserNonceModel.RecentNonce(db, common.FormatUserWallet(req.Wallet), cfg.Auth.NonceLifespan)
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
@@ -190,6 +194,7 @@ func Login(ctx *gin.Context) {
 	} else if strings.EqualFold(req.WalletType, "AA") {
 		client, err := ethclient.Dial(cfg.Auth.PolygonRPC)
 		if err != nil {
+			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 			return
 		}
@@ -197,6 +202,7 @@ func Login(ctx *gin.Context) {
 		// get AA's bytecode
 		bytecode, err := client.CodeAt(context.Background(), eth_common.HexToAddress(req.Wallet), nil)
 		if err != nil {
+			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 			return
 		}
@@ -209,6 +215,7 @@ func Login(ctx *gin.Context) {
 
 			ok, err := unipass_sigverify.VerifyMessageSignature(context.Background(), account, msg, sig, req.IsEIP191Prefix, client)
 			if err != nil {
+				sdk.LogServerErrorToSentry(ctx, err)
 				ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 				return
 			}
@@ -224,6 +231,7 @@ func Login(ctx *gin.Context) {
 	// query user
 	user, err := model.UserModel.Detail(db, common.FormatUserWallet(req.Wallet))
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
@@ -233,6 +241,7 @@ func Login(ctx *gin.Context) {
 		}
 		err = model.UserModel.CreateOrUpdate(db, user)
 		if err != nil {
+			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 			return
 		}
@@ -247,6 +256,7 @@ func Login(ctx *gin.Context) {
 		cfg.Jwt.Secret,
 	)
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
@@ -297,6 +307,7 @@ func Detail(ctx *gin.Context) {
 
 	u, err := model.UserModel.Detail(db, user.Wallet)
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
@@ -358,6 +369,7 @@ func Update(ctx *gin.Context) {
 
 	u, err := model.UserModel.Detail(db, user.Wallet)
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
@@ -380,6 +392,7 @@ func Update(ctx *gin.Context) {
 	// Only upload image when data is b64 image string (start with `data:image`)
 	avatarUrl, err := sdk.GetAwsClient().UploadUserAvatar(u.Wallet, req.Avatar)
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
@@ -387,6 +400,7 @@ func Update(ctx *gin.Context) {
 
 	err = model.UserModel.CreateOrUpdate(db, u)
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
@@ -424,6 +438,7 @@ func Users(ctx *gin.Context) {
 
 	users, err := model.UserModel.List(db, wallets)
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
@@ -510,6 +525,7 @@ func GetFrontendPermission(ctx *gin.Context) {
 	encoder.SetEscapeHTML(false)
 	err := encoder.Encode(m)
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
