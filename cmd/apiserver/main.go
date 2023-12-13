@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
@@ -157,10 +156,6 @@ func main() {
 		ctx.Set(middleware.CfgKey, cfg)
 		ctx.Set(middleware.EnforcerKey, enforcer)
 		ctx.Set(middleware.PushKey, pushSDK)
-
-		sdk.LogMessageToSentry(ctx, fmt.Sprintf("dbkey: %v", db), map[string]string{
-			"type": "test",
-		})
 
 		// <-- before
 		ctx.Next()
