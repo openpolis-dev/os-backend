@@ -1,6 +1,7 @@
 package treasury
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -17,14 +18,14 @@ func GetOrCreateCurrentAssetRecords(ctx *gin.Context) {
 	currQuarterTreasuryRecord, err := model.TreasuryAssetHelper.GetOrCreateCurrentSeasonRecord(db)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get or create current quarter treasury record error")))
 		return
 	}
 
 	treasuryAssetResp, err := currQuarterTreasuryRecord.ToTreasuryAssetsResponse(db)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get or create current quarter treasury record error")))
 		return
 	}
 
@@ -38,7 +39,7 @@ func UpdateAssets(ctx *gin.Context) {
 	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), api.ObjTreasury, api.ActUpdateAssertBudget)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 		return
 	}
 	if !ok {
@@ -66,7 +67,7 @@ func UpdateAssets(ctx *gin.Context) {
 
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("update assets error")))
 	}
 
 	currQuarterTreasuryRecord, err := model.TreasuryAssetHelper.GetOrCreateCurrentSeasonRecord(db)

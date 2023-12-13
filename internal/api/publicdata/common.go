@@ -1,6 +1,7 @@
 package publicdata
 
 import (
+	"errors"
 	"net/http"
 	"sync"
 	"time"
@@ -32,7 +33,7 @@ func cacheLogic[C any, D any](ctx *gin.Context, cache *dataCache[C, D], cacheInS
 		cache.client, err = c()
 		if err != nil {
 			sdk.LogServerErrorToSentry(ctx, err)
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create client error")))
 			return
 		}
 	}
@@ -43,7 +44,7 @@ func cacheLogic[C any, D any](ctx *gin.Context, cache *dataCache[C, D], cacheInS
 		data, err := d()
 		if err != nil {
 			sdk.LogServerErrorToSentry(ctx, err)
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("query data error")))
 			return
 		}
 

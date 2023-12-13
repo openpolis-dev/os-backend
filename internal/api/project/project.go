@@ -95,7 +95,7 @@ func Create(ctx *gin.Context) {
 	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), api.ObjProj, api.ActCreate)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 		return
 	}
 	if !ok {
@@ -124,7 +124,7 @@ func Create(ctx *gin.Context) {
 	if err != nil {
 		tx.Rollback()
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create project error")))
 		return
 	}
 
@@ -135,13 +135,13 @@ func Create(ctx *gin.Context) {
 	logoUrl, err := sdk.GetAwsClient().UploadEntityLogo(proj.ID, "project", req.LogoStr)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("upload logo error")))
 		return
 	}
 	err = db.Model(&proj).Update("logo", logoUrl).Error
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("upload logo error")))
 		return
 	}
 
@@ -163,7 +163,7 @@ func Create(ctx *gin.Context) {
 	_, err = enforcer.AddPolicies(policies)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("add policies error")))
 		return
 	}
 	// add roles
@@ -179,13 +179,13 @@ func Create(ctx *gin.Context) {
 	_, err = enforcer.AddGroupingPolicies(sponsorGroupingPolicies)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("add grouping policies error")))
 		return
 	}
 	err = enforcer.SavePolicy()
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("save policy error")))
 		return
 	}
 
@@ -236,7 +236,7 @@ func Update(ctx *gin.Context) {
 	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), permObject, api.ActModify)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 		return
 	}
 	if !ok {
@@ -248,7 +248,7 @@ func Update(ctx *gin.Context) {
 	proj, err := model.ProjectModel.Detail(db, uint(id))
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get project error")))
 		return
 	}
 	if proj == nil {
@@ -278,7 +278,7 @@ func Update(ctx *gin.Context) {
 	err = model.ProjectModel.CreateOrUpdate(db, proj)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("update project error")))
 		return
 	}
 
@@ -308,7 +308,7 @@ func Close(ctx *gin.Context) {
 	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), api.ObjProj, api.ActClose)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 		return
 	}
 	if !ok {
@@ -320,7 +320,7 @@ func Close(ctx *gin.Context) {
 	project, err := model.ProjectModel.Detail(db, uint(id))
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get project error")))
 		return
 	}
 	if project == nil {
@@ -385,7 +385,7 @@ func Detail(ctx *gin.Context) {
 	proj, err := model.ProjectModel.Detail(db, uint(id))
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get project error")))
 		return
 	}
 	if proj == nil {
@@ -396,7 +396,7 @@ func Detail(ctx *gin.Context) {
 	budgets, err := model.ProjectBudgetModel.ListByProjectId(db, proj.ID)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get project budgets error")))
 		return
 	}
 
@@ -431,7 +431,7 @@ func List(ctx *gin.Context) {
 	projects, total, err := model.ProjectModel.List(db, status, page, showSpecialProjectFlag)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("list projects error")))
 		return
 	}
 
@@ -467,7 +467,7 @@ func MyProjects(ctx *gin.Context) {
 	projects, total, err := model.ProjectModel.ListBySponsorOrMember(db, common.FormatUserWallet(user.Wallet), page)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("list projects error")))
 		return
 	}
 
@@ -519,7 +519,7 @@ func UpdateStaffs(ctx *gin.Context) {
 		ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), permObject, api.ActUpdateSponsor)
 		if err != nil {
 			sdk.LogServerErrorToSentry(ctx, err)
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 			return
 		}
 		if !ok {
@@ -533,7 +533,7 @@ func UpdateStaffs(ctx *gin.Context) {
 		ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), permObject, api.ActUpdateMember)
 		if err != nil {
 			sdk.LogServerErrorToSentry(ctx, err)
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 			return
 		}
 		if !ok {
@@ -554,7 +554,7 @@ func UpdateStaffs(ctx *gin.Context) {
 	proj, err := model.ProjectModel.Detail(db, uint(id))
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get project error")))
 		return
 	}
 	if proj == nil {
@@ -587,7 +587,7 @@ func UpdateStaffs(ctx *gin.Context) {
 				tx.Rollback()
 
 				sdk.LogServerErrorToSentry(ctx, err)
-				ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("update project error")))
 				return
 			}
 
@@ -601,7 +601,7 @@ func UpdateStaffs(ctx *gin.Context) {
 				tx.Rollback()
 
 				sdk.LogServerErrorToSentry(ctx, err)
-				ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("update project error")))
 				return
 			}
 			err = enforcer.SavePolicy()
@@ -609,7 +609,7 @@ func UpdateStaffs(ctx *gin.Context) {
 				tx.Rollback()
 
 				sdk.LogServerErrorToSentry(ctx, err)
-				ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("update project error")))
 				return
 			}
 		}
@@ -628,7 +628,7 @@ func UpdateStaffs(ctx *gin.Context) {
 				tx.Rollback()
 
 				sdk.LogServerErrorToSentry(ctx, err)
-				ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("update project error")))
 				return
 			}
 
@@ -669,7 +669,7 @@ func UpdateStaffs(ctx *gin.Context) {
 				tx.Rollback()
 
 				sdk.LogServerErrorToSentry(ctx, err)
-				ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("update project error")))
 				return
 			}
 
@@ -683,7 +683,7 @@ func UpdateStaffs(ctx *gin.Context) {
 				tx.Rollback()
 
 				sdk.LogServerErrorToSentry(ctx, err)
-				ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("update project error")))
 				return
 			}
 			err = enforcer.SavePolicy()
@@ -691,7 +691,7 @@ func UpdateStaffs(ctx *gin.Context) {
 				tx.Rollback()
 
 				sdk.LogServerErrorToSentry(ctx, err)
-				ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("update project error")))
 				return
 			}
 		}
@@ -706,7 +706,7 @@ func UpdateStaffs(ctx *gin.Context) {
 				tx.Rollback()
 
 				sdk.LogServerErrorToSentry(ctx, err)
-				ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("update project error")))
 				return
 			}
 
@@ -777,7 +777,7 @@ func UpdateBudget(ctx *gin.Context) {
 	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), permObject, api.ActUpdateBudget)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 		return
 	}
 	if !ok {
@@ -789,7 +789,7 @@ func UpdateBudget(ctx *gin.Context) {
 	proj, err := model.ProjectModel.Detail(db, uint(id))
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get project error")))
 		return
 	}
 	if proj == nil {
@@ -806,7 +806,7 @@ func UpdateBudget(ctx *gin.Context) {
 	budget, err := model.ProjectBudgetModel.Detail(db, req.Id)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get project budget error")))
 		return
 	}
 
@@ -818,7 +818,7 @@ func UpdateBudget(ctx *gin.Context) {
 	err = model.ProjectBudgetModel.Update(db, budget)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("update project budget error")))
 		return
 	}
 
@@ -852,7 +852,7 @@ func AddRelatedProposal(ctx *gin.Context) {
 	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), permObject, api.ActModify)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 		return
 	}
 	if !ok {
@@ -864,7 +864,7 @@ func AddRelatedProposal(ctx *gin.Context) {
 	proj, err := model.ProjectModel.Detail(db, uint(id))
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get project error")))
 		return
 	}
 	if proj == nil {
@@ -886,7 +886,7 @@ func AddRelatedProposal(ctx *gin.Context) {
 	err = model.ProjectModel.CreateOrUpdate(db, proj)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("update project error")))
 		return
 	}
 

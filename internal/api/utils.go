@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"net/http"
 	"path"
 	"strings"
@@ -34,7 +35,7 @@ func PreSignedUrlForS3(ctx *gin.Context) {
 
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, ServerError(err))
+		ctx.JSON(http.StatusInternalServerError, ServerError(errors.New("upload url error")))
 	}
 
 	ctx.JSON(http.StatusOK, Success(uploadUrl))

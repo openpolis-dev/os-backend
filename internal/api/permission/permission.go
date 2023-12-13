@@ -1,6 +1,7 @@
 package permission
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -34,7 +35,7 @@ func GrantRole(ctx *gin.Context) {
 	ok, err := enforcer.HasRoleForUser(formattedWallet, api.RoleHall)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 		return
 	}
 	if !ok {
@@ -57,13 +58,13 @@ func GrantRole(ctx *gin.Context) {
 	_, err = enforcer.AddGroupingPolicies(policies)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("grant role error")))
 		return
 	}
 	err = enforcer.SavePolicy()
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("grant role error")))
 		return
 	}
 
@@ -88,7 +89,7 @@ func RevokeRole(ctx *gin.Context) {
 	ok, err := enforcer.HasRoleForUser(common.FormatUserWallet(user.Wallet), api.RoleHall)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 		return
 	}
 	if !ok {
@@ -111,13 +112,13 @@ func RevokeRole(ctx *gin.Context) {
 	_, err = enforcer.RemoveGroupingPolicies(policies)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("revoke role error")))
 		return
 	}
 	err = enforcer.SavePolicy()
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("revoke role error")))
 		return
 	}
 

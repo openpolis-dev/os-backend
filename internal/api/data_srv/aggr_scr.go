@@ -3,6 +3,7 @@ package data_srv
 import (
 	"bytes"
 	"encoding/gob"
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -142,7 +143,7 @@ func AggrScr(ctx *gin.Context) {
 	currentSeason, err := model.GetCurrentSeason(db)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get current season error")))
 		return
 	}
 
@@ -279,13 +280,13 @@ func AggrScr(ctx *gin.Context) {
 	log.Error().Msgf("TTT: Write buf size: %d", buffer.Len())
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("encode metaforo data error")))
 		return
 	}
 	err = storage.StoreCachedData(storage.MetaforoRewardCacheKey(currentSeason.Idx), buffer.Bytes())
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("store metaforo data error")))
 		return
 	}
 

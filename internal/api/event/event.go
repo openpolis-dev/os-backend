@@ -74,7 +74,7 @@ func Create(ctx *gin.Context) {
 	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), api.ObjEvent, api.ActCreateEvent)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 		return
 	}
 	if !ok {
@@ -128,7 +128,7 @@ func Create(ctx *gin.Context) {
 	err = db.Create(&eventRecord).Error
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create event error")))
 	} else {
 		ctx.JSON(http.StatusCreated, api.Success(eventRecord))
 	}
@@ -139,7 +139,7 @@ func Detail(ctx *gin.Context) {
 	eventRecord, err := getRecord(db, ctx.Param("id"))
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get event error")))
 		return
 	}
 	if eventRecord == nil {
@@ -162,7 +162,7 @@ func Delete(ctx *gin.Context) {
 	err = db.Delete(&eventRecord).Error
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("delete event error")))
 		return
 	}
 	ctx.JSON(http.StatusOK, api.Success(eventRecord))
@@ -174,7 +174,7 @@ func Update(ctx *gin.Context) {
 	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), api.ObjEvent, api.ActCreateEvent)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 		return
 	}
 	if !ok {
@@ -193,7 +193,7 @@ func Update(ctx *gin.Context) {
 	eventRecord, err := getRecord(db, ctx.Param("id"))
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get event error")))
 		return
 	}
 
