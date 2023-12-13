@@ -28,6 +28,7 @@ func InitSentry(ginApp *gin.Engine, cfg *config.Config) {
 			// We recommend adjusting this value in production,
 			TracesSampleRate: 1.0,
 			Debug:            runningEnv == "local" || runningEnv == "dev",
+			Environment:      runningEnv,
 		}); err != nil {
 			log.Error().Msgf("sentry initialization failed: %+v", err)
 		}
