@@ -506,7 +506,6 @@ func GetFrontendPermission(ctx *gin.Context) {
 	for ptype := range eModel["p"] {
 		policy := eModel.GetPolicy("p", ptype)
 		for i := range policy {
-			fmt.Printf("ptype: %s, policy: %+v\n", ptype, policy[i])
 			policies = append(policies, append([]string{ptype}, policy[i]...))
 		}
 	}

@@ -111,6 +111,7 @@ func UpdateBudget(ctx *gin.Context) {
 	req := CityHallUpdateBudgetReq{}
 	err = ctx.BindJSON(&req)
 	if err != nil {
+		sdk.LogUserSideError(ctx, err)
 		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
 		return
 	}
@@ -124,13 +125,16 @@ func UpdateBudget(ctx *gin.Context) {
 	}
 
 	if !ok {
+		sdk.LogForbiddenError(ctx, user.Wallet, api.RoleHall, "access")
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
 
 	budget := model.ProjectBudget{}
 	if req.AssetName == "" || req.AssetType == "" || req.TotalAmount == decimal.Zero {
-		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("all fields in request should be filled")))
+		err := errors.New("all fields in request should be filled")
+		sdk.LogUserSideError(ctx, err)
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
 		return
 	}
 	err = db.Where(&model.ProjectBudget{
@@ -207,6 +211,7 @@ func UpdateMember(ctx *gin.Context) {
 
 	if !ok {
 		log.Warn().Msgf("permission deny for user %s", formattedWallet)
+		sdk.LogForbiddenError(ctx, user.Wallet, api.RoleHall, "access")
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
@@ -214,6 +219,7 @@ func UpdateMember(ctx *gin.Context) {
 	req := CityHallUpdateMemberReq{}
 	err = ctx.BindJSON(&req)
 	if err != nil {
+		sdk.LogUserSideError(ctx, err)
 		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
 		return
 	}
@@ -227,6 +233,7 @@ func UpdateMember(ctx *gin.Context) {
 	statusCode, err := updateGroupedMembers(cityHallProject, &req, db, enforcer)
 	switch statusCode {
 	case http.StatusBadRequest:
+		sdk.LogUserSideError(ctx, err)
 		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
 		return
 	case http.StatusInternalServerError:
@@ -279,6 +286,7 @@ func BatchUpdateMembers(ctx *gin.Context) {
 
 	if !ok {
 		log.Warn().Msgf("permission deny for user %s", formattedWallet)
+		sdk.LogForbiddenError(ctx, user.Wallet, api.RoleHall, "access")
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
@@ -287,7 +295,8 @@ func BatchUpdateMembers(ctx *gin.Context) {
 	err = ctx.BindJSON(&req)
 	if err != nil {
 		log.Error().Msgf("parse body params error: %+v", err)
-		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
+		sdk.LogUserSideError(ctx, err)
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("parse body params error: %+v", err)))
 		return
 	}
 	log.Debug().Msgf("city hall update member form user %s, request: %+v", formattedWallet, req)
@@ -297,6 +306,7 @@ func BatchUpdateMembers(ctx *gin.Context) {
 		if err != nil {
 			switch statusCode {
 			case http.StatusBadRequest:
+				sdk.LogUserSideError(ctx, err)
 				ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
 				return
 			case http.StatusInternalServerError:

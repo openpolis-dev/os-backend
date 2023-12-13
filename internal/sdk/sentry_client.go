@@ -8,6 +8,7 @@ import (
 	sentrygin "github.com/getsentry/sentry-go/gin"
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
+	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/config"
 )
 
@@ -59,6 +60,10 @@ func LogMessageToSentry(ctx *gin.Context, msg string, tags map[string]string) {
 
 func LogServerErrorToSentry(ctx *gin.Context, err error) {
 	LogMessageToSentry(ctx, err.Error(), map[string]string{"error_scope": "server"})
+}
+
+func LogForbiddenError(ctx *gin.Context, userWallet string, targetToAccess string, action string) {
+	LogMessageToSentry(ctx, fmt.Sprintf("user %s is forbidden to target %s with action %s", common.FormatUserWallet(userWallet), targetToAccess, action), map[string]string{"error_scope": "user", "type": "forbidden"})
 }
 
 func LogUserSideError(ctx *gin.Context, err error) {

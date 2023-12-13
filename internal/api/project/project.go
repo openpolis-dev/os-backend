@@ -99,6 +99,7 @@ func Create(ctx *gin.Context) {
 		return
 	}
 	if !ok {
+		sdk.LogForbiddenError(ctx, user.Wallet, api.ObjProj, api.ActCreate)
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
@@ -231,13 +232,15 @@ func Update(ctx *gin.Context) {
 
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
-	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), fmt.Sprintf("%s%d", api.ObjProjPrefix, id), api.ActModify)
+	permObject := buildProjectPermObject(id)
+	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), permObject, api.ActModify)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
 	if !ok {
+		sdk.LogForbiddenError(ctx, user.Wallet, permObject, api.ActModify)
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
@@ -309,6 +312,7 @@ func Close(ctx *gin.Context) {
 		return
 	}
 	if !ok {
+		sdk.LogForbiddenError(ctx, user.Wallet, api.ObjProj, api.ActClose)
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
@@ -514,25 +518,29 @@ func UpdateStaffs(ctx *gin.Context) {
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
 	if req.Sponsors != nil && len(req.Sponsors) != 0 {
-		ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), fmt.Sprintf("%s%d", api.ObjProjPrefix, id), api.ActUpdateSponsor)
+		permObject := buildProjectPermObject(id)
+		ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), permObject, api.ActUpdateSponsor)
 		if err != nil {
 			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 			return
 		}
 		if !ok {
+			sdk.LogForbiddenError(ctx, user.Wallet, permObject, api.ActUpdateSponsor)
 			ctx.JSON(http.StatusForbidden, api.Forbidden())
 			return
 		}
 	}
 	if req.Members != nil && len(req.Members) != 0 {
-		ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), fmt.Sprintf("%s%d", api.ObjProjPrefix, id), api.ActUpdateMember)
+		permObject := buildProjectPermObject(id)
+		ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), permObject, api.ActUpdateMember)
 		if err != nil {
 			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 			return
 		}
 		if !ok {
+			sdk.LogForbiddenError(ctx, user.Wallet, permObject, api.ActUpdateMember)
 			ctx.JSON(http.StatusForbidden, api.Forbidden())
 			return
 		}
@@ -768,13 +776,15 @@ func UpdateBudget(ctx *gin.Context) {
 
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
-	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), fmt.Sprintf("%s%d", api.ObjProjPrefix, id), api.ActUpdateBudget)
+	permObject := buildProjectPermObject(id)
+	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), permObject, api.ActUpdateBudget)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
 	if !ok {
+		sdk.LogForbiddenError(ctx, user.Wallet, permObject, api.ActUpdateBudget)
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
@@ -841,13 +851,15 @@ func AddRelatedProposal(ctx *gin.Context) {
 
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
-	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), fmt.Sprintf("%s%d", api.ObjProjPrefix, id), api.ActModify)
+	permObject := buildProjectPermObject(id)
+	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), permObject, api.ActModify)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
 	if !ok {
+		sdk.LogForbiddenError(ctx, user.Wallet, permObject, api.ActModify)
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
@@ -882,4 +894,8 @@ func AddRelatedProposal(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, api.Success(nil))
+}
+
+func buildProjectPermObject(projectId int) string {
+	return fmt.Sprintf("%s%d", api.ObjProjPrefix, projectId)
 }

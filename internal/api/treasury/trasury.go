@@ -42,6 +42,7 @@ func UpdateAssets(ctx *gin.Context) {
 		return
 	}
 	if !ok {
+		sdk.LogForbiddenError(ctx, user.Wallet, api.ObjTreasury, api.ActUpdateAssertBudget)
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}

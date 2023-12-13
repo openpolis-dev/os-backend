@@ -78,6 +78,7 @@ func Create(ctx *gin.Context) {
 		return
 	}
 	if !ok {
+		sdk.LogForbiddenError(ctx, user.Wallet, api.ObjEvent, api.ActCreateEvent)
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
@@ -177,6 +178,7 @@ func Update(ctx *gin.Context) {
 		return
 	}
 	if !ok {
+		sdk.LogForbiddenError(ctx, user.Wallet, api.ObjEvent, api.ActCreateEvent)
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}

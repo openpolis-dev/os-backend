@@ -138,6 +138,7 @@ func Create(ctx *gin.Context) {
 				return err
 			}
 			if !ok {
+				sdk.LogForbiddenError(ctx, user.Wallet, obj, api.ActCreateApplication)
 				ctx.JSON(http.StatusForbidden, api.Forbidden())
 				return err
 			}
@@ -388,6 +389,7 @@ func BatchProcess(ctx *gin.Context) {
 		return
 	}
 	if !ok {
+		sdk.LogForbiddenError(ctx, user.Wallet, api.ObjProjAndGuild, api.ActCreateApplication)
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
@@ -452,6 +454,7 @@ func BatchApprove(ctx *gin.Context) {
 		return
 	}
 	if !ok {
+		sdk.LogForbiddenError(ctx, user.Wallet, api.ObjProjAndGuild, api.ActCreateApplication)
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
@@ -487,6 +490,7 @@ func BatchReject(ctx *gin.Context) {
 		return
 	}
 	if !ok {
+		sdk.LogForbiddenError(ctx, user.Wallet, api.ObjProjAndGuild, api.ActCreateApplication)
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
@@ -516,6 +520,7 @@ func BatchComplete(ctx *gin.Context) {
 		return
 	}
 	if !ok {
+		sdk.LogForbiddenError(ctx, user.Wallet, api.ObjProjAndGuild, api.ActCreateApplication)
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}

@@ -51,6 +51,7 @@ func Create(ctx *gin.Context) {
 		return
 	}
 	if !ok {
+		sdk.LogForbiddenError(ctx, user.Wallet, api.ObjPush, api.ActCreatePush)
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}

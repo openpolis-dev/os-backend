@@ -237,6 +237,7 @@ func CreateAppBundle(ctx *gin.Context) {
 		return
 	}
 	if !ok {
+		sdk.LogForbiddenError(ctx, user.Wallet, obj, api.ActCreateApplication)
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
@@ -398,6 +399,7 @@ func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState
 		return
 	}
 	if !ok {
+		sdk.LogForbiddenError(ctx, user.Wallet, api.ObjProjAndGuild, api.ActCreateApplication)
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}

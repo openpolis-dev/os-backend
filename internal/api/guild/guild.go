@@ -102,6 +102,7 @@ func Create(ctx *gin.Context) {
 		return
 	}
 	if !ok {
+		sdk.LogForbiddenError(ctx, user.Wallet, api.ObjGuild, api.ActCreate)
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
@@ -231,13 +232,15 @@ func Update(ctx *gin.Context) {
 
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
-	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), fmt.Sprintf("%s%d", api.ObjGuildPrefix, id), api.ActModify)
+	permObject := buildGuildPermObject(id)
+	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), permObject, api.ActModify)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
 	if !ok {
+		sdk.LogForbiddenError(ctx, user.Wallet, permObject, api.ActModify)
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
@@ -431,25 +434,29 @@ func UpdateStaffs(ctx *gin.Context) {
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
 	if req.Sponsors != nil && len(req.Sponsors) != 0 {
-		ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), fmt.Sprintf("%s%d", api.ObjGuildPrefix, id), api.ActUpdateSponsor)
+		permObject := buildGuildPermObject(id)
+		ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), permObject, api.ActUpdateSponsor)
 		if err != nil {
 			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 			return
 		}
 		if !ok {
+			sdk.LogForbiddenError(ctx, user.Wallet, permObject, api.ActUpdateSponsor)
 			ctx.JSON(http.StatusForbidden, api.Forbidden())
 			return
 		}
 	}
 	if req.Members != nil && len(req.Members) != 0 {
-		ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), fmt.Sprintf("%s%d", api.ObjGuildPrefix, id), api.ActUpdateMember)
+		permObject := buildGuildPermObject(id)
+		ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), permObject, api.ActUpdateMember)
 		if err != nil {
 			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 			return
 		}
 		if !ok {
+			sdk.LogForbiddenError(ctx, user.Wallet, permObject, api.ActUpdateMember)
 			ctx.JSON(http.StatusForbidden, api.Forbidden())
 			return
 		}
@@ -681,13 +688,15 @@ func UpdateBudget(ctx *gin.Context) {
 
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
-	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), fmt.Sprintf("%s%d", api.ObjGuildPrefix, id), api.ActUpdateBudget)
+	permObject := buildGuildPermObject(id)
+	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), permObject, api.ActUpdateBudget)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
 	if !ok {
+		sdk.LogForbiddenError(ctx, user.Wallet, permObject, api.ActModify)
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
@@ -736,13 +745,15 @@ func AddRelatedProposal(ctx *gin.Context) {
 
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
-	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), fmt.Sprintf("%s%d", api.ObjGuildPrefix, id), api.ActModify)
+	permObject := buildGuildPermObject(id)
+	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), permObject, api.ActModify)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 		return
 	}
 	if !ok {
+		sdk.LogForbiddenError(ctx, user.Wallet, permObject, api.ActModify)
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
@@ -771,4 +782,8 @@ func AddRelatedProposal(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, api.Success(nil))
+}
+
+func buildGuildPermObject(guildId int) string {
+	return fmt.Sprintf("%s%d", api.ObjGuildPrefix, guildId)
 }
