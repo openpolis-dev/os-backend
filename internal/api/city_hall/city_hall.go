@@ -84,10 +84,7 @@ func Info(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, api.Success(&CityHallDetailReply{
-		Project: *cityHallProject,
-		Budgets: budgets,
-	}))
+	ctx.JSON(http.StatusOK, api.Success(generateCityHallDetailReply(cityHallProject, budgets)))
 }
 
 // UpdateBudget updates cityhall budget for current season
@@ -248,11 +245,7 @@ func UpdateMember(ctx *gin.Context) {
 			return
 		}
 
-		detail := &CityHallDetailReply{
-			Project: *cityHallProject,
-			Budgets: budgets,
-		}
-		ctx.JSON(http.StatusOK, api.Success(detail))
+		ctx.JSON(http.StatusOK, api.Success(generateCityHallDetailReply(cityHallProject, budgets)))
 		return
 	}
 }
@@ -324,11 +317,7 @@ func BatchUpdateMembers(ctx *gin.Context) {
 		return
 	}
 
-	detail := &CityHallDetailReply{
-		Project: *cityHallProject,
-		Budgets: budgets,
-	}
-	ctx.JSON(http.StatusOK, api.Success(detail))
+	ctx.JSON(http.StatusOK, api.Success(generateCityHallDetailReply(cityHallProject, budgets)))
 }
 
 // updateGroupedMembers is used to parse CityHallUpdateMemberReq data and update city hall members
@@ -432,4 +421,24 @@ func updateGroupedMembers(cityHallProject *model.Project, req *CityHallUpdateMem
 	}
 
 	return http.StatusOK, nil
+}
+
+func generateCityHallDetailReply(cityHallProject *model.Project, budgets []*model.ProjectBudget) *CityHallDetailReply {
+	cityHallProject.Members = lo.Map(cityHallProject.Members, func(m string, _ int) string {
+		return common.ToFrontendWallet(m)
+	})
+	cityHallProject.Sponsors = lo.Map(cityHallProject.Sponsors, func(m string, _ int) string {
+		return common.ToFrontendWallet(m)
+	})
+
+	for grpName, wallets := range cityHallProject.GroupedSponsors {
+		cityHallProject.GroupedSponsors[grpName] = lo.Map(wallets, func(m string, _ int) string {
+			return common.ToFrontendWallet(m)
+		})
+	}
+
+	return &CityHallDetailReply{
+		Project: *cityHallProject,
+		Budgets: budgets,
+	}
 }
