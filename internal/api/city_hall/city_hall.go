@@ -13,8 +13,10 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api"
+	"github.com/theseed-labs/os-backend/internal/api/project"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
+	"github.com/theseed-labs/os-backend/internal/sdk"
 	"gorm.io/gorm"
 )
 
@@ -71,20 +73,19 @@ func Info(ctx *gin.Context) {
 	})
 
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall record error")))
 		return
 	}
 
 	budgets, err := model.ProjectBudgetModel.ListByProjectId(db, cityHallProject.ID)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall budget error")))
 		return
 	}
 
-	ctx.JSON(http.StatusOK, api.Success(&CityHallDetailReply{
-		Project: *cityHallProject,
-		Budgets: budgets,
-	}))
+	ctx.JSON(http.StatusOK, api.Success(generateCityHallDetailReply(cityHallProject, budgets)))
 }
 
 // UpdateBudget updates cityhall budget for current season
@@ -100,6 +101,7 @@ func UpdateBudget(ctx *gin.Context) {
 	formattedWallet := common.FormatUserWallet(user.Wallet)
 	cityHallProject, err := getOrCreateCityHallProject(db, enforcer)
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall record error")))
 		return
 	}
@@ -107,6 +109,7 @@ func UpdateBudget(ctx *gin.Context) {
 	req := CityHallUpdateBudgetReq{}
 	err = ctx.BindJSON(&req)
 	if err != nil {
+		sdk.LogUserSideError(ctx, err)
 		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
 		return
 	}
@@ -114,18 +117,22 @@ func UpdateBudget(ctx *gin.Context) {
 	//  check permission
 	ok, err := enforcer.HasRoleForUser(formattedWallet, api.RoleHall)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall permission error")))
 		return
 	}
 
 	if !ok {
+		sdk.LogForbiddenError(ctx, user.Wallet, api.RoleHall, "access")
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
 
 	budget := model.ProjectBudget{}
 	if req.AssetName == "" || req.AssetType == "" || req.TotalAmount == decimal.Zero {
-		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("all fields in request should be filled")))
+		err := errors.New("all fields in request should be filled")
+		sdk.LogUserSideError(ctx, err)
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
 		return
 	}
 	err = db.Where(&model.ProjectBudget{
@@ -148,11 +155,13 @@ func UpdateBudget(ctx *gin.Context) {
 			}
 			err = db.Create(&budget).Error
 			if err != nil {
-				ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+				sdk.LogServerErrorToSentry(ctx, err)
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create cityhall budget error")))
 				return
 			}
 		} else {
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+			sdk.LogServerErrorToSentry(ctx, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall budget error")))
 			return
 		}
 	}
@@ -164,7 +173,8 @@ func UpdateBudget(ctx *gin.Context) {
 	budget.UpdateTs = model.GetCurrentUtcEpochSecond()
 	err = model.ProjectBudgetModel.Update(db, &budget)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("update cityhall budget error")))
 		return
 	}
 
@@ -183,6 +193,7 @@ func UpdateMember(ctx *gin.Context) {
 	log.Debug().Msgf("update city hall request form user %s", formattedWallet)
 	cityHallProject, err := getOrCreateCityHallProject(db, enforcer)
 	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall record error")))
 		return
 	}
@@ -191,12 +202,14 @@ func UpdateMember(ctx *gin.Context) {
 	ok, err := enforcer.HasRoleForUser(formattedWallet, api.RoleHall)
 	if err != nil {
 		log.Error().Msgf("check permission error %+v", err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall permission error")))
 		return
 	}
 
 	if !ok {
 		log.Warn().Msgf("permission deny for user %s", formattedWallet)
+		sdk.LogForbiddenError(ctx, user.Wallet, api.RoleHall, "access")
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
@@ -204,6 +217,7 @@ func UpdateMember(ctx *gin.Context) {
 	req := CityHallUpdateMemberReq{}
 	err = ctx.BindJSON(&req)
 	if err != nil {
+		sdk.LogUserSideError(ctx, err)
 		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
 		return
 	}
@@ -217,23 +231,22 @@ func UpdateMember(ctx *gin.Context) {
 	statusCode, err := updateGroupedMembers(cityHallProject, &req, db, enforcer)
 	switch statusCode {
 	case http.StatusBadRequest:
+		sdk.LogUserSideError(ctx, err)
 		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
 		return
 	case http.StatusInternalServerError:
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("update cityhall member error")))
 		return
 	case http.StatusOK:
 		budgets, err := model.ProjectBudgetModel.ListByProjectId(db, cityHallProject.ID)
 		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+			sdk.LogServerErrorToSentry(ctx, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall budget error")))
 			return
 		}
 
-		detail := &CityHallDetailReply{
-			Project: *cityHallProject,
-			Budgets: budgets,
-		}
-		ctx.JSON(http.StatusOK, api.Success(detail))
+		ctx.JSON(http.StatusOK, api.Success(generateCityHallDetailReply(cityHallProject, budgets)))
 		return
 	}
 }
@@ -251,6 +264,7 @@ func BatchUpdateMembers(ctx *gin.Context) {
 	cityHallProject, err := getOrCreateCityHallProject(db, enforcer)
 	if err != nil {
 		log.Error().Msgf("get cityhall record error: %+v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall record error")))
 		return
 	}
@@ -259,12 +273,14 @@ func BatchUpdateMembers(ctx *gin.Context) {
 	ok, err := enforcer.HasRoleForUser(formattedWallet, api.RoleHall)
 	if err != nil {
 		log.Error().Msgf("check permission error %+v", err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall permission error")))
 		return
 	}
 
 	if !ok {
 		log.Warn().Msgf("permission deny for user %s", formattedWallet)
+		sdk.LogForbiddenError(ctx, user.Wallet, api.RoleHall, "access")
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
@@ -273,7 +289,8 @@ func BatchUpdateMembers(ctx *gin.Context) {
 	err = ctx.BindJSON(&req)
 	if err != nil {
 		log.Error().Msgf("parse body params error: %+v", err)
-		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
+		sdk.LogUserSideError(ctx, err)
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("parse body params error: %+v", err)))
 		return
 	}
 	log.Debug().Msgf("city hall update member form user %s, request: %+v", formattedWallet, req)
@@ -283,10 +300,12 @@ func BatchUpdateMembers(ctx *gin.Context) {
 		if err != nil {
 			switch statusCode {
 			case http.StatusBadRequest:
+				sdk.LogUserSideError(ctx, err)
 				ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
 				return
 			case http.StatusInternalServerError:
-				ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+				sdk.LogServerErrorToSentry(ctx, err)
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("update cityhall member error")))
 				return
 			}
 		}
@@ -294,15 +313,12 @@ func BatchUpdateMembers(ctx *gin.Context) {
 	budgets, err := model.ProjectBudgetModel.ListByProjectId(db, cityHallProject.ID)
 	if err != nil {
 		log.Error().Msgf("get project budget error: %+v", err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall budget error")))
 		return
 	}
 
-	detail := &CityHallDetailReply{
-		Project: *cityHallProject,
-		Budgets: budgets,
-	}
-	ctx.JSON(http.StatusOK, api.Success(detail))
+	ctx.JSON(http.StatusOK, api.Success(generateCityHallDetailReply(cityHallProject, budgets)))
 }
 
 // updateGroupedMembers is used to parse CityHallUpdateMemberReq data and update city hall members
@@ -406,4 +422,11 @@ func updateGroupedMembers(cityHallProject *model.Project, req *CityHallUpdateMem
 	}
 
 	return http.StatusOK, nil
+}
+
+func generateCityHallDetailReply(cityHallProject *model.Project, budgets []*model.ProjectBudget) *CityHallDetailReply {
+	return &CityHallDetailReply{
+		Project: *project.NormalizeWalletAddrInProject(cityHallProject),
+		Budgets: budgets,
+	}
 }

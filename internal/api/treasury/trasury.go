@@ -1,12 +1,14 @@
 package treasury
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
+	"github.com/theseed-labs/os-backend/internal/sdk"
 	"gorm.io/gorm"
 )
 
@@ -15,13 +17,15 @@ func GetOrCreateCurrentAssetRecords(ctx *gin.Context) {
 
 	currQuarterTreasuryRecord, err := model.TreasuryAssetHelper.GetOrCreateCurrentSeasonRecord(db)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get or create current quarter treasury record error")))
 		return
 	}
 
 	treasuryAssetResp, err := currQuarterTreasuryRecord.ToTreasuryAssetsResponse(db)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get or create current quarter treasury record error")))
 		return
 	}
 
@@ -34,10 +38,12 @@ func UpdateAssets(ctx *gin.Context) {
 	//  check permission
 	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), api.ObjTreasury, api.ActUpdateAssertBudget)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 		return
 	}
 	if !ok {
+		sdk.LogForbiddenError(ctx, user.Wallet, api.ObjTreasury, api.ActUpdateAssertBudget)
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
@@ -60,7 +66,8 @@ func UpdateAssets(ctx *gin.Context) {
 	})
 
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("update assets error")))
 	}
 
 	currQuarterTreasuryRecord, err := model.TreasuryAssetHelper.GetOrCreateCurrentSeasonRecord(db)

@@ -59,6 +59,7 @@ type (
 	externalService struct {
 		SeedaoSppBase          string `json:"SeedaoSppBase" yaml:"SeedaoSppBase"`
 		SeedaoEventIndexerBase string `json:"SeedaoEventIndexerBase" yaml:"SeedaoEventIndexerBase"`
+		SentryDsn              string `json:"SentryDsn" yaml:"SentryDsn"`
 	}
 	publicData struct {
 		Discord struct {
