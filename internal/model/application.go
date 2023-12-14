@@ -26,7 +26,7 @@ type Application struct {
 	ID uint `json:"id" gorm:"primaryKey"`
 
 	// application type
-	Type ApplicationType `json:"type" gorm:index`
+	Type ApplicationType `json:"type" gorm:"index"`
 
 	// SubType saves an optional type for the application.
 	// And the data currently is only used by backend code, no frontend logic should relay on this
@@ -36,7 +36,7 @@ type Application struct {
 	Applicant string `json:"applicant"`
 
 	// Application state, which contains open/approved/rejected/processing/completed
-	State ApplicationState `json:"state"`
+	State ApplicationState `json:"state" gorm:"index"`
 
 	// Saves the reject reason if this application state is rejected
 	RejectReason string `json:"reject_reason"`
@@ -93,13 +93,13 @@ type ApplicationAuditLog struct {
 	Operation AuditActionType `json:"operation"`
 
 	// Who perform this operation
-	Operator string `json:"operator"`
+	Operator string `json:"operator" gorm:"index"`
 
 	// Application state before this operation
 	PreState ApplicationState `json:"pre_state"`
 
 	// Application state after this operation
-	PostState ApplicationState `json:"post_state"`
+	PostState ApplicationState `json:"post_state" gorm:"index"`
 
 	// ExtraData saves some additional data for the operation, e.g. reject reason
 	ExtraData string `json:"extra_data"`
