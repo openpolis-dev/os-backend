@@ -63,6 +63,7 @@ var DefaultSeasonRecords = []map[string]any{
 
 type LoaderConfig struct {
 	Dsn              string
+	Scheme           string
 	Mode             string
 	SeasonName       string
 	AssetName        string
@@ -436,6 +437,7 @@ func main() {
 	// Define the command-line flags
 	var config LoaderConfig
 	flag.StringVar(&config.Dsn, "dsn", "", "Database connect string")
+	flag.StringVar(&config.Scheme, "scheme", "", "Database scheme, used for mysql connection string")
 	flag.StringVar(&config.Mode, "mode", "load", "load data mode or verify data")
 	flag.StringVar(&config.SeasonName, "season", "", "Specify seasons the application will import, multiple seasons can be split by comma. If not given, the current season will be used. And pass `all` for processing all season records")
 	flag.StringVar(&config.AssetName, "asset", "", "Specify assets the application will import, multiple seasons can be split by comma. If not given, all assets will be imported")
@@ -459,12 +461,15 @@ func main() {
 		}
 	}
 
-	parsedURI, err := url.Parse(dbDsn)
-	if err != nil {
-		panic(fmt.Errorf("parse database URI %s error, please confirm", dbDsn))
+	if config.Scheme != "" {
+		storage.InitGormDB(dbDsn, config.Scheme)
+	} else {
+		parsedURI, err := url.Parse(dbDsn)
+		if err != nil {
+			panic(fmt.Errorf("parse database URI %s error, please confirm", dbDsn))
+		}
+		storage.InitGormDB(dbDsn, parsedURI.Scheme)
 	}
-
-	storage.InitGormDB(dbDsn, parsedURI.Scheme)
 	storage.MigrateTables()
 	db := storage.GetGormDB()
 	db.Logger = logger.Default.LogMode(logger.Silent)
