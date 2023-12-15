@@ -12,9 +12,13 @@ type ApiResponseWrapper struct {
 	Server      string `json:"server"`
 }
 
-type Tags struct {
-	Id   int    `json:"id"`
-	Name string `json:"name"`
+type Tag struct {
+	Name        string `json:"name"`
+	Color       string `json:"color"`
+	ThreadCount int    `json:"thread_count"`
+	Id          int    `json:"id"`
+	Order       int    `json:"order"`
+	Type        int    `json:"type"`
 }
 
 type UserData struct {
@@ -25,13 +29,6 @@ type UserData struct {
 	Online    bool          `json:"online"`
 	Username  string        `json:"username"`
 	IsNft     int           `json:"is_nft"`
-}
-
-type GroupInfo struct {
-	Id        int    `json:"id"`
-	Name      string `json:"name"`
-	Title     string `json:"title"`
-	DomainUrl string `json:"domain_url"`
 }
 
 type PostData struct {
@@ -62,7 +59,7 @@ type Thread struct {
 	Slug            any           `json:"slug"`
 	PollStatus      interface{}   `json:"poll_status"`
 	IsPin           int           `json:"is_pin"`
-	Tags            []*Tags       `json:"tags"`
+	Tags            []*Tag        `json:"tags"`
 	User            *UserData     `json:"user"`
 	Group           *GroupInfo    `json:"group"`
 	FirstPost       *PostData     `json:"first_post"`
@@ -86,7 +83,14 @@ type CategoriesListResponse struct {
 type TagsListResponse struct {
 	ApiResponseWrapper
 	Data struct {
-		Tags []*Tags `json:"tags"`
+		Tags []*Tag `json:"tags"`
+	}
+}
+
+type GroupInfoResponse struct {
+	ApiResponseWrapper
+	Data struct {
+		Group *GroupInfo `json:"group"`
 	}
 }
 
@@ -118,13 +122,83 @@ type Category struct {
 	Children    []*Category `json:"children"`
 }
 
-type Tag struct {
-	Name        string `json:"name"`
-	Color       string `json:"color"`
-	ThreadCount int    `json:"thread_count"`
-	Id          int    `json:"id"`
-	Order       int    `json:"order"`
-	Type        int    `json:"type"`
+type GroupInfo struct {
+	Id                 int           `json:"id"`
+	Name               string        `json:"name"`
+	Title              string        `json:"title"`
+	CreatedAt          time.Time     `json:"created_at"`
+	UpdatedAt          time.Time     `json:"updated_at"`
+	DomainUrl          string        `json:"domain_url"`
+	Owner              int           `json:"owner"`
+	Cover              string        `json:"cover"`
+	Logo               string        `json:"logo"`
+	Description        string        `json:"description"`
+	NoRecommend        int           `json:"no_recommend"`
+	SuperNoRecommend   int           `json:"super_no_recommend"`
+	Joining            int           `json:"joining"`
+	Visibility         int           `json:"visibility"`
+	ShowSnapshot       int           `json:"show_snapshot"`
+	PollTemplate       []interface{} `json:"poll_template"`
+	SnapshotSpace      string        `json:"snapshot_space"`
+	DaoName            string        `json:"daoname"`
+	ShowConnectDiscord int           `json:"show_connect_discord"`
+	PollSetting        []interface{} `json:"poll_setting"`
+	Feature            []struct {
+		Id          int    `json:"id"`
+		FeatureName string `json:"feature_name"`
+		IsSetting   int    `json:"is_setting"`
+		Status      *int   `json:"status"`
+	} `json:"feature"`
+	AttachedFiles struct {
+		AllowEveryone    int `json:"allow_everyone"`
+		AllowPost        int `json:"allow_post"`
+		AllowAllFileType int `json:"allow_all_file_type"`
+	} `json:"attached_files"`
+	GroupAdmin []struct {
+		Id      int `json:"id"`
+		GroupId int `json:"group_id"`
+		Level   int `json:"level"`
+		UserId  int `json:"user_id"`
+	} `json:"group_admin"`
+	OnlineMembers     int           `json:"online_members"`
+	PendingUser       []interface{} `json:"pending_user"`
+	GroupSubscription struct {
+		CurrentPlan string `json:"current_plan"`
+		GroupId     int    `json:"group_id"`
+		IsCanceled  bool   `json:"is_canceled"`
+		PeriodEnd   string `json:"period_end"`
+	} `json:"group_subscription"`
+	Members        int           `json:"members"`
+	Gallery        string        `json:"gallery"`
+	CategoryAdmin  []interface{} `json:"category_admin"`
+	CategoryAdmins []interface{} `json:"category_admins"`
+	PrivacyType    int           `json:"privacy_type"`
+	FtCount        int           `json:"ft_count"`
+	ChainType      int           `json:"chain_type"`
+	OpenReadonly   int           `json:"open_readonly"`
+	PrimaryNft     string        `json:"primary_nft"`
+	PrimaryToken   string        `json:"primary_token"`
+	GroupSettings  struct {
+		KudosVote  string `json:"kudos_vote"`
+		NeuronVote string `json:"neuron_vote"`
+		ReplyLevel string `json:"reply_level"`
+	} `json:"group_settings"`
+	Tags                        []*Tag        `json:"tags"`
+	OrderTags                   []*Tag        `json:"order_tags"`
+	PollCategory                []interface{} `json:"poll_category"`
+	MainTokenAddress            string        `json:"main_token_address"`
+	TipTokenInfo                []interface{} `json:"tip_token_info"`
+	PostsTotal                  int           `json:"posts_total"`
+	ThreadsTotal                int           `json:"threads_total"`
+	ThreadTemplate              []interface{} `json:"thread_template"`
+	PollExtensions              []interface{} `json:"poll_extensions"`
+	TitleList                   []interface{} `json:"title_list"`
+	Categories                  []*Category   `json:"categories"`
+	CurrentUserStatus           string        `json:"current_user_status"`
+	AuthVerificationResult      bool          `json:"auth_verification_result"`
+	AuthVerificationDescription string        `json:"auth_verification_description"`
+	ReplyLevel                  int           `json:"reply_level"`
+	GroupExtraInfo              string        `json:"group_extra_info"`
 }
 
 func (c *PaginationParams) ToMap() map[string]string {

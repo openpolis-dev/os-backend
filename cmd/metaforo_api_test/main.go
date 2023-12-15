@@ -14,6 +14,8 @@ func main() {
 	//	GroupName:       groupName,
 	//})
 
+	//metaforo.GetTags(groupName, "21826|C16zyP8o10wY0easORsNiCa1KTxp0AZwICUAXp6W")
+	//metaforo.NewCategory(groupName, "test_category", 0, "21826|C16zyP8o10wY0easORsNiCa1KTxp0AZwICUAXp6W")
 	//metaforo.GetCategories(groupName)
-	metaforo.GetTags(groupName, "21826|C16zyP8o10wY0easORsNiCa1KTxp0AZwICUAXp6W")
+	metaforo.GetGroupInfo(groupName)
 }

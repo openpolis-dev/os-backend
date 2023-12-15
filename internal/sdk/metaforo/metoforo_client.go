@@ -3,9 +3,8 @@ package metaforo
 const apiBase = "https://api.metaforo.io"
 
 var BaseHeader = map[string]string{
-	"Accept":       "application/json",
-	"Content-Type": "application/json",
-	"api_key":      "metaforo_website",
+	"Accept":  "application/json",
+	"api_key": "metaforo_website",
 }
 
 func CreateProposal(accessToken string, content string) {

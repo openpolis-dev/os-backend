@@ -7,14 +7,18 @@ import (
 	"github.com/valyala/fasthttp"
 )
 
+const JsonContentType = "application/json"
+const FormContentType = "application/x-www-form-urlencoded"
+
 // HttpRequestData struct saves all data used for http request
 // TODO: Support query params with same name
 type HttpRequestData struct {
-	ApiUri      string
-	HttpMethod  string
-	QueryParams map[string]string
-	BodyBytes   []byte
-	Header      map[string]string
+	ApiUri         string
+	HttpMethod     string
+	QueryParams    map[string]string
+	JsonBodyBytes  []byte
+	FormBodyParams *fasthttp.Args
+	Header         map[string]string
 }
 
 func DoHttpRequest[T any](requestData *HttpRequestData) (int, *T, error) {
@@ -42,8 +46,12 @@ func DoHttpRequest[T any](requestData *HttpRequestData) (int, *T, error) {
 		}
 	}
 
-	if requestData.BodyBytes != nil {
-		req.SetBody(requestData.BodyBytes)
+	if requestData.JsonBodyBytes != nil {
+		req.SetBody(requestData.JsonBodyBytes)
+		req.Header.SetContentType(JsonContentType)
+	} else if requestData.FormBodyParams != nil {
+		req.SetBody(requestData.FormBodyParams.QueryString())
+		req.Header.SetContentType(FormContentType)
 	}
 
 	log.Debug().Msgf("Request: %s", req.String())
