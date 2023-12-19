@@ -5,6 +5,7 @@ import (
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
+	"github.com/theseed-labs/os-backend/internal/api/proposal"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/graph/generated"
 	"github.com/theseed-labs/os-backend/internal/graph/resolver"
@@ -230,6 +231,11 @@ func main() {
 		dataSrv := v1.Group("/data_srv")
 		dataSrv.GET("/aggr_scr", data_srv.AggrScr)
 
+		// Proposal component routers
+		componentRouter := v1.Group("/proposal_components")
+		componentRouter.Group("/", proposal.ListComponents)
+		componentRouter.Group("/:id", proposal.GetComponent)
+
 		// foo routers
 	}
 	// --> auth required
@@ -315,6 +321,11 @@ func main() {
 		rewardsGroup := authorizedGroup.Group("/rewards")
 		rewardsGroup.POST("/approve_mint_reward", rewards.ApproveMintReward)
 		rewardsGroup.POST("/snapshot_seed", rewards.SnapshotSeed)
+
+		// reward routers
+		proposalGroup := authorizedGroup.Group("/proposals")
+		proposalGroup.GET("/list", proposal.List)
+		proposalGroup.POST("/create", proposal.Create)
 	}
 
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
