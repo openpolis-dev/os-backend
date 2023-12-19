@@ -2,6 +2,7 @@ package metaforo
 
 import (
 	"bytes"
+	"fmt"
 	"maps"
 	"mime/multipart"
 	"net/http"
@@ -38,7 +39,7 @@ func AddComment(accessToken, content, proposalId, groupName string, replyId *str
 	// prepare multipart body
 	payload := &bytes.Buffer{}
 	writer := multipart.NewWriter(payload)
-	_ = writer.WriteField("content", content)
+	_ = writer.WriteField("content", fmt.Sprintf("[{\"insert\":\"%s\"}]", content))
 	_ = writer.WriteField("sign", "")
 	_ = writer.WriteField("signMsg", "")
 	_ = writer.WriteField("login_type", "0")

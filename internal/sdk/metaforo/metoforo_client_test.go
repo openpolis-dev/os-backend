@@ -8,7 +8,7 @@ const (
 	groupName  = "testttt"
 
 	// test comment content
-	commentContent = "[{\"insert\":\"来自单元测试\"}]"
+	commentContent = "comment from os-backend unit test"
 )
 
 var (
