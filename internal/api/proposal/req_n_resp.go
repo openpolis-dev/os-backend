@@ -14,21 +14,25 @@ type ListQueryParams struct {
 	Status    string `form:"status"`
 }
 
-// ComponentRequestData represents a component request, which contains component id and associated data
+// ComponentRequestData represents a component request, which contains component name and associated data
 // This record will be saved to database's ProposalComponentRecord table
+// The Name filed is used to identify which component this
 // If the ID field has no value, this is a new component should be created,
 // while if it has value, this is an existing component should be updated.
 type ComponentRequestData struct {
-	ID          uint   `json:"id"`
-	ComponentId uint   `json:"component_id"`
-	Data        string `json:"data"`
+	ID         uint   `json:"id"`
+	AutoAction string `json:"auto_action"`
+	Name       uint   `json:"component_name"`
+	Data       string `json:"data"`
 }
 
 type CreateProposalData struct {
-	Title      string `json:"title"`
-	Background string `json:"background"`
-	Content    string `json:"content"`
-	Components []*ComponentRequestData
+	ProposalId          string `json:"proposal_id"`
+	Title               string `json:"title"`
+	Background          string `json:"background"`
+	Content             string `json:"content"`
+	Components          map[string]*ComponentRequestData
+	MetaforoAccessToken string `json:"metaforo_access_token"`
 }
 
 ///////////////////////

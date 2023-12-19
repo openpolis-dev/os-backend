@@ -1,9 +1,13 @@
 package model
 
 type Proposal struct {
-	ID       uint  `gorm:"primaryKey"`
+	ID uint `gorm:"primaryKey"`
+
+	// Only CreateTs for Proposal record since proposal is non-editable
+	// Each proposal will be a new record in DB, and the ProposalId field will be used to identify the proposal.
+	// While querying, the proposal with max Version will be returned in API,
+	// and the historical versions can only be returned in detailed request
 	CreateTs int64 `gorm:"index"`
-	UpdateTs int64 `gorm:"index"`
 
 	Title string
 
@@ -11,14 +15,15 @@ type Proposal struct {
 
 	Components []*ProposalComponentRecord
 
-	// ProposalVerId used to identify proposal version
-	ProposalVerId uint `gorm:"index:proposalVer"`
-	Version       uint `gorm:"index:proposalVer"`
+	// ProposalId used to identify proposal version
+	ProposalId string `gorm:"index:proposalVer"`
+	Version    uint   `gorm:"index:proposalVer"`
 
-	// IPFS CID for the proposal
-	IpfsCid string `gorm:"index"`
+	// IPFS CID and Arveave hash for the proposal
+	IpfsCid     string `gorm:"index"`
+	ArveaveHash string `gorm:"index"`
 
-	ArweaveLink string
+	Creator string `gorm:"index"`
 }
 
 // ProposalBlocks saves blocks in proposal.
@@ -38,7 +43,6 @@ type ProposalBlocks struct {
 type ProposalComponentRecord struct {
 	ID       uint  `gorm:"primaryKey"`
 	CreateTs int64 `gorm:"index"`
-	UpdateTs int64 `gorm:"index"`
 
 	ComponentId uint
 	ProposalId  uint
@@ -76,6 +80,7 @@ type Component struct {
 	CreateTs int64 `gorm:"index"`
 	UpdateTs int64 `gorm:"index"`
 
+	Name   string `gorm:"uniqueIndex"`
 	Editor string
 	Schema string
 
