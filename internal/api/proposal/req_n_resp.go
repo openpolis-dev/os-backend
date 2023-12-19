@@ -1,6 +1,9 @@
 package proposal
 
-import "github.com/theseed-labs/os-backend/internal/api/component"
+import (
+	"github.com/theseed-labs/os-backend/internal/api/component"
+	"github.com/theseed-labs/os-backend/internal/model"
+)
 
 ///////////////////////
 // Request data definitions
@@ -28,10 +31,9 @@ type ComponentRequestData struct {
 }
 
 type CreateProposalData struct {
-	ProposalId          string `json:"proposal_id"`
-	Title               string `json:"title"`
-	Background          string `json:"background"`
-	Content             string `json:"content"`
+	ProposalId          string                  `json:"proposal_id"`
+	Title               string                  `json:"title"`
+	ProposalBlocks      []*model.ProposalBlocks `json:"proposal_blocks"`
 	Components          map[string]*ComponentRequestData
 	MetaforoAccessToken string `json:"metaforo_access_token"`
 }

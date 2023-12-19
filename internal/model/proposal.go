@@ -66,7 +66,6 @@ type Proposal struct {
 type ProposalBlocks struct {
 	ID       uint  `gorm:"primaryKey"`
 	CreateTs int64 `gorm:"index"`
-	UpdateTs int64 `gorm:"index"`
 
 	Title      string
 	Content    string

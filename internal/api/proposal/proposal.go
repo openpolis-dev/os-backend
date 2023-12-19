@@ -15,6 +15,7 @@ import (
 	"github.com/theseed-labs/os-backend/internal/sdk"
 	"github.com/theseed-labs/os-backend/internal/sdk/metaforo"
 	"github.com/xiaosongfu/gormfind"
+	"gorm.io/gorm"
 )
 
 // List handles the HTTP request to list proposals.
@@ -118,11 +119,45 @@ func Create(ctx *gin.Context) {
 	}
 
 	user, _, db, _ := api.ForContext(ctx)
-	// TODO: Confirm whether permission is required here?
-	// TODO: Validate whether user has permission to create the proposal
+	// TODO: Confirm whether permission is required here and add permission check if required
 
-	// Store proposla data into Metaforo
-	// The CreateProposal function will be invoked for new created propsal while UpdateProposal for existing one.
+	// Init proposal record to get ID
+	proposalRecord := model.Proposal{
+		CreateTs:      time.Now().UTC().Unix(),
+		Title:         "",
+		ContentBlocks: nil,
+		Components:    nil,
+		Applicant:     common.FormatUserWallet(user.Wallet),
+	}
+
+	if err := db.Create(&proposalRecord).Error; err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
+		return
+	}
+
+	// Update proposal content blocks
+	if err := db.Transaction(func(tx *gorm.DB) error {
+		for _, block := range reqData.ProposalBlocks {
+			if err := db.Model(&model.ProposalBlocks{}).Create(&model.ProposalBlocks{
+				ProposalID: proposalRecord.ID,
+				Title:      block.Title,
+				Content:    block.Content,
+				CreateTs:   time.Now().UTC().Unix(),
+			}).Error; err != nil {
+				sdk.LogServerErrorToSentry(ctx, err)
+				log.Error().Msgf("create proposal block error: %+v", err)
+			}
+		}
+		return nil
+	}); err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
+		log.Error().Msgf("create proposal block error: %+v", err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
+	}
+
+	// Store proposal data into Metaforo
+	// The CreateProposal function will be invoked for new created proposal while UpdateProposal for existing one.
 	// In our system, each proposal submitted will be saved as a new record, and the ProposalID field will be used to group all versions of the same proposal.
 	proposalVer := 0
 	var metaforoProposal metaforo.ProposalResponse
@@ -154,47 +189,9 @@ func Create(ctx *gin.Context) {
 		log.Debug().Msgf("TTT: New metaforoProposal: %+v", metaforoProposal)
 	}
 
-	// Create DB proposal record with returned Metaforo data
-	proposalRecord := model.Proposal{
-		CreateTs:         time.Now().UTC().Unix(),
-		Title:            "",
-		ContentBlocks:    nil,
-		Components:       nil,
-		ProposalRecordId: fmt.Sprintf("metaforo:%d", metaforoProposal.Data.Thread.Id),
-		Version:          uint(proposalVer),
-		Applicant:        common.FormatUserWallet(user.Wallet),
-		ArveaveHash:      metaforoProposal.Data.Thread.EditHistory.Lists[0].Arweave,
-	}
-
-	if err := db.Create(&proposalRecord).Error; err != nil {
-		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
-		return
-	}
-
-	// TODO: Process other proposal records
-
-	// Process components
-	//if err := db.Transaction(func(tx *gorm.DB) error {
-	//	for _, componentData := range reqData.Components {
-	//		componentRecord := db.Model(&model.Component{}).Where("name = ?", component.Name)
-	//		proposalComponentRcd := model.ProposalComponentRecord{
-	//			CreateTs:    0,
-	//			ComponentId: reqData.Components.,
-	//			ProposalId:  0,
-	//			Data:        "",
-	//		}
-	//		err := tx.Save(&component).Error
-	//		if err != nil {
-	//			tx.Rollback()
-	//			sdk.LogServerErrorToSentry(ctx, err)
-	//			return err
-	//		}
-	//	}
-	//	return nil
-	//}); err != nil {
-	//	ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
-	//}
+	proposalRecord.ProposalRecordId = fmt.Sprintf("metaforo:%d", metaforoProposal.Data.Thread.Id)
+	proposalRecord.Version = uint(proposalVer)
+	proposalRecord.ArveaveHash = metaforoProposal.Data.Thread.EditHistory.Lists[0].Arweave
 
 	ctx.JSON(http.StatusOK, api.Success(proposalRecord))
 }
