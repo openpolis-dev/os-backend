@@ -59,22 +59,64 @@ type Thread struct {
 	UserId          int           `json:"user_id"`
 	GroupId         int           `json:"group_id"`
 	FirstPostId     int           `json:"first_post_id"`
+	CreatedAt       time.Time     `json:"created_at"`
 	UpdatedAt       time.Time     `json:"updated_at"`
 	LikesCount      int           `json:"likes_count"`
 	PostsCount      int           `json:"posts_count"`
-	IsDelete        int           `json:"is_delete"`
 	CategoryIndexId int           `json:"category_index_id"`
-	CategoryName    string        `json:"category_name"`
 	CategoryId      int           `json:"category_id"`
+	CategoryName    string        `json:"category_name"`
+	IsDelete        int           `json:"is_delete"`
 	GalleryId       int           `json:"gallery_id"`
-	Slug            any           `json:"slug"`
-	PollStatus      interface{}   `json:"poll_status"`
+	LotteryId       int           `json:"lottery_id"`
+	CanReply        bool          `json:"can_reply"`
+	Slug            string        `json:"slug"`
+	Badge           []interface{} `json:"badge"`
+	UserTitle       []interface{} `json:"user_title"`
+	Posts           []interface{} `json:"posts"`
+	PostsMap        []interface{} `json:"posts_map"`
+	FirstLevelCount int           `json:"first_level_count"`
+	IsSubscribe     bool          `json:"is_subscribe"`
 	IsPin           int           `json:"is_pin"`
-	Tags            []*Tag        `json:"tags"`
-	User            *UserData     `json:"user"`
-	Group           *GroupInfo    `json:"group"`
-	FirstPost       *PostData     `json:"first_post"`
-	Tips            []interface{} `json:"tips"`
+	Pinned          []interface{} `json:"pinned"`
+	Hots            []struct {
+		Id       int    `json:"id"`
+		Title    string `json:"title"`
+		UserId   int    `json:"user_id"`
+		Username string `json:"username"`
+		IsNft    int    `json:"is_nft"`
+		PhotoUrl string `json:"photo_url"`
+		Content  string `json:"content"`
+	} `json:"hots"`
+	EditHistory struct {
+		Count int                      `json:"count"`
+		Lists []*PostEditHistoryRecord `json:"lists"`
+	} `json:"edit_history"`
+	Polls          []interface{} `json:"polls"`
+	PollStatus     string        `json:"poll_status"` // null, open or expired
+	Tags           []interface{} `json:"tags"`
+	SnapshotId     string        `json:"snapshot_id"`
+	SnapshotAuthor string        `json:"snapshot_author"`
+	IsGallery      bool          `json:"is_gallery"`
+	Gallery        interface{}   `json:"gallery"`
+	Participant    int           `json:"participant"`
+	Tips           []interface{} `json:"tips"`
+	TipCount       int           `json:"tip_count"`
+	TipList        []interface{} `json:"tip_list"`
+	Tipped         bool          `json:"tipped"`
+	User           *UserData     `json:"user"`
+	Group          *GroupInfo    `json:"group"`
+	FirstPost      *PostData     `json:"first_post"`
+}
+
+type PostEditHistoryRecord struct {
+	Username  string    `json:"username"`
+	Id        int       `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	PostId    int       `json:"post_id"`
+	UserId    int       `json:"user_id"`
+	Arweave   string    `json:"arweave"`
+	PostType  int       `json:"post_type"`
 }
 
 type ProposalsResponse struct {
@@ -233,7 +275,7 @@ type GroupInfo struct {
 ////////////////////////////
 
 // NewVoteFormRequest defines poll request data structure used for creating vote while creating proposals
-type NewVOteFormRequest struct {
+type NewVoteFormRequest struct {
 	// Options stands for vote options, the text is option value
 	// TODO: What's the meaning of type for each option?
 	Options []struct {
