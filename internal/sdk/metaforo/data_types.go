@@ -16,11 +16,12 @@ type ChainType int
 // Response objects defines struct for Metaforo API responses
 ////////////////////////////
 
-type ApiResponseWrapper struct {
+type ApiResponseWrapper[T any] struct {
 	Status      bool   `json:"status"`
 	Code        int    `json:"code"`
 	Description string `json:"description"`
 	Server      string `json:"server"`
+	Data        *T     `json:"data"`
 }
 
 type Tag struct {
@@ -148,10 +149,7 @@ type TagsListResponse struct {
 }
 
 type GroupInfoResponse struct {
-	ApiResponseWrapper
-	Data struct {
-		Group *GroupInfo `json:"group"`
-	}
+	Group *GroupInfo `json:"group"`
 }
 
 type Category struct {
@@ -183,7 +181,7 @@ type TokenGateSetting struct {
 	ChainType ChainType `json:"chain_type"`
 	TokenType TokenType `json:"token_type"`
 	Address   string    `json:"address"`
-	TokenId   string    `json:"token_id"`
+	TokenId   int       `json:"token_id"`
 	Alias     string    `json:"alias"`
 
 	CreatedAt string `json:"created_at"`
@@ -267,7 +265,14 @@ type GroupInfo struct {
 	AuthVerificationResult      bool          `json:"auth_verification_result"`
 	AuthVerificationDescription string        `json:"auth_verification_description"`
 	ReplyLevel                  int           `json:"reply_level"`
-	GroupExtraInfo              string        `json:"group_extra_info"`
+	GroupExtraInfo              struct {
+		Id       int         `json:"id"`
+		GroupId  int         `json:"group_id"`
+		Twitter  interface{} `json:"twitter"`
+		Discord  interface{} `json:"discord"`
+		Telegram interface{} `json:"telegram"`
+		Website  interface{} `json:"website"`
+	} `json:"group_extra_info"`
 }
 
 ////////////////////////////
