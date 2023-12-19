@@ -2,11 +2,16 @@ package metaforo
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 
 	"github.com/rs/zerolog/log"
 	"github.com/theseed-labs/os-backend/internal/common"
 )
+
+func CreateProposal(accessToken string) (*ProposalsResponse, error) {
+	return nil, errors.New("not implemented")
+}
 
 func GetProposals(accessToken string, paginationParams *PaginationParams) {
 	apiPath := "/api/thread/list"
