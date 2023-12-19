@@ -33,3 +33,7 @@ func GetProposals(accessToken string, paginationParams *PaginationParams) {
 	log.Debug().Msgf("Resp status code: %d, Content:", statusCode)
 	os.Stdout.Write(respBytes)
 }
+
+func UpdateProposal(token string) (*ProposalsResponse, error) {
+	return nil, nil
+}
