@@ -6,12 +6,13 @@ import "github.com/theseed-labs/os-backend/internal/api/component"
 // Request data definitions
 ///////////////////////
 
-type ListQueryParams struct {
-	Page      int    `form:"page"`
-	Size      int    `form:"size"`
-	SortField string `form:"sort_field"`
-	SortOrder string `form:"sort_order"`
-	Status    string `form:"status"`
+type QueryParams struct {
+	Page       int    `form:"page"`
+	Size       int    `form:"size"`
+	SortField  string `form:"sort_field"`
+	SortOrder  string `form:"sort_order"`
+	State      string `form:"state"`
+	CategoryId uint   `form:"category_id"`
 }
 
 // ComponentRequestData represents a component request, which contains component name and associated data
@@ -39,7 +40,18 @@ type CreateProposalData struct {
 // Response data definitions
 ///////////////////////
 
+type FrontendProposalListRecord struct {
+	ID           uint   `json:"id"`
+	Title        string `json:"title"`
+	Applicant    string `json:"applicant"`
+	CategoryName string `json:"category_name"`
+	State        string `json:"state"`
+	CreateTs     int64  `json:"create_ts"`
+	PollState    string `json:"poll_state"`
+}
+
 type FrontendProposalDetailRecord struct {
+	ID         uint   `json:"id"`
 	Title      string `json:"title"`
 	Background string `json:"background"`
 	Content    string `json:"content"`

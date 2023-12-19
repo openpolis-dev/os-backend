@@ -19,12 +19,18 @@ import (
 
 // List handles the HTTP request to list proposals.
 //
-//	@summary	lists all proposals based on query params and return in JSON format
-//	@router		/proposals [get]
-//	@success	200	{object}	api.Reply{data=api.ListReplyData{rows=FrontendProposalDetailRecord}}
+//		@summary	lists all proposals based on query params and return in JSON format
+//		@router		/proposals [get]
+//	    @Param          page            query           int  false   "which page"
+//	    @Param          size            query           int  false   "size of each page"
+//	    @Param          sort_field      query           string  false   "sort by which field"
+//	    @Param          sort_order      query           string  false   "order of sort"                 Enum(asc desc)
+//	    @Param          state           query           string  false   "state of proposal"   Enum(draft withdrawn voting passed failed rejected)
+//	    @Param          category_id           query     int  false   "filter proposal records with specified category"
+//		@success	200	{object}	api.Reply{data=api.ListReplyData{rows=FrontendProposalDetailRecord}}
 func List(ctx *gin.Context) {
 	db := api.ForContextOnlyDB(ctx)
-	queryParams := ListQueryParams{}
+	queryParams := QueryParams{}
 	if err := ctx.Bind(&queryParams); err != nil {
 		ctx.JSON(http.StatusBadRequest, api.Reply{
 			Code: -1,
@@ -37,8 +43,17 @@ func List(ctx *gin.Context) {
 
 	// Execute query
 	querySeg := db.Model(&model.Proposal{})
-	if queryParams.Status != "" {
-		querySeg.Where("status = ?", queryParams.Status)
+	if queryParams.State != "" {
+		if stateVal, found := model.ProposalStateIdNameMapping[queryParams.State]; found {
+			querySeg = querySeg.Where("state = ?", stateVal)
+		} else {
+			sdk.LogUserSideError(ctx, fmt.Errorf("query proposal state %s error", queryParams.State))
+			log.Warn().Msgf("query proposal state %s error", queryParams.State)
+		}
+	}
+
+	if queryParams.CategoryId != 0 {
+		querySeg.Where("proposal_category_id = ?", queryParams.CategoryId)
 	}
 
 	total, err := gormfind.Count(querySeg)
@@ -51,6 +66,8 @@ func List(ctx *gin.Context) {
 		return
 	}
 
+	querySeg = querySeg.Joins("ProposalCategory")
+
 	dbRcds, err := model.QueryRows[model.Proposal](querySeg, page)
 	if err != nil {
 		log.Error().Msgf("get proposal list error: %+v, query sql: %s, query params: %+v", err, querySeg)
@@ -62,18 +79,15 @@ func List(ctx *gin.Context) {
 	}
 
 	// Transform proposal records to frontend format
-	resultRows := lo.Map(dbRcds, func(r *model.Proposal, _ int) *FrontendProposalDetailRecord {
-		return &FrontendProposalDetailRecord{
-			Title:      r.Title,
-			Background: "",
-			Content:    "",
-			State:      "",
-			Components: nil,
-			Applicant:  "",
-			Reviewer:   "",
-			IsApproved: false,
-			CreateTs:   0,
-			UpdateTs:   0,
+	resultRows := lo.Map(dbRcds, func(r *model.Proposal, _ int) *FrontendProposalListRecord {
+		return &FrontendProposalListRecord{
+			ID:           0,
+			Title:        r.Title,
+			Applicant:    r.Applicant,
+			CategoryName: r.ProposalCategory.Name,
+			State:        model.ProposalStateName[r.State],
+			CreateTs:     0,
+			PollState:    "",
 		}
 	})
 
@@ -125,7 +139,7 @@ func Create(ctx *gin.Context) {
 
 		// Upgrade proposal version
 		var proposalVers []int
-		db.Where(&model.Proposal{ProposalId: reqData.ProposalId}).Order("version desc").Pluck("version", &proposalVers)
+		db.Where(&model.Proposal{ProposalRecordId: reqData.ProposalId}).Order("version desc").Pluck("version", &proposalVers)
 		if len(proposalVers) > 0 {
 			proposalVer = proposalVers[0] + 1
 		}
@@ -142,14 +156,14 @@ func Create(ctx *gin.Context) {
 
 	// Create DB proposal record with returned Metaforo data
 	proposalRecord := model.Proposal{
-		CreateTs:      time.Now().UTC().Unix(),
-		Title:         "",
-		ContentBlocks: nil,
-		Components:    nil,
-		ProposalId:    fmt.Sprintf("metaforo:%d", metaforoProposal.Data.Thread.Id),
-		Version:       uint(proposalVer),
-		Creator:       common.FormatUserWallet(user.Wallet),
-		ArveaveHash:   metaforoProposal.Data.Thread.EditHistory.Lists[0].Arweave,
+		CreateTs:         time.Now().UTC().Unix(),
+		Title:            "",
+		ContentBlocks:    nil,
+		Components:       nil,
+		ProposalRecordId: fmt.Sprintf("metaforo:%d", metaforoProposal.Data.Thread.Id),
+		Version:          uint(proposalVer),
+		Applicant:        common.FormatUserWallet(user.Wallet),
+		ArveaveHash:      metaforoProposal.Data.Thread.EditHistory.Lists[0].Arweave,
 	}
 
 	if err := db.Create(&proposalRecord).Error; err != nil {

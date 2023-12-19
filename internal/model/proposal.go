@@ -1,5 +1,29 @@
 package model
 
+type ProposalState int
+
+var ProposalStateName = []string{
+	"draft", "withdrawn", "voting", "passed", "failed", "rejected",
+}
+
+const (
+	ProposalStateDraft ProposalState = iota
+	ProposalStateWithdrawn
+	ProposalStateVoting
+	ProposalStatePassed
+	ProposalStateFailed
+	ProposalStateRejected
+)
+
+var ProposalStateIdNameMapping = map[string]ProposalState{
+	"draft":     ProposalStateDraft,
+	"withdrawn": ProposalStateWithdrawn,
+	"voting":    ProposalStateVoting,
+	"passed":    ProposalStatePassed,
+	"failed":    ProposalStateFailed,
+	"rejected":  ProposalStateRejected,
+}
+
 type Proposal struct {
 	ID uint `gorm:"primaryKey"`
 
@@ -9,21 +33,31 @@ type Proposal struct {
 	// and the historical versions can only be returned in detailed request
 	CreateTs int64 `gorm:"index"`
 
+	// int format state, refer ProposalState type const for name and value mapping
+	State int `gorm:"index"`
+
 	Title string
 
 	ContentBlocks []*ProposalBlocks
 
 	Components []*ProposalComponentRecord
 
-	// ProposalId used to identify proposal version
-	ProposalId string `gorm:"index:proposalVer"`
-	Version    uint   `gorm:"index:proposalVer"`
+	ProposalCategoryID uint `gorm:"index"`
+	ProposalCategory   ProposalCategory
+
+	// ProposalRecordId used to identify proposal version
+	ProposalRecordId string `gorm:"index:proposalVer"`
+	Version          uint   `gorm:"index:proposalVer"`
 
 	// IPFS CID and Arveave hash for the proposal
 	IpfsCid     string `gorm:"index"`
 	ArveaveHash string `gorm:"index"`
 
-	Creator string `gorm:"index"`
+	Applicant string `gorm:"index"`
+
+	// Fields for poll state
+	PollStartTs int64 `gorm:"index"`
+	PollEndTs   int64 `gorm:"index"`
 }
 
 // ProposalBlocks saves blocks in proposal.
@@ -34,8 +68,9 @@ type ProposalBlocks struct {
 	CreateTs int64 `gorm:"index"`
 	UpdateTs int64 `gorm:"index"`
 
-	Title   string
-	Content string
+	Title      string
+	Content    string
+	ProposalID uint
 }
 
 // ProposalComponentRecord saves components in proposal.
@@ -65,6 +100,11 @@ type ProposalComment struct {
 	IpfsCid string `gorm:"index"`
 
 	ArweaveLink string
+}
+
+type ProposalCategory struct {
+	ID   uint `gorm:"primaryKey"`
+	Name string
 }
 
 type ProposalAuditLog struct {
