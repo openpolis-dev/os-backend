@@ -9,11 +9,7 @@ import (
 	"github.com/theseed-labs/os-backend/internal/common"
 )
 
-func CreateProposal(accessToken string) (*ProposalsResponse, error) {
-	return nil, errors.New("not implemented")
-}
-
-func GetProposals(accessToken string, paginationParams *PaginationParams) {
+func ListProposals(accessToken string, paginationParams *PaginationParams) {
 	apiPath := "/api/thread/list"
 	statusCode, respObject, err := common.DoHttpRequest[ProposalsResponse](&common.HttpRequestData{
 		ApiUri:      apiBase + apiPath,
@@ -34,6 +30,10 @@ func GetProposals(accessToken string, paginationParams *PaginationParams) {
 	os.Stdout.Write(respBytes)
 }
 
-func UpdateProposal(token string) (*ProposalsResponse, error) {
+func CreateProposal(accessToken string) (*ProposalResponse, error) {
+	return nil, errors.New("not implemented")
+}
+
+func UpdateProposal(token string) (*ProposalResponse, error) {
 	return nil, nil
 }

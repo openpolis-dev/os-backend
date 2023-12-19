@@ -84,6 +84,13 @@ type ProposalsResponse struct {
 	}
 }
 
+type ProposalResponse struct {
+	ApiResponseWrapper
+	Data struct {
+		Thread *Thread `json:"thread"`
+	}
+}
+
 type CategoriesListResponse struct {
 	ApiResponseWrapper
 	Data struct {

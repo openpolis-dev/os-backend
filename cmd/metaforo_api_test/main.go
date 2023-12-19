@@ -5,7 +5,7 @@ import "github.com/theseed-labs/os-backend/internal/sdk/metaforo"
 const groupName = "testttt"
 
 func main() {
-	//metaforo.GetProposals("", &metaforo.PaginationParams{
+	//metaforo.ListProposals("", &metaforo.PaginationParams{
 	//	Page:            1,
 	//	PerPage:         5,
 	//	CategoryIndexId: 0,
