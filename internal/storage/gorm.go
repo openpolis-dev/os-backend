@@ -64,6 +64,14 @@ func MigrateTables() {
 		&model.TreasuryAuditLog{},
 		&model.Event{},
 		&model.Push{},
+		&model.Proposal{},
+		&model.ProposalCategory{},
+		&model.ProposalContentBlock{},
+		&model.ProposalAuditLog{},
+		&model.ProposalComment{},
+		&model.ProposalComponentRecord{},
+		&model.Component{},
+		&model.ComponentAction{},
 	)
 	if err != nil {
 		panic("failed to migrate tables")

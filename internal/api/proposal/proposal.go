@@ -10,10 +10,10 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	"github.com/theseed-labs/os-backend/internal/api"
+	"github.com/theseed-labs/os-backend/internal/api/component"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk"
-	"github.com/theseed-labs/os-backend/internal/sdk/metaforo"
 	"github.com/xiaosongfu/gormfind"
 	"gorm.io/gorm"
 )
@@ -104,12 +104,13 @@ func List(ctx *gin.Context) {
 //
 //		@router		/proposals/create [post]
 //		@summary	Create proposals with passed in data
-//	  	@Param          JsonBody        body            CreateReq       true    "request json body"
+//	  	@Param          JsonBody        body            CreateProposalData       true    "request json body"
 //		@success	200	{object}	api.Reply{}
 func Create(ctx *gin.Context) {
 	// Parsing request to create proposal object
 	var reqData CreateProposalData
 	if err := ctx.BindJSON(&reqData); err != nil {
+		log.Error().Msgf("parse request data error: %+v", err)
 		sdk.LogUserSideError(ctx, err)
 		ctx.JSON(http.StatusBadRequest, api.Reply{
 			Code: -1,
@@ -118,33 +119,36 @@ func Create(ctx *gin.Context) {
 		return
 	}
 
+	log.Error().Msgf("TTT: request data: %+v", reqData)
+
 	user, _, db, _ := api.ForContext(ctx)
 	// TODO: Confirm whether permission is required here and add permission check if required
 
 	// Init proposal record to get ID
 	proposalRecord := model.Proposal{
-		CreateTs:      time.Now().UTC().Unix(),
-		Title:         "",
-		ContentBlocks: nil,
-		Components:    nil,
-		Applicant:     common.FormatUserWallet(user.Wallet),
+		CreateTs:           time.Now().UTC().Unix(),
+		Title:              reqData.Title,
+		Applicant:          common.FormatUserWallet(user.Wallet),
+		ProposalCategoryID: reqData.ProposalCategoryId,
 	}
 
 	if err := db.Create(&proposalRecord).Error; err != nil {
+		log.Error().Msgf("create proposal error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
 		return
 	}
 
-	// Update proposal content blocks
+	// Create proposal content blocks
 	if err := db.Transaction(func(tx *gorm.DB) error {
-		for _, block := range reqData.ProposalBlocks {
-			if err := db.Model(&model.ProposalBlocks{}).Create(&model.ProposalBlocks{
+		for _, block := range reqData.ContentBlocks {
+			if err := db.Model(&model.ProposalContentBlock{}).Create(&model.ProposalContentBlock{
 				ProposalID: proposalRecord.ID,
 				Title:      block.Title,
 				Content:    block.Content,
 				CreateTs:   time.Now().UTC().Unix(),
 			}).Error; err != nil {
+				log.Error().Msgf("create proposal block error: %+v, block data: %+v", err, block)
 				sdk.LogServerErrorToSentry(ctx, err)
 				log.Error().Msgf("create proposal block error: %+v", err)
 			}
@@ -156,42 +160,127 @@ func Create(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
 	}
 
-	// Store proposal data into Metaforo
-	// The CreateProposal function will be invoked for new created proposal while UpdateProposal for existing one.
-	// In our system, each proposal submitted will be saved as a new record, and the ProposalID field will be used to group all versions of the same proposal.
-	proposalVer := 0
-	var metaforoProposal metaforo.ProposalResponse
-	// TODO: Build metaforo proposal data and send
-	if reqData.ProposalId != "" {
-		metaforoProposal, err := metaforo.UpdateProposal(reqData.MetaforoAccessToken)
-		if err != nil {
-			sdk.LogServerErrorToSentry(ctx, err)
-			ctx.JSON(http.StatusBadRequest, api.ServerError(errors.New("update metaforoProposal error")))
-			return
-		}
+	// Create proposal components
+	if err := db.Transaction(func(tx *gorm.DB) error {
+		for _, componentData := range reqData.Components {
+			// Try to get component record from DB
+			componentRecord := model.Component{
+				Name: componentData.Name,
+			}
+			if err := tx.Where(&componentRecord).Error; err != nil {
+				tx.Rollback()
+				log.Error().Msgf("create proposal component error: %+v", err)
+				sdk.LogServerErrorToSentry(ctx, err)
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
+				return err
+			}
 
-		log.Debug().Msgf("TTT: Update metaforoProposal: %+v", metaforoProposal)
-
-		// Upgrade proposal version
-		var proposalVers []int
-		db.Where(&model.Proposal{ProposalRecordId: reqData.ProposalId}).Order("version desc").Pluck("version", &proposalVers)
-		if len(proposalVers) > 0 {
-			proposalVer = proposalVers[0] + 1
+			// Create proposal component record and save to DB
+			if err := db.Create(&model.ProposalComponentRecord{
+				CreateTs:    time.Now().UTC().Unix(),
+				ComponentId: componentRecord.ID,
+				ProposalID:  proposalRecord.ID,
+				Data:        componentData.Data,
+			}).Error; err != nil {
+				sdk.LogServerErrorToSentry(ctx, err)
+				log.Error().Msgf("create proposal component error: %+v", err)
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
+				return err
+			}
 		}
-	} else {
-		metaforoProposal, err := metaforo.CreateProposal(reqData.MetaforoAccessToken)
-		if err != nil {
-			sdk.LogServerErrorToSentry(ctx, err)
-			ctx.JSON(http.StatusBadRequest, api.ServerError(errors.New("create metaforoProposal error")))
-			return
-		}
-
-		log.Debug().Msgf("TTT: New metaforoProposal: %+v", metaforoProposal)
+		return nil
+	}); err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
+		log.Error().Msgf("create proposal component error: %+v", err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
+		return
 	}
 
-	proposalRecord.ProposalRecordId = fmt.Sprintf("metaforo:%d", metaforoProposal.Data.Thread.Id)
+	//// Store proposal data into Metaforo
+	//// The CreateProposal function will be invoked for new created proposal while UpdateProposal for existing one.
+	//// In our system, each proposal submitted will be saved as a new record, and the ProposalID field will be used to group all versions of the same proposal.
+	proposalVer := 0
+	//var metaforoProposal metaforo.ProposalResponse
+	//// TODO: Build metaforo proposal data and send
+	//if reqData.ProposalID != "" {
+	//	metaforoProposal, err := metaforo.UpdateProposal(reqData.MetaforoAccessToken)
+	//	if err != nil {
+	//		log.Error().Msgf("update metaforoProposal error: %+v", err)
+	//		sdk.LogServerErrorToSentry(ctx, err)
+	//		ctx.JSON(http.StatusBadRequest, api.ServerError(errors.New("update metaforoProposal error")))
+	//		return
+	//	}
+	//
+	//	log.Debug().Msgf("TTT: Update metaforoProposal: %+v", metaforoProposal)
+	//
+	//	// Upgrade proposal version
+	//	var proposalVers []int
+	//	db.Where(&model.Proposal{ProposalRecordId: reqData.ProposalID}).Order("version desc").Pluck("version", &proposalVers)
+	//	if len(proposalVers) > 0 {
+	//		proposalVer = proposalVers[0] + 1
+	//	}
+	//} else {
+	//	metaforoProposal, err := metaforo.CreateProposal(reqData.MetaforoAccessToken)
+	//	if err != nil {
+	//		log.Error().Msgf("update metaforoProposal error: %+v", err)
+	//		sdk.LogServerErrorToSentry(ctx, err)
+	//		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create metaforoProposal error")))
+	//		return
+	//	}
+	//
+	//	log.Debug().Msgf("TTT: New metaforoProposal: %+v", metaforoProposal)
+	//}
+	//
+	//// Save data backed from metaforo API response to DB
+	//proposalRecord.ProposalRecordId = fmt.Sprintf("metaforo:%d", metaforoProposal.Data.Thread.Id)
 	proposalRecord.Version = uint(proposalVer)
-	proposalRecord.ArveaveHash = metaforoProposal.Data.Thread.EditHistory.Lists[0].Arweave
+	//proposalRecord.ArveaveHash = metaforoProposal.Data.Thread.EditHistory.Lists[0].Arweave
 
-	ctx.JSON(http.StatusOK, api.Success(proposalRecord))
+	var proposalBlocks []*model.ProposalContentBlock
+	if err := db.Where(&model.ProposalContentBlock{ProposalID: proposalRecord.ID}).Find(&proposalBlocks).Error; err != nil {
+		log.Error().Msgf("get proposal blocks error: %+v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
+		return
+	}
+
+	var proposalComponentRecords []*model.ProposalComponentRecord
+	if err := db.Where(&model.ProposalComponentRecord{ProposalID: proposalRecord.ID}).Find(&proposalComponentRecords).Error; err != nil {
+		log.Error().Msgf("get proposal components error: %+v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
+		return
+	}
+
+	proposalContentResponse := lo.Map(proposalBlocks, func(item *model.ProposalContentBlock, _ int) *FrontendContentBlockRecord {
+		return &FrontendContentBlockRecord{
+			Title:   item.Title,
+			Content: item.Content,
+		}
+	})
+
+	proposalComponentResponse := lo.Map(proposalComponentRecords, func(item *model.ProposalComponentRecord, _ int) *component.ComponentInstance {
+		return &component.ComponentInstance{
+			ID:          item.ID,
+			ComponentId: item.ComponentId,
+			Schema:      "",
+			Data:        item.Data,
+			CreateTs:    item.CreateTs,
+		}
+	})
+
+	responseData := FrontendProposalDetailRecord{
+		ID:                 proposalRecord.ID,
+		Title:              proposalRecord.Title,
+		ContentBlocks:      proposalContentResponse,
+		ProposalCategoryId: proposalRecord.ProposalCategoryID,
+		State:              model.ProposalStateName[proposalRecord.State],
+		Components:         proposalComponentResponse,
+		Applicant:          proposalRecord.Applicant,
+		IsApproved:         false,
+		CreateTs:           proposalRecord.CreateTs,
+	}
+
+	// Return to frontend
+	ctx.JSON(http.StatusOK, api.Success(responseData))
 }

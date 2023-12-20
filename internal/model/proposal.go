@@ -28,7 +28,7 @@ type Proposal struct {
 	ID uint `gorm:"primaryKey"`
 
 	// Only CreateTs for Proposal record since proposal is non-editable
-	// Each proposal will be a new record in DB, and the ProposalId field will be used to identify the proposal.
+	// Each proposal will be a new record in DB, and the ProposalID field will be used to identify the proposal.
 	// While querying, the proposal with max Version will be returned in API,
 	// and the historical versions can only be returned in detailed request
 	CreateTs int64 `gorm:"index"`
@@ -38,7 +38,7 @@ type Proposal struct {
 
 	Title string
 
-	ContentBlocks []*ProposalBlocks
+	ContentBlocks []*ProposalContentBlock
 
 	Components []*ProposalComponentRecord
 
@@ -60,10 +60,10 @@ type Proposal struct {
 	PollEndTs   int64 `gorm:"index"`
 }
 
-// ProposalBlocks saves blocks in proposal.
+// ProposalContentBlock saves blocks in proposal.
 // In proposal the content is built by blocks, each block contains a title and content.
 // The content are saved in order in proposal records.
-type ProposalBlocks struct {
+type ProposalContentBlock struct {
 	ID       uint  `gorm:"primaryKey"`
 	CreateTs int64 `gorm:"index"`
 
@@ -79,7 +79,7 @@ type ProposalComponentRecord struct {
 	CreateTs int64 `gorm:"index"`
 
 	ComponentId uint
-	ProposalId  uint
+	ProposalID  uint
 	Data        string // Data field stores data for the component
 }
 
@@ -120,7 +120,7 @@ type Component struct {
 	UpdateTs int64 `gorm:"index"`
 
 	Name   string `gorm:"uniqueIndex"`
-	Editor string
+	Author string
 	Schema string
 
 	ApproveActionId uint // ApproveActionId indicates the action will be executed when the component is approved

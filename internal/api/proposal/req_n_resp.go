@@ -2,7 +2,6 @@ package proposal
 
 import (
 	"github.com/theseed-labs/os-backend/internal/api/component"
-	"github.com/theseed-labs/os-backend/internal/model"
 )
 
 ///////////////////////
@@ -26,16 +25,17 @@ type QueryParams struct {
 type ComponentRequestData struct {
 	ID         uint   `json:"id"`
 	AutoAction string `json:"auto_action"`
-	Name       uint   `json:"component_name"`
+	Name       string `json:"component_name"`
 	Data       string `json:"data"`
 }
 
 type CreateProposalData struct {
-	ProposalId          string                  `json:"proposal_id"`
-	Title               string                  `json:"title"`
-	ProposalBlocks      []*model.ProposalBlocks `json:"proposal_blocks"`
-	Components          map[string]*ComponentRequestData
-	MetaforoAccessToken string `json:"metaforo_access_token"`
+	ProposalId          string                           `json:"proposal_id"`
+	Title               string                           `json:"title"`
+	ProposalCategoryId  uint                             `json:"proposal_category_id"`
+	ContentBlocks       []*FrontendContentBlockRecord    `json:"content_blocks"`
+	Components          map[string]*ComponentRequestData `json:"components"`
+	MetaforoAccessToken string                           `json:"metaforo_access_token"`
 }
 
 ///////////////////////
@@ -52,13 +52,19 @@ type FrontendProposalListRecord struct {
 	PollState    string `json:"poll_state"`
 }
 
+type FrontendContentBlockRecord struct {
+	Title   string `json:"title"`
+	Content string `json:"content"`
+}
+
 type FrontendProposalDetailRecord struct {
-	ID         uint   `json:"id"`
-	Title      string `json:"title"`
-	Background string `json:"background"`
-	Content    string `json:"content"`
-	State      string `json:"state"`
-	Components []*component.ComponentInstance
+	ID            uint                           `json:"id"`
+	Title         string                         `json:"title"`
+	ContentBlocks []*FrontendContentBlockRecord  `json:"content_blocks"`
+	State         string                         `json:"state"`
+	Components    []*component.ComponentInstance `json:"components"`
+
+	ProposalCategoryId uint `json:"proposal_category_id"`
 
 	// Some user information
 	Applicant string `json:"applicant"`
