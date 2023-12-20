@@ -2,6 +2,7 @@ package metaforo
 
 import (
 	"encoding/json"
+	"maps"
 	"net/http"
 
 	"github.com/rs/zerolog/log"
@@ -13,6 +14,13 @@ const apiBase = "https://api.metaforo.io"
 var BaseHeader = map[string]string{
 	"Accept":  "application/json",
 	"api_key": "metaforo_website",
+}
+
+func AuthHeader(accessToken string) map[string]string {
+	header := make(map[string]string)
+	maps.Copy(header, BaseHeader)
+	header["authorization"] = "Bearer " + accessToken
+	return header
 }
 
 const JsonContentType = "application/json"

@@ -75,7 +75,7 @@ type Thread struct {
 	Badge           []interface{} `json:"badge"`
 	UserTitle       []interface{} `json:"user_title"`
 	Posts           []interface{} `json:"posts"`
-	PostsMap        []interface{} `json:"posts_map"`
+	//PostsMap        []interface{} `json:"posts_map"` // map[string]int
 	FirstLevelCount int           `json:"first_level_count"`
 	IsSubscribe     bool          `json:"is_subscribe"`
 	IsPin           int           `json:"is_pin"`
@@ -121,15 +121,52 @@ type PostEditHistoryRecord struct {
 }
 
 type ProposalsResponse struct {
-	Data struct {
-		Threads []*Thread `json:"threads"`
-	}
+	Threads []*Thread `json:"threads"`
 }
 
 type ProposalResponse struct {
-	Data struct {
-		Thread *Thread `json:"thread"`
-	}
+	Thread *Thread `json:"thread"`
+}
+
+type CreateProposalResponse struct {
+	Thread struct {
+		Title           string    `json:"title"`
+		UserId          int       `json:"user_id"`
+		GroupId         int       `json:"group_id"`
+		CreatedAt       time.Time `json:"created_at"`
+		UpdatedAt       time.Time `json:"updated_at"`
+		CategoryIndexId int       `json:"category_index_id"`
+		Id              int       `json:"id"`
+		FirstPostId     int       `json:"first_post_id"`
+		LastPostId      int       `json:"last_post_id"`
+		//Slug            int       `json:"slug"` // will be `string` or `int`
+		UpdateCount struct {
+			ParentId    int `json:"parent_id"`
+			ThreadCount int `json:"thread_count"`
+			CategoryId  int `json:"category_id"`
+		} `json:"update_count"`
+	} `json:"thread"`
+	Post struct {
+		GroupId     int           `json:"group_id"`
+		UserId      int           `json:"user_id"`
+		ParentId    int           `json:"parent_id"`
+		Content     string        `json:"content"`
+		Sign        interface{}   `json:"sign"`
+		SignMsg     interface{}   `json:"sign_msg"`
+		Depth       int           `json:"depth"`
+		ThreadId    int           `json:"thread_id"`
+		ReplyUid    int           `json:"reply_uid"`
+		ReplyPid    int           `json:"reply_pid"`
+		EditorType  int           `json:"editor_type"`
+		Html        string        `json:"html"`
+		UpdatedAt   time.Time     `json:"updated_at"`
+		CreatedAt   time.Time     `json:"created_at"`
+		Id          int           `json:"id"`
+		TotalLikes  interface{}   `json:"total_likes"`
+		TotalReport interface{}   `json:"total_report"`
+		Attachments []interface{} `json:"attachments"`
+	} `json:"post"`
+	Attachments []interface{} `json:"attachments"`
 }
 
 type CategoriesListResponse struct {
@@ -274,6 +311,221 @@ type GroupInfo struct {
 ////////////////////////////
 // Request objects defines struct for sending Metaforo API requests
 ////////////////////////////
+
+// [
+//   {
+//      "insert":"测试"
+//   }
+//]
+
+// NewContentRequest defines content request data structure
+type NewContentRequest struct {
+	Insert string `json:"insert"`
+}
+
+// [
+//   {
+//      "name":"待审核",
+//      "id":471
+//   },
+//   {
+//      "name":"投票中",
+//      "id":472
+//   }
+//]
+
+// NewProposalTagRequest defines tag request data structure used for creating proposals
+type NewProposalTagRequest struct {
+	Name string `json:"name"`
+	Id   int    `json:"id"`
+}
+
+// [
+//
+//	{
+//	   "options":[
+//	      {
+//	         "text":"选项1",
+//	         "type":1
+//	      },
+//	      {
+//	         "text":"选项2",
+//	         "type":0
+//	      }
+//	   ],
+//	   "type":"1",
+//	   "title":"every one can vote",
+//	   "showType":"1",
+//	   "showResult":true,
+//	   "chartType":"1",
+//	   "voteType":"1",
+//	   "chain_type":0,
+//	   "contract_type":0,
+//	   "setting_id":0,
+//	   "period":"1",
+//	   "close_at":"2023-12-28 23:59:59",
+//	   "poll_start_at":"2023-12-20 00:00:00",
+//	   "max":1,
+//	   "min_tokens":"0",
+//	   "token_address":"",
+//	   "token_icon":"",
+//	   "token_image":{
+//	   },
+//	   "PollCategory":"0",
+//	   "LastCategroyChange":"0",
+//	   "poll_category":[
+//	   ],
+//	   "token_id":0,
+//	   "strategy":[
+//	   ],
+//	   "quorum":false,
+//	   "weight":true,
+//	   "percent":"",
+//	   "min_number":"",
+//	   "step":2
+//	}
+//
+// ]
+//
+// [
+//
+//	{
+//	   "options":[
+//	      {
+//	         "text":"选项1",
+//	         "type":1
+//	      },
+//	      {
+//	         "text":"选项2",
+//	         "type":0
+//	      }
+//	   ],
+//	   "type":"1",
+//	   "title":"ERC20 vote",
+//	   "showType":"1",
+//	   "showResult":true,
+//	   "chartType":"1",
+//	   "voteType":"2",
+//	   "chain_type":1,
+//	   "setting_id":63,
+//	   "period":"1",
+//	   "close_at":"2023-12-29 23:59:59",
+//	   "poll_start_at":"2023-12-20 00:00:00",
+//	   "max":1,
+//	   "min_tokens":"10",
+//	   "token_address":"0xdac17f958d2ee523a2206206994597c13d831ec7",
+//	   "token_icon":"",
+//	   "token_image":{
+//	   },
+//	   "PollCategory":"0",
+//	   "LastCategroyChange":"0",
+//	   "poll_category":[
+//	   ],
+//	   "token_id":0,
+//	   "strategy":[
+//	   ],
+//	   "quorum":false,
+//	   "weight":true,
+//	   "percent":"",
+//	   "min_number":"",
+//	   "step":2
+//	}
+//
+// ]
+//
+// [
+//
+//	{
+//	   "options":[
+//	      {
+//	         "text":"选项1",
+//	         "type":1
+//	      },
+//	      {
+//	         "text":"选项2",
+//	         "type":0
+//	      }
+//	   ],
+//	   "type":"1",
+//	   "title":"ERC721 vote",
+//	   "showType":"1",
+//	   "showResult":true,
+//	   "chartType":"1",
+//	   "voteType":"3",
+//	   "chain_type":1,
+//	   "contract_type":1,
+//	   "setting_id":64,
+//	   "period":"1",
+//	   "close_at":"2023-12-29 23:59:59",
+//	   "poll_start_at":"2023-12-20 00:00:00",
+//	   "max":1,
+//	   "min_tokens":"0",
+//	   "token_address":"0xfdf5acd92840e796955736b1bb9cc832740744ba",
+//	   "token_icon":"",
+//	   "token_image":{
+//	   },
+//	   "PollCategory":"0",
+//	   "LastCategroyChange":"0",
+//	   "poll_category":[
+//	   ],
+//	   "token_id":0,
+//	   "strategy":[
+//	   ],
+//	   "quorum":false,
+//	   "weight":true,
+//	   "percent":"",
+//	   "min_number":"",
+//	   "step":2
+//	}
+//
+// ]
+//
+// [
+//
+//	{
+//	   "options":[
+//	      {
+//	         "text":"选项1",
+//	         "type":1
+//	      },
+//	      {
+//	         "text":"选项2",
+//	         "type":0
+//	      }
+//	   ],
+//	   "type":"1",
+//	   "title":"ERC1155 vote",
+//	   "showType":"1",
+//	   "showResult":true,
+//	   "chartType":"1",
+//	   "voteType":"3",
+//	   "chain_type":1,
+//	   "contract_type":2,
+//	   "setting_id":65,
+//	   "period":"1",
+//	   "close_at":"2023-12-28 23:59:59",
+//	   "poll_start_at":"2023-12-20 00:00:00",
+//	   "max":1,
+//	   "min_tokens":"0",
+//	   "token_address":"0x6811f2f20c42f42656a3c8623ad5e9461b83f719",
+//	   "token_icon":"",
+//	   "token_image":{
+//	   },
+//	   "PollCategory":"0",
+//	   "LastCategroyChange":"0",
+//	   "poll_category":[
+//	   ],
+//	   "token_id":100200402,
+//	   "strategy":[
+//	   ],
+//	   "quorum":false,
+//	   "weight":true,
+//	   "percent":"",
+//	   "min_number":"",
+//	   "step":2
+//	}
+//
+// ]
 
 // NewVoteFormRequest defines poll request data structure used for creating vote while creating proposals
 type NewVoteFormRequest struct {
