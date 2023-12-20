@@ -8,7 +8,7 @@ import (
 func TestAddComment(t *testing.T) {
 	type args struct {
 		accessToken string
-		content     string
+		content     []*NewContentRequest
 		proposalId  string
 		groupName   string
 		replyId     *string
@@ -22,7 +22,7 @@ func TestAddComment(t *testing.T) {
 			name: "comment: success",
 			args: args{
 				accessToken: token,
-				content:     commentContent,
+				content:     []*NewContentRequest{&commentContent},
 				proposalId:  proposalId,
 				groupName:   groupName,
 				replyId:     nil,
@@ -33,7 +33,7 @@ func TestAddComment(t *testing.T) {
 			name: "comment: thread not exist",
 			args: args{
 				accessToken: token,
-				content:     commentContent,
+				content:     []*NewContentRequest{&commentContent},
 				proposalId:  "479674796747967",
 				groupName:   groupName,
 			},
@@ -43,7 +43,7 @@ func TestAddComment(t *testing.T) {
 			name: "comment: not login",
 			args: args{
 				accessToken: "21831|uLLroQDhdvk2OWKRHTP1wPR5vZX7vu1Fmffgnsss",
-				content:     commentContent,
+				content:     []*NewContentRequest{&commentContent},
 				proposalId:  proposalId,
 				groupName:   groupName,
 			},
@@ -53,7 +53,7 @@ func TestAddComment(t *testing.T) {
 			name: "reply comment: success",
 			args: args{
 				accessToken: token,
-				content:     commentContent,
+				content:     []*NewContentRequest{&commentContent},
 				proposalId:  proposalId,
 				groupName:   groupName,
 				replyId:     &commentId,
@@ -63,7 +63,7 @@ func TestAddComment(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		if err := AddComment(tt.args.accessToken, tt.args.content, tt.args.proposalId, tt.args.groupName, tt.args.replyId); !errors.Is(err, tt.wantErr) {
+		if err := AddComment(tt.args.accessToken, tt.args.groupName, tt.args.proposalId, tt.args.content, tt.args.replyId); !errors.Is(err, tt.wantErr) {
 			t.Errorf("[%s] AddComment() error = %v, wantErr = %v", tt.name, err, tt.wantErr)
 		}
 	}
