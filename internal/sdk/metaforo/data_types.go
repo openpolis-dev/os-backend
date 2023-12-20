@@ -24,6 +24,78 @@ type ApiResponseWrapper[T any] struct {
 	Data        *T     `json:"data"`
 }
 
+type User struct {
+	// TODO delete unused fields
+	Id             int         `json:"id"`
+	Email          interface{} `json:"email"`
+	PhotoUrl       string      `json:"photo_url"`
+	Likes          int         `json:"likes"`
+	Posts          int         `json:"posts"`
+	Activate       int         `json:"activate"`
+	LastPostTime   time.Time   `json:"last_post_time"`
+	Web3PublicKey  string      `json:"web3_public_key"`
+	Web3PublicKeys []struct {
+		Type    int    `json:"type"`
+		Address string `json:"address"`
+	} `json:"web3_public_keys"`
+	GroupProfiles []struct {
+		GroupId       int         `json:"group_id"`
+		GroupName     string      `json:"group_name"`
+		DisplayName   interface{} `json:"display_name"`
+		DisplayAvatar string      `json:"display_avatar"`
+	} `json:"group_profiles"`
+	Username string `json:"username"`
+	IsNft    int    `json:"is_nft"`
+}
+
+type UserActivity struct {
+	// TODO delete unused fields
+	Id                      int         `json:"id"`
+	ThreadId                int         `json:"thread_id"`
+	UserId                  int         `json:"user_id"`
+	Sign                    interface{} `json:"sign"`
+	SignData                interface{} `json:"sign_data"`
+	CreatedAt               time.Time   `json:"created_at"`
+	SignMsg                 interface{} `json:"sign_msg"`
+	Content                 string      `json:"content"`
+	Ipfs                    interface{} `json:"ipfs"`
+	Arweave                 string      `json:"arweave"`
+	UpdatedAt               string      `json:"updated_at"`
+	GroupPostId             interface{} `json:"group_post_id"`
+	GroupThreadId           interface{} `json:"group_thread_id"`
+	ParentId                int         `json:"parent_id"`
+	Depth                   int         `json:"depth"`
+	GroupId                 int         `json:"group_id"`
+	Deleted                 int         `json:"deleted"`
+	DeletedBy               int         `json:"deleted_by"`
+	DeletedAt               interface{} `json:"deleted_at"`
+	Nsfw                    int         `json:"nsfw"`
+	NsfwScore               int         `json:"nsfw_score"`
+	Cooked                  interface{} `json:"cooked"`
+	ReplyUid                int         `json:"reply_uid"`
+	ReplyPid                int         `json:"reply_pid"`
+	ReplyCount              int         `json:"reply_count"`
+	ReplyCountWithSoftDel   int         `json:"reply_count_with_soft_del"`
+	Html                    string      `json:"html"`
+	EditorType              int         `json:"editor_type"`
+	ImportSourceImportId    interface{} `json:"_import_source_import_id"`
+	ImportSourceUserId      interface{} `json:"_import_source_user_id"`
+	ImportSourceThreadId    interface{} `json:"_import_source_thread_id"`
+	ImportSourcePostId      interface{} `json:"_import_source_post_id"`
+	ImportSourceDeletedById interface{} `json:"_import_source_deleted_by_id"`
+	ImportSourcePostNumber  interface{} `json:"_import_source_post_number"`
+	Username                string      `json:"username"`
+	UserAvatar              string      `json:"user_avatar"`
+	GroupName               string      `json:"group_name"`
+	GroupTitle              string      `json:"group_title"`
+	FirstPostId             int         `json:"first_post_id"`
+	ThreadTitle             string      `json:"thread_title"`
+	ThreadPosterId          int         `json:"thread_poster_id"`
+	ParentPosterName        interface{} `json:"parent_poster_name"`
+	ThreadPosterName        string      `json:"thread_poster_name"`
+	DomainUrl               interface{} `json:"domain_url"`
+}
+
 type Tag struct {
 	Name        string `json:"name"`
 	Color       string `json:"color"`
@@ -118,6 +190,15 @@ type PostEditHistoryRecord struct {
 	UserId    int       `json:"user_id"`
 	Arweave   string    `json:"arweave"`
 	PostType  int       `json:"post_type"`
+}
+
+type LoginResponse struct {
+	User     *User  `json:"user"`
+	ApiToken string `json:"api_token"`
+}
+
+type UserActivitiesResponse struct {
+	UserActivities []*UserActivity `json:"user_activities"`
 }
 
 type ProposalsResponse struct {
