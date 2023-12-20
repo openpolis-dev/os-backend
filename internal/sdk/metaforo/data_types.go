@@ -121,28 +121,24 @@ type PostEditHistoryRecord struct {
 }
 
 type ProposalsResponse struct {
-	ApiResponseWrapper
 	Data struct {
 		Threads []*Thread `json:"threads"`
 	}
 }
 
 type ProposalResponse struct {
-	ApiResponseWrapper
 	Data struct {
 		Thread *Thread `json:"thread"`
 	}
 }
 
 type CategoriesListResponse struct {
-	ApiResponseWrapper
 	Data struct {
 		Categories []*Category `json:"categories"`
 	}
 }
 
 type TagsListResponse struct {
-	ApiResponseWrapper
 	Data struct {
 		Tags []*Tag `json:"tags"`
 	}
