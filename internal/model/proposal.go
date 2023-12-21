@@ -13,6 +13,7 @@ const (
 	ProposalStatePassed
 	ProposalStateFailed
 	ProposalStateRejected
+	ProposalStatePendingSubmit // PendingSubmit means the proposal is still in personal box, no one else can view it.
 )
 
 var ProposalStateIdNameMapping = map[string]ProposalState{
@@ -58,6 +59,10 @@ type Proposal struct {
 	// Fields for poll state
 	PollStartTs int64 `gorm:"index"`
 	PollEndTs   int64 `gorm:"index"`
+
+	IsHidden bool
+
+	IsVoted bool // Indicate whether user has voted to this proposal
 }
 
 // ProposalContentBlock saves blocks in proposal.
@@ -89,16 +94,24 @@ type ProposalComment struct {
 	CreateTs int64 `gorm:"index"`
 	UpdateTs int64 `gorm:"index"`
 
+	ParentID string
+
 	// Reference ID for proposal and specified version
-	ProposalId    uint `gorm:"index"`
-	ProposalVerId uint `gorm:"index"`
+	ProposalID uint `gorm:"index"`
+	Proposal   *Proposal
 
 	Content string
 
 	// IPFS CID for the proposal
-	IpfsCid string `gorm:"index"`
+	IpfsCid     string `gorm:"index"`
+	ArweaveLink string `gorm:"index"`
 
-	ArweaveLink string
+	MetaforoPostId string
+
+	IsHidden bool
+
+	// Indicate whether this comment is a reject comment
+	IsRejectComment bool `gorm:"index"`
 }
 
 type ProposalCategory struct {
@@ -112,6 +125,15 @@ type ProposalAuditLog struct {
 	ID       uint  `gorm:"primaryKey"`
 	CreateTs int64 `gorm:"index"`
 	UpdateTs int64 `gorm:"index"`
+}
+
+type ProposalVoteRecord struct {
+	ID         uint   `gorm:"primaryKey"`
+	UserWallet string `gorm:"index"`
+	ProposalID uint   `gorm:"index"`
+	Option     string // Which option the user selected
+
+	VoteTs int64 `gorm:"index"`
 }
 
 // Component defines the automation actions should be done and related data structure

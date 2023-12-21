@@ -332,7 +332,10 @@ func main() {
 
 		// reward routers
 		proposalGroup := authorizedGroup.Group("/proposals")
+		proposalGroup.POST("/save", proposal.Save)
 		proposalGroup.POST("/create", proposal.Create)
+		proposalGroup.POST("/submit/:id", proposal.Submit)
+		proposalGroup.POST("/update/:id", proposal.Update)
 		proposalGroup.POST("/vote/:id", proposal.CastVote)
 		proposalGroup.POST("/revoke_vote/:id", proposal.RevokeVote)
 	}

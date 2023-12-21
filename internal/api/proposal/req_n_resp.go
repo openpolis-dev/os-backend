@@ -1,7 +1,10 @@
 package proposal
 
 import (
+	"github.com/samber/lo"
 	"github.com/theseed-labs/os-backend/internal/api/component"
+	"github.com/theseed-labs/os-backend/internal/model"
+	"gorm.io/gorm"
 )
 
 ///////////////////////
@@ -50,6 +53,7 @@ type FrontendProposalListRecord struct {
 	State        string `json:"state"`
 	CreateTs     int64  `json:"create_ts"`
 	PollState    string `json:"poll_state"`
+	IsVoted      bool
 }
 
 type FrontendContentBlockRecord struct {
@@ -75,6 +79,8 @@ type FrontendProposalDetailRecord struct {
 
 	// Timestamps
 	CreateTs int64 `json:"create_ts"`
+
+	IsVoted bool
 }
 
 type FrontendProposalCategory struct {
@@ -89,4 +95,49 @@ type UpdateProposalCategoryReq struct {
 	ParentID   uint   `json:"parent_id"`
 	Name       string `json:"name"`
 	MetaforoId string `json:"metaforo_id"`
+}
+
+///////////////////////
+// Some converter functions
+///////////////////////
+
+func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal) (*FrontendProposalDetailRecord, error) {
+	var proposalBlocks []*model.ProposalContentBlock
+	if err := db.Where(&model.ProposalContentBlock{ProposalID: proposal.ID}).Find(&proposalBlocks).Error; err != nil {
+		return nil, err
+	}
+
+	var proposalComponentRecords []*model.ProposalComponentRecord
+	if err := db.Where(&model.ProposalComponentRecord{ProposalID: proposal.ID}).Find(&proposalComponentRecords).Error; err != nil {
+		return nil, err
+	}
+
+	proposalContentResponse := lo.Map(proposalBlocks, func(item *model.ProposalContentBlock, _ int) *FrontendContentBlockRecord {
+		return &FrontendContentBlockRecord{
+			Title:   item.Title,
+			Content: item.Content,
+		}
+	})
+
+	proposalComponentResponse := lo.Map(proposalComponentRecords, func(item *model.ProposalComponentRecord, _ int) *component.ComponentInstance {
+		return &component.ComponentInstance{
+			ID:          item.ID,
+			ComponentId: item.ComponentId,
+			Schema:      "",
+			Data:        item.Data,
+			CreateTs:    item.CreateTs,
+		}
+	})
+
+	return &FrontendProposalDetailRecord{
+		ID:                 proposal.ID,
+		Title:              proposal.Title,
+		ContentBlocks:      proposalContentResponse,
+		ProposalCategoryId: proposal.ProposalCategoryID,
+		State:              model.ProposalStateName[proposal.State],
+		Components:         proposalComponentResponse,
+		Applicant:          proposal.Applicant,
+		IsApproved:         false,
+		CreateTs:           proposal.CreateTs,
+	}, nil
 }

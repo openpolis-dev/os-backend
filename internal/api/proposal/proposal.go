@@ -4,19 +4,15 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"strconv"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
-	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/api/component"
-	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk"
-	"github.com/theseed-labs/os-backend/internal/sdk/metaforo"
+	"github.com/theseed-labs/os-backend/internal/service"
 	"github.com/xiaosongfu/gormfind"
 	"gorm.io/gorm"
 )
@@ -103,12 +99,54 @@ func List(ctx *gin.Context) {
 	}))
 }
 
-// Create function builds proposal DB records, then invoke Metaforo API to create in metaforo site.
+// Save function builds proposal DB records, and save it in PendingSubmit state
 //
 //		@router		/proposals/create [post]
 //		@summary	Create proposals with passed in data
 //	  	@Param          JsonBody        body            CreateProposalData       true    "request json body"
 //		@success	200	{object}	api.Reply{}
+func Save(ctx *gin.Context) {
+	// Parsing request to create proposal object
+	var reqData CreateProposalData
+	if err := ctx.BindJSON(&reqData); err != nil {
+		log.Error().Msgf("parse request data error: %+v", err)
+		sdk.LogUserSideError(ctx, err)
+		ctx.JSON(http.StatusBadRequest, api.Reply{
+			Code: -1,
+			Msg:  fmt.Sprintf("parse request data error: %+v", err),
+		})
+		return
+	}
+
+	user, _, db, _ := api.ForContext(ctx)
+	// TODO: Confirm whether permission is required here and add permission check if required
+
+	proposalRecord, err := service.SaveProposalRecordToDB(db, &reqData, user.Wallet)
+	if err != nil {
+		log.Error().Msgf("create proposal error: %+v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
+		return
+	}
+
+	responseData, err := ConvertProposalToFrontendDetailRecord(db, proposalRecord)
+	if err != nil {
+		log.Error().Msgf("convert proposal to frontend format error: %+v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("load proposal data error")))
+		return
+	}
+
+	// Return to frontend
+	ctx.JSON(http.StatusOK, api.Success(responseData))
+}
+
+// Create function saves proposal to DB and create Metaforo thread as well, the proposal will be in Draft state
+//
+//	@router		/proposals/create [post]
+//	@summary	Create metaforo proposal and public to others
+//	@Param          JsonBody        body            CreateProposalData       true    "request json body"
+//	@success	200	{object}	api.Reply{}
 func Create(ctx *gin.Context) {
 	// Parsing request to create proposal object
 	var reqData CreateProposalData
@@ -125,171 +163,27 @@ func Create(ctx *gin.Context) {
 	user, _, db, _ := api.ForContext(ctx)
 	// TODO: Confirm whether permission is required here and add permission check if required
 
-	// Init proposal record to get ID
-	proposalRecord := model.Proposal{
-		CreateTs:           time.Now().UTC().Unix(),
-		Title:              reqData.Title,
-		Applicant:          common.FormatUserWallet(user.Wallet),
-		ProposalCategoryID: reqData.ProposalCategoryId,
-	}
-
-	if err := db.Create(&proposalRecord).Error; err != nil {
+	proposalRecord, err := service.SaveProposalRecordToDB(db, &reqData, user.Wallet)
+	if err != nil {
 		log.Error().Msgf("create proposal error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
 		return
 	}
 
-	// Create proposal content blocks
-	if err := db.Transaction(func(tx *gorm.DB) error {
-		for _, block := range reqData.ContentBlocks {
-			if err := db.Model(&model.ProposalContentBlock{}).Create(&model.ProposalContentBlock{
-				ProposalID: proposalRecord.ID,
-				Title:      block.Title,
-				Content:    block.Content,
-				CreateTs:   time.Now().UTC().Unix(),
-			}).Error; err != nil {
-				log.Error().Msgf("create proposal block error: %+v, block data: %+v", err, block)
-				sdk.LogServerErrorToSentry(ctx, err)
-				log.Error().Msgf("create proposal block error: %+v", err)
-			}
-		}
-		return nil
-	}); err != nil {
-		sdk.LogServerErrorToSentry(ctx, err)
-		log.Error().Msgf("create proposal block error: %+v", err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
-	}
-
-	// Create proposal components
-	if err := db.Transaction(func(tx *gorm.DB) error {
-		for _, componentData := range reqData.Components {
-			// Try to get component record from DB
-			componentRecord := model.Component{
-				Name: componentData.Name,
-			}
-			if err := tx.Where(&componentRecord).Error; err != nil {
-				tx.Rollback()
-				log.Error().Msgf("create proposal component error: %+v", err)
-				sdk.LogServerErrorToSentry(ctx, err)
-				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
-				return err
-			}
-
-			// Create proposal component record and save to DB
-			if err := db.Create(&model.ProposalComponentRecord{
-				CreateTs:    time.Now().UTC().Unix(),
-				ComponentId: componentRecord.ID,
-				ProposalID:  proposalRecord.ID,
-				Data:        componentData.Data,
-			}).Error; err != nil {
-				sdk.LogServerErrorToSentry(ctx, err)
-				log.Error().Msgf("create proposal component error: %+v", err)
-				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
-				return err
-			}
-		}
-		return nil
-	}); err != nil {
-		sdk.LogServerErrorToSentry(ctx, err)
-		log.Error().Msgf("create proposal component error: %+v", err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
-		return
-	}
-
-	// TODO: Build metaforo content from proposal title and content blocks
-
-	// Store proposal data into Metaforo
-	// The CreateProposal function will be invoked for new created proposal while UpdateProposal for existing one.
-	// In our system, each proposal submitted will be saved as a new record, and the ProposalID field will be used to group all versions of the same proposal.
-	proposalVer := 0
-	var metaforoProposal *metaforo.ProposalResponse
-	// TODO: Build metaforo proposal data and send
-	if reqData.ProposalId != "" {
-		var err error
-		metaforoProposal, err = metaforo.UpdateProposal(reqData.MetaforoAccessToken)
-		if err != nil {
-			log.Error().Msgf("update metaforoProposal error: %+v", err)
-			sdk.LogServerErrorToSentry(ctx, err)
-			ctx.JSON(http.StatusBadRequest, api.ServerError(errors.New("update metaforoProposal error")))
-			return
-		}
-
-		// Upgrade proposal version
-		var proposalVers []int
-		db.Where(&model.Proposal{ProposalRecordId: reqData.ProposalId}).Order("version desc").Pluck("version", &proposalVers)
-		if len(proposalVers) > 0 {
-			proposalVer = proposalVers[0] + 1
-		}
-	} else {
-		var err error
-		metaforoProposal, err = metaforo.CreateProposal(
-			reqData.MetaforoAccessToken,
-			internal.MetaforoGroupName,
-			"TODO", reqData.Title, nil, nil, nil,
-		)
-		if err != nil {
-			log.Error().Msgf("update metaforoProposal error: %+v", err)
-			sdk.LogServerErrorToSentry(ctx, err)
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create metaforoProposal error")))
-			return
-		}
-	}
-
-	//// Save data backed from metaforo API response to DB
-	proposalRecord.ProposalRecordId = fmt.Sprintf("metaforo:%d", metaforoProposal.Thread.Id)
-	proposalRecord.Version = uint(proposalVer)
-	proposalRecord.ArveaveHash = metaforoProposal.Thread.EditHistory.Lists[0].Arweave
-	if err := db.Save(proposalRecord).Error; err != nil {
-		sdk.LogServerErrorToSentry(ctx, err)
-		log.Error().Msgf("update proposal error: %+v", err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
-		return
-	}
-
-	var proposalBlocks []*model.ProposalContentBlock
-	if err := db.Where(&model.ProposalContentBlock{ProposalID: proposalRecord.ID}).Find(&proposalBlocks).Error; err != nil {
-		log.Error().Msgf("get proposal blocks error: %+v", err)
+	if err := service.SaveProposalToMetaforo(db, proposalRecord, reqData.MetaforoAccessToken); err != nil {
+		log.Error().Msgf("create metaforo proposal error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
 		return
 	}
 
-	var proposalComponentRecords []*model.ProposalComponentRecord
-	if err := db.Where(&model.ProposalComponentRecord{ProposalID: proposalRecord.ID}).Find(&proposalComponentRecords).Error; err != nil {
-		log.Error().Msgf("get proposal components error: %+v", err)
+	responseData, err := ConvertProposalToFrontendDetailRecord(db, proposalRecord)
+	if err != nil {
+		log.Error().Msgf("convert proposal to frontend format error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("load proposal data error")))
 		return
-	}
-
-	proposalContentResponse := lo.Map(proposalBlocks, func(item *model.ProposalContentBlock, _ int) *FrontendContentBlockRecord {
-		return &FrontendContentBlockRecord{
-			Title:   item.Title,
-			Content: item.Content,
-		}
-	})
-
-	proposalComponentResponse := lo.Map(proposalComponentRecords, func(item *model.ProposalComponentRecord, _ int) *component.ComponentInstance {
-		return &component.ComponentInstance{
-			ID:          item.ID,
-			ComponentId: item.ComponentId,
-			Schema:      "",
-			Data:        item.Data,
-			CreateTs:    item.CreateTs,
-		}
-	})
-
-	responseData := FrontendProposalDetailRecord{
-		ID:                 proposalRecord.ID,
-		Title:              proposalRecord.Title,
-		ContentBlocks:      proposalContentResponse,
-		ProposalCategoryId: proposalRecord.ProposalCategoryID,
-		State:              model.ProposalStateName[proposalRecord.State],
-		Components:         proposalComponentResponse,
-		Applicant:          proposalRecord.Applicant,
-		IsApproved:         false,
-		CreateTs:           proposalRecord.CreateTs,
 	}
 
 	// Return to frontend
@@ -304,25 +198,16 @@ func Create(ctx *gin.Context) {
 //		@success	200	{object}	api.Reply{data=FrontendProposalDetailRecord}
 func Detail(ctx *gin.Context) {
 	db := api.ForContextOnlyDB(ctx)
-	proposalId, err := strconv.Atoi(ctx.Param("id"))
+	proposalRecord, err := service.GetProposalFromStringId(db, ctx.Param("id"))
 	if err != nil {
-		sdk.LogUserSideError(ctx, err)
-		log.Error().Msgf("parse proposal id %s error: %+v", ctx.Param("id"), err)
-		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
-		return
-	}
-
-	var proposalRecord model.Proposal
-	if err := db.
-		Joins("ProposalCategory").Find(&proposalRecord, proposalId).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			log.Warn().Msgf("proposal %s not found", proposalId)
+			log.Warn().Msgf("proposal %s not found", proposalRecord.ID)
 			ctx.JSON(http.StatusNotFound, nil)
 			return
 		} else {
-			sdk.LogServerErrorToSentry(ctx, err)
-			log.Error().Msgf("get proposal %s error: %+v", proposalId, err)
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get proposal error")))
+			sdk.LogUserSideError(ctx, err)
+			log.Error().Msgf("parse proposal id %s error: %+v", ctx.Param("id"), err)
+			ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
 			return
 		}
 	}
@@ -376,6 +261,11 @@ func Detail(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, api.Success(responseData))
 }
 
-func CastVote(ctx *gin.Context) {}
+// Submit puts proposal in PendingSubmit state to Draft and publish to Metaforo
+func Submit(ctx *gin.Context) {}
 
-func RevokeVote(ctx *gin.Context) {}
+// Update existing proposal
+// 1. Only proposal in PendingSubmit, Withdrawn, Rejected state can be updated
+// 2. Updating PendingSubmit proposal does not change the state and version number, and is update in place directly
+// 3. Updating proposal in Withdrawn, Rejected state will create a new record and update the version number
+func Update(ctx *gin.Context) {}
