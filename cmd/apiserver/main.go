@@ -330,6 +330,8 @@ func main() {
 		// reward routers
 		proposalGroup := authorizedGroup.Group("/proposals")
 		proposalGroup.POST("/create", proposal.Create)
+		proposalGroup.POST("/vote/:id", proposal.CastVote)
+		proposalGroup.POST("/revoke_vote/:id", proposal.RevokeVote)
 	}
 
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))

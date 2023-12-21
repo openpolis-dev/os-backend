@@ -363,3 +363,7 @@ func Detail(ctx *gin.Context) {
 	// Return to frontend
 	ctx.JSON(http.StatusOK, api.Success(responseData))
 }
+
+func CastVote(ctx *gin.Context) {}
+
+func RevokeVote(ctx *gin.Context) {}
