@@ -75,5 +75,4 @@ type FrontendProposalDetailRecord struct {
 
 	// Timestamps
 	CreateTs int64 `json:"create_ts"`
-	UpdateTs int64 `json:"update_ts"`
 }

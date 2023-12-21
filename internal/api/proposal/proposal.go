@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -82,12 +83,12 @@ func List(ctx *gin.Context) {
 	// Transform proposal records to frontend format
 	resultRows := lo.Map(dbRcds, func(r *model.Proposal, _ int) *FrontendProposalListRecord {
 		return &FrontendProposalListRecord{
-			ID:           0,
+			ID:           r.ID,
 			Title:        r.Title,
 			Applicant:    r.Applicant,
 			CategoryName: r.ProposalCategory.Name,
 			State:        model.ProposalStateName[r.State],
-			CreateTs:     0,
+			CreateTs:     r.CreateTs,
 			PollState:    "",
 		}
 	})
@@ -118,8 +119,6 @@ func Create(ctx *gin.Context) {
 		})
 		return
 	}
-
-	log.Error().Msgf("TTT: request data: %+v", reqData)
 
 	user, _, db, _ := api.ForContext(ctx)
 	// TODO: Confirm whether permission is required here and add permission check if required
@@ -279,6 +278,86 @@ func Create(ctx *gin.Context) {
 		Applicant:          proposalRecord.Applicant,
 		IsApproved:         false,
 		CreateTs:           proposalRecord.CreateTs,
+	}
+
+	// Return to frontend
+	ctx.JSON(http.StatusOK, api.Success(responseData))
+}
+
+// Detail function returns proposal detail data
+//
+//		@router		/proposals/show/:id [post]
+//		@summary	Create proposals with passed in data
+//	  	@Param          JsonBody        body            CreateProposalData       true    "request json body"
+//		@success	200	{object}	api.Reply{data=FrontendProposalDetailRecord}
+func Detail(ctx *gin.Context) {
+	db := api.ForContextOnlyDB(ctx)
+	proposalId, err := strconv.Atoi(ctx.Param("id"))
+	if err != nil {
+		sdk.LogUserSideError(ctx, err)
+		log.Error().Msgf("parse proposal id %s error: %+v", ctx.Param("id"), err)
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
+		return
+	}
+
+	var proposalRecord model.Proposal
+	if err := db.
+		Joins("ProposalCategory").Find(&proposalRecord, proposalId).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			log.Warn().Msgf("proposal %s not found", proposalId)
+			ctx.JSON(http.StatusNotFound, nil)
+			return
+		} else {
+			sdk.LogServerErrorToSentry(ctx, err)
+			log.Error().Msgf("get proposal %s error: %+v", proposalId, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get proposal error")))
+			return
+		}
+	}
+
+	// Load proposal content block
+	var proposalContents []*model.ProposalContentBlock
+	if err := db.Where(model.ProposalContentBlock{ProposalID: proposalRecord.ID}).Find(&proposalContents).Error; err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
+		log.Error().Msgf("get proposal blocks error: %+v", err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get proposal error")))
+		return
+	}
+
+	// Load proposal components
+	var proposalComponents []*model.ProposalComponentRecord
+	if err := db.Where(model.ProposalComponentRecord{ProposalID: proposalRecord.ID}).Find(&proposalComponents).Error; err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
+		log.Error().Msgf("get proposal components error: %+v", err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get proposal error")))
+		return
+	}
+
+	// TODO: Migrate converting model.ProposalContentBlock to FrontendContentBlockRecord into function
+	// TODO: Migrate converting model.ProposalComponentRecord to ComponentInstance into function
+	responseData := FrontendProposalDetailRecord{
+		ID:    proposalRecord.ID,
+		Title: proposalRecord.Title,
+		ContentBlocks: lo.Map(proposalContents, func(item *model.ProposalContentBlock, _ int) *FrontendContentBlockRecord {
+			return &FrontendContentBlockRecord{
+				Title:   item.Title,
+				Content: item.Content,
+			}
+		}),
+		ProposalCategoryId: proposalRecord.ProposalCategoryID,
+		State:              model.ProposalStateName[proposalRecord.State],
+		Components: lo.Map(proposalComponents, func(item *model.ProposalComponentRecord, _ int) *component.ComponentInstance {
+			return &component.ComponentInstance{
+				ID:          item.ID,
+				ComponentId: item.ComponentId,
+				Schema:      "",
+				Data:        item.Data,
+				CreateTs:    item.CreateTs,
+			}
+		}),
+		Applicant:  proposalRecord.Applicant,
+		IsApproved: false,
+		CreateTs:   proposalRecord.CreateTs,
 	}
 
 	// Return to frontend
