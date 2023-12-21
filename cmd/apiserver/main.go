@@ -233,8 +233,11 @@ func main() {
 
 		// Proposal component routers
 		componentRouter := v1.Group("/proposal_components")
-		componentRouter.Group("/", proposal.ListComponents)
-		componentRouter.Group("/:id", proposal.GetComponent)
+		componentRouter.GET("/", proposal.ListComponents)
+		componentRouter.GET("/:id", proposal.GetComponent)
+
+		proposalCategoryRouter := v1.Group("/proposal_categories")
+		proposalCategoryRouter.GET("/", proposal.ListCategories)
 
 		// Proposal routers
 		proposalGroup := v1.Group("/proposals")
