@@ -217,7 +217,7 @@ type UserActivitiesResponse struct {
 	UserActivities []*UserActivity `json:"user_activities"`
 }
 
-type ProposalsResponse struct {
+type ProposalListResponse struct {
 	Threads []*Thread `json:"threads"`
 }
 

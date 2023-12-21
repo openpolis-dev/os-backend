@@ -41,7 +41,7 @@ func GetProposals(proposalId, groupName string) (*Thread, error) {
 func ListProposals(paginationParams *PaginationParams) ([]*Thread, error) {
 	apiPath := "/api/thread/list"
 
-	_, resp, err := doHttpRequest[ProposalsResponse](&httpRequestData{
+	_, resp, err := doHttpRequest[ProposalListResponse](&httpRequestData{
 		ApiUri:      apiBase + apiPath,
 		HttpMethod:  http.MethodGet,
 		QueryParams: paginationParams.ToMap(),
@@ -133,7 +133,7 @@ func ListProposals(paginationParams *PaginationParams) ([]*Thread, error) {
 //	       }
 //	   }
 //	}
-func CreateProposal(accessToken, groupName, categoryIndexId, title string, content []*NewContentRequest, tags []*NewProposalTagRequest, polls []*NewVoteFormRequest) (*ProposalsResponse, error) {
+func CreateProposal(accessToken, groupName, categoryIndexId, title string, content []*NewContentRequest, tags []*NewProposalTagRequest, polls []*NewVoteFormRequest) (*ProposalResponse, error) {
 	apiPath := "/api/submit_thread"
 
 	// prepare headers
@@ -168,7 +168,7 @@ func CreateProposal(accessToken, groupName, categoryIndexId, title string, conte
 	}
 
 	// send request
-	_, resp, err := doHttpRequest[ProposalsResponse](&httpRequestData{
+	_, resp, err := doHttpRequest[ProposalResponse](&httpRequestData{
 		ApiUri:               apiBase + apiPath,
 		HttpMethod:           http.MethodPost,
 		MultipartBodyParams:  payload.Bytes(),
