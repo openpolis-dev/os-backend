@@ -22,3 +22,5 @@ const SeedContractType = "erc721"
 const SeedContractAddr = "0x30093266E34a816a53e302bE3e59a93B52792FD4"
 
 var CityhallGroupNames = map[string]bool{"G_GOVERNANCE": true, "G_BRANDING": true, "G_TECH": true}
+
+const MetaforoGroupName = "testttt"

@@ -102,8 +102,10 @@ type ProposalComment struct {
 }
 
 type ProposalCategory struct {
-	ID   uint `gorm:"primaryKey"`
-	Name string
+	ID         uint `gorm:"primaryKey"`
+	ParentID   uint `gorm:"index"` // Save category hierarchy information
+	Name       string
+	MetaforoId string
 }
 
 type ProposalAuditLog struct {

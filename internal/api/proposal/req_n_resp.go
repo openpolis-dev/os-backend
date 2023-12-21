@@ -76,3 +76,17 @@ type FrontendProposalDetailRecord struct {
 	// Timestamps
 	CreateTs int64 `json:"create_ts"`
 }
+
+type FrontendProposalCategory struct {
+	ID         uint   `json:"id"`
+	ParentID   uint   `json:"parent_id"`
+	Name       string `json:"name"`
+	MetaforoId string `json:"metaforo_id"`
+}
+
+type UpdateProposalCategoryReq struct {
+	ID         uint   `json:"id"`
+	ParentID   uint   `json:"parent_id"`
+	Name       string `json:"name"`
+	MetaforoId string `json:"metaforo_id"`
+}

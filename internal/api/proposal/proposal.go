@@ -10,11 +10,13 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
+	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/api/component"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk"
+	"github.com/theseed-labs/os-backend/internal/sdk/metaforo"
 	"github.com/xiaosongfu/gormfind"
 	"gorm.io/gorm"
 )
@@ -195,45 +197,55 @@ func Create(ctx *gin.Context) {
 		return
 	}
 
-	//// Store proposal data into Metaforo
-	//// The CreateProposal function will be invoked for new created proposal while UpdateProposal for existing one.
-	//// In our system, each proposal submitted will be saved as a new record, and the ProposalID field will be used to group all versions of the same proposal.
+	// TODO: Build metaforo content from proposal title and content blocks
+
+	// Store proposal data into Metaforo
+	// The CreateProposal function will be invoked for new created proposal while UpdateProposal for existing one.
+	// In our system, each proposal submitted will be saved as a new record, and the ProposalID field will be used to group all versions of the same proposal.
 	proposalVer := 0
-	//var metaforoProposal metaforo.ProposalResponse
-	//// TODO: Build metaforo proposal data and send
-	//if reqData.ProposalID != "" {
-	//	metaforoProposal, err := metaforo.UpdateProposal(reqData.MetaforoAccessToken)
-	//	if err != nil {
-	//		log.Error().Msgf("update metaforoProposal error: %+v", err)
-	//		sdk.LogServerErrorToSentry(ctx, err)
-	//		ctx.JSON(http.StatusBadRequest, api.ServerError(errors.New("update metaforoProposal error")))
-	//		return
-	//	}
-	//
-	//	log.Debug().Msgf("TTT: Update metaforoProposal: %+v", metaforoProposal)
-	//
-	//	// Upgrade proposal version
-	//	var proposalVers []int
-	//	db.Where(&model.Proposal{ProposalRecordId: reqData.ProposalID}).Order("version desc").Pluck("version", &proposalVers)
-	//	if len(proposalVers) > 0 {
-	//		proposalVer = proposalVers[0] + 1
-	//	}
-	//} else {
-	//	metaforoProposal, err := metaforo.CreateProposal(reqData.MetaforoAccessToken)
-	//	if err != nil {
-	//		log.Error().Msgf("update metaforoProposal error: %+v", err)
-	//		sdk.LogServerErrorToSentry(ctx, err)
-	//		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create metaforoProposal error")))
-	//		return
-	//	}
-	//
-	//	log.Debug().Msgf("TTT: New metaforoProposal: %+v", metaforoProposal)
-	//}
-	//
+	var metaforoProposal *metaforo.ProposalResponse
+	// TODO: Build metaforo proposal data and send
+	if reqData.ProposalId != "" {
+		var err error
+		metaforoProposal, err = metaforo.UpdateProposal(reqData.MetaforoAccessToken)
+		if err != nil {
+			log.Error().Msgf("update metaforoProposal error: %+v", err)
+			sdk.LogServerErrorToSentry(ctx, err)
+			ctx.JSON(http.StatusBadRequest, api.ServerError(errors.New("update metaforoProposal error")))
+			return
+		}
+
+		// Upgrade proposal version
+		var proposalVers []int
+		db.Where(&model.Proposal{ProposalRecordId: reqData.ProposalId}).Order("version desc").Pluck("version", &proposalVers)
+		if len(proposalVers) > 0 {
+			proposalVer = proposalVers[0] + 1
+		}
+	} else {
+		var err error
+		metaforoProposal, err = metaforo.CreateProposal(
+			reqData.MetaforoAccessToken,
+			internal.MetaforoGroupName,
+			"TODO", reqData.Title, nil, nil, nil,
+		)
+		if err != nil {
+			log.Error().Msgf("update metaforoProposal error: %+v", err)
+			sdk.LogServerErrorToSentry(ctx, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create metaforoProposal error")))
+			return
+		}
+	}
+
 	//// Save data backed from metaforo API response to DB
-	//proposalRecord.ProposalRecordId = fmt.Sprintf("metaforo:%d", metaforoProposal.Data.Thread.Id)
+	proposalRecord.ProposalRecordId = fmt.Sprintf("metaforo:%d", metaforoProposal.Thread.Id)
 	proposalRecord.Version = uint(proposalVer)
-	//proposalRecord.ArveaveHash = metaforoProposal.Data.Thread.EditHistory.Lists[0].Arweave
+	proposalRecord.ArveaveHash = metaforoProposal.Thread.EditHistory.Lists[0].Arweave
+	if err := db.Save(proposalRecord).Error; err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
+		log.Error().Msgf("update proposal error: %+v", err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
+		return
+	}
 
 	var proposalBlocks []*model.ProposalContentBlock
 	if err := db.Where(&model.ProposalContentBlock{ProposalID: proposalRecord.ID}).Find(&proposalBlocks).Error; err != nil {
