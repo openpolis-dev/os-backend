@@ -236,6 +236,11 @@ func main() {
 		componentRouter.Group("/", proposal.ListComponents)
 		componentRouter.Group("/:id", proposal.GetComponent)
 
+		// Proposal routers
+		proposalGroup := v1.Group("/proposals")
+		proposalGroup.GET("/list", proposal.List)
+		proposalGroup.GET("/show/:id", proposal.Detail)
+
 		// foo routers
 	}
 	// --> auth required
@@ -324,7 +329,6 @@ func main() {
 
 		// reward routers
 		proposalGroup := authorizedGroup.Group("/proposals")
-		proposalGroup.GET("/list", proposal.List)
 		proposalGroup.POST("/create", proposal.Create)
 	}
 
