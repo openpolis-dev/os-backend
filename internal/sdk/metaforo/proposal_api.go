@@ -133,7 +133,7 @@ func ListProposals(paginationParams *PaginationParams) ([]*Thread, error) {
 //	       }
 //	   }
 //	}
-func CreateProposal(accessToken, groupName, categoryIndexId, title string, content []*NewContentRequest, tags []*NewProposalTagRequest, polls []*NewVoteFormRequest) (*CreateProposalResponse, error) {
+func CreateProposal(accessToken, groupName, categoryIndexId, title string, content []*NewContentRequest, tags []*NewProposalTagRequest, polls []*NewVoteFormRequest) (*ProposalsResponse, error) {
 	apiPath := "/api/submit_thread"
 
 	// prepare headers
@@ -168,7 +168,7 @@ func CreateProposal(accessToken, groupName, categoryIndexId, title string, conte
 	}
 
 	// send request
-	_, resp, err := doHttpRequest[CreateProposalResponse](&httpRequestData{
+	_, resp, err := doHttpRequest[ProposalsResponse](&httpRequestData{
 		ApiUri:               apiBase + apiPath,
 		HttpMethod:           http.MethodPost,
 		MultipartBodyParams:  payload.Bytes(),

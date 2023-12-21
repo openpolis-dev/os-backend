@@ -117,10 +117,20 @@ type UserData struct {
 
 type PostData struct {
 	Id          int           `json:"id"`
-	Content     string        `json:"content"`
 	UserId      int           `json:"user_id"`
+	GroupId     int           `json:"group_id"`
+	ParentId    int           `json:"parent_id"`
+	Content     string        `json:"content"`
+	Depth       int           `json:"depth"`
+	ThreadId    int           `json:"thread_id"`
+	ReplyUid    int           `json:"reply_uid"`
+	ReplyPid    int           `json:"reply_pid"`
+	Sign        interface{}   `json:"sign"`
+	SignMsg     interface{}   `json:"sign_msg"`
 	EditorType  int           `json:"editor_type"`
 	Html        string        `json:"html"`
+	UpdatedAt   time.Time     `json:"updated_at"`
+	CreatedAt   time.Time     `json:"created_at"`
 	TotalLikes  int           `json:"total_likes"`
 	TotalReport int           `json:"total_report"`
 	Attachments []interface{} `json:"attachments"`
@@ -132,6 +142,7 @@ type Thread struct {
 	UserId          int           `json:"user_id"`
 	GroupId         int           `json:"group_id"`
 	FirstPostId     int           `json:"first_post_id"`
+	LastPostId      int           `json:"last_post_id"`
 	CreatedAt       time.Time     `json:"created_at"`
 	UpdatedAt       time.Time     `json:"updated_at"`
 	LikesCount      int           `json:"likes_count"`
@@ -180,6 +191,11 @@ type Thread struct {
 	User           *UserData     `json:"user"`
 	Group          *GroupInfo    `json:"group"`
 	FirstPost      *PostData     `json:"first_post"`
+	UpdateCount    struct {
+		ParentId    int `json:"parent_id"`
+		ThreadCount int `json:"thread_count"`
+		CategoryId  int `json:"category_id"`
+	} `json:"update_count"`
 }
 
 type PostEditHistoryRecord struct {
@@ -206,47 +222,8 @@ type ProposalsResponse struct {
 }
 
 type ProposalResponse struct {
-	Thread *Thread `json:"thread"`
-}
-
-type CreateProposalResponse struct {
-	Thread struct {
-		Title           string    `json:"title"`
-		UserId          int       `json:"user_id"`
-		GroupId         int       `json:"group_id"`
-		CreatedAt       time.Time `json:"created_at"`
-		UpdatedAt       time.Time `json:"updated_at"`
-		CategoryIndexId int       `json:"category_index_id"`
-		Id              int       `json:"id"`
-		FirstPostId     int       `json:"first_post_id"`
-		LastPostId      int       `json:"last_post_id"`
-		//Slug            int       `json:"slug"` // will be `string` or `int`
-		UpdateCount struct {
-			ParentId    int `json:"parent_id"`
-			ThreadCount int `json:"thread_count"`
-			CategoryId  int `json:"category_id"`
-		} `json:"update_count"`
-	} `json:"thread"`
-	Post struct {
-		GroupId     int           `json:"group_id"`
-		UserId      int           `json:"user_id"`
-		ParentId    int           `json:"parent_id"`
-		Content     string        `json:"content"`
-		Sign        interface{}   `json:"sign"`
-		SignMsg     interface{}   `json:"sign_msg"`
-		Depth       int           `json:"depth"`
-		ThreadId    int           `json:"thread_id"`
-		ReplyUid    int           `json:"reply_uid"`
-		ReplyPid    int           `json:"reply_pid"`
-		EditorType  int           `json:"editor_type"`
-		Html        string        `json:"html"`
-		UpdatedAt   time.Time     `json:"updated_at"`
-		CreatedAt   time.Time     `json:"created_at"`
-		Id          int           `json:"id"`
-		TotalLikes  interface{}   `json:"total_likes"`
-		TotalReport interface{}   `json:"total_report"`
-		Attachments []interface{} `json:"attachments"`
-	} `json:"post"`
+	Thread      *Thread       `json:"thread"`
+	Post        *PostData     `json:"post"`
 	Attachments []interface{} `json:"attachments"`
 }
 
