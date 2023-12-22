@@ -46,7 +46,7 @@ func CastVote(accessToken, groupName string, pollId int, options []int) error {
 	}
 
 	// send request
-	_, _, err = doHttpRequest[any](&httpRequestData{
+	_, _, err = doHttpRequest[struct{}](&httpRequestData{
 		ApiUri:        apiBase + apiPath,
 		HttpMethod:    http.MethodPost,
 		JsonBodyBytes: body,
@@ -89,7 +89,7 @@ func RevokeVote(accessToken, groupName string, pollId int) error {
 	}
 
 	// send request
-	_, _, err = doHttpRequest[any](&httpRequestData{
+	_, _, err = doHttpRequest[struct{}](&httpRequestData{
 		ApiUri:        apiBase + apiPath,
 		HttpMethod:    http.MethodPost,
 		JsonBodyBytes: body,

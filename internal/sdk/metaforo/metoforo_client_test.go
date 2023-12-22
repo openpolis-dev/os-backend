@@ -12,8 +12,10 @@ const (
 	groupName2       = "xs12"
 	groupId2         = 10462
 	categoryIndexId2 = "1"
-	tagId2           = 471
+	tagId2           = 474
 	tagName2         = "待审核"
+	categoryId2      = 8957
+	gateTokenId2     = 67
 )
 
 var (

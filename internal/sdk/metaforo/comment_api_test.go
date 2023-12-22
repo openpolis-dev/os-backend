@@ -63,8 +63,72 @@ func TestAddComment(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		if err := AddComment(tt.args.accessToken, tt.args.groupName, tt.args.proposalId, tt.args.content, tt.args.replyId); !errors.Is(err, tt.wantErr) {
-			t.Errorf("[%s] AddComment() error = %v, wantErr = %v", tt.name, err, tt.wantErr)
-		}
+		t.Run(tt.name, func(t *testing.T) {
+			if err := AddComment(tt.args.accessToken, tt.args.groupName, tt.args.proposalId, tt.args.content, tt.args.replyId); !errors.Is(err, tt.wantErr) {
+				t.Errorf("[%s] AddComment() error = %v, wantErr = %v", tt.name, err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestEditComment(t *testing.T) {
+	type args struct {
+		accessToken string
+		groupName   string
+		postId      string
+		content     []*NewContentRequest
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr error
+	}{
+		{
+			name: "success",
+			args: args{
+				accessToken: token,
+				groupName:   groupName2,
+				postId:      commentId,
+				content:     []*NewContentRequest{&commentContent},
+			},
+			wantErr: nil,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := EditComment(tt.args.accessToken, tt.args.groupName, tt.args.postId, tt.args.content); !errors.Is(err, tt.wantErr) {
+				t.Errorf("EditComment() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestDeleteComment(t *testing.T) {
+	type args struct {
+		accessToken string
+		groupName   string
+		postId      string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr error
+	}{
+		{
+			name: "success",
+			args: args{
+				accessToken: token,
+				groupName:   groupName2,
+				postId:      commentId,
+			},
+			wantErr: nil,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := DeleteComment(tt.args.accessToken, tt.args.groupName, tt.args.postId); !errors.Is(err, tt.wantErr) {
+				t.Errorf("DeleteComment() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
 	}
 }

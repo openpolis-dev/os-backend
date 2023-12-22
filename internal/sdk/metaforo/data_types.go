@@ -228,15 +228,11 @@ type ProposalResponse struct {
 }
 
 type CategoriesListResponse struct {
-	Data struct {
-		Categories []*Category `json:"categories"`
-	}
+	Categories []*Category `json:"categories"`
 }
 
 type TagsListResponse struct {
-	Data struct {
-		Tags []*Tag `json:"tags"`
-	}
+	Tags []*Tag `json:"tags"`
 }
 
 type GroupInfoResponse struct {
@@ -369,6 +365,24 @@ type GroupInfo struct {
 ////////////////////////////
 // Request objects defines struct for sending Metaforo API requests
 ////////////////////////////
+
+// [
+//  {
+//    "id": 0,
+//    "name": "Everyone",
+//    "can_see": 1,
+//    "can_reply": 1,
+//    "can_create": 1
+//  }
+//]
+
+type NewCategoryPermissionRequest struct {
+	Id        int    `json:"id"`
+	Name      string `json:"name"`
+	CanSee    int    `json:"can_see"`
+	CanReply  int    `json:"can_reply"`
+	CanCreate int    `json:"can_create"`
+}
 
 // [
 //   {

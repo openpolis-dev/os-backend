@@ -93,9 +93,12 @@ func doHttpRequest[T any](requestData *httpRequestData) (int, *T, error) {
 	// check response code
 	// { "status": true, "code": 20000, "description": "", "server": "rest", "data": { ... }}
 	// {"status":false,"code":40001,"description":"Group not exist","server":"master","data":{}}
+	// {"status":false,"code":40004,"description":"delete Tags Failed!","server":"master","data":{}}
 	// {"status": false, "code": 40011, "description": "INCARNA NFT is required to perform this action. Please check your NFT assets.", "server": "master", "data": {} }
+	// {"status": false, "code": 40090, "description": "The token address is invalid!", "server": "master", "data": {} } // add gate token
 	// {"status":false,"code":41002,"description":"Please login.","server":"master","data":{}}
 	// {"status":false,"code":41004,"description":"sign error","server":"master","data":{}}
+	// {"status": false, "code": 41108, "description": "The last one cannot be deleted", "server": "master", "data": {} } // delete category
 	// TODO handle more failed situations
 	if apiResp.Code == 20000 {
 		return resp.StatusCode(), apiResp.Data, nil
@@ -105,6 +108,9 @@ func doHttpRequest[T any](requestData *httpRequestData) (int, *T, error) {
 		}
 		if apiResp.Code == 40011 {
 			return resp.StatusCode(), nil, NoVoteRight
+		}
+		if apiResp.Code == 40090 {
+			return resp.StatusCode(), nil, TokenAddrInvalid
 		}
 		if apiResp.Code == 41002 {
 			return resp.StatusCode(), nil, NoLogin

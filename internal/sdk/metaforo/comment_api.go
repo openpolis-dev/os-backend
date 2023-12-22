@@ -50,7 +50,71 @@ func AddComment(accessToken, groupName, proposalId string, content []*NewContent
 	}
 
 	// send request
-	_, _, err = doHttpRequest[any](&httpRequestData{
+	_, _, err = doHttpRequest[struct{}](&httpRequestData{
+		ApiUri:               apiBase + apiPath,
+		HttpMethod:           http.MethodPost,
+		MultipartBodyParams:  payload.Bytes(),
+		MultipartContentType: writer.FormDataContentType(),
+		Header:               formHeader,
+	})
+
+	return err
+}
+
+func EditComment(accessToken, groupName, postId string, content []*NewContentRequest) error {
+	apiPath := "/api/edit_post"
+
+	// prepare headers
+	formHeader := AuthHeader(accessToken)
+
+	// prepare multipart body
+	payload := &bytes.Buffer{}
+	writer := multipart.NewWriter(payload)
+	_ = writer.WriteField("sign", "")
+	_ = writer.WriteField("signMsg", "")
+	_ = writer.WriteField("post_id", postId)
+	_ = writer.WriteField("group_name", groupName)
+	if content != nil {
+		c, _ := json.Marshal(content)
+		_ = writer.WriteField("content", string(c))
+	}
+	err := writer.Close()
+	if err != nil {
+		log.Error().Msgf("Prepare Multipart paramter error: %s", err)
+		return err
+	}
+
+	// send request
+	_, _, err = doHttpRequest[struct{}](&httpRequestData{
+		ApiUri:               apiBase + apiPath,
+		HttpMethod:           http.MethodPost,
+		MultipartBodyParams:  payload.Bytes(),
+		MultipartContentType: writer.FormDataContentType(),
+		Header:               formHeader,
+	})
+
+	return err
+}
+
+func DeleteComment(accessToken, groupName, postId string) error {
+	apiPath := "/api/delete_post"
+
+	// prepare headers
+	formHeader := AuthHeader(accessToken)
+
+	// prepare multipart body
+	payload := &bytes.Buffer{}
+	writer := multipart.NewWriter(payload)
+	_ = writer.WriteField("post_id", postId)
+	_ = writer.WriteField("group_name", groupName)
+	err := writer.Close()
+	if err != nil {
+		log.Error().Msgf("Prepare Multipart paramter error: %s", err)
+		return err
+	}
+
+	// send request
+	_, _, err = doHttpRequest[struct{}](&httpRequestData{
 		ApiUri:               apiBase + apiPath,
 		HttpMethod:           http.MethodPost,
 		MultipartBodyParams:  payload.Bytes(),
