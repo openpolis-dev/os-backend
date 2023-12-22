@@ -4,12 +4,15 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/api/component"
+	"github.com/theseed-labs/os-backend/internal/common"
+	"github.com/theseed-labs/os-backend/internal/middleware"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk"
 	"github.com/theseed-labs/os-backend/internal/service"
@@ -261,11 +264,131 @@ func Detail(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, api.Success(responseData))
 }
 
-// Submit puts proposal in PendingSubmit state to Draft and publish to Metaforo
-func Submit(ctx *gin.Context) {}
-
 // Update existing proposal
 // 1. Only proposal in PendingSubmit, Withdrawn, Rejected state can be updated
 // 2. Updating PendingSubmit proposal does not change the state and version number, and is update in place directly
 // 3. Updating proposal in Withdrawn, Rejected state will create a new record and update the version number
 func Update(ctx *gin.Context) {}
+
+// Withdraw, Approve and Reject change proposal to named state and update the Metaforo label
+
+func Withdraw(ctx *gin.Context) {
+	user, _, db, _ := api.ForContext(ctx)
+	proposalIdStr := ctx.Param("id")
+	err := updateProposalState(db, user, proposalIdStr, model.ProposalStateWithdrawn)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			log.Warn().Msgf("proposal %s not found", proposalIdStr)
+			ctx.JSON(http.StatusNotFound, nil)
+			return
+		} else {
+			sdk.LogUserSideError(ctx, err)
+			log.Error().Msgf("parse proposal id %s error: %+v", ctx.Param("id"), err)
+			ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
+			return
+		}
+	}
+	ctx.JSON(http.StatusOK, api.Success(nil))
+}
+
+func Approve(ctx *gin.Context) {
+	user, enforcer, db, _ := api.ForContext(ctx)
+	formattedWallet := common.FormatUserWallet(user.Wallet)
+
+	//  check permission
+	ok, err := enforcer.HasRoleForUser(formattedWallet, api.RoleHall)
+	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall permission error")))
+		return
+	}
+
+	if !ok {
+		sdk.LogForbiddenError(ctx, user.Wallet, api.RoleHall, "access")
+		ctx.JSON(http.StatusForbidden, api.Forbidden())
+		return
+	}
+
+	proposalIdStr := ctx.Param("id")
+	err = updateProposalState(db, user, proposalIdStr, model.ProposalStateApproved)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			log.Warn().Msgf("proposal %s not found", proposalIdStr)
+			ctx.JSON(http.StatusNotFound, nil)
+		} else {
+			sdk.LogServerErrorToSentry(ctx, err)
+			log.Error().Msgf("update proposal %s state to approved error: %+v", proposalIdStr, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("approve proposal error")))
+		}
+	}
+
+	ctx.JSON(http.StatusOK, api.Success(nil))
+}
+
+func Reject(ctx *gin.Context) {
+	user, enforcer, db, _ := api.ForContext(ctx)
+	formattedWallet := common.FormatUserWallet(user.Wallet)
+
+	//  check permission
+	ok, err := enforcer.HasRoleForUser(formattedWallet, api.RoleHall)
+	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall permission error")))
+		return
+	}
+
+	if !ok {
+		sdk.LogForbiddenError(ctx, user.Wallet, api.RoleHall, "access")
+		ctx.JSON(http.StatusForbidden, api.Forbidden())
+		return
+	}
+
+	proposalIdStr := ctx.Param("id")
+	err = updateProposalState(db, user, proposalIdStr, model.ProposalStateRejected)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			log.Warn().Msgf("proposal %s not found", proposalIdStr)
+			ctx.JSON(http.StatusNotFound, nil)
+		} else {
+			sdk.LogServerErrorToSentry(ctx, err)
+			log.Error().Msgf("update proposal %s state to rejected error: %+v", proposalIdStr, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("approve proposal error")))
+		}
+	}
+
+	ctx.JSON(http.StatusOK, api.Success(nil))
+}
+
+func updateProposalState(db *gorm.DB, user *middleware.CurUser, proposalStrId string, newState model.ProposalState) error {
+	proposalRecord, err := service.GetProposalFromStringId(db, proposalStrId)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			log.Warn().Msgf("proposal %s not found", proposalStrId)
+		}
+		return err
+	}
+
+	if proposalRecord.State != int(model.ProposalStateDraft) {
+		return fmt.Errorf("proposal %s in %s state can;t be withdrawn", proposalStrId, proposalRecord.StateName())
+	}
+
+	// Check whether user has permission to the change the proposal state
+	switch newState {
+	case model.ProposalStateWithdrawn:
+		if !strings.EqualFold(user.Wallet, proposalRecord.Applicant) {
+			return errors.New("proposal can only be withdrawn by applicant")
+		}
+		err = db.Model(&proposalRecord).Update("state = ?", model.ProposalStateWithdrawn).Error
+		// TODO: Update Metaforo Label: Remove old draft and add new, verify whether metaforo can handle this
+	case model.ProposalStateApproved:
+		// TODO: Update Metaforo Label: Remove old draft and add new, verify whether metaforo can handle this
+		err = db.Model(&proposalRecord).Update("state = ?", model.ProposalStateApproved).Error
+		// TODO: Update vote record related to this proposal
+	case model.ProposalStateRejected:
+		// TODO: Update Metaforo Label: Remove old draft and add new, verify whether metaforo can handle this
+		err = db.Model(&proposalRecord).Update("state = ?", model.ProposalStateRejected).Error
+	default:
+		return fmt.Errorf("changing proposal from state %s to %s is not approved", proposalRecord.StateName(), model.ProposalStateName[newState])
+	}
+	return nil
+}

@@ -2,27 +2,38 @@ package model
 
 type ProposalState int
 
-var ProposalStateName = []string{
-	"draft", "withdrawn", "voting", "passed", "failed", "rejected",
-}
-
 const (
-	ProposalStateDraft ProposalState = iota
+	ProposalStatePendingSubmit ProposalState = iota // PendingSubmit means the proposal is still in personal box, no one else can view it.
+	ProposalStateDraft
 	ProposalStateWithdrawn
-	ProposalStateVoting
-	ProposalStatePassed
-	ProposalStateFailed
 	ProposalStateRejected
-	ProposalStatePendingSubmit // PendingSubmit means the proposal is still in personal box, no one else can view it.
+	ProposalStateApproved
+
+	ProposalStateVoting
+	ProposalStateVotePassed
+	ProposalStateVoteFailed
 )
 
 var ProposalStateIdNameMapping = map[string]ProposalState{
-	"draft":     ProposalStateDraft,
-	"withdrawn": ProposalStateWithdrawn,
-	"voting":    ProposalStateVoting,
-	"passed":    ProposalStatePassed,
-	"failed":    ProposalStateFailed,
-	"rejected":  ProposalStateRejected,
+	"pending_submit": ProposalStatePendingSubmit,
+	"draft":          ProposalStateDraft,
+	"withdrawn":      ProposalStateWithdrawn,
+	"rejected":       ProposalStateRejected,
+	"approved":       ProposalStateApproved,
+	"voting":         ProposalStateVoting,
+	"vote_passed":    ProposalStateVotePassed,
+	"vote_failed":    ProposalStateVoteFailed,
+}
+
+var ProposalStateName = []string{
+	"pending_submit",
+	"draft",
+	"withdrawn",
+	"rejected",
+	"approved",
+	"voting",
+	"vote_passed",
+	"vote_failed",
 }
 
 type Proposal struct {
@@ -63,6 +74,10 @@ type Proposal struct {
 	IsHidden bool
 
 	IsVoted bool // Indicate whether user has voted to this proposal
+}
+
+func (p *Proposal) StateName() string {
+	return ProposalStateName[p.State]
 }
 
 // ProposalContentBlock saves blocks in proposal.

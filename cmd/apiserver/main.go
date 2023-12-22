@@ -330,12 +330,18 @@ func main() {
 		rewardsGroup.POST("/approve_mint_reward", rewards.ApproveMintReward)
 		rewardsGroup.POST("/snapshot_seed", rewards.SnapshotSeed)
 
-		// reward routers
+		// proposal routers
 		proposalGroup := authorizedGroup.Group("/proposals")
-		proposalGroup.POST("/save", proposal.Save)
+		// Save or update proposal to Local DB. If submit flag in post data is true,
+		// the proposal will also be published to Metaforo and convert to Draft state
 		proposalGroup.POST("/create", proposal.Create)
-		proposalGroup.POST("/submit/:id", proposal.Submit)
 		proposalGroup.POST("/update/:id", proposal.Update)
+
+		// State change actions for proposals
+		proposalGroup.POST("/withdraw/:id", proposal.Withdraw)
+		proposalGroup.POST("/approve/:id", proposal.Approve)
+		proposalGroup.POST("/reject/:id", proposal.Reject)
+
 		proposalGroup.POST("/vote/:id", proposal.CastVote)
 		proposalGroup.POST("/revoke_vote/:id", proposal.RevokeVote)
 	}
