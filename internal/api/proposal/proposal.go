@@ -104,6 +104,77 @@ func List(ctx *gin.Context) {
 }
 
 // Save function builds proposal DB records, and save it in PendingSubmit state
+// Detail function returns proposal detail data
+//
+//		@router		/proposals/show/:id [post]
+//		@summary	Create proposals with passed in data
+//	  	@Param          JsonBody        body            CreateProposalData       true    "request json body"
+//		@success	200	{object}	api.Reply{data=FrontendProposalDetailRecord}
+func Detail(ctx *gin.Context) {
+	db := api.ForContextOnlyDB(ctx)
+	proposalRecord, err := service.GetProposalFromStringId(db, ctx.Param("id"))
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			log.Warn().Msgf("proposal %s not found", proposalRecord.ID)
+			ctx.JSON(http.StatusNotFound, nil)
+			return
+		} else {
+			sdk.LogUserSideError(ctx, err)
+			log.Error().Msgf("parse proposal id %s error: %+v", ctx.Param("id"), err)
+			ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
+			return
+		}
+	}
+
+	// Load proposal content block
+	var proposalContents []*model.ProposalContentBlock
+	if err := db.Where(model.ProposalContentBlock{ProposalID: proposalRecord.ID}).Find(&proposalContents).Error; err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
+		log.Error().Msgf("get proposal blocks error: %+v", err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get proposal error")))
+		return
+	}
+
+	// Load proposal components
+	var proposalComponents []*model.ProposalComponentRecord
+	if err := db.Where(model.ProposalComponentRecord{ProposalID: proposalRecord.ID}).Find(&proposalComponents).Error; err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
+		log.Error().Msgf("get proposal components error: %+v", err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get proposal error")))
+		return
+	}
+
+	// TODO: Migrate converting model.ProposalContentBlock to FrontendContentBlockRecord into function
+	// TODO: Migrate converting model.ProposalComponentRecord to ComponentInstance into function
+	responseData := FrontendProposalDetailRecord{
+		ID:    proposalRecord.ID,
+		Title: proposalRecord.Title,
+		ContentBlocks: lo.Map(proposalContents, func(item *model.ProposalContentBlock, _ int) *FrontendContentBlockRecord {
+			return &FrontendContentBlockRecord{
+				Title:   item.Title,
+				Content: item.Content,
+			}
+		}),
+		ProposalCategoryId: proposalRecord.ProposalCategoryID,
+		State:              model.ProposalStateName[proposalRecord.State],
+		Components: lo.Map(proposalComponents, func(item *model.ProposalComponentRecord, _ int) *component.ComponentInstance {
+			return &component.ComponentInstance{
+				ID:          item.ID,
+				ComponentId: item.ComponentId,
+				Schema:      "",
+				Data:        item.Data,
+				CreateTs:    item.CreateTs,
+			}
+		}),
+		Applicant:  proposalRecord.Applicant,
+		IsApproved: false,
+		CreateTs:   proposalRecord.CreateTs,
+	}
+
+	// Return to frontend
+	ctx.JSON(http.StatusOK, api.Success(responseData))
+}
+
 //
 //		@router		/proposals/create [post]
 //		@summary	Create proposals with passed in data
@@ -193,83 +264,6 @@ func Create(ctx *gin.Context) {
 	// Return to frontend
 	ctx.JSON(http.StatusOK, api.Success(responseData))
 }
-
-// Detail function returns proposal detail data
-//
-//		@router		/proposals/show/:id [post]
-//		@summary	Create proposals with passed in data
-//	  	@Param          JsonBody        body            CreateProposalData       true    "request json body"
-//		@success	200	{object}	api.Reply{data=FrontendProposalDetailRecord}
-func Detail(ctx *gin.Context) {
-	db := api.ForContextOnlyDB(ctx)
-	proposalRecord, err := service.GetProposalFromStringId(db, ctx.Param("id"))
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			log.Warn().Msgf("proposal %s not found", proposalRecord.ID)
-			ctx.JSON(http.StatusNotFound, nil)
-			return
-		} else {
-			sdk.LogUserSideError(ctx, err)
-			log.Error().Msgf("parse proposal id %s error: %+v", ctx.Param("id"), err)
-			ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
-			return
-		}
-	}
-
-	// Load proposal content block
-	var proposalContents []*model.ProposalContentBlock
-	if err := db.Where(model.ProposalContentBlock{ProposalID: proposalRecord.ID}).Find(&proposalContents).Error; err != nil {
-		sdk.LogServerErrorToSentry(ctx, err)
-		log.Error().Msgf("get proposal blocks error: %+v", err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get proposal error")))
-		return
-	}
-
-	// Load proposal components
-	var proposalComponents []*model.ProposalComponentRecord
-	if err := db.Where(model.ProposalComponentRecord{ProposalID: proposalRecord.ID}).Find(&proposalComponents).Error; err != nil {
-		sdk.LogServerErrorToSentry(ctx, err)
-		log.Error().Msgf("get proposal components error: %+v", err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get proposal error")))
-		return
-	}
-
-	// TODO: Migrate converting model.ProposalContentBlock to FrontendContentBlockRecord into function
-	// TODO: Migrate converting model.ProposalComponentRecord to ComponentInstance into function
-	responseData := FrontendProposalDetailRecord{
-		ID:    proposalRecord.ID,
-		Title: proposalRecord.Title,
-		ContentBlocks: lo.Map(proposalContents, func(item *model.ProposalContentBlock, _ int) *FrontendContentBlockRecord {
-			return &FrontendContentBlockRecord{
-				Title:   item.Title,
-				Content: item.Content,
-			}
-		}),
-		ProposalCategoryId: proposalRecord.ProposalCategoryID,
-		State:              model.ProposalStateName[proposalRecord.State],
-		Components: lo.Map(proposalComponents, func(item *model.ProposalComponentRecord, _ int) *component.ComponentInstance {
-			return &component.ComponentInstance{
-				ID:          item.ID,
-				ComponentId: item.ComponentId,
-				Schema:      "",
-				Data:        item.Data,
-				CreateTs:    item.CreateTs,
-			}
-		}),
-		Applicant:  proposalRecord.Applicant,
-		IsApproved: false,
-		CreateTs:   proposalRecord.CreateTs,
-	}
-
-	// Return to frontend
-	ctx.JSON(http.StatusOK, api.Success(responseData))
-}
-
-// Update existing proposal
-// 1. Only proposal in PendingSubmit, Withdrawn, Rejected state can be updated
-// 2. Updating PendingSubmit proposal does not change the state and version number, and is update in place directly
-// 3. Updating proposal in Withdrawn, Rejected state will create a new record and update the version number
-func Update(ctx *gin.Context) {}
 
 // Withdraw, Approve and Reject change proposal to named state and update the Metaforo label
 
@@ -395,6 +389,7 @@ func Reject(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, api.Success(nil))
 }
 
+// Internal function to handle duplicated logic of updating proposal state
 func updateProposalState(db *gorm.DB, user *middleware.CurUser, proposalStrId string, newState model.ProposalState) (*model.Proposal, error) {
 	proposalRecord, err := service.GetProposalFromStringId(db, proposalStrId)
 	if err != nil {
