@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
@@ -272,10 +273,15 @@ func Update(ctx *gin.Context) {}
 
 // Withdraw, Approve and Reject change proposal to named state and update the Metaforo label
 
+// Withdraw changes proposal state to withdrawn
+// @router /proposals/withdraw/:id [post]
+// @summary withdraw proposal in Draft state, the proposal will be changed to withdrawn state after success. Only proposal applicant can withdraw the proposal
+// @param          id            query           int  true   "proposal id"
+// @success	200	{object}	api.Reply{data=nil}
 func Withdraw(ctx *gin.Context) {
 	user, _, db, _ := api.ForContext(ctx)
 	proposalIdStr := ctx.Param("id")
-	err := updateProposalState(db, user, proposalIdStr, model.ProposalStateWithdrawn)
+	_, err := updateProposalState(db, user, proposalIdStr, model.ProposalStateWithdrawn)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			log.Warn().Msgf("proposal %s not found", proposalIdStr)
@@ -291,6 +297,11 @@ func Withdraw(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, api.Success(nil))
 }
 
+// Approve changes proposal state to approved
+// @router /proposals/approve/:id [post]
+// @summary approve proposal in Draft state, the proposal will be changed to approved state after success. Only user has cityhall permission can do this
+// @param          id            query           int  true   "proposal id"
+// @success	200	{object}	api.Reply{data=nil}
 func Approve(ctx *gin.Context) {
 	user, enforcer, db, _ := api.ForContext(ctx)
 	formattedWallet := common.FormatUserWallet(user.Wallet)
@@ -310,7 +321,7 @@ func Approve(ctx *gin.Context) {
 	}
 
 	proposalIdStr := ctx.Param("id")
-	err = updateProposalState(db, user, proposalIdStr, model.ProposalStateApproved)
+	_, err = updateProposalState(db, user, proposalIdStr, model.ProposalStateApproved)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			log.Warn().Msgf("proposal %s not found", proposalIdStr)
@@ -325,6 +336,11 @@ func Approve(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, api.Success(nil))
 }
 
+// Reject changes proposal state to approved
+// @router /proposals/reject/:id [post]
+// @summary reject proposal in Draft state, the proposal will be changed to rejected state after success. Only user has cityhall permission can do this
+// @param          id            query           int  true   "proposal id"
+// @success	200	{object}	api.Reply{data=nil}
 func Reject(ctx *gin.Context) {
 	user, enforcer, db, _ := api.ForContext(ctx)
 	formattedWallet := common.FormatUserWallet(user.Wallet)
@@ -343,8 +359,16 @@ func Reject(ctx *gin.Context) {
 		return
 	}
 
+	var rejectRequestData RejectProposalData
+	if err := ctx.BindJSON(&rejectRequestData); err != nil {
+		sdk.LogUserSideError(ctx, err)
+		log.Error().Msgf("parse request data error: %+v", err)
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("parse request data error")))
+		return
+	}
+
 	proposalIdStr := ctx.Param("id")
-	err = updateProposalState(db, user, proposalIdStr, model.ProposalStateRejected)
+	proposalRecord, err := updateProposalState(db, user, proposalIdStr, model.ProposalStateRejected)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			log.Warn().Msgf("proposal %s not found", proposalIdStr)
@@ -356,39 +380,66 @@ func Reject(ctx *gin.Context) {
 		}
 	}
 
+	rejectComment := model.ProposalComment{
+		CreateTs:        time.Now().Unix(),
+		UpdateTs:        time.Now().Unix(),
+		ProposalID:      proposalRecord.ID,
+		Content:         rejectRequestData.Reason,
+		IsHidden:        false,
+		IsRejectComment: true,
+	}
+	db.Save(&rejectComment)
+
+	// TODO: Save to metaforo and fill fields related with metaforo
+
 	ctx.JSON(http.StatusOK, api.Success(nil))
 }
 
-func updateProposalState(db *gorm.DB, user *middleware.CurUser, proposalStrId string, newState model.ProposalState) error {
+func updateProposalState(db *gorm.DB, user *middleware.CurUser, proposalStrId string, newState model.ProposalState) (*model.Proposal, error) {
 	proposalRecord, err := service.GetProposalFromStringId(db, proposalStrId)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			log.Warn().Msgf("proposal %s not found", proposalStrId)
 		}
-		return err
+		return nil, err
 	}
 
 	if proposalRecord.State != int(model.ProposalStateDraft) {
-		return fmt.Errorf("proposal %s in %s state can;t be withdrawn", proposalStrId, proposalRecord.StateName())
+		return nil, fmt.Errorf("proposal %s in %s state can;t be withdrawn", proposalStrId, proposalRecord.StateName())
 	}
 
 	// Check whether user has permission to the change the proposal state
 	switch newState {
 	case model.ProposalStateWithdrawn:
 		if !strings.EqualFold(user.Wallet, proposalRecord.Applicant) {
-			return errors.New("proposal can only be withdrawn by applicant")
+			return nil, errors.New("proposal can only be withdrawn by applicant")
 		}
-		err = db.Model(&proposalRecord).Update("state = ?", model.ProposalStateWithdrawn).Error
+		proposalRecord.State = int(model.ProposalStateWithdrawn)
+		err = db.Save(&proposalRecord).Error
 		// TODO: Update Metaforo Label: Remove old draft and add new, verify whether metaforo can handle this
+		if err != nil {
+			log.Error().Msgf("change proposal to withdrawn error")
+			return nil, err
+		}
 	case model.ProposalStateApproved:
 		// TODO: Update Metaforo Label: Remove old draft and add new, verify whether metaforo can handle this
-		err = db.Model(&proposalRecord).Update("state = ?", model.ProposalStateApproved).Error
+		proposalRecord.State = int(model.ProposalStateApproved)
+		err = db.Save(&proposalRecord).Error
 		// TODO: Update vote record related to this proposal
+		if err != nil {
+			log.Error().Msgf("change proposal to approved error")
+			return nil, err
+		}
 	case model.ProposalStateRejected:
 		// TODO: Update Metaforo Label: Remove old draft and add new, verify whether metaforo can handle this
-		err = db.Model(&proposalRecord).Update("state = ?", model.ProposalStateRejected).Error
+		proposalRecord.State = int(model.ProposalStateRejected)
+		err = db.Save(&proposalRecord).Error
+		if err != nil {
+			log.Error().Msgf("change proposal to rejected error")
+			return nil, err
+		}
 	default:
-		return fmt.Errorf("changing proposal from state %s to %s is not approved", proposalRecord.StateName(), model.ProposalStateName[newState])
+		return nil, fmt.Errorf("changing proposal from state %s to %s is not approved", proposalRecord.StateName(), model.ProposalStateName[newState])
 	}
-	return nil
+	return proposalRecord, nil
 }

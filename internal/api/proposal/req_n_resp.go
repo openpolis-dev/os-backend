@@ -41,6 +41,10 @@ type CreateProposalData struct {
 	MetaforoAccessToken string                           `json:"metaforo_access_token"`
 }
 
+type RejectProposalData struct {
+	Reason string `json:"reason"`
+}
+
 ///////////////////////
 // Response data definitions
 ///////////////////////
