@@ -103,7 +103,6 @@ func List(ctx *gin.Context) {
 	}))
 }
 
-// Save function builds proposal DB records, and save it in PendingSubmit state
 // Detail function returns proposal detail data
 //
 //		@router		/proposals/show/:id [post]
@@ -175,12 +174,16 @@ func Detail(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, api.Success(responseData))
 }
 
+// Update existing proposal
+// 1. Only proposal in PendingSubmit, Withdrawn, Rejected state can be updated
+// 2. Updating PendingSubmit proposal does not change the state and version number, and is update in place directly
+// 3. Updating proposal in Withdrawn, Rejected state will create a new record and update the version number
 //
-//		@router		/proposals/create [post]
-//		@summary	Create proposals with passed in data
-//	  	@Param          JsonBody        body            CreateProposalData       true    "request json body"
-//		@success	200	{object}	api.Reply{}
-func Save(ctx *gin.Context) {
+// @router /proposals/update/:id [post]
+// @summary	Update proposals with passed in data
+// @Param  JsonBody        body            CreateProposalData       true    "request json body"
+// @success	200	{object}	api.Reply{}
+func Update(ctx *gin.Context) {
 	// Parsing request to create proposal object
 	var reqData CreateProposalData
 	if err := ctx.BindJSON(&reqData); err != nil {
