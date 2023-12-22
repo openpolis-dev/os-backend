@@ -1,5 +1,7 @@
 package model
 
+import "strings"
+
 type ProposalState int
 
 const (
@@ -78,6 +80,21 @@ type Proposal struct {
 
 func (p *Proposal) StateName() string {
 	return ProposalStateName[p.State]
+}
+
+// CanBeUpdated returns bool value indicates whether this proposal can be updated.
+// The record can be updated if value returned is true
+// Only proposal in those states can be updated: PendingSubmit, Withdrawn and Rejected
+func (p *Proposal) CanBeUpdated() bool {
+	return p.State == int(ProposalStatePendingSubmit) ||
+		p.State == int(ProposalStateWithdrawn) ||
+		p.State == int(ProposalStateRejected)
+}
+
+// CanBeUpdatedBy returns bool value indicates whether this proposal can be updated by specified user wallet
+// The logic is the proposal in updatable state and the applicant equals to passed in wallet
+func (p *Proposal) CanBeUpdatedBy(wallet string) bool {
+	return p.CanBeUpdated() && strings.EqualFold(p.Applicant, wallet)
 }
 
 // ProposalContentBlock saves blocks in proposal.

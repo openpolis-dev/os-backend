@@ -107,7 +107,7 @@ func List(ctx *gin.Context) {
 //
 //		@router		/proposals/show/:id [post]
 //		@summary	Create proposals with passed in data
-//	  	@Param          JsonBody        body            CreateProposalData       true    "request json body"
+//	  	@Param          JsonBody        body            CreateOrUpdateProposalData       true    "request json body"
 //		@success	200	{object}	api.Reply{data=FrontendProposalDetailRecord}
 func Detail(ctx *gin.Context) {
 	db := api.ForContextOnlyDB(ctx)
@@ -181,30 +181,58 @@ func Detail(ctx *gin.Context) {
 //
 // @router /proposals/update/:id [post]
 // @summary	Update proposals with passed in data
-// @Param  JsonBody        body            CreateProposalData       true    "request json body"
+// @Param  JsonBody        body            CreateOrUpdateProposalData       true    "request json body"
 // @success	200	{object}	api.Reply{}
 func Update(ctx *gin.Context) {
-	// Parsing request to create proposal object
-	var reqData CreateProposalData
-	if err := ctx.BindJSON(&reqData); err != nil {
-		log.Error().Msgf("parse request data error: %+v", err)
+	user, _, db, _ := api.ForContext(ctx)
+	proposalIdStr := ctx.Param("id")
+	proposalRcd, err := service.GetProposalFromStringId(db, proposalIdStr)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			log.Warn().Msgf("proposal %s not found", proposalIdStr)
+			ctx.JSON(http.StatusNotFound, nil)
+			return
+		} else {
+			sdk.LogUserSideError(ctx, err)
+			log.Error().Msgf("get proposal id %s error: %+v", proposalIdStr, err)
+			ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("get proposal error")))
+			return
+		}
+	}
+
+	if !proposalRcd.CanBeUpdatedBy(user.Wallet) {
 		sdk.LogUserSideError(ctx, err)
-		ctx.JSON(http.StatusBadRequest, api.Reply{
-			Code: -1,
-			Msg:  fmt.Sprintf("parse request data error: %+v", err),
-		})
+		log.Error().Msgf("proposal id %s can't be updated by user %s", proposalIdStr, user.Wallet)
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("proposal can't be updated by current user")))
 		return
 	}
 
-	user, _, db, _ := api.ForContext(ctx)
-	// TODO: Confirm whether permission is required here and add permission check if required
+	// Proposal is in updatable state
 
-	proposalRecord, err := service.SaveProposalRecordToDB(db, &reqData, user.Wallet)
+	// Parsing request to create proposal object
+	var reqData CreateOrUpdateProposalData
+	if err := ctx.BindJSON(&reqData); err != nil {
+		log.Error().Msgf("parse request data error: %+v", err)
+		sdk.LogUserSideError(ctx, err)
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("parse request data error: %+v", err)))
+		return
+	}
+
+	proposalRecord, err := service.SaveProposalRecordToDB(db, &reqData, user.Wallet, ctx.Param("id"))
 	if err != nil {
 		log.Error().Msgf("create proposal error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
 		return
+	}
+
+	if reqData.SubmitToMetaforo {
+		if err := service.SaveProposalToMetaforo(db, proposalRecord, reqData.MetaforoAccessToken); err != nil {
+			log.Error().Msgf("create metaforo proposal error: %+v", err)
+			sdk.LogServerErrorToSentry(ctx, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
+			return
+		}
 	}
 
 	responseData, err := ConvertProposalToFrontendDetailRecord(db, proposalRecord)
@@ -223,25 +251,22 @@ func Update(ctx *gin.Context) {
 //
 //	@router		/proposals/create [post]
 //	@summary	Create metaforo proposal and public to others
-//	@Param          JsonBody        body            CreateProposalData       true    "request json body"
+//	@Param          JsonBody        body            CreateOrUpdateProposalData       true    "request json body"
 //	@success	200	{object}	api.Reply{}
 func Create(ctx *gin.Context) {
 	// Parsing request to create proposal object
-	var reqData CreateProposalData
+	var reqData CreateOrUpdateProposalData
 	if err := ctx.BindJSON(&reqData); err != nil {
 		log.Error().Msgf("parse request data error: %+v", err)
 		sdk.LogUserSideError(ctx, err)
-		ctx.JSON(http.StatusBadRequest, api.Reply{
-			Code: -1,
-			Msg:  fmt.Sprintf("parse request data error: %+v", err),
-		})
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("parse request data error: %+v", err)))
 		return
 	}
 
 	user, _, db, _ := api.ForContext(ctx)
 	// TODO: Confirm whether permission is required here and add permission check if required
 
-	proposalRecord, err := service.SaveProposalRecordToDB(db, &reqData, user.Wallet)
+	proposalRecord, err := service.SaveProposalRecordToDB(db, &reqData, user.Wallet, "")
 	if err != nil {
 		log.Error().Msgf("create proposal error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
@@ -249,11 +274,13 @@ func Create(ctx *gin.Context) {
 		return
 	}
 
-	if err := service.SaveProposalToMetaforo(db, proposalRecord, reqData.MetaforoAccessToken); err != nil {
-		log.Error().Msgf("create metaforo proposal error: %+v", err)
-		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
-		return
+	if reqData.SubmitToMetaforo {
+		if err := service.SaveProposalToMetaforo(db, proposalRecord, reqData.MetaforoAccessToken); err != nil {
+			log.Error().Msgf("create metaforo proposal error: %+v", err)
+			sdk.LogServerErrorToSentry(ctx, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
+			return
+		}
 	}
 
 	responseData, err := ConvertProposalToFrontendDetailRecord(db, proposalRecord)

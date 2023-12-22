@@ -28,26 +28,65 @@ func GetProposalFromStringId(db *gorm.DB, idStr string) (*model.Proposal, error)
 	return &proposalRecord, nil
 }
 
-func SaveProposalRecordToDB(db *gorm.DB, reqData *proposal.CreateProposalData, userWallet string) (*model.Proposal, error) {
-	// Init proposal record to get ID
-	proposalRecord := model.Proposal{
-		CreateTs:           time.Now().UTC().Unix(),
-		Title:              reqData.Title,
-		Applicant:          common.FormatUserWallet(userWallet),
-		ProposalCategoryID: reqData.ProposalCategoryId,
-		Version:            1,
-	}
+func SaveProposalRecordToDB(db *gorm.DB, reqData *proposal.CreateOrUpdateProposalData, userWallet string, proposalIdStr string) (*model.Proposal, error) {
+	// If proposalIdStr is not empty string, this request should be an update action, otherwise it is a create action.
+	// Create:
+	//   1. Create proposal record
+	//   2. Save associated content and component blocks
+	// Update:
+	//   1. Validate whether the state is in updatable list
+	//   2. If proposal is in PendingSubmit state, update the proposal record in place, and upsert content/component blocks
+	//   3. If proposal is in Withdrawn / Rejected state,
+	//        * copy existing proposal record to new record,
+	//        * inc version,
+	//        * create blocks with new proposal.
+	//   4. In this case, the proposal must be updated to metaforo without checking the Submit flag
 
-	if err := db.Create(&proposalRecord).Error; err != nil {
-		log.Error().Msgf("create proposal error: %+v", err)
-		return nil, err
-	}
+	if proposalIdStr != "" {
+		// Updating existing proposals
+		dbProposalRcd, err := GetProposalFromStringId(db, proposalIdStr)
+		if err != nil {
+			log.Error().Msgf("get proposal error: %+v", err)
+			return nil, err
+		}
 
-	// Create proposal content blocks
-	if err := db.Transaction(func(tx *gorm.DB) error {
-		for _, block := range reqData.ContentBlocks {
-			if err := db.Model(&model.ProposalContentBlock{}).Create(&model.ProposalContentBlock{
-				ProposalID: proposalRecord.ID,
+		return dbProposalRcd, nil
+	} else {
+		// Init proposal record to get ID
+		proposalRecord := model.Proposal{
+			CreateTs:           time.Now().UTC().Unix(),
+			Title:              reqData.Title,
+			Applicant:          common.FormatUserWallet(userWallet),
+			ProposalCategoryID: reqData.ProposalCategoryId,
+			Version:            1,
+		}
+
+		if err := db.Create(&proposalRecord).Error; err != nil {
+			log.Error().Msgf("create proposal error: %+v", err)
+			return nil, err
+		}
+
+		// Create proposal content blocks
+		if err := CreateProposalContentRecords(db, proposalRecord.ID, reqData.ContentBlocks); err != nil {
+			log.Error().Msgf("create proposal block error: %+v", err)
+			return nil, err
+		}
+
+		// Create proposal components
+		if err := CreateProposalComponentRecords(db, proposalRecord.ID, reqData.Components); err != nil {
+			log.Error().Msgf("create proposal component blocks error: %+v", err)
+			return nil, err
+		}
+
+		return &proposalRecord, nil
+	}
+}
+
+func CreateProposalContentRecords(db *gorm.DB, proposalId uint, reqContentBlockData []*proposal.FrontendContentBlockRecord) error {
+	return db.Transaction(func(tx *gorm.DB) error {
+		for _, block := range reqContentBlockData {
+			if err := db.Create(&model.ProposalContentBlock{
+				ProposalID: proposalId,
 				Title:      block.Title,
 				Content:    block.Content,
 				CreateTs:   time.Now().UTC().Unix(),
@@ -58,14 +97,12 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *proposal.CreateProposalData, u
 			}
 		}
 		return nil
-	}); err != nil {
-		log.Error().Msgf("create proposal block error: %+v", err)
-		return nil, err
-	}
+	})
+}
 
-	// Create proposal components
-	if err := db.Transaction(func(tx *gorm.DB) error {
-		for _, componentData := range reqData.Components {
+func CreateProposalComponentRecords(db *gorm.DB, proposalId uint, reqComponentData map[string]*proposal.ComponentRequestData) error {
+	return db.Transaction(func(tx *gorm.DB) error {
+		for _, componentData := range reqComponentData {
 			// Try to get component record from DB
 			componentRecord := model.Component{
 				Name: componentData.Name,
@@ -80,7 +117,7 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *proposal.CreateProposalData, u
 			if err := db.Create(&model.ProposalComponentRecord{
 				CreateTs:    time.Now().UTC().Unix(),
 				ComponentId: componentRecord.ID,
-				ProposalID:  proposalRecord.ID,
+				ProposalID:  proposalId,
 				Data:        componentData.Data,
 			}).Error; err != nil {
 				log.Error().Msgf("create proposal component error: %+v", err)
@@ -88,12 +125,7 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *proposal.CreateProposalData, u
 			}
 		}
 		return nil
-	}); err != nil {
-		log.Error().Msgf("create proposal component error: %+v", err)
-		return nil, err
-	}
-
-	return &proposalRecord, nil
+	})
 }
 
 // SaveProposalToMetaforo updates proposal record to Metaforo

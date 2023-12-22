@@ -32,13 +32,13 @@ type ComponentRequestData struct {
 	Data       string `json:"data"`
 }
 
-type CreateProposalData struct {
-	ProposalId          string                           `json:"proposal_id"`
+type CreateOrUpdateProposalData struct {
 	Title               string                           `json:"title"`
 	ProposalCategoryId  uint                             `json:"proposal_category_id"`
 	ContentBlocks       []*FrontendContentBlockRecord    `json:"content_blocks"`
 	Components          map[string]*ComponentRequestData `json:"components"`
 	MetaforoAccessToken string                           `json:"metaforo_access_token"`
+	SubmitToMetaforo    bool                             `json:"submit_to_metaforo"`
 }
 
 type RejectProposalData struct {
@@ -61,6 +61,7 @@ type FrontendProposalListRecord struct {
 }
 
 type FrontendContentBlockRecord struct {
+	ID      uint   `json:"id"`
 	Title   string `json:"title"`
 	Content string `json:"content"`
 }
