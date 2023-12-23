@@ -158,7 +158,7 @@ func Detail(ctx *gin.Context) {
 		Components: lo.Map(proposalComponents, func(item *model.ProposalComponentRecord, _ int) *component.ComponentInstance {
 			return &component.ComponentInstance{
 				ID:          item.ID,
-				ComponentId: item.ComponentId,
+				ComponentId: item.ComponentID,
 				Schema:      "",
 				Data:        item.Data,
 				CreateTs:    item.CreateTs,

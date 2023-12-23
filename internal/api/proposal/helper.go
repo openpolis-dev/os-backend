@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog/log"
+	"github.com/samber/lo"
 	"github.com/theseed-labs/os-backend/internal"
 
 	"github.com/theseed-labs/os-backend/internal/common"
@@ -50,7 +51,67 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 			return nil, err
 		}
 
-		return dbProposalRcd, nil
+		if dbProposalRcd.State == int(model.ProposalStatePendingSubmit) {
+			// Proposal is in PendingSubmit state, the data can be updated directory w/o bumping up version
+			dbProposalRcd.Title = reqData.Title
+			dbProposalRcd.ProposalCategoryID = reqData.ProposalCategoryId
+			if err := db.Save(dbProposalRcd).Error; err != nil {
+				log.Error().Msgf("create proposal error: %+v", err)
+				return nil, err
+			}
+
+			// Create proposal content blocks
+			if err := SaveProposalContentRecords(db, dbProposalRcd.ID, reqData.ContentBlocks); err != nil {
+				log.Error().Msgf("create proposal block error: %+v", err)
+				return nil, err
+			}
+
+			// Create proposal components
+			if err := SaveProposalComponentRecords(db, dbProposalRcd.ID, reqData.Components); err != nil {
+				log.Error().Msgf("create proposal component blocks error: %+v", err)
+				return nil, err
+			}
+			return dbProposalRcd, nil
+		} else {
+			// Proposal has already published on chain, create new record and bump up version
+			newProposalRecord := model.Proposal{
+				CreateTs:           time.Now().UTC().Unix(),
+				Title:              reqData.Title,
+				Applicant:          common.FormatUserWallet(userWallet),
+				ProposalCategoryID: reqData.ProposalCategoryId,
+				Version:            dbProposalRcd.Version + 1,
+			}
+
+			if err := db.Create(&newProposalRecord).Error; err != nil {
+				log.Error().Msgf("create proposal error: %+v", err)
+				return nil, err
+			}
+
+			// Remove ID field from request data, then it will be created with new proposal ID
+			newContentBlocks := lo.Map(reqData.ContentBlocks, func(block *FrontendContentBlockRecord, _ int) *FrontendContentBlockRecord {
+				block.ID = 0
+				return block
+			})
+
+			// Create proposal content blocks
+			if err := SaveProposalContentRecords(db, newProposalRecord.ID, newContentBlocks); err != nil {
+				log.Error().Msgf("create proposal block error: %+v", err)
+				return nil, err
+			}
+
+			newComponents := lo.MapValues(reqData.Components, func(component *ComponentRequestData, _ string) *ComponentRequestData {
+				component.ID = 0
+				return component
+			})
+
+			// Create proposal components
+			if err := SaveProposalComponentRecords(db, newProposalRecord.ID, newComponents); err != nil {
+				log.Error().Msgf("create proposal component blocks error: %+v", err)
+				return nil, err
+			}
+
+			return &newProposalRecord, nil
+		}
 	} else {
 		// Init proposal record to get ID
 		proposalRecord := model.Proposal{
@@ -67,13 +128,13 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 		}
 
 		// Create proposal content blocks
-		if err := CreateProposalContentRecords(db, proposalRecord.ID, reqData.ContentBlocks); err != nil {
+		if err := SaveProposalContentRecords(db, proposalRecord.ID, reqData.ContentBlocks); err != nil {
 			log.Error().Msgf("create proposal block error: %+v", err)
 			return nil, err
 		}
 
 		// Create proposal components
-		if err := CreateProposalComponentRecords(db, proposalRecord.ID, reqData.Components); err != nil {
+		if err := SaveProposalComponentRecords(db, proposalRecord.ID, reqData.Components); err != nil {
 			log.Error().Msgf("create proposal component blocks error: %+v", err)
 			return nil, err
 		}
@@ -82,10 +143,11 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 	}
 }
 
-func CreateProposalContentRecords(db *gorm.DB, proposalId uint, reqContentBlockData []*FrontendContentBlockRecord) error {
+func SaveProposalContentRecords(db *gorm.DB, proposalId uint, reqContentBlockData []*FrontendContentBlockRecord) error {
 	return db.Transaction(func(tx *gorm.DB) error {
 		for _, block := range reqContentBlockData {
-			if err := db.Create(&model.ProposalContentBlock{
+			if err := db.Save(&model.ProposalContentBlock{
+				ID:         block.ID,
 				ProposalID: proposalId,
 				Title:      block.Title,
 				Content:    block.Content,
@@ -100,7 +162,7 @@ func CreateProposalContentRecords(db *gorm.DB, proposalId uint, reqContentBlockD
 	})
 }
 
-func CreateProposalComponentRecords(db *gorm.DB, proposalId uint, reqComponentData map[string]*ComponentRequestData) error {
+func SaveProposalComponentRecords(db *gorm.DB, proposalId uint, reqComponentData map[string]*ComponentRequestData) error {
 	return db.Transaction(func(tx *gorm.DB) error {
 		for _, componentData := range reqComponentData {
 			// Try to get component record from DB
@@ -114,7 +176,8 @@ func CreateProposalComponentRecords(db *gorm.DB, proposalId uint, reqComponentDa
 			}
 
 			// Create proposal component record and save to DB
-			if err := db.Create(&model.ProposalComponentRecord{
+			if err := db.Save(&model.ProposalComponentRecord{
+				ID:          componentRecord.ID,
 				CreateTs:    time.Now().UTC().Unix(),
 				ComponentID: componentRecord.ID,
 				ProposalID:  proposalId,

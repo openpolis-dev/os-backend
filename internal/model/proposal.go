@@ -115,7 +115,7 @@ type ProposalComponentRecord struct {
 	ID       uint  `gorm:"primaryKey"`
 	CreateTs int64 `gorm:"index"`
 
-	ComponentId uint
+	ComponentID uint
 	ProposalID  uint
 	Data        string // Data field stores data for the component
 }
@@ -175,9 +175,10 @@ type Component struct {
 	CreateTs int64 `gorm:"index"`
 	UpdateTs int64 `gorm:"index"`
 
-	Name   string `gorm:"uniqueIndex"`
-	Author string
-	Schema string
+	Name      string `gorm:"uniqueIndex"`
+	Author    string
+	Schema    string
+	Thumbnail string
 
 	ApproveActionId uint // ApproveActionId indicates the action will be executed when the component is approved
 	RejectActionId  uint // RejectActionId indicates the action will be executed when the component is rejected

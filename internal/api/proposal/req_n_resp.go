@@ -127,7 +127,7 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 	proposalComponentResponse := lo.Map(proposalComponentRecords, func(item *model.ProposalComponentRecord, _ int) *component.ComponentInstance {
 		return &component.ComponentInstance{
 			ID:          item.ID,
-			ComponentId: item.ComponentId,
+			ComponentId: item.ComponentID,
 			Schema:      "",
 			Data:        item.Data,
 			CreateTs:    item.CreateTs,
