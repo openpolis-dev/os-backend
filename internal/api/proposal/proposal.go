@@ -16,7 +16,6 @@ import (
 	"github.com/theseed-labs/os-backend/internal/middleware"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk"
-	"github.com/theseed-labs/os-backend/internal/service"
 	"github.com/xiaosongfu/gormfind"
 	"gorm.io/gorm"
 )
@@ -111,7 +110,7 @@ func List(ctx *gin.Context) {
 //		@success	200	{object}	api.Reply{data=FrontendProposalDetailRecord}
 func Detail(ctx *gin.Context) {
 	db := api.ForContextOnlyDB(ctx)
-	proposalRecord, err := service.GetProposalFromStringId(db, ctx.Param("id"))
+	proposalRecord, err := GetProposalFromStringId(db, ctx.Param("id"))
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			log.Warn().Msgf("proposal %s not found", proposalRecord.ID)
@@ -186,7 +185,7 @@ func Detail(ctx *gin.Context) {
 func Update(ctx *gin.Context) {
 	user, _, db, _ := api.ForContext(ctx)
 	proposalIdStr := ctx.Param("id")
-	proposalRcd, err := service.GetProposalFromStringId(db, proposalIdStr)
+	proposalRcd, err := GetProposalFromStringId(db, proposalIdStr)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			log.Warn().Msgf("proposal %s not found", proposalIdStr)
@@ -218,7 +217,7 @@ func Update(ctx *gin.Context) {
 		return
 	}
 
-	proposalRecord, err := service.SaveProposalRecordToDB(db, &reqData, user.Wallet, ctx.Param("id"))
+	proposalRecord, err := SaveProposalRecordToDB(db, &reqData, user.Wallet, ctx.Param("id"))
 	if err != nil {
 		log.Error().Msgf("create proposal error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
@@ -227,7 +226,7 @@ func Update(ctx *gin.Context) {
 	}
 
 	if reqData.SubmitToMetaforo {
-		if err := service.SaveProposalToMetaforo(db, proposalRecord, reqData.MetaforoAccessToken); err != nil {
+		if err := SaveProposalToMetaforo(db, proposalRecord, reqData.MetaforoAccessToken); err != nil {
 			log.Error().Msgf("create metaforo proposal error: %+v", err)
 			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
@@ -266,7 +265,7 @@ func Create(ctx *gin.Context) {
 	user, _, db, _ := api.ForContext(ctx)
 	// TODO: Confirm whether permission is required here and add permission check if required
 
-	proposalRecord, err := service.SaveProposalRecordToDB(db, &reqData, user.Wallet, "")
+	proposalRecord, err := SaveProposalRecordToDB(db, &reqData, user.Wallet, "")
 	if err != nil {
 		log.Error().Msgf("create proposal error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
@@ -275,7 +274,7 @@ func Create(ctx *gin.Context) {
 	}
 
 	if reqData.SubmitToMetaforo {
-		if err := service.SaveProposalToMetaforo(db, proposalRecord, reqData.MetaforoAccessToken); err != nil {
+		if err := SaveProposalToMetaforo(db, proposalRecord, reqData.MetaforoAccessToken); err != nil {
 			log.Error().Msgf("create metaforo proposal error: %+v", err)
 			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
@@ -421,7 +420,7 @@ func Reject(ctx *gin.Context) {
 
 // Internal function to handle duplicated logic of updating proposal state
 func updateProposalState(db *gorm.DB, user *middleware.CurUser, proposalStrId string, newState model.ProposalState) (*model.Proposal, error) {
-	proposalRecord, err := service.GetProposalFromStringId(db, proposalStrId)
+	proposalRecord, err := GetProposalFromStringId(db, proposalStrId)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			log.Warn().Msgf("proposal %s not found", proposalStrId)

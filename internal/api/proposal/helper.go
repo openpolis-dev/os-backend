@@ -1,4 +1,4 @@
-package service
+package proposal
 
 import (
 	"fmt"
@@ -7,7 +7,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"github.com/theseed-labs/os-backend/internal"
-	"github.com/theseed-labs/os-backend/internal/api/proposal"
+
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk/metaforo"
@@ -28,7 +28,7 @@ func GetProposalFromStringId(db *gorm.DB, idStr string) (*model.Proposal, error)
 	return &proposalRecord, nil
 }
 
-func SaveProposalRecordToDB(db *gorm.DB, reqData *proposal.CreateOrUpdateProposalData, userWallet string, proposalIdStr string) (*model.Proposal, error) {
+func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, userWallet string, proposalIdStr string) (*model.Proposal, error) {
 	// If proposalIdStr is not empty string, this request should be an update action, otherwise it is a create action.
 	// Create:
 	//   1. Create proposal record
@@ -82,7 +82,7 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *proposal.CreateOrUpdateProposa
 	}
 }
 
-func CreateProposalContentRecords(db *gorm.DB, proposalId uint, reqContentBlockData []*proposal.FrontendContentBlockRecord) error {
+func CreateProposalContentRecords(db *gorm.DB, proposalId uint, reqContentBlockData []*FrontendContentBlockRecord) error {
 	return db.Transaction(func(tx *gorm.DB) error {
 		for _, block := range reqContentBlockData {
 			if err := db.Create(&model.ProposalContentBlock{
@@ -100,7 +100,7 @@ func CreateProposalContentRecords(db *gorm.DB, proposalId uint, reqContentBlockD
 	})
 }
 
-func CreateProposalComponentRecords(db *gorm.DB, proposalId uint, reqComponentData map[string]*proposal.ComponentRequestData) error {
+func CreateProposalComponentRecords(db *gorm.DB, proposalId uint, reqComponentData map[string]*ComponentRequestData) error {
 	return db.Transaction(func(tx *gorm.DB) error {
 		for _, componentData := range reqComponentData {
 			// Try to get component record from DB
@@ -116,7 +116,7 @@ func CreateProposalComponentRecords(db *gorm.DB, proposalId uint, reqComponentDa
 			// Create proposal component record and save to DB
 			if err := db.Create(&model.ProposalComponentRecord{
 				CreateTs:    time.Now().UTC().Unix(),
-				ComponentId: componentRecord.ID,
+				ComponentID: componentRecord.ID,
 				ProposalID:  proposalId,
 				Data:        componentData.Data,
 			}).Error; err != nil {
@@ -187,7 +187,7 @@ func SaveProposalToMetaforo(db *gorm.DB, proposalRecord *model.Proposal, metafor
 			for _, component := range proposalComponents {
 				if err := tx.Create(&model.ProposalComponentRecord{
 					ProposalID:  updatedProposalrecord.ID,
-					ComponentId: component.ComponentId,
+					ComponentID: component.ComponentID,
 					Data:        component.Data,
 				}).Error; err != nil {
 					log.Error().Msgf("create proposal component error: %+v", err)
