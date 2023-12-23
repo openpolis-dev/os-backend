@@ -250,7 +250,7 @@ type Category struct {
 	ThreadCount int         `json:"thread_count"`
 	TemplateId  int         `json:"template_id"`
 	PostCount   int         `json:"post_count"`
-	IconUnicode string      `json:"icon_unicode"`
+	IconUnicode interface{} `json:"icon_unicode"`
 	CanSee      int         `json:"can_see"`
 	CanCreate   int         `json:"can_create"`
 	Children    []*Category `json:"children"`
@@ -323,7 +323,7 @@ type GroupInfo struct {
 		PeriodEnd   string `json:"period_end"`
 	} `json:"group_subscription"`
 	Members        int           `json:"members"`
-	Gallery        string        `json:"gallery"`
+	Gallery        interface{}   `json:"gallery"`
 	CategoryAdmin  []interface{} `json:"category_admin"`
 	CategoryAdmins []interface{} `json:"category_admins"`
 	PrivacyType    int           `json:"privacy_type"`
@@ -335,13 +335,13 @@ type GroupInfo struct {
 	GroupSettings  struct {
 		KudosVote  string `json:"kudos_vote"`
 		NeuronVote string `json:"neuron_vote"`
-		ReplyLevel string `json:"reply_level"`
+		ReplyLevel int    `json:"reply_level"`
 	} `json:"group_settings"`
 	Tags                        []*Tag        `json:"tags"`
 	OrderTags                   []*Tag        `json:"order_tags"`
 	PollCategory                []interface{} `json:"poll_category"`
 	MainTokenAddress            string        `json:"main_token_address"`
-	TipTokenInfo                []interface{} `json:"tip_token_info"`
+	TipTokenInfo                interface{}   `json:"tip_token_info"`
 	PostsTotal                  int           `json:"posts_total"`
 	ThreadsTotal                int           `json:"threads_total"`
 	ThreadTemplate              []interface{} `json:"thread_template"`

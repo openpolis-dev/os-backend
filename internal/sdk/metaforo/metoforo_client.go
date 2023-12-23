@@ -82,6 +82,8 @@ func doHttpRequest[T any](requestData *httpRequestData) (int, *T, error) {
 		return resp.StatusCode(), nil, MetaforoError
 	}
 
+	//log.Error().Msgf("TTT: resp data: %q", resp.Body())
+
 	// parse response
 	var apiResp ApiResponseWrapper[T]
 	err := json.Unmarshal(resp.Body(), &apiResp)
