@@ -150,7 +150,7 @@ type ProposalCategory struct {
 	ID         uint `gorm:"primaryKey"`
 	ParentID   uint `gorm:"index"` // Save category hierarchy information
 	Name       string
-	MetaforoId string
+	MetaforoId uint
 }
 
 type ProposalAuditLog struct {

@@ -148,13 +148,13 @@ type Thread struct {
 	LikesCount      int           `json:"likes_count"`
 	PostsCount      int           `json:"posts_count"`
 	CategoryIndexId int           `json:"category_index_id"`
-	CategoryId      int           `json:"category_id"`
+	CategoryId      uint          `json:"category_id"`
 	CategoryName    string        `json:"category_name"`
 	IsDelete        int           `json:"is_delete"`
 	GalleryId       int           `json:"gallery_id"`
 	LotteryId       int           `json:"lottery_id"`
 	CanReply        bool          `json:"can_reply"`
-	Slug            string        `json:"slug"`
+	Slug            any           `json:"slug"`
 	Badge           []interface{} `json:"badge"`
 	UserTitle       []interface{} `json:"user_title"`
 	Posts           []interface{} `json:"posts"`
@@ -240,11 +240,10 @@ type GroupInfoResponse struct {
 }
 
 type Category struct {
-	Id          int         `json:"id"`
+	Id          uint        `json:"id"`
 	GroupId     int         `json:"group_id"`
 	Name        string      `json:"name"`
-	CategoryId  int         `json:"category_id"`
-	ParentId    int         `json:"parent_id"`
+	ParentId    uint        `json:"parent_id"`
 	Type        int         `json:"type"`
 	Order       interface{} `json:"order"`
 	ThreadCount int         `json:"thread_count"`
@@ -254,6 +253,9 @@ type Category struct {
 	CanSee      int         `json:"can_see"`
 	CanCreate   int         `json:"can_create"`
 	Children    []*Category `json:"children"`
+
+	// Some unknown fields
+	//CategoryId  uint        `json:"category_id"`
 }
 
 type TokenGateSetting struct {

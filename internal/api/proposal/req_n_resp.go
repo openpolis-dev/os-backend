@@ -92,7 +92,7 @@ type FrontendProposalCategory struct {
 	ID         uint   `json:"id"`
 	ParentID   uint   `json:"parent_id"`
 	Name       string `json:"name"`
-	MetaforoId string `json:"metaforo_id"`
+	MetaforoId uint   `json:"metaforo_id"`
 }
 
 type UpdateProposalCategoryReq struct {
