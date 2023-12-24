@@ -11,7 +11,6 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	"github.com/theseed-labs/os-backend/internal/api"
-	"github.com/theseed-labs/os-backend/internal/api/component"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/middleware"
 	"github.com/theseed-labs/os-backend/internal/model"
@@ -141,31 +140,12 @@ func Detail(ctx *gin.Context) {
 		return
 	}
 
-	// TODO: Migrate converting model.ProposalContentBlock to FrontendContentBlockRecord into function
-	// TODO: Migrate converting model.ProposalComponentRecord to ComponentInstance into function
-	responseData := FrontendProposalDetailRecord{
-		ID:    proposalRecord.ID,
-		Title: proposalRecord.Title,
-		ContentBlocks: lo.Map(proposalContents, func(item *model.ProposalContentBlock, _ int) *FrontendContentBlockRecord {
-			return &FrontendContentBlockRecord{
-				Title:   item.Title,
-				Content: item.Content,
-			}
-		}),
-		ProposalCategoryId: proposalRecord.ProposalCategoryID,
-		State:              model.ProposalStateName[proposalRecord.State],
-		Components: lo.Map(proposalComponents, func(item *model.ProposalComponentRecord, _ int) *component.ComponentInstance {
-			return &component.ComponentInstance{
-				ID:          item.ID,
-				ComponentId: item.ComponentID,
-				Schema:      "",
-				Data:        item.Data,
-				CreateTs:    item.CreateTs,
-			}
-		}),
-		Applicant:  proposalRecord.Applicant,
-		IsApproved: false,
-		CreateTs:   proposalRecord.CreateTs,
+	responseData, err := ConvertProposalToFrontendDetailRecord(db, proposalRecord)
+	if err != nil {
+		log.Error().Msgf("convert proposal to frontend format error: %+v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("load proposal data error")))
+		return
 	}
 
 	// Return to frontend

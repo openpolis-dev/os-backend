@@ -119,6 +119,7 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 
 	proposalContentResponse := lo.Map(proposalBlocks, func(item *model.ProposalContentBlock, _ int) *FrontendContentBlockRecord {
 		return &FrontendContentBlockRecord{
+			ID:      item.ID,
 			Title:   item.Title,
 			Content: item.Content,
 		}
