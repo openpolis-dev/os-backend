@@ -19,11 +19,11 @@ type ComponentResponse struct {
 
 // ListComponents returns component list from database
 //
-//	@Summary		list components from DB
-//	@Router			/components/ [get]
-//	@Tags			Component
+//	@Summary	list components from DB
+//	@Router		/components/ [get]
+//	@Tags		Component
 //
-//	@Success		200		{object}	api.Reply{data=[]ComponentResponse}
+//	@Success	200	{object}	api.Reply{data=[]ComponentResponse}
 func ListComponents(ctx *gin.Context) {
 	db := api.ForContextOnlyDB(ctx)
 	var records []*ComponentResponse
@@ -38,12 +38,12 @@ func ListComponents(ctx *gin.Context) {
 
 // GetComponent returns component detail for given ID
 //
-//	@Summary		Get component detail from DB
-//	@Router			/components/:id [get]
-//	@Param		id			path		number		true	"component ID"
-//	@Tags			Component
+//	@Summary	Get component detail from DB
+//	@Router		/components/:id [get]
+//	@Param		id	path	number	true	"component ID"
+//	@Tags		Component
 //
-//	@Success		200		{object}	api.Reply{data=ComponentResponse}
+//	@Success	200	{object}	api.Reply{data=ComponentResponse}
 func GetComponent(ctx *gin.Context) {
 	db := api.ForContextOnlyDB(ctx)
 	idParam := ctx.Param("id")

@@ -22,15 +22,15 @@ import (
 
 // List handles the HTTP request to list proposals.
 //
-//		@summary	lists all proposals based on query params and return in JSON format
-//		@router		/proposals [get]
-//	    @Param          page            query           int  false   "which page"
-//	    @Param          size            query           int  false   "size of each page"
-//	    @Param          sort_field      query           string  false   "sort by which field"
-//	    @Param          sort_order      query           string  false   "order of sort"                 Enum(asc desc)
-//	    @Param          state           query           string  false   "state of proposal"   Enum(draft withdrawn voting passed failed rejected)
-//	    @Param          category_id           query     int  false   "filter proposal records with specified category"
-//		@success	200	{object}	api.Reply{data=api.ListReplyData{rows=FrontendProposalDetailRecord}}
+//	@summary	lists all proposals based on query params and return in JSON format
+//	@router		/proposals [get]
+//	@Param		page		query		int		false	"which page"
+//	@Param		size		query		int		false	"size of each page"
+//	@Param		sort_field	query		string	false	"sort by which field"
+//	@Param		sort_order	query		string	false	"order of sort"		Enum(asc desc)
+//	@Param		state		query		string	false	"state of proposal"	Enum(draft withdrawn voting passed failed rejected)
+//	@Param		category_id	query		int		false	"filter proposal records with specified category"
+//	@success	200			{object}	api.Reply{data=api.ListReplyData{rows=FrontendProposalDetailRecord}}
 func List(ctx *gin.Context) {
 	db := api.ForContextOnlyDB(ctx)
 	queryParams := QueryParams{}
@@ -104,10 +104,9 @@ func List(ctx *gin.Context) {
 
 // Detail function returns proposal detail data
 //
-//		@router		/proposals/show/:id [post]
-//		@summary	Create proposals with passed in data
-//	  	@Param          JsonBody        body            CreateOrUpdateProposalData       true    "request json body"
-//		@success	200	{object}	api.Reply{data=FrontendProposalDetailRecord}
+//	@router		/proposals/show/:id [get]
+//	@summary	Show proposals with given ID
+//	@success	200	{object}	api.Reply{data=FrontendProposalDetailRecord}
 func Detail(ctx *gin.Context) {
 	db := api.ForContextOnlyDB(ctx)
 	proposalRecord, err := GetProposalFromStringId(db, ctx.Param("id"))
@@ -178,10 +177,10 @@ func Detail(ctx *gin.Context) {
 // 2. Updating PendingSubmit proposal does not change the state and version number, and is update in place directly
 // 3. Updating proposal in Withdrawn, Rejected state will create a new record and update the version number
 //
-// @router /proposals/update/:id [post]
-// @summary	Update proposals with passed in data
-// @Param  JsonBody        body            CreateOrUpdateProposalData       true    "request json body"
-// @success	200	{object}	api.Reply{}
+//	@router		/proposals/update/:id [post]
+//	@summary	Update proposals with passed in data
+//	@Param		JsonBody	body		CreateOrUpdateProposalData	true	"request json body"
+//	@success	200			{object}	api.Reply{}
 func Update(ctx *gin.Context) {
 	user, _, db, _ := api.ForContext(ctx)
 	proposalIdStr := ctx.Param("id")
@@ -250,8 +249,8 @@ func Update(ctx *gin.Context) {
 //
 //	@router		/proposals/create [post]
 //	@summary	Create metaforo proposal and public to others
-//	@Param          JsonBody        body            CreateOrUpdateProposalData       true    "request json body"
-//	@success	200	{object}	api.Reply{}
+//	@Param		JsonBody	body		CreateOrUpdateProposalData	true	"request json body"
+//	@success	200			{object}	api.Reply{}
 func Create(ctx *gin.Context) {
 	// Parsing request to create proposal object
 	var reqData CreateOrUpdateProposalData
@@ -297,10 +296,11 @@ func Create(ctx *gin.Context) {
 // Withdraw, Approve and Reject change proposal to named state and update the Metaforo label
 
 // Withdraw changes proposal state to withdrawn
-// @router /proposals/withdraw/:id [post]
-// @summary withdraw proposal in Draft state, the proposal will be changed to withdrawn state after success. Only proposal applicant can withdraw the proposal
-// @param          id            query           int  true   "proposal id"
-// @success	200	{object}	api.Reply{data=nil}
+//
+//	@router		/proposals/withdraw/:id [post]
+//	@summary	withdraw proposal in Draft state, the proposal will be changed to withdrawn state after success. Only proposal applicant can withdraw the proposal
+//	@param		id	query		int	true	"proposal id"
+//	@success	200	{object}	api.Reply{data=nil}
 func Withdraw(ctx *gin.Context) {
 	user, _, db, _ := api.ForContext(ctx)
 	proposalIdStr := ctx.Param("id")
@@ -321,10 +321,11 @@ func Withdraw(ctx *gin.Context) {
 }
 
 // Approve changes proposal state to approved
-// @router /proposals/approve/:id [post]
-// @summary approve proposal in Draft state, the proposal will be changed to approved state after success. Only user has cityhall permission can do this
-// @param          id            query           int  true   "proposal id"
-// @success	200	{object}	api.Reply{data=nil}
+//
+//	@router		/proposals/approve/:id [post]
+//	@summary	approve proposal in Draft state, the proposal will be changed to approved state after success. Only user has cityhall permission can do this
+//	@param		id	query		int	true	"proposal id"
+//	@success	200	{object}	api.Reply{data=nil}
 func Approve(ctx *gin.Context) {
 	user, enforcer, db, _ := api.ForContext(ctx)
 	formattedWallet := common.FormatUserWallet(user.Wallet)
@@ -360,10 +361,11 @@ func Approve(ctx *gin.Context) {
 }
 
 // Reject changes proposal state to approved
-// @router /proposals/reject/:id [post]
-// @summary reject proposal in Draft state, the proposal will be changed to rejected state after success. Only user has cityhall permission can do this
-// @param          id            query           int  true   "proposal id"
-// @success	200	{object}	api.Reply{data=nil}
+//
+//	@router		/proposals/reject/:id [post]
+//	@summary	reject proposal in Draft state, the proposal will be changed to rejected state after success. Only user has cityhall permission can do this
+//	@param		id	query		int	true	"proposal id"
+//	@success	200	{object}	api.Reply{data=nil}
 func Reject(ctx *gin.Context) {
 	user, enforcer, db, _ := api.ForContext(ctx)
 	formattedWallet := common.FormatUserWallet(user.Wallet)

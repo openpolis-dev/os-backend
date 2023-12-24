@@ -12,6 +12,11 @@ import (
 	"github.com/theseed-labs/os-backend/internal/sdk"
 )
 
+// ListCategories function lists all proposal categories
+//
+//	@summary	list all proposal categories
+//	@router		/proposal_categories [get]
+//	@success	200	{object}	api.Reply{data=[]FrontendProposalCategory}
 func ListCategories(ctx *gin.Context) {
 	db := api.ForContextOnlyDB(ctx)
 	proposalCategories, err := model.QueryRows[model.ProposalCategory](db.Model(&model.ProposalCategory{}), nil)
