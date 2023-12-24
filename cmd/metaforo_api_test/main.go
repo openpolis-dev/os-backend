@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 
 	"github.com/rs/zerolog/log"
@@ -14,6 +15,10 @@ import (
 const groupName = "seedao"
 
 func main() {
+	metaforoPage := flag.Int("page", 1, "metaforo page")
+	metaforoPageSize := flag.Int("size", 10, "metaforo page size")
+	flag.Parse()
+
 	cfg := config.LoadConfig("config.yml")
 	storage.InitGormDB(cfg.DataSource.Dsn, cfg.Casbin.DriverName)
 	storage.SeedDbRecords()
@@ -21,7 +26,7 @@ func main() {
 
 	SyncCategoriesFromMetaforo(db, groupName)
 
-	metaforoProposals := fetchProposalData(groupName)
+	metaforoProposals := fetchProposalData(groupName, *metaforoPage, *metaforoPageSize)
 	for _, thread := range metaforoProposals {
 		log.Error().Msgf("TTT: update  at: %+v", thread.UpdatedAt)
 		categoryRecord := model.ProposalCategory{
@@ -73,10 +78,10 @@ func main() {
 
 }
 
-func fetchProposalData(grpName string) []*metaforo.Thread {
+func fetchProposalData(grpName string, page int, size int) []*metaforo.Thread {
 	proposals, _ := metaforo.ListProposals(&metaforo.PaginationParams{
-		Page:            1,
-		PerPage:         10,
+		Page:            page,
+		PerPage:         size,
 		CategoryIndexId: 0,
 		TagId:           0,
 		Sort:            "",
