@@ -60,8 +60,8 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 				return nil, err
 			}
 
-			// Create proposal content blocks
-			if err := SaveProposalContentRecords(db, dbProposalRcd.ID, reqData.ContentBlocks); err != nil {
+			// Update proposal content blocks, includes update existing blocks and remove deleted blocks
+			if err := SaveProposalContentRecords(db, dbProposalRcd, reqData.ContentBlocks); err != nil {
 				log.Error().Msgf("create proposal block error: %+v", err)
 				return nil, err
 			}
@@ -94,7 +94,7 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 			})
 
 			// Create proposal content blocks
-			if err := SaveProposalContentRecords(db, newProposalRecord.ID, newContentBlocks); err != nil {
+			if err := SaveProposalContentRecords(db, &newProposalRecord, newContentBlocks); err != nil {
 				log.Error().Msgf("create proposal block error: %+v", err)
 				return nil, err
 			}
@@ -128,7 +128,7 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 		}
 
 		// Create proposal content blocks
-		if err := SaveProposalContentRecords(db, proposalRecord.ID, reqData.ContentBlocks); err != nil {
+		if err := SaveProposalContentRecords(db, &proposalRecord, reqData.ContentBlocks); err != nil {
 			log.Error().Msgf("create proposal block error: %+v", err)
 			return nil, err
 		}
@@ -143,12 +143,21 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 	}
 }
 
-func SaveProposalContentRecords(db *gorm.DB, proposalId uint, reqContentBlockData []*FrontendContentBlockRecord) error {
+func SaveProposalContentRecords(db *gorm.DB, proposalRecord *model.Proposal, reqContentBlockData []*FrontendContentBlockRecord) error {
+	var existingContentBlockIds []uint
+	err := db.Where(model.ProposalContentBlock{ProposalID: proposalRecord.ID}).Pluck("id", &existingContentBlockIds).Error
+	if err != nil {
+		log.Error().Msgf("get proposal content block ids error: %+v", err)
+		return err
+	}
+
 	return db.Transaction(func(tx *gorm.DB) error {
+		// Update or create blocks in request data
+		var updatedIds []uint
 		for _, block := range reqContentBlockData {
 			if err := db.Save(&model.ProposalContentBlock{
 				ID:         block.ID,
-				ProposalID: proposalId,
+				ProposalID: proposalRecord.ID,
 				Title:      block.Title,
 				Content:    block.Content,
 				CreateTs:   time.Now().UTC().Unix(),
@@ -156,6 +165,18 @@ func SaveProposalContentRecords(db *gorm.DB, proposalId uint, reqContentBlockDat
 				log.Error().Msgf("create proposal block error: %+v, block data: %+v", err, block)
 				log.Error().Msgf("create proposal block error: %+v", err)
 				return err
+			}
+			if block.ID != 0 {
+				updatedIds = append(updatedIds, block.ID)
+			}
+		}
+		// Remove deleted blocks
+		for _, blockId := range existingContentBlockIds {
+			if !lo.Contains(updatedIds, blockId) {
+				if err := db.Delete(&model.ProposalContentBlock{ID: blockId}).Error; err != nil {
+					log.Error().Msgf("delete proposal block error: %+v", err)
+					return err
+				}
 			}
 		}
 		return nil
