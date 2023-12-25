@@ -12,11 +12,11 @@ import (
 	"gorm.io/gorm"
 )
 
-const groupName = "seedao"
-
 func main() {
 	metaforoPage := flag.Int("page", 1, "metaforo page")
 	metaforoPageSize := flag.Int("size", 10, "metaforo page size")
+	groupName := flag.String("group", "testttt", "group name")
+	accessToken := flag.String("access-token", "", "access token to send post request to metaforo")
 	flag.Parse()
 
 	cfg := config.LoadConfig("config.yml")
@@ -24,10 +24,31 @@ func main() {
 	storage.SeedDbRecords()
 	db := storage.GetGormDB()
 
-	SyncCategoriesFromMetaforo(db, groupName)
+	SyncCategoriesFromMetaforo(db, *groupName)
+	SyncProposals(db, *groupName, *metaforoPage, *metaforoPageSize)
 
-	metaforoProposals := fetchProposalData(groupName, *metaforoPage, *metaforoPageSize)
-	for _, thread := range metaforoProposals {
+	resp, err := metaforo.CreateProposal(*accessToken, *groupName, "1", "test from metaforo API", "# Test content\n## TEST", nil, nil)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Sprintf("response: %+v", resp)
+}
+
+func SyncProposals(db *gorm.DB, grpName string, page int, size int) {
+	proposals, _ := metaforo.ListProposals(&metaforo.PaginationParams{
+		Page:            page,
+		PerPage:         size,
+		CategoryIndexId: 0,
+		TagId:           0,
+		Sort:            "",
+		GroupName:       grpName,
+	})
+
+	//jsonStr, _ := json.MarshalIndent(proposals[0], "  ", "  ")
+	//fmt.Printf("TTT: proposals: %s", jsonStr)
+
+	for _, thread := range proposals {
 		log.Error().Msgf("TTT: update  at: %+v", thread.UpdatedAt)
 		categoryRecord := model.ProposalCategory{
 			MetaforoId: thread.CategoryIndexId,
