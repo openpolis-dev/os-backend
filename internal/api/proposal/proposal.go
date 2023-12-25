@@ -171,16 +171,16 @@ func Update(ctx *gin.Context) {
 			ctx.JSON(http.StatusNotFound, nil)
 			return
 		} else {
-			sdk.LogUserSideError(ctx, err)
 			log.Error().Msgf("get proposal id %s error: %+v", proposalIdStr, err)
+			sdk.LogUserSideError(ctx, err)
 			ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("get proposal error")))
 			return
 		}
 	}
 
 	if !proposalRcd.CanBeUpdatedBy(user.Wallet) {
-		sdk.LogUserSideError(ctx, err)
 		log.Error().Msgf("proposal id %s can't be updated by user %s", proposalIdStr, user.Wallet)
+		sdk.LogUserSideError(ctx, fmt.Errorf("proposal id %s can't be updated by user %s", proposalIdStr, user.Wallet))
 		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("proposal can't be updated by current user")))
 		return
 	}

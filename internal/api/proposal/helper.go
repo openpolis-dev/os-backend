@@ -145,7 +145,7 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 
 func SaveProposalContentRecords(db *gorm.DB, proposalRecord *model.Proposal, reqContentBlockData []*FrontendContentBlockRecord) error {
 	var existingContentBlockIds []uint
-	err := db.Where(model.ProposalContentBlock{ProposalID: proposalRecord.ID}).Pluck("id", &existingContentBlockIds).Error
+	err := db.Model(&model.ProposalContentBlock{}).Where(model.ProposalContentBlock{ProposalID: proposalRecord.ID}).Pluck("id", &existingContentBlockIds).Error
 	if err != nil {
 		log.Error().Msgf("get proposal content block ids error: %+v", err)
 		return err
