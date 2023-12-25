@@ -1,6 +1,7 @@
 package proposal
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -8,7 +9,6 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	"github.com/theseed-labs/os-backend/internal"
-
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk/metaforo"
@@ -222,9 +222,29 @@ func SaveProposalToMetaforo(db *gorm.DB, proposalRecord *model.Proposal, metafor
 	// TODO: Build metaforo content from proposal title and content blocks
 	var err error
 
+	var proposalCategory *model.ProposalCategory
+	err = db.Where(&model.ProposalCategory{ID: proposalRecord.ProposalCategoryID}).First(&proposalCategory).Error
+	if err != nil {
+		log.Error().Msgf("get proposal category error: %+v", err)
+		return err
+	}
+
+	var contentBlocks []*model.ProposalContentBlock
+	err = db.Where(&model.ProposalContentBlock{ProposalID: proposalRecord.ID}).Find(&contentBlocks).Error
+	if err != nil {
+		log.Error().Msgf("get proposal category error: %+v", err)
+		return err
+	}
+
+	metaforoContent := ""
+	for _, block := range contentBlocks {
+		metaforoContent += "# " + block.Title + "\n\n" + block.Content + "\n\n"
+	}
+
 	var metaforoProposal *metaforo.ProposalResponse
 	updatedProposalRecord := proposalRecord
 	if proposalRecord.ProposalRecordId != "" {
+		panic(errors.New("not implemented"))
 		// DB Record has ProposalRecordId, the action should be updating existing metaforo proposal
 		// TODO: The metaforo ID of proposal can be extracted from proposalRecord.ProposalRecordId
 		metaforoProposal, err = metaforo.UpdateProposal(metaforoAccessToken)
@@ -288,7 +308,9 @@ func SaveProposalToMetaforo(db *gorm.DB, proposalRecord *model.Proposal, metafor
 		metaforoProposal, err = metaforo.CreateProposal(
 			metaforoAccessToken,
 			internal.MetaforoGroupName,
-			"TODO", proposalRecord.Title, nil, nil, nil,
+			fmt.Sprintf("%d", proposalCategory.MetaforoId),
+			proposalRecord.Title,
+			metaforoContent, nil, nil,
 		)
 		if err != nil {
 			log.Error().Msgf("update metaforoProposal error: %+v", err)
@@ -297,7 +319,9 @@ func SaveProposalToMetaforo(db *gorm.DB, proposalRecord *model.Proposal, metafor
 
 		updatedProposalRecord.ProposalRecordId = fmt.Sprintf("metaforo:%d", metaforoProposal.Thread.Id)
 		updatedProposalRecord.State = int(model.ProposalStateDraft)
-		updatedProposalRecord.ArveaveHash = metaforoProposal.Thread.EditHistory.Lists[0].Arweave
+		if metaforoProposal.Thread.EditHistory.Lists != nil && len(metaforoProposal.Thread.EditHistory.Lists) > 0 {
+			updatedProposalRecord.ArveaveHash = metaforoProposal.Thread.EditHistory.Lists[0].Arweave
+		}
 	}
 
 	// Save data backed from metaforo API response to DB

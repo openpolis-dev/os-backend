@@ -8,6 +8,9 @@ import (
 	"net/http"
 
 	"github.com/rs/zerolog/log"
+
+	"github.com/gomarkdown/markdown"
+	"github.com/microcosm-cc/bluemonday"
 )
 
 // GetProposals get specified proposal in Metaforo.
@@ -133,7 +136,7 @@ func ListProposals(paginationParams *PaginationParams) ([]*Thread, error) {
 //	       }
 //	   }
 //	}
-func CreateProposal(accessToken, groupName, categoryIndexId, title string, content []*NewContentRequest, tags []*NewProposalTagRequest, polls []*NewVoteFormRequest) (*ProposalResponse, error) {
+func CreateProposal(accessToken, groupName, categoryIndexId, title string, content string, tags []*NewProposalTagRequest, polls []*NewVoteFormRequest) (*ProposalResponse, error) {
 	apiPath := "/api/submit_thread"
 
 	// prepare headers
@@ -148,10 +151,15 @@ func CreateProposal(accessToken, groupName, categoryIndexId, title string, conte
 	_ = writer.WriteField("category_index_id", categoryIndexId)
 	_ = writer.WriteField("login_type", "0")
 	_ = writer.WriteField("group_name", groupName)
-	if content != nil {
-		c, _ := json.Marshal(content)
-		_ = writer.WriteField("content", string(c))
-	}
+
+	// Set editor_type to 1 to support markdown, and for Markdown should be passed
+	_ = writer.WriteField("editor_type", "1")
+	_ = writer.WriteField("content", content)
+
+	maybeUnsafeHTML := markdown.ToHTML([]byte(content), nil, nil)
+	html := bluemonday.UGCPolicy().SanitizeBytes(maybeUnsafeHTML)
+	_ = writer.WriteField("html", string(html))
+
 	if tags != nil {
 		t, _ := json.Marshal(tags)
 		_ = writer.WriteField("tags", string(t))

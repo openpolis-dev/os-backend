@@ -12,7 +12,7 @@ func TestCreateProposal(t *testing.T) {
 		groupName       string
 		categoryIndexId string
 		title           string
-		content         []*NewContentRequest
+		content         string
 		tags            []*NewProposalTagRequest
 		polls           []*NewVoteFormRequest
 	}
@@ -27,7 +27,7 @@ func TestCreateProposal(t *testing.T) {
 				groupName:       groupName2,
 				categoryIndexId: categoryIndexId2,
 				title:           proposalTitle,
-				content:         []*NewContentRequest{&proposeContent},
+				content:         proposeContent,
 				tags: []*NewProposalTagRequest{
 					{
 						Id:   tagId2,
@@ -43,7 +43,7 @@ func TestCreateProposal(t *testing.T) {
 				groupName:       groupName2,
 				categoryIndexId: categoryIndexId2,
 				title:           proposalTitle,
-				content:         []*NewContentRequest{&proposeContent},
+				content:         proposeContent,
 			},
 		},
 		{
@@ -53,7 +53,7 @@ func TestCreateProposal(t *testing.T) {
 				groupName:       groupName2,
 				categoryIndexId: categoryIndexId2,
 				title:           proposalTitle,
-				content:         []*NewContentRequest{&proposeContent},
+				content:         proposeContent,
 				tags: []*NewProposalTagRequest{
 					{
 						Id:   tagId2,
@@ -117,7 +117,7 @@ func TestCreateProposal(t *testing.T) {
 }
 
 func TestDeleteProposal(t *testing.T) {
-	got, err := CreateProposal(token, groupName2, categoryIndexId2, proposalTitle, []*NewContentRequest{&proposeContent}, nil, nil)
+	got, err := CreateProposal(token, groupName2, categoryIndexId2, proposalTitle, proposeContent, nil, nil)
 	if err != nil {
 		t.Errorf("CreateProposal() error = %v", err)
 	}

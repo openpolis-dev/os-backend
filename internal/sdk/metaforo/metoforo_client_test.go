@@ -29,7 +29,5 @@ var (
 	// test proposal title
 	proposalTitle = "proposal from os-backend unit test"
 	// test proposal content
-	proposeContent = NewContentRequest{
-		Insert: "proposal from os-backend unit test",
-	}
+	proposeContent = "proposal from os-backend unit test"
 )
