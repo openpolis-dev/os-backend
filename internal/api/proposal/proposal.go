@@ -411,7 +411,7 @@ func updateProposalState(db *gorm.DB, user *middleware.CurUser, proposalStrId st
 	}
 
 	if proposalRecord.State != int(model.ProposalStateDraft) {
-		return nil, fmt.Errorf("proposal %s in %s state can;t be withdrawn", proposalStrId, proposalRecord.StateName())
+		return nil, fmt.Errorf("proposal %s in %s state can't be withdrawn", proposalStrId, proposalRecord.StateName())
 	}
 
 	// Check whether user has permission to the change the proposal state
