@@ -223,7 +223,7 @@ func SaveProposalToMetaforo(db *gorm.DB, proposalRecord *model.Proposal, metafor
 	var err error
 
 	var metaforoProposal *metaforo.ProposalResponse
-	updatedProposalrecord := proposalRecord
+	updatedProposalRecord := proposalRecord
 	if proposalRecord.ProposalRecordId != "" {
 		// DB Record has ProposalRecordId, the action should be updating existing metaforo proposal
 		// TODO: The metaforo ID of proposal can be extracted from proposalRecord.ProposalRecordId
@@ -234,10 +234,10 @@ func SaveProposalToMetaforo(db *gorm.DB, proposalRecord *model.Proposal, metafor
 		}
 
 		// Create a new model.Proposal record, and copy associated records to it, then bump up the version
-		updatedProposalrecord.Version = proposalRecord.Version + 1
-		updatedProposalrecord.ID = 0
+		updatedProposalRecord.Version = proposalRecord.Version + 1
+		updatedProposalRecord.ID = 0
 		// TODO: Verify whether the record is new created in DB
-		if err := db.Create(&updatedProposalrecord).Error; err != nil {
+		if err := db.Create(&updatedProposalRecord).Error; err != nil {
 			log.Error().Msgf("bump proposal version error: %+v", err)
 			return err
 		}
@@ -252,7 +252,7 @@ func SaveProposalToMetaforo(db *gorm.DB, proposalRecord *model.Proposal, metafor
 			}
 			for _, contentBlock := range contentBlocks {
 				if err := tx.Create(&model.ProposalContentBlock{
-					ProposalID: updatedProposalrecord.ID,
+					ProposalID: updatedProposalRecord.ID,
 					Title:      contentBlock.Title,
 					Content:    contentBlock.Content,
 					CreateTs:   time.Now().UTC().Unix(),
@@ -270,7 +270,7 @@ func SaveProposalToMetaforo(db *gorm.DB, proposalRecord *model.Proposal, metafor
 			}
 			for _, component := range proposalComponents {
 				if err := tx.Create(&model.ProposalComponentRecord{
-					ProposalID:  updatedProposalrecord.ID,
+					ProposalID:  updatedProposalRecord.ID,
 					ComponentID: component.ComponentID,
 					Data:        component.Data,
 				}).Error; err != nil {
@@ -295,9 +295,9 @@ func SaveProposalToMetaforo(db *gorm.DB, proposalRecord *model.Proposal, metafor
 			return err
 		}
 
-		updatedProposalrecord.ProposalRecordId = fmt.Sprintf("metaforo:%d", metaforoProposal.Thread.Id)
-		updatedProposalrecord.State = int(model.ProposalStateDraft)
-		updatedProposalrecord.ArveaveHash = metaforoProposal.Thread.EditHistory.Lists[0].Arweave
+		updatedProposalRecord.ProposalRecordId = fmt.Sprintf("metaforo:%d", metaforoProposal.Thread.Id)
+		updatedProposalRecord.State = int(model.ProposalStateDraft)
+		updatedProposalRecord.ArveaveHash = metaforoProposal.Thread.EditHistory.Lists[0].Arweave
 	}
 
 	// Save data backed from metaforo API response to DB
