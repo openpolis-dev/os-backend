@@ -250,7 +250,7 @@ type Category struct {
 	ThreadCount int         `json:"thread_count"`
 	TemplateId  int         `json:"template_id"`
 	PostCount   int         `json:"post_count"`
-	IconUnicode string      `json:"icon_unicode"`
+	IconUnicode any         `json:"icon_unicode"`
 	CanSee      int         `json:"can_see"`
 	CanCreate   int         `json:"can_create"`
 	Children    []*Category `json:"children"`
