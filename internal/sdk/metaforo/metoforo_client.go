@@ -2,6 +2,7 @@ package metaforo
 
 import (
 	"encoding/json"
+	"fmt"
 	"maps"
 	"net/http"
 
@@ -74,15 +75,14 @@ func doHttpRequest[T any](requestData *httpRequestData) (int, *T, error) {
 	}
 
 	if err := fasthttp.Do(req, resp); err != nil {
-		log.Error().Msgf("Send request error: %s", err)
+		log.Error().Msgf("Send request error: %s, req: %+v, resp: %+v", err, req, resp)
 	}
 
 	// check status code
 	if resp.StatusCode() != http.StatusOK {
+		log.Error().Msgf("http request error, code: %d, request: %+v, resp: %+v", resp.StatusCode(), req, resp)
 		return resp.StatusCode(), nil, MetaforoError
 	}
-
-	//log.Error().Msgf("TTT: resp data: %q", resp.Body())
 
 	// parse response
 	var apiResp ApiResponseWrapper[T]
@@ -121,6 +121,6 @@ func doHttpRequest[T any](requestData *httpRequestData) (int, *T, error) {
 			return resp.StatusCode(), nil, SignError
 		}
 
-		return resp.StatusCode(), nil, MetaforoError
+		return resp.StatusCode(), nil, fmt.Errorf("metaforo error: %+v", apiResp.Description)
 	}
 }
