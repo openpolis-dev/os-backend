@@ -30,7 +30,7 @@ func main() {
 	for _, thread := range metaforoProposals {
 		log.Error().Msgf("TTT: update  at: %+v", thread.UpdatedAt)
 		categoryRecord := model.ProposalCategory{
-			MetaforoId: thread.CategoryId,
+			MetaforoId: thread.CategoryIndexId,
 		}
 		err := db.Where(categoryRecord).Find(&categoryRecord).Error
 		if err != nil {
@@ -65,33 +65,6 @@ func main() {
 			panic(err)
 		}
 	}
-
-	//metaforo.GetTags(groupName, "21826|C16zyP8o10wY0easORsNiCa1KTxp0AZwICUAXp6W")
-	//metaforo.NewCategory(groupName, "test_category", 0, "21826|C16zyP8o10wY0easORsNiCa1KTxp0AZwICUAXp6W")
-	//metaforo.GetCategories(groupName)
-	//groupInfo, err := metaforo.GetGroupInfo(groupName)
-	//if err != nil {
-	//	panic(err)
-	//}
-	//
-	//jsonStr, _ := json.MarshalIndent(groupInfo, "  ", "  ")
-
-}
-
-func fetchProposalData(grpName string, page int, size int) []*metaforo.Thread {
-	proposals, _ := metaforo.ListProposals(&metaforo.PaginationParams{
-		Page:            page,
-		PerPage:         size,
-		CategoryIndexId: 0,
-		TagId:           0,
-		Sort:            "",
-		GroupName:       grpName,
-	})
-
-	//jsonStr, _ := json.MarshalIndent(proposals[0], "  ", "  ")
-	//fmt.Printf("TTT: proposals: %s", jsonStr)
-
-	return proposals
 }
 
 func SyncCategoriesFromMetaforo(db *gorm.DB, grpName string) {
@@ -106,7 +79,7 @@ func SyncCategoriesFromMetaforo(db *gorm.DB, grpName string) {
 		if category.ParentId != 0 {
 			log.Warn().Msgf("category record %+v has parent id, please update manually", category)
 		}
-		err := db.Where(model.ProposalCategory{MetaforoId: category.Id}).
+		err := db.Where(model.ProposalCategory{MetaforoId: category.CategoryId}).
 			Assign(model.ProposalCategory{Name: category.Name}).
 			FirstOrCreate(&dbCategoryRcd).Error
 		if err != nil {
@@ -116,7 +89,7 @@ func SyncCategoriesFromMetaforo(db *gorm.DB, grpName string) {
 		if len(category.Children) > 0 {
 			for _, childCategory := range category.Children {
 				var dbChildCategoryRcd model.ProposalCategory
-				err := db.Where(model.ProposalCategory{MetaforoId: childCategory.Id}).
+				err := db.Where(model.ProposalCategory{MetaforoId: childCategory.CategoryId}).
 					Assign(model.ProposalCategory{Name: childCategory.Name, ParentID: dbCategoryRcd.ID}).
 					FirstOrCreate(&dbChildCategoryRcd).Error
 				if err != nil {
