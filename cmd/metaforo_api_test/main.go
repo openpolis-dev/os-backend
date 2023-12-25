@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"os"
 
 	"github.com/rs/zerolog/log"
 	"github.com/theseed-labs/os-backend/internal/config"
@@ -13,26 +14,46 @@ import (
 )
 
 func main() {
-	metaforoPage := flag.Int("page", 1, "metaforo page")
-	metaforoPageSize := flag.Int("size", 10, "metaforo page size")
-	groupName := flag.String("group", "testttt", "group name")
-	accessToken := flag.String("access-token", "", "access token to send post request to metaforo")
-	flag.Parse()
+	syncCommand := flag.NewFlagSet("sync", flag.ExitOnError)
+	createCommand := flag.NewFlagSet("create", flag.ExitOnError)
 
-	cfg := config.LoadConfig("config.yml")
-	storage.InitGormDB(cfg.DataSource.Dsn, cfg.Casbin.DriverName)
-	storage.SeedDbRecords()
-	db := storage.GetGormDB()
+	// Define flags for sync command
+	syncPage := syncCommand.Int("page", 1, "Page number")
+	syncSize := syncCommand.Int("size", 10, "Page size")
+	syncGroup := syncCommand.String("group", "testttt", "Group name")
 
-	SyncCategoriesFromMetaforo(db, *groupName)
-	SyncProposals(db, *groupName, *metaforoPage, *metaforoPageSize)
+	// Define flags for create command
+	createAccessToken := createCommand.String("access-token", "", "Access token")
+	createGroup := createCommand.String("group", "testttt", "Group name")
 
-	resp, err := metaforo.CreateProposal(*accessToken, *groupName, "1", "test from metaforo API", "# Test content\n## TEST", nil, nil)
-	if err != nil {
-		panic(err)
+	// Parse the command-line arguments
+	if len(os.Args) < 2 {
+		fmt.Println("Subcommand is required")
+		os.Exit(1)
 	}
 
-	fmt.Sprintf("response: %+v", resp)
+	switch os.Args[1] {
+	case "sync":
+		syncCommand.Parse(os.Args[2:])
+		cfg := config.LoadConfig("config.yml")
+		storage.InitGormDB(cfg.DataSource.Dsn, cfg.Casbin.DriverName)
+		storage.SeedDbRecords()
+		db := storage.GetGormDB()
+
+		SyncCategoriesFromMetaforo(db, *syncGroup)
+		SyncProposals(db, *syncGroup, *syncPage, *syncSize)
+	case "create":
+		createCommand.Parse(os.Args[2:])
+		resp, err := metaforo.CreateProposal(*createAccessToken, *createGroup, "1", "test from metaforo API", "# Test content\n## TEST", nil, nil)
+		if err != nil {
+			panic(err)
+		}
+
+		fmt.Sprintf("response: %+v", resp)
+	default:
+		fmt.Println("Unknown subcommand:", os.Args[1])
+		os.Exit(1)
+	}
 }
 
 func SyncProposals(db *gorm.DB, grpName string, page int, size int) {
