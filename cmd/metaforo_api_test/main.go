@@ -56,7 +56,7 @@ func main() {
 			panic(err)
 		}
 
-		fmt.Sprintf("response: %+v", resp)
+		fmt.Printf("response: %+v", resp)
 	default:
 		fmt.Println("Unknown subcommand:", os.Args[1])
 		os.Exit(1)
