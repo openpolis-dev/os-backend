@@ -86,7 +86,7 @@ func SyncProposals(db *gorm.DB, grpName string, page int, size int) {
 			panic(err)
 		}
 
-		proposalRecordId := fmt.Sprintf("metaforo:%d", thread.FirstPostId)
+		proposalRecordId := fmt.Sprintf("metaforo:%d", thread.Id)
 
 		// Build content
 		contentBlock := model.ProposalContentBlock{
@@ -106,7 +106,6 @@ func SyncProposals(db *gorm.DB, grpName string, page int, size int) {
 			Version:            1,
 			Applicant:          "",
 			IsHidden:           false,
-			IsVoted:            false,
 		}
 
 		err = db.Where(model.Proposal{ProposalRecordId: proposalRecordId, Version: 1}).Assign(&proposalRecord).FirstOrCreate(&proposalRecord).Error
