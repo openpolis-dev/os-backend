@@ -29,7 +29,7 @@ import (
 //	@Param		sort_order	query		string	false	"order of sort"		Enum(asc desc)
 //	@Param		state		query		string	false	"state of proposal"	Enum(draft withdrawn voting passed failed rejected)
 //	@Param		category_id	query		int		false	"filter proposal records with specified category"
-//	@success	200			{object}	api.Reply{data=api.ListReplyData{rows=FrontendProposalDetailRecord}}
+//	@success	200			{object}	api.Reply{data=api.ListReplyData{rows=FrontendProposalListRecord}}
 func List(ctx *gin.Context) {
 	db := api.ForContextOnlyDB(ctx)
 	queryParams := QueryParams{}
@@ -89,7 +89,7 @@ func List(ctx *gin.Context) {
 			CategoryName: r.ProposalCategory.Name,
 			State:        model.ProposalStateName[r.State],
 			CreateTs:     r.CreateTs,
-			PollState:    "",
+			VoteState:    "",
 		}
 	})
 

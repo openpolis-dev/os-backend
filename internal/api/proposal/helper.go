@@ -117,6 +117,7 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 		proposalRecord := model.Proposal{
 			CreateTs:           time.Now().UTC().Unix(),
 			Title:              reqData.Title,
+			VoteGateID:         reqData.VoteGateId,
 			Applicant:          common.FormatUserWallet(userWallet),
 			ProposalCategoryID: reqData.ProposalCategoryId,
 			Version:            1,

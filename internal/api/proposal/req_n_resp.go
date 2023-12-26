@@ -37,6 +37,7 @@ type CreateOrUpdateProposalData struct {
 	ProposalCategoryId  uint                             `json:"proposal_category_id"`
 	ContentBlocks       []*FrontendContentBlockRecord    `json:"content_blocks"`
 	Components          map[string]*ComponentRequestData `json:"components"`
+	VoteGateId          uint                             `json:"vote_gate_id"`
 	MetaforoAccessToken string                           `json:"metaforo_access_token"`
 	SubmitToMetaforo    bool                             `json:"submit_to_metaforo"`
 }
@@ -56,8 +57,11 @@ type FrontendProposalListRecord struct {
 	CategoryName string `json:"category_name"`
 	State        string `json:"state"`
 	CreateTs     int64  `json:"create_ts"`
-	PollState    string `json:"poll_state"`
-	IsVoted      bool
+
+	// Vote related state
+	// TODO: Vote Gate related logic
+	VoteState string `json:"vote_state"`
+	IsVoted   bool
 }
 
 type FrontendContentBlockRecord struct {
