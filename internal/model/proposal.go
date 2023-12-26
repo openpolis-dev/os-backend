@@ -69,16 +69,9 @@ type Proposal struct {
 
 	Applicant string `gorm:"index"`
 
-	// Fields for vote state
-	VoteGateID   uint
-	VoteGate     *ProposalVoteGate
-	VoteStartTs  int64  `gorm:"index"`
-	VoteEndTs    int64  `gorm:"index"`
-	VoteFormData string // Saves serialized form data for vote
+	VoteRecords []*ProposalVoteRecord
 
 	IsHidden bool
-
-	IsVoted bool // Indicate whether user has voted to this proposal
 }
 
 func (p *Proposal) StateName() string {
@@ -202,7 +195,19 @@ type ProposalAuditLog struct {
 	UpdateTs int64 `gorm:"index"`
 }
 
+// ProposalVoteRecord saves vote object and associated to specified Proposal
 type ProposalVoteRecord struct {
+	ID         User `gorm:"primary Key"`
+	GateID     uint
+	VoteGate   *ProposalVoteGate
+	StartTs    int64  `gorm:"index"`
+	EndTs      int64  `gorm:"index"`
+	FormData   string // Saves serialized form data for vote
+	MetaforoID int
+}
+
+// ProposalUserVoteRecord saves user vote record
+type ProposalUserVoteRecord struct {
 	ID         uint   `gorm:"primaryKey"`
 	UserWallet string `gorm:"index"`
 	ProposalID uint   `gorm:"index"`
