@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog/log"
-	"github.com/theseed-labs/os-backend/internal"
+	"github.com/theseed-labs/os-backend/internal/api/proposal"
 	"github.com/theseed-labs/os-backend/internal/config"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk/metaforo"
@@ -47,33 +47,11 @@ func main() {
 		SyncNftGate(db, *syncGroup)
 	case "create":
 		createCommand.Parse(os.Args[2:])
-		defaultPollData := []*metaforo.NewVoteFormRequest{
-			{
-				Options:            internal.ProposalVoteOptions,
-				Type:               "1",
-				Title:              "vote for proposal test",
-				ShowType:           "1",
-				ShowResult:         true,
-				ChartType:          "1",
-				VoteType:           "1",
-				ChainType:          0,
-				ContractType:       0,
-				SettingId:          0,
-				Period:             "1",
-				CloseAt:            time.Now().UTC().Add(14 * 24 * time.Hour).Format(time.RFC3339),
-				VoteStartAt:        time.Now().UTC().Format(time.RFC3339),
-				Max:                1,
-				MinTokens:          "0",
-				PollCategory:       "0",
-				LastCategroyChange: "0",
-				TokenId:            0,
-				Quorum:             false,
-				Weight:             true,
-				Step:               2,
-			},
+		pollData, err := proposal.BuildMetaforoVoteFormDataBytes("vote for porposal test", time.Now().UTC(), time.Now().UTC().Add(14*24*time.Hour))
+		if err != nil {
+			panic(err)
 		}
-		resp, err := metaforo.CreateProposal(*createAccessToken, *createGroup, "1", "test from metaforo API", "# Test content\n## TEST", nil, defaultPollData)
-		fmt.Println("done")
+		resp, err := metaforo.CreateProposal(*createAccessToken, *createGroup, "1", "test from metaforo API", "# Test content\n## TEST", nil, string(pollData))
 		if err != nil {
 			panic(err)
 		}

@@ -7,10 +7,9 @@ import (
 	"mime/multipart"
 	"net/http"
 
-	"github.com/rs/zerolog/log"
-
 	"github.com/gomarkdown/markdown"
 	"github.com/microcosm-cc/bluemonday"
+	"github.com/rs/zerolog/log"
 )
 
 // GetProposals get specified proposal in Metaforo.
@@ -136,63 +135,62 @@ func ListProposals(paginationParams *PaginationParams) ([]*Thread, error) {
 //	       }
 //	   }
 //	}
-func CreateProposal(accessToken, groupName, categoryIndexId, title string, content string, tags []*NewProposalTagRequest, polls []*NewVoteFormRequest) (*ProposalResponse, error) {
+func CreateProposal(accessToken, groupName, categoryIndexId, title string, content string, tags []*NewProposalTagRequest, voteFormData string) (*ProposalResponse, error) {
 	apiPath := "/api/submit_thread"
 
 	// prepare headers
 	formHeader := AuthHeader(accessToken)
 
-	// prepare multipart body
-	payload := &bytes.Buffer{}
-	writer := multipart.NewWriter(payload)
-	_ = writer.WriteField("sign", "")
-	_ = writer.WriteField("signMsg", "")
-	_ = writer.WriteField("title", title)
-	_ = writer.WriteField("category_index_id", categoryIndexId)
-	_ = writer.WriteField("login_type", "0")
-	_ = writer.WriteField("group_name", groupName)
-
-	// Set editor_type to 1 to support markdown, and for Markdown should be passed
-	_ = writer.WriteField("editor_type", "1")
-	_ = writer.WriteField("content", content)
-
-	maybeUnsafeHTML := markdown.ToHTML([]byte(content), nil, nil)
-	html := bluemonday.UGCPolicy().SanitizeBytes(maybeUnsafeHTML)
-	_ = writer.WriteField("html", string(html))
-
-	if tags != nil {
-		t, _ := json.Marshal(tags)
-		_ = writer.WriteField("tags", string(t))
-	}
-	if polls != nil {
-		p, _ := json.Marshal(polls)
-		_ = writer.WriteField("polls", string(p))
-	}
-
-	err := writer.Close()
+	bodyBytes, contentType, err := createCreateOrUpdateFormData(groupName, title, categoryIndexId, content, tags, voteFormData, 0)
 	if err != nil {
-		log.Error().Msgf("Prepare Multipart paramter error: %s", err)
+		log.Error().Msgf("Failed to create proposal form data: %+v", err)
 		return nil, err
 	}
 
 	// send request
-	_, resp, err := doHttpRequest[ProposalResponse](&httpRequestData{
+	statusCode, resp, err := doHttpRequest[ProposalResponse](&httpRequestData{
 		ApiUri:               apiBase + apiPath,
 		HttpMethod:           http.MethodPost,
-		MultipartBodyParams:  payload.Bytes(),
-		MultipartContentType: writer.FormDataContentType(),
+		MultipartBodyParams:  bodyBytes,
+		MultipartContentType: contentType,
 		Header:               formHeader,
 	})
 
-	if err != nil {
+	if statusCode != http.StatusOK || err != nil {
+		log.Error().Msgf("create proposal request failed: %+v", err)
 		return nil, err
 	}
 
 	return resp, nil
 }
 
-func UpdateProposal(token string) (*ProposalResponse, error) {
-	return nil, nil
+func UpdateProposal(accessToken, groupName, categoryIndexId, title string, content string, tags []*NewProposalTagRequest, voteFormData string, threadId int) (*ProposalResponse, error) {
+	apiPath := "/api/edit_post"
+
+	// prepare headers
+	formHeader := AuthHeader(accessToken)
+
+	bodyBytes, contentType, err := createCreateOrUpdateFormData(groupName, title, categoryIndexId, content, tags, voteFormData, threadId)
+	if err != nil {
+		log.Error().Msgf("Failed to create proposal form data: %+v", err)
+		return nil, err
+	}
+
+	// send request
+	statusCode, resp, err := doHttpRequest[ProposalResponse](&httpRequestData{
+		ApiUri:               apiBase + apiPath,
+		HttpMethod:           http.MethodPost,
+		MultipartBodyParams:  bodyBytes,
+		MultipartContentType: contentType,
+		Header:               formHeader,
+	})
+
+	if statusCode != http.StatusOK || err != nil {
+		log.Error().Msgf("create proposal request failed: %+v", err)
+		return nil, err
+	}
+
+	return resp, nil
 }
 
 // DeleteProposal delete specified proposal in Metaforo.
@@ -230,4 +228,44 @@ func DeleteProposal(accessToken, postId, groupName string) error {
 	})
 
 	return err
+}
+
+func createCreateOrUpdateFormData(groupName, title, categoryIndexId, content string, tags []*NewProposalTagRequest, voteFormData string, threadId int) ([]byte, string, error) {
+	// prepare multipart body
+	payload := &bytes.Buffer{}
+	writer := multipart.NewWriter(payload)
+	_ = writer.WriteField("sign", "")
+	_ = writer.WriteField("signMsg", "")
+	_ = writer.WriteField("title", title)
+	_ = writer.WriteField("category_index_id", categoryIndexId)
+	_ = writer.WriteField("login_type", "0")
+	_ = writer.WriteField("group_name", groupName)
+
+	if threadId != 0 {
+		_ = writer.WriteField("thread_id", fmt.Sprintf("%d", threadId))
+	}
+
+	// Set editor_type to 1 to support markdown, and for Markdown should be passed
+	_ = writer.WriteField("editor_type", "1")
+	_ = writer.WriteField("content", content)
+
+	maybeUnsafeHTML := markdown.ToHTML([]byte(content), nil, nil)
+	html := bluemonday.UGCPolicy().SanitizeBytes(maybeUnsafeHTML)
+	_ = writer.WriteField("html", string(html))
+
+	if tags != nil {
+		t, _ := json.Marshal(tags)
+		_ = writer.WriteField("tags", string(t))
+	}
+	if voteFormData != "" {
+		_ = writer.WriteField("polls", voteFormData)
+	}
+
+	err := writer.Close()
+	if err != nil {
+		log.Error().Msgf("Prepare Multipart paramter error: %+v", err)
+		return nil, "", err
+	}
+
+	return payload.Bytes(), writer.FormDataContentType(), nil
 }

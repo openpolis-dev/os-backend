@@ -1,7 +1,7 @@
 package proposal
 
 import (
-	"errors"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"time"
@@ -55,6 +55,24 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 			// Proposal is in PendingSubmit state, the data can be updated directory w/o bumping up version
 			dbProposalRcd.Title = reqData.Title
 			dbProposalRcd.ProposalCategoryID = reqData.ProposalCategoryId
+			voteStartTime := time.Now().UTC().Add(14 * 24 * time.Hour)
+			voteEndTime := time.Now().UTC().Add(28 * 24 * time.Hour)
+
+			// Update voteStartTs and EndTs every time updating pendingSubmit state proposal
+			// The pendingSubmit proposal has not pushed to chain
+			// But the vote fields will be used while updating to Metaforo, so need to guarantee the vote will not be started before approved
+			dbProposalRcd.VoteStartTs = voteStartTime.Unix()
+			dbProposalRcd.VoteEndTs = voteEndTime.Unix()
+
+			defaultVoteDataBytes, err := BuildMetaforoVoteFormDataBytes("", voteStartTime, voteEndTime)
+			if err != nil {
+				log.Error().Msgf("generate vote form data error: %+v", err)
+				return nil, err
+			}
+			dbProposalRcd.VoteFormData = string(defaultVoteDataBytes)
+
+			// Update vote start and end date
+
 			if err := db.Save(dbProposalRcd).Error; err != nil {
 				log.Error().Msgf("create proposal error: %+v", err)
 				return nil, err
@@ -73,6 +91,18 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 			}
 			return dbProposalRcd, nil
 		} else {
+			voteStartTime := time.Now().UTC().Add(14 * 24 * time.Hour)
+			voteEndTime := time.Now().UTC().Add(28 * 24 * time.Hour)
+
+			// Update voteStartTs and EndTs every time updating pendingSubmit state proposal
+			// The pendingSubmit proposal has not pushed to chain
+			// But the vote fields will be used while updating to Metaforo, so need to guarantee the vote will not be started before approved
+			defaultVoteDataBytes, err := BuildMetaforoVoteFormDataBytes("", voteStartTime, voteEndTime)
+			if err != nil {
+				log.Error().Msgf("generate vote form data error: %+v", err)
+				return nil, err
+			}
+
 			// Proposal has already published on chain, create new record and bump up version
 			newProposalRecord := model.Proposal{
 				CreateTs:           time.Now().UTC().Unix(),
@@ -80,6 +110,9 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 				Applicant:          common.FormatUserWallet(userWallet),
 				ProposalCategoryID: reqData.ProposalCategoryId,
 				Version:            dbProposalRcd.Version + 1,
+				VoteStartTs:        voteStartTime.Unix(),
+				VoteEndTs:          voteEndTime.Unix(),
+				VoteFormData:       string(defaultVoteDataBytes),
 			}
 
 			if err := db.Create(&newProposalRecord).Error; err != nil {
@@ -113,6 +146,15 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 			return &newProposalRecord, nil
 		}
 	} else {
+		// Create a vote will be started after 14 days, and close time will be set to 28 days
+		voteStartTime := time.Now().UTC().Add(14 * 24 * time.Hour)
+		voteEndTime := time.Now().UTC().Add(28 * 24 * time.Hour)
+		defaultVoteDataBytes, err := BuildMetaforoVoteFormDataBytes("", voteStartTime, voteEndTime)
+		if err != nil {
+			log.Error().Msgf("generate vote form data error: %+v", err)
+			return nil, err
+		}
+
 		// Init proposal record to get ID
 		proposalRecord := model.Proposal{
 			CreateTs:           time.Now().UTC().Unix(),
@@ -121,6 +163,9 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 			Applicant:          common.FormatUserWallet(userWallet),
 			ProposalCategoryID: reqData.ProposalCategoryId,
 			Version:            1,
+			VoteStartTs:        voteStartTime.Unix(),
+			VoteEndTs:          voteEndTime.Unix(),
+			VoteFormData:       string(defaultVoteDataBytes),
 		}
 
 		if err := db.Create(&proposalRecord).Error; err != nil {
@@ -245,10 +290,15 @@ func SaveProposalToMetaforo(db *gorm.DB, proposalRecord *model.Proposal, metafor
 	var metaforoProposal *metaforo.ProposalResponse
 	updatedProposalRecord := proposalRecord
 	if proposalRecord.ProposalRecordId != "" {
-		panic(errors.New("not implemented"))
 		// DB Record has ProposalRecordId, the action should be updating existing metaforo proposal
 		// TODO: The metaforo ID of proposal can be extracted from proposalRecord.ProposalRecordId
-		metaforoProposal, err = metaforo.UpdateProposal(metaforoAccessToken)
+		metaforoProposal, err = metaforo.UpdateProposal(
+			metaforoAccessToken,
+			internal.MetaforoGroupName,
+			fmt.Sprintf("%d", proposalCategory.MetaforoId),
+			proposalRecord.Title,
+			metaforoContent, nil, proposalRecord.VoteFormData, 0,
+		)
 		if err != nil {
 			log.Error().Msgf("update metaforoProposal error: %+v", err)
 			return err
@@ -306,38 +356,13 @@ func SaveProposalToMetaforo(db *gorm.DB, proposalRecord *model.Proposal, metafor
 		}
 	} else {
 		var err error
-		defaultPollData := []*metaforo.NewVoteFormRequest{
-			{
-				Options:            internal.ProposalVoteOptions,
-				Type:               "1",
-				Title:              fmt.Sprintf("vote for proposal %s", proposalRecord.Title),
-				ShowType:           "1",
-				ShowResult:         true,
-				ChartType:          "1",
-				VoteType:           "1",
-				ChainType:          0,
-				ContractType:       0,
-				SettingId:          0,
-				Period:             "1",
-				CloseAt:            time.Now().UTC().Add(14 * 24 * time.Hour).Format(time.RFC3339),
-				VoteStartAt:        time.Now().UTC().Format(time.RFC3339),
-				Max:                1,
-				MinTokens:          "0",
-				PollCategory:       "0",
-				LastCategroyChange: "0",
-				TokenId:            0,
-				Quorum:             false,
-				Weight:             true,
-				Step:               2,
-			},
-		}
+
 		metaforoProposal, err = metaforo.CreateProposal(
 			metaforoAccessToken,
 			internal.MetaforoGroupName,
 			fmt.Sprintf("%d", proposalCategory.MetaforoId),
 			proposalRecord.Title,
-			metaforoContent, nil, defaultPollData,
-		)
+			metaforoContent, nil, proposalRecord.VoteFormData)
 		if err != nil {
 			log.Error().Msgf("update metaforoProposal error: %+v", err)
 			return err
@@ -357,4 +382,48 @@ func SaveProposalToMetaforo(db *gorm.DB, proposalRecord *model.Proposal, metafor
 	}
 
 	return nil
+}
+
+// BuildMetaforoVoteFormDataBytes generates the byte representation of the Metaforo vote form data.
+//
+// Parameters:
+// - voteTitle: The title of the vote.
+// - startTime: The start time of the vote.
+// - endTime: The end time of the vote.
+//
+// Returns:
+// - []byte: The byte representation of the vote form data.
+// - error: An error if there was a problem generating the byte representation.
+func BuildMetaforoVoteFormDataBytes(voteTitle string, startTime time.Time, endTime time.Time) ([]byte, error) {
+	voteData := []*metaforo.NewVoteFormRequest{
+		{
+			Options:            internal.ProposalVoteOptions,
+			Type:               "1",
+			Title:              voteTitle,
+			ShowType:           "1",
+			ShowResult:         true,
+			ChartType:          "1",
+			VoteType:           "1",
+			ChainType:          0,
+			ContractType:       0,
+			SettingId:          0,
+			Period:             "1",
+			CloseAt:            endTime.Format(time.RFC3339),
+			VoteStartAt:        startTime.Format(time.RFC3339),
+			Max:                1,
+			MinTokens:          "0",
+			PollCategory:       "0",
+			LastCategroyChange: "0",
+			TokenId:            0,
+			Quorum:             false,
+			Weight:             true,
+			Step:               2,
+		},
+	}
+	voteDataBytes, err := json.Marshal(voteData)
+	if err != nil {
+		log.Error().Msgf("marshal proposal vote data error: %+v", err)
+		return nil, err
+	}
+	return voteDataBytes, nil
 }

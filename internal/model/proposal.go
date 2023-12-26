@@ -70,10 +70,11 @@ type Proposal struct {
 	Applicant string `gorm:"index"`
 
 	// Fields for vote state
-	VoteGateID  uint
-	VoteGate    *ProposalVoteGate
-	VoteStartTs int64 `gorm:"index"`
-	VoteEndTs   int64 `gorm:"index"`
+	VoteGateID   uint
+	VoteGate     *ProposalVoteGate
+	VoteStartTs  int64  `gorm:"index"`
+	VoteEndTs    int64  `gorm:"index"`
+	VoteFormData string // Saves serialized form data for vote
 
 	IsHidden bool
 
