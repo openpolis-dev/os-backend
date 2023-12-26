@@ -4,8 +4,10 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/rs/zerolog/log"
+	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/config"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk/metaforo"
@@ -44,7 +46,33 @@ func main() {
 		SyncProposals(db, *syncGroup, *syncPage, *syncSize)
 	case "create":
 		createCommand.Parse(os.Args[2:])
-		resp, err := metaforo.CreateProposal(*createAccessToken, *createGroup, "1", "test from metaforo API", "# Test content\n## TEST", nil, nil)
+		defaultPollData := []*metaforo.NewVoteFormRequest{
+			{
+				Options:            internal.ProposalVoteOptions,
+				Type:               "1",
+				Title:              "vote for proposal test",
+				ShowType:           "1",
+				ShowResult:         true,
+				ChartType:          "1",
+				VoteType:           "1",
+				ChainType:          0,
+				ContractType:       0,
+				SettingId:          0,
+				Period:             "1",
+				CloseAt:            time.Now().UTC().Add(14 * 24 * time.Hour).Format(time.RFC3339),
+				PollStartAt:        time.Now().UTC().Format(time.RFC3339),
+				Max:                1,
+				MinTokens:          "0",
+				PollCategory:       "0",
+				LastCategroyChange: "0",
+				TokenId:            0,
+				Quorum:             false,
+				Weight:             true,
+				Step:               2,
+			},
+		}
+		resp, err := metaforo.CreateProposal(*createAccessToken, *createGroup, "1", "test from metaforo API", "# Test content\n## TEST", nil, defaultPollData)
+		fmt.Println("done")
 		if err != nil {
 			panic(err)
 		}

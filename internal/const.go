@@ -1,6 +1,10 @@
 package internal
 
-import "time"
+import (
+	"time"
+
+	"github.com/theseed-labs/os-backend/internal/sdk/metaforo"
+)
 
 const DefaultPageSize = 10
 
@@ -25,3 +29,9 @@ var CityhallGroupNames = map[string]bool{"G_GOVERNANCE": true, "G_BRANDING": tru
 
 // TODO: Update to real seedao group
 const MetaforoGroupName = "testttt"
+
+var ProposalVoteOptions = []*metaforo.VoteOption{
+	{"同意", 0},
+	{"反对", 1},
+	{"弃权", 2},
+}

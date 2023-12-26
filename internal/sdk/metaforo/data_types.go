@@ -600,14 +600,16 @@ type NewProposalTagRequest struct {
 //
 // ]
 
+type VoteOption struct {
+	Text string `json:"text"`
+	Type int    `json:"type"`
+}
+
 // NewVoteFormRequest defines poll request data structure used for creating vote while creating proposals
 type NewVoteFormRequest struct {
 	// Options stands for vote options, the text is option value
 	// TODO: What's the meaning of type for each option?
-	Options []struct {
-		Text string `json:"text"`
-		Type int    `json:"type"`
-	} `json:"options"`
+	Options []*VoteOption `json:"options"`
 
 	Type string `json:"type"`
 

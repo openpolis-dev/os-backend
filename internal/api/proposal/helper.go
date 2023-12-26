@@ -305,12 +305,37 @@ func SaveProposalToMetaforo(db *gorm.DB, proposalRecord *model.Proposal, metafor
 		}
 	} else {
 		var err error
+		defaultPollData := []*metaforo.NewVoteFormRequest{
+			{
+				Options:            internal.ProposalVoteOptions,
+				Type:               "1",
+				Title:              fmt.Sprintf("vote for proposal %s", proposalRecord.Title),
+				ShowType:           "1",
+				ShowResult:         true,
+				ChartType:          "1",
+				VoteType:           "1",
+				ChainType:          0,
+				ContractType:       0,
+				SettingId:          0,
+				Period:             "1",
+				CloseAt:            time.Now().UTC().Add(14 * 24 * time.Hour).Format(time.RFC3339),
+				PollStartAt:        time.Now().UTC().Format(time.RFC3339),
+				Max:                1,
+				MinTokens:          "0",
+				PollCategory:       "0",
+				LastCategroyChange: "0",
+				TokenId:            0,
+				Quorum:             false,
+				Weight:             true,
+				Step:               2,
+			},
+		}
 		metaforoProposal, err = metaforo.CreateProposal(
 			metaforoAccessToken,
 			internal.MetaforoGroupName,
 			fmt.Sprintf("%d", proposalCategory.MetaforoId),
 			proposalRecord.Title,
-			metaforoContent, nil, nil,
+			metaforoContent, nil, defaultPollData,
 		)
 		if err != nil {
 			log.Error().Msgf("update metaforoProposal error: %+v", err)
