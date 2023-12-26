@@ -42,8 +42,9 @@ func main() {
 		storage.SeedDbRecords()
 		db := storage.GetGormDB()
 
-		SyncCategoriesFromMetaforo(db, *syncGroup)
+		SyncCategories(db, *syncGroup)
 		SyncProposals(db, *syncGroup, *syncPage, *syncSize)
+		SyncNftGate(db, *syncGroup)
 	case "create":
 		createCommand.Parse(os.Args[2:])
 		defaultPollData := []*metaforo.NewVoteFormRequest{
@@ -60,7 +61,7 @@ func main() {
 				SettingId:          0,
 				Period:             "1",
 				CloseAt:            time.Now().UTC().Add(14 * 24 * time.Hour).Format(time.RFC3339),
-				PollStartAt:        time.Now().UTC().Format(time.RFC3339),
+				VoteStartAt:        time.Now().UTC().Format(time.RFC3339),
 				Max:                1,
 				MinTokens:          "0",
 				PollCategory:       "0",
@@ -137,7 +138,7 @@ func SyncProposals(db *gorm.DB, grpName string, page int, size int) {
 	}
 }
 
-func SyncCategoriesFromMetaforo(db *gorm.DB, grpName string) {
+func SyncCategories(db *gorm.DB, grpName string) {
 	categories, _ := metaforo.GetCategories(grpName)
 
 	//jsonStr, _ := json.MarshalIndent(categories, "  ", "  ")
@@ -166,6 +167,26 @@ func SyncCategoriesFromMetaforo(db *gorm.DB, grpName string) {
 					panic(err)
 				}
 			}
+		}
+	}
+}
+
+func SyncNftGate(db *gorm.DB, grpName string) {
+	groupInfo, _ := metaforo.GetGroupInfo(grpName)
+	_ = db.AutoMigrate(&model.ProposalVoteGate{})
+
+	for _, pollSetting := range groupInfo.PollSetting {
+		nftGateConf := model.ProposalVoteGate{
+			ChainType:    int(pollSetting.ChainType),
+			TokenType:    int(pollSetting.TokenType),
+			TokenAddress: pollSetting.Address,
+			TokenId:      fmt.Sprintf("%d", pollSetting.TokenId),
+			Name:         pollSetting.Alias,
+			MetaforoId:   pollSetting.Id,
+		}
+		err := db.Where(model.ProposalVoteGate{MetaforoId: pollSetting.Id}).Assign(nftGateConf).FirstOrCreate(&nftGateConf).Error
+		if err != nil {
+			panic(err)
 		}
 	}
 }

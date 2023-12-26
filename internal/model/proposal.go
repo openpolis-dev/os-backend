@@ -69,9 +69,11 @@ type Proposal struct {
 
 	Applicant string `gorm:"index"`
 
-	// Fields for poll state
-	PollStartTs int64 `gorm:"index"`
-	PollEndTs   int64 `gorm:"index"`
+	// Fields for vote state
+	VoteGateID  uint
+	VoteGate    *ProposalVoteGate
+	VoteStartTs int64 `gorm:"index"`
+	VoteEndTs   int64 `gorm:"index"`
 
 	IsHidden bool
 
@@ -151,6 +153,46 @@ type ProposalCategory struct {
 	ParentID   uint `gorm:"index"` // Save category hierarchy information
 	Name       string
 	MetaforoId uint
+}
+
+// ProposalVoteGate saves the token requirements to vote
+type ProposalVoteGate struct {
+	ID           uint   `gorm:"primaryKey"`
+	ChainType    int    `gorm:"index:assetAttr"`
+	TokenType    int    `gorm:"index:assetAttr"`
+	TokenAddress string `gorm:"index"`
+	TokenId      string
+	MetaforoId   uint
+
+	Name string // Name of the vote gate
+}
+
+func (ppg *ProposalVoteGate) TokenTypeName() string {
+	switch ppg.TokenType {
+	case 0:
+		return "ERC20"
+	case 1:
+		return "ERC721"
+	case 2:
+		return "ERC1155"
+	default:
+		return "Unknown"
+	}
+}
+
+func (ppg *ProposalVoteGate) ChainName() string {
+	switch ppg.ChainType {
+	case 1:
+		return "Polygon"
+	case 8:
+		return "ETH"
+	case 7:
+		return "Bsc"
+	case 9:
+		return "Arbitrum"
+	default:
+		return "Unknown"
+	}
 }
 
 type ProposalAuditLog struct {

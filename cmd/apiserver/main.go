@@ -249,6 +249,9 @@ func main() {
 		proposalCategoryRouter := v1.Group("/proposal_categories")
 		proposalCategoryRouter.GET("/", proposal.ListCategories)
 
+		proposalPollGateRouter := v1.Group("/proposal_vote_gates")
+		proposalPollGateRouter.GET("/", proposal.ListVoteGates)
+
 		// Proposal routers
 		proposalGroup := v1.Group("/proposals")
 		proposalGroup.GET("/list", proposal.List)

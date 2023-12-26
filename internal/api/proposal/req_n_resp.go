@@ -95,6 +95,15 @@ type FrontendProposalCategory struct {
 	MetaforoId uint   `json:"metaforo_id"`
 }
 
+type FrontendVoteGateResponse struct {
+	ID        uint   `json:"id"`
+	Name      string `json:"name"`
+	TokenAddr string `json:"contract_addr"`
+	TokenId   string `json:"token_id"`
+	TokenType string `json:"token_type"`
+	ChainType string `json:"chain_type"`
+}
+
 type UpdateProposalCategoryReq struct {
 	ID         uint   `json:"id"`
 	ParentID   uint   `json:"parent_id"`

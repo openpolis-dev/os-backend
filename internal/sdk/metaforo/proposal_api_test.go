@@ -62,10 +62,7 @@ func TestCreateProposal(t *testing.T) {
 				},
 				polls: []*NewVoteFormRequest{
 					{
-						Options: []struct {
-							Text string `json:"text"`
-							Type int    `json:"type"`
-						}{
+						Options: []*VoteOption{
 							{
 								Text: "option1",
 								Type: 1,
@@ -86,7 +83,7 @@ func TestCreateProposal(t *testing.T) {
 						SettingId:          0,
 						Period:             "1",
 						CloseAt:            "2023-12-28 23:59:59",
-						PollStartAt:        "2023-12-20 00:00:00",
+						VoteStartAt:        "2023-12-20 00:00:00",
 						Max:                1,
 						MinTokens:          "0",
 						PollCategory:       "0",

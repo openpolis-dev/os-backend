@@ -319,7 +319,7 @@ func SaveProposalToMetaforo(db *gorm.DB, proposalRecord *model.Proposal, metafor
 				SettingId:          0,
 				Period:             "1",
 				CloseAt:            time.Now().UTC().Add(14 * 24 * time.Hour).Format(time.RFC3339),
-				PollStartAt:        time.Now().UTC().Format(time.RFC3339),
+				VoteStartAt:        time.Now().UTC().Format(time.RFC3339),
 				Max:                1,
 				MinTokens:          "0",
 				PollCategory:       "0",

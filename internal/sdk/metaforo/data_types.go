@@ -258,8 +258,8 @@ type Category struct {
 }
 
 type TokenGateSetting struct {
-	Id      int `json:"id"`
-	GroupId int `json:"group_id"`
+	Id      uint `json:"id"`
+	GroupId int  `json:"group_id"`
 
 	// Token spec for this gate record.
 	// Regards TokenType field, here are the available values
@@ -605,7 +605,7 @@ type VoteOption struct {
 	Type int    `json:"type"`
 }
 
-// NewVoteFormRequest defines poll request data structure used for creating vote while creating proposals
+// NewVoteFormRequest defines vote request data structure used for creating vote while creating proposals
 type NewVoteFormRequest struct {
 	// Options stands for vote options, the text is option value
 	// TODO: What's the meaning of type for each option?
@@ -628,7 +628,7 @@ type NewVoteFormRequest struct {
 	// TODO: What's the meaning of this?
 	ChartType string `json:"chartType"`
 
-	// Who can vote on this poll
+	// Who can vote
 	// 1: Everyone
 	// 2: Require specified token and amount
 	// 3: Require specified NFT
@@ -640,11 +640,11 @@ type NewVoteFormRequest struct {
 	SettingId    int       `json:"setting_id"`
 	Period       string    `json:"period"`
 
-	// Poll start and end UTC datetime string, YYYY-mm-DD HH:MM:SS format
+	// Vote start and end UTC datetime string, YYYY-mm-DD HH:MM:SS format
 	CloseAt     string `json:"close_at"`
-	PollStartAt string `json:"poll_start_at"`
+	VoteStartAt string `json:"poll_start_at"`
 
-	// Max polls an user can vote
+	// Max votes a user can vote
 	Max int `json:"max"`
 
 	// Vote gate, the MinTokens only works when VoteType is 2
@@ -658,7 +658,6 @@ type NewVoteFormRequest struct {
 
 	PollCategory       string        `json:"PollCategory"`
 	LastCategroyChange string        `json:"LastCategroyChange"`
-	PollCategory1      []interface{} `json:"poll_category"`
 	TokenId            int           `json:"token_id"`
 	Strategy           []interface{} `json:"strategy"`
 	Quorum             bool          `json:"quorum"`

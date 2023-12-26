@@ -71,6 +71,7 @@ func MigrateTables() {
 		&model.ProposalComment{},
 		&model.ProposalComponentRecord{},
 		&model.ProposalVoteRecord{},
+		&model.ProposalVoteGate{},
 		&model.Component{},
 		&model.ComponentAction{},
 	)
