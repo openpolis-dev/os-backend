@@ -163,7 +163,9 @@ type Thread struct {
 	IsSubscribe     bool          `json:"is_subscribe"`
 	IsPin           int           `json:"is_pin"`
 	Pinned          []interface{} `json:"pinned"`
-	Hots            []struct {
+
+	// Hots saves related post in detailed page
+	Hots []struct {
 		Id       int    `json:"id"`
 		Title    string `json:"title"`
 		UserId   int    `json:"user_id"`
