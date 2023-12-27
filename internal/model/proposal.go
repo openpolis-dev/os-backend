@@ -204,6 +204,8 @@ type ProposalVoteRecord struct {
 	StartTs    int64 `gorm:"index"`
 	EndTs      int64 `gorm:"index"`
 	MetaforoID int
+
+	ProposalID uint
 }
 
 // ProposalUserVoteRecord saves user vote record
