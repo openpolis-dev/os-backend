@@ -314,7 +314,7 @@ func SaveProposalToMetaforo(db *gorm.DB, origProposalRecord *model.Proposal, met
 			fmt.Printf("vote metaforo id: %d\n", record.MetaforoID)
 		}
 
-		metaforoProposalResponse, err := metaforo.GetProposal(metaforoThreadId, internal.MetaforoGroupName)
+		metaforoProposalResponse, err = metaforo.GetProposal(metaforoThreadId, internal.MetaforoGroupName)
 		api.PrintStructAsJson(metaforoProposalResponse, "TTT: metaforo proposal after getting detail")
 
 		if err != nil {
@@ -357,7 +357,7 @@ func SaveProposalToMetaforo(db *gorm.DB, origProposalRecord *model.Proposal, met
 			return err
 		}
 
-		metaforoProposalResponse, err := metaforo.GetProposal(metaforoCreateProposalResponse.Thread.Id, internal.MetaforoGroupName)
+		metaforoProposalResponse, err = metaforo.GetProposal(metaforoCreateProposalResponse.Thread.Id, internal.MetaforoGroupName)
 		api.PrintStructAsJson(metaforoProposalResponse, "TTT: metaforo proposal after getting detail")
 
 		if err != nil {

@@ -17,7 +17,7 @@ import (
 // curl --location 'https://metaforo.io/api/get_thread/47967?group_name=testttt' \
 // --header 'api_key: metaforo_website' \
 // --header 'authorization: Bearer 21831|uLLroQDhdvk2OWKRHTP1wPR5vZX7vu1FmffgnBks'
-func GetProposal(threadId int, groupName string) (*Thread, error) {
+func GetProposal(threadId int, groupName string) (*ProposalResponse, error) {
 	apiPath := fmt.Sprintf("/api/get_thread/%d", threadId)
 
 	_, resp, err := doHttpRequest[ProposalResponse](&httpRequestData{
@@ -30,7 +30,7 @@ func GetProposal(threadId int, groupName string) (*Thread, error) {
 		return nil, err
 	}
 
-	return resp.Thread, nil
+	return resp, nil
 }
 
 // ListProposals list all proposals in Metaforo.
