@@ -108,12 +108,12 @@ func main() {
 
 	// setup database
 	storage.InitGormDB(cfg.DataSource.Dsn, cfg.Casbin.DriverName)
-	storage.MigrateTables()
-	storage.SeedDbRecords()
 	db := storage.GetGormDB()
+	err = storage.MigrateTables(db)
 	if err != nil {
 		panic(err)
 	}
+	storage.SeedDbRecords()
 
 	// setup cache
 	// Currently the cache is only used by saving aggregated data, may be extended to other data in future

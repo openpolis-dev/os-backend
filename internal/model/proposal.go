@@ -178,8 +178,6 @@ type ProposalVoteGate struct {
 	TokenId      string
 	MetaforoId   uint
 
-	ProposalVoteRecords []*ProposalVoteRecord
-
 	Name string // Name of the vote gate
 }
 

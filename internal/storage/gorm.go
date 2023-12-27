@@ -44,9 +44,9 @@ func InitGormDB(dsn string, dbSchema string) {
 }
 
 // MigrateTables auto migrate models defined.
-func MigrateTables() {
+func MigrateTables(db *gorm.DB) error {
 	// Migrate the schema
-	err := gormDB.AutoMigrate(
+	return db.AutoMigrate(
 		&model.User{},
 		&model.UserNonce{},
 		&model.UserAssetRecord{},
@@ -75,9 +75,6 @@ func MigrateTables() {
 		&model.Component{},
 		&model.ComponentAction{},
 	)
-	if err != nil {
-		panic("failed to migrate tables")
-	}
 }
 
 // SeedDbRecords inits some const data records to database if not existing
