@@ -35,3 +35,6 @@ var ProposalVoteOptions = []*metaforo.VoteOption{
 	{"反对", 1},
 	{"弃权", 2},
 }
+
+const DefaultVoteStartDelay = 14 * 24 * time.Hour
+const DefaultVoteDuration = 14 * 24 * time.Hour

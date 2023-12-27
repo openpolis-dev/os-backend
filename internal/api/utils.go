@@ -1,7 +1,9 @@
 package api
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"path"
 	"strings"
@@ -39,4 +41,11 @@ func PreSignedUrlForS3(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, Success(uploadUrl))
+}
+
+func PrintStructAsJson(object any, prompt string) {
+	jsonStr, _ := json.MarshalIndent(object, "  ", "  ")
+	fmt.Println("=========================")
+	fmt.Printf("%s: %s\n", prompt, jsonStr)
+	fmt.Println("=========================")
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	"github.com/theseed-labs/os-backend/internal"
+	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk/metaforo"
@@ -56,8 +57,8 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 			dbProposalRcd.Title = reqData.Title
 			dbProposalRcd.ProposalCategoryID = reqData.ProposalCategoryId
 
-			voteStartTime := time.Now().UTC().Add(14 * 24 * time.Hour)
-			voteEndTime := time.Now().UTC().Add(28 * 24 * time.Hour)
+			voteStartTime := time.Now().UTC().Add(internal.DefaultVoteStartDelay)
+			voteEndTime := time.Now().UTC().Add(internal.DefaultVoteStartDelay + internal.DefaultVoteDuration)
 
 			if err := db.Model(model.ProposalVoteRecord{}).
 				Where("proposal_id = ?", dbProposalRcd.ID).
@@ -80,8 +81,8 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 			}
 			return dbProposalRcd, nil
 		} else {
-			voteStartTime := time.Now().UTC().Add(14 * 24 * time.Hour)
-			voteEndTime := time.Now().UTC().Add(28 * 24 * time.Hour)
+			voteStartTime := time.Now().UTC().Add(internal.DefaultVoteStartDelay)
+			voteEndTime := time.Now().UTC().Add(internal.DefaultVoteStartDelay + internal.DefaultVoteDuration)
 
 			voteRecords := []*model.ProposalVoteRecord{
 				{
@@ -253,18 +254,19 @@ func SaveProposalComponentRecords(db *gorm.DB, proposalId uint, reqComponentData
 //
 // Otherwise, copy the proposal to new record with ver+1, update the metaforo data, and save back as a new record,
 // and the metaforo API invoked here is updateProposal.
-func SaveProposalToMetaforo(db *gorm.DB, proposalRecord *model.Proposal, metaforoAccessToken string) error {
+func SaveProposalToMetaforo(db *gorm.DB, origProposalRecord *model.Proposal, metaforoAccessToken string) error {
 	var err error
 
+	// Load current proposal data
 	var proposalCategory *model.ProposalCategory
-	err = db.Where(&model.ProposalCategory{ID: proposalRecord.ProposalCategoryID}).First(&proposalCategory).Error
+	err = db.Where(&model.ProposalCategory{ID: origProposalRecord.ProposalCategoryID}).First(&proposalCategory).Error
 	if err != nil {
 		log.Error().Msgf("get proposal category error: %+v", err)
 		return err
 	}
 
 	var contentBlocks []*model.ProposalContentBlock
-	err = db.Where(&model.ProposalContentBlock{ProposalID: proposalRecord.ID}).Find(&contentBlocks).Error
+	err = db.Where(&model.ProposalContentBlock{ProposalID: origProposalRecord.ID}).Find(&contentBlocks).Error
 	if err != nil {
 		log.Error().Msgf("get proposal content block error: %+v", err)
 		return err
@@ -275,121 +277,106 @@ func SaveProposalToMetaforo(db *gorm.DB, proposalRecord *model.Proposal, metafor
 		metaforoContent += "# " + block.Title + "\n\n" + block.Content + "\n\n"
 	}
 
-	var metaforoProposal *metaforo.ProposalResponse
-	updatedProposalRecord := proposalRecord
-	if proposalRecord.ProposalRecordId != "" {
-		// DB Record has ProposalRecordId, the action should be updating existing metaforo proposal
-		// TODO: The metaforo ID of proposal can be extracted from proposalRecord.ProposalRecordId
-		voteFormData, err := BuildMetaforoVoteFormDataBytes(proposalRecord.VoteRecords)
+	var metaforoProposalResponse *metaforo.ProposalResponse
+	updatedProposalRecord := origProposalRecord
+	if origProposalRecord.ProposalRecordId != "" {
+		log.Error().Msgf("DB Record has ProposalRecordId, update metaforo proposal")
+		// DB Record has ProposalRecordId, this is updating metaforo proposal action, which contains
+		// * Duplicate current proposal record to new one, with bumped version and same ProposalRecordId
+		// * Invoke metaforo.UpdateProposal to update metaforo proposal data
+		// * Save the new metaforo proposal data back to new created DB record
+		// This logic is invoked while changing proposal state form Withdrawn, Rejected to Draft
+
+		// Duplicate current proposal record to new one, with content blocks, components
+		updatedProposalRecord, err = origProposalRecord.BumpUpVersion(db)
 		if err != nil {
-			log.Error().Msgf("build metaforoProposal vote data error: %+v", err)
+			log.Error().Msgf("duplicate proposal data error: %+v", err)
 			return err
 		}
 
-		metaforoProposal, err = metaforo.UpdateProposal(
+		metaforoThreadId := updatedProposalRecord.GetMetaforoThreadId()
+		// Update metaforo proposal
+		// VoteFormData is empty since no update of vote is allowed in this API
+		_, err = metaforo.UpdateProposal(
 			metaforoAccessToken,
 			internal.MetaforoGroupName,
 			fmt.Sprintf("%d", proposalCategory.MetaforoId),
-			proposalRecord.Title,
-			metaforoContent, nil, string(voteFormData), 0,
+			origProposalRecord.Title,
+			metaforoContent, nil, "", metaforoThreadId,
 		)
 		if err != nil {
 			log.Error().Msgf("update metaforoProposal error: %+v", err)
 			return err
 		}
 
-		if proposalRecord.GetMetaforoThreadId() != metaforoProposal.Thread.Id {
-			log.Error().Msgf("Meatforo thread id different with DB record, please check")
+		// TODO: Invoke update vote start/end ts API to extend the vote start time
+		for _, record := range updatedProposalRecord.VoteRecords {
+			fmt.Printf("vote metaforo id: %d\n", record.MetaforoID)
 		}
-		metaforoProposalDetail, err := metaforo.GetProposal(proposalRecord.GetMetaforoThreadId(), internal.MetaforoGroupName)
-		jsonStr, _ := json.MarshalIndent(metaforoProposalDetail, "  ", "  ")
-		fmt.Printf("metaforo proposal detail: %q", jsonStr)
 
-		// Create a new model.Proposal record, and copy associated records to it, then bump up the version
-		updatedProposalRecord.Version = proposalRecord.Version + 1
-		updatedProposalRecord.ID = 0
-		// TODO: Verify whether the record is new created in DB
-		if err := db.Create(&updatedProposalRecord).Error; err != nil {
-			log.Error().Msgf("bump proposal version error: %+v", err)
+		metaforoProposalResponse, err := metaforo.GetProposal(metaforoThreadId, internal.MetaforoGroupName)
+		api.PrintStructAsJson(metaforoProposalResponse, "TTT: metaforo proposal after getting detail")
+
+		if err != nil {
+			log.Error().Msgf("get metaforoProposal %d error: %+v", metaforoThreadId, err)
 			return err
 		}
 
-		// Duplicate associated content blocks and components
-		if err := db.Transaction(func(tx *gorm.DB) error {
-			// Content blocks
-			var contentBlocks []model.ProposalContentBlock
-			if err := tx.Where(&model.ProposalContentBlock{ProposalID: proposalRecord.ID}).Find(&contentBlocks).Error; err != nil {
-				log.Error().Msgf("get proposal blocks error: %+v", err)
-				return err
-			}
-			for _, contentBlock := range contentBlocks {
-				if err := tx.Create(&model.ProposalContentBlock{
-					ProposalID: updatedProposalRecord.ID,
-					Title:      contentBlock.Title,
-					Content:    contentBlock.Content,
-					CreateTs:   time.Now().UTC().Unix(),
-				}).Error; err != nil {
-					log.Error().Msgf("create proposal block error: %+v", err)
-					return err
-				}
-			}
-
-			// Components
-			var proposalComponents []model.ProposalComponentRecord
-			if err := tx.Where(&model.ProposalComponentRecord{ProposalID: proposalRecord.ID}).Find(&proposalComponents).Error; err != nil {
-				log.Error().Msgf("get proposal components error: %+v", err)
-				return err
-			}
-			for _, component := range proposalComponents {
-				if err := tx.Create(&model.ProposalComponentRecord{
-					ProposalID:  updatedProposalRecord.ID,
-					ComponentID: component.ComponentID,
-					Data:        component.Data,
-				}).Error; err != nil {
-					log.Error().Msgf("create proposal component error: %+v", err)
-					return err
-				}
-			}
-			return nil
-		}); err != nil {
-			log.Error().Msgf("create proposal component error: %+v", err)
-			return err
-		}
+		updatedProposalRecord.State = int(model.ProposalStateDraft)
 	} else {
-		var err error
+		log.Error().Msgf("DB Record has no ProposalRecordId, create metaforo proposal")
+		// DB Record has no ProposalRecordId, this is creating metaforo proposal action, which contains:
+		// * Invoke metaforo.CreateProposal to create metaforo proposal record
+		// * Save the metaforo proposal data back to DB record
+		// This logic is invoked while changing proposal state form PendingSubmit to Draft
 
-		voteFormBytes, err := BuildMetaforoVoteFormDataBytes(proposalRecord.VoteRecords)
+		// Update VoteRecords startTs and endTs to default delay, and generate vote form data
+		err := db.Where(model.ProposalVoteRecord{ProposalID: updatedProposalRecord.ID}).Updates(model.ProposalVoteRecord{
+			StartTs: time.Now().Add(internal.DefaultVoteStartDelay).UTC().Unix(),
+			EndTs:   time.Now().Add(internal.DefaultVoteStartDelay + internal.DefaultVoteDuration).UTC().Unix(),
+		}).Error
+		if err != nil {
+			log.Error().Msgf("update proposal vote record start / end ts error: %+v", err)
+			return err
+		}
+
+		voteFormBytes, err := BuildMetaforoVoteFormDataBytes(updatedProposalRecord.VoteRecords)
 		if err != nil {
 			log.Error().Msgf("build metaforoProposal vote data error: %+v", err)
 			return err
 		}
-		metaforoProposal, err = metaforo.CreateProposal(
+
+		metaforoCreateProposalResponse, err := metaforo.CreateProposal(
 			metaforoAccessToken,
 			internal.MetaforoGroupName,
 			fmt.Sprintf("%d", proposalCategory.MetaforoId),
-			proposalRecord.Title,
+			updatedProposalRecord.Title,
 			metaforoContent, nil, string(voteFormBytes))
 		if err != nil {
 			log.Error().Msgf("update metaforoProposal error: %+v", err)
 			return err
 		}
 
-		if proposalRecord.GetMetaforoThreadId() != metaforoProposal.Thread.Id {
-			log.Error().Msgf("Meatforo thread id different with DB record, please check")
-		}
-		metaforoProposalDetail, err := metaforo.GetProposal(proposalRecord.GetMetaforoThreadId(), internal.MetaforoGroupName)
-		jsonStr, _ := json.MarshalIndent(metaforoProposalDetail, "  ", "  ")
-		fmt.Printf("metaforo proposal detail: %q", jsonStr)
+		metaforoProposalResponse, err := metaforo.GetProposal(metaforoCreateProposalResponse.Thread.Id, internal.MetaforoGroupName)
+		api.PrintStructAsJson(metaforoProposalResponse, "TTT: metaforo proposal after getting detail")
 
-		updatedProposalRecord.ProposalRecordId = model.BuildProposalRecordIdFromMetaforoThreadId(metaforoProposal.Thread.Id)
-		updatedProposalRecord.State = int(model.ProposalStateDraft)
-		if metaforoProposal.Thread.EditHistory.Lists != nil && len(metaforoProposal.Thread.EditHistory.Lists) > 0 {
-			updatedProposalRecord.ArveaveHash = metaforoProposal.Thread.EditHistory.Lists[0].Arweave
+		if err != nil {
+			log.Error().Msgf("get metaforoProposal %d error: %+v", metaforoCreateProposalResponse.Thread.Id, err)
+			return err
 		}
+
+		// This branch only invoked while changing proposal state from PendingSubmit to Draft
+		updatedProposalRecord.State = int(model.ProposalStateDraft)
 	}
 
+	updatedProposalRecord.ProposalRecordId = model.BuildProposalRecordIdFromMetaforoThreadId(metaforoProposalResponse.Thread.Id)
+	if metaforoProposalResponse.Thread.EditHistory.Lists != nil && len(metaforoProposalResponse.Thread.EditHistory.Lists) > 0 {
+		updatedProposalRecord.ArveaveHash = metaforoProposalResponse.Thread.EditHistory.Lists[0].Arweave
+	}
+	// TODO: Save vote info
+
 	// Save data backed from metaforo API response to DB
-	if err := db.Save(proposalRecord).Error; err != nil {
+	if err := db.Save(updatedProposalRecord).Error; err != nil {
 		log.Error().Msgf("update proposal error: %+v", err)
 		return err
 	}

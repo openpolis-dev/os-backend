@@ -4,8 +4,11 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/rs/zerolog/log"
+	"github.com/theseed-labs/os-backend/internal"
+	"gorm.io/gorm"
 )
 
 type ProposalState int
@@ -107,6 +110,57 @@ func (p *Proposal) GetMetaforoThreadId() int {
 		return 0
 	}
 	return threadId
+}
+
+// BumpUpVersion creates a new proposal record with copied content_blocks, components, vote_records and bumps up proposal version.
+// For voteRecords, the startTs and endTs will be updated to after 14 days
+// The ArveaveHash will be set to empty string since the file changed
+func (p *Proposal) BumpUpVersion(db *gorm.DB) (*Proposal, error) {
+	newRecord := p
+	newRecord.ID = 0
+	newRecord.ArveaveHash = ""
+	newRecord.Version += 1
+
+	if err := db.Create(&newRecord).Error; err != nil {
+		log.Error().Msgf("create proposal record with data %+v failed. error: %+v", newRecord, err)
+		return nil, err
+	}
+
+	// Duplicate content blocks and components
+	if err := db.Transaction(func(tx *gorm.DB) error {
+		for _, block := range p.ContentBlocks {
+			block.ID = 0
+			if err := tx.Create(&block).Error; err != nil {
+				log.Error().Msgf("create proposal content block with data %+v failed. error: %+v", block, err)
+				return err
+			}
+		}
+
+		for _, component := range p.Components {
+			component.ID = 0
+			if err := tx.Create(&component).Error; err != nil {
+				log.Error().Msgf("create proposal component block with data %+v failed. error: %+v", component, err)
+				return err
+			}
+		}
+
+		for _, record := range p.VoteRecords {
+			record.ID = 0
+			record.StartTs = time.Now().Add(internal.DefaultVoteStartDelay).UTC().Unix()
+			record.EndTs = time.Now().Add(internal.DefaultVoteStartDelay + internal.DefaultVoteDuration).UTC().Unix()
+			if err := tx.Create(&record).Error; err != nil {
+				log.Error().Msgf("create proposal vote record with data %+v failed. error: %+v", record, err)
+				return err
+			}
+		}
+
+		return nil
+	}); err != nil {
+		log.Error().Msgf("create proposal record with data %+v failed. error: %+v", newRecord, err)
+		return nil, err
+	}
+
+	return newRecord, nil
 }
 
 func BuildProposalRecordIdFromMetaforoThreadId(threadId int) string {
