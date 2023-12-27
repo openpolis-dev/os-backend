@@ -178,7 +178,7 @@ type Thread struct {
 		Count int                      `json:"count"`
 		Lists []*PostEditHistoryRecord `json:"lists"`
 	} `json:"edit_history"`
-	Polls          []interface{} `json:"polls"`
+	Polls          []PollRecord  `json:"polls"`
 	PollStatus     string        `json:"poll_status"` // null, open or expired
 	Tags           []interface{} `json:"tags"`
 	SnapshotId     string        `json:"snapshot_id"`
@@ -198,6 +198,15 @@ type Thread struct {
 		ThreadCount int `json:"thread_count"`
 		CategoryId  int `json:"category_id"`
 	} `json:"update_count"`
+}
+
+type PollRecord struct {
+	Id          int       `json:"id"`
+	CreatedAt   time.Time `json:"created_at"`
+	PollStartAt time.Time `json:"poll_start_at"`
+	CloseAt     time.Time `json:"close_at"`
+	UserId      int       `json:"user_id"`
+	Title       string    `json:"title"`
 }
 
 type PostEditHistoryRecord struct {
