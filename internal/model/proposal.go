@@ -158,6 +158,8 @@ type ProposalVoteGate struct {
 	TokenId      string
 	MetaforoId   uint
 
+	ProposalVoteRecordId uint
+
 	Name string // Name of the vote gate
 }
 
@@ -197,7 +199,7 @@ type ProposalAuditLog struct {
 
 // ProposalVoteRecord saves vote object and associated to specified Proposal
 type ProposalVoteRecord struct {
-	ID         User `gorm:"primary Key"`
+	ID         uint `gorm:"primaryKey"`
 	GateID     uint
 	Title      string
 	VoteGate   *ProposalVoteGate
