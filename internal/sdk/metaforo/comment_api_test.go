@@ -9,7 +9,7 @@ func TestAddComment(t *testing.T) {
 	type args struct {
 		accessToken string
 		content     []*NewContentRequest
-		proposalId  string
+		proposalId  int
 		groupName   string
 		replyId     *string
 	}
@@ -34,7 +34,7 @@ func TestAddComment(t *testing.T) {
 			args: args{
 				accessToken: token,
 				content:     []*NewContentRequest{&commentContent},
-				proposalId:  "479674796747967",
+				proposalId:  479674796747967,
 				groupName:   groupName,
 			},
 			wantErr: MetaforoError,

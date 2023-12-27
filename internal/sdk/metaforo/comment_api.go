@@ -3,6 +3,7 @@ package metaforo
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"mime/multipart"
 	"net/http"
 
@@ -22,7 +23,7 @@ import (
 // --form 'reply_id="1964128"' \
 // --form 'thread_id="47945"' \
 // --form 'group_name="testttt"'
-func AddComment(accessToken, groupName, proposalId string, content []*NewContentRequest, replyId *string) error {
+func AddComment(accessToken, groupName string, proposalId int, content []*NewContentRequest, replyId *string) error {
 	apiPath := "/api/submit_post"
 
 	// prepare headers
@@ -34,7 +35,7 @@ func AddComment(accessToken, groupName, proposalId string, content []*NewContent
 	_ = writer.WriteField("sign", "")
 	_ = writer.WriteField("signMsg", "")
 	_ = writer.WriteField("login_type", "0")
-	_ = writer.WriteField("thread_id", proposalId)
+	_ = writer.WriteField("thread_id", fmt.Sprintf("%d", proposalId))
 	_ = writer.WriteField("group_name", groupName)
 	if content != nil {
 		c, _ := json.Marshal(content)

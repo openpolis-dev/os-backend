@@ -1,6 +1,12 @@
 package model
 
-import "strings"
+import (
+	"fmt"
+	"strconv"
+	"strings"
+
+	"github.com/rs/zerolog/log"
+)
 
 type ProposalState int
 
@@ -93,6 +99,20 @@ func (p *Proposal) CanBeUpdatedBy(wallet string) bool {
 	return p.CanBeUpdated() && strings.EqualFold(p.Applicant, wallet)
 }
 
+func (p *Proposal) GetMetaforoThreadId() int {
+	threadIdStr := strings.TrimPrefix(p.ProposalRecordId, "metaforo:")
+	threadId, err := strconv.Atoi(threadIdStr)
+	if err != nil {
+		log.Error().Msgf("Parse metafor thread ID error, proposalRecordId: %s, error: %+v", p.ProposalRecordId, err)
+		return 0
+	}
+	return threadId
+}
+
+func BuildProposalRecordIdFromMetaforoThreadId(threadId int) string {
+	return fmt.Sprintf("metaforo:%d", threadId)
+}
+
 // ProposalContentBlock saves blocks in proposal.
 // In proposal the content is built by blocks, each block contains a title and content.
 // The content are saved in order in proposal records.
@@ -158,7 +178,7 @@ type ProposalVoteGate struct {
 	TokenId      string
 	MetaforoId   uint
 
-	ProposalVoteRecordId uint
+	ProposalVoteRecords []*ProposalVoteRecord
 
 	Name string // Name of the vote gate
 }
@@ -202,7 +222,6 @@ type ProposalVoteRecord struct {
 	ID         uint `gorm:"primaryKey"`
 	GateID     uint
 	Title      string
-	VoteGate   *ProposalVoteGate
 	StartTs    int64 `gorm:"index"`
 	EndTs      int64 `gorm:"index"`
 	MetaforoID int

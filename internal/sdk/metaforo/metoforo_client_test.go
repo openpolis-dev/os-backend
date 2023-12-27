@@ -6,7 +6,7 @@ const (
 
 	groupName       = "testttt"
 	groupId         = 10434
-	proposalId      = "47967"
+	proposalId      = 47967
 	categoryIndexId = "1"
 
 	groupName2       = "xs12"

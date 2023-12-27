@@ -49,7 +49,7 @@ func main() {
 		createCommand.Parse(os.Args[2:])
 		votesData := []*model.ProposalVoteRecord{
 			{
-				Title:   "vote for proposal test",
+				Title:   "Proposal test",
 				StartTs: time.Now().UTC().Unix(),
 				EndTs:   time.Now().UTC().Add(14 * 24 * time.Hour).Unix(),
 			},
@@ -58,7 +58,12 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		resp, err := metaforo.CreateProposal(*createAccessToken, *createGroup, "1", "test from metaforo API", "# Test content\n## TEST", nil, string(pollData))
+		resp, err := metaforo.CreateProposal(
+			*createAccessToken,
+			*createGroup,
+			"1",
+			fmt.Sprintf("test from metaforo API, %s", time.Now().UTC().Format(time.RFC3339)),
+			"# Test content\n## TEST", nil, string(pollData))
 		if err != nil {
 			panic(err)
 		}
@@ -84,7 +89,6 @@ func SyncProposals(db *gorm.DB, grpName string, page int, size int) {
 	//fmt.Printf("TTT: proposals: %s", jsonStr)
 
 	for _, thread := range proposals {
-		log.Error().Msgf("TTT: update  at: %+v", thread.UpdatedAt)
 		categoryRecord := model.ProposalCategory{
 			MetaforoId: thread.CategoryIndexId,
 		}

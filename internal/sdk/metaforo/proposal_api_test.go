@@ -1,6 +1,7 @@
 package metaforo
 
 import (
+	"encoding/json"
 	"errors"
 	"strconv"
 	"testing"
@@ -99,7 +100,11 @@ func TestCreateProposal(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		got, err := CreateProposal(tt.args.accessToken, tt.args.groupName, tt.args.categoryIndexId, tt.args.title, tt.args.content, tt.args.tags, tt.args.polls)
+		pollFormDataBytes, err := json.Marshal(tt.args.polls)
+		if err != nil {
+			t.Errorf("[%s] CreateProposal() marshal form bytes error = %v", tt.name, err)
+		}
+		got, err := CreateProposal(tt.args.accessToken, tt.args.groupName, tt.args.categoryIndexId, tt.args.title, tt.args.content, tt.args.tags, string(pollFormDataBytes))
 		if err != nil {
 			t.Errorf("[%s] CreateProposal() error = %v", tt.name, err)
 		}
@@ -114,7 +119,7 @@ func TestCreateProposal(t *testing.T) {
 }
 
 func TestDeleteProposal(t *testing.T) {
-	got, err := CreateProposal(token, groupName2, categoryIndexId2, proposalTitle, proposeContent, nil, nil)
+	got, err := CreateProposal(token, groupName2, categoryIndexId2, proposalTitle, proposeContent, nil, "")
 	if err != nil {
 		t.Errorf("CreateProposal() error = %v", err)
 	}
@@ -134,7 +139,7 @@ func TestGetProposals(t *testing.T) {
 		GroupId int    `json:"group_id"`
 	}
 	type args struct {
-		proposalId string
+		proposalId int
 		groupName  string
 	}
 
@@ -160,7 +165,7 @@ func TestGetProposals(t *testing.T) {
 		{
 			name: "proposal not exist",
 			args: args{
-				proposalId: "479674796747967",
+				proposalId: 479674796747967,
 				groupName:  groupName,
 			},
 			wantErr:  MetaforoError,
@@ -168,25 +173,25 @@ func TestGetProposals(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		gotResp, err := GetProposals(tt.args.proposalId, tt.args.groupName)
+		gotResp, err := GetProposal(tt.args.proposalId, tt.args.groupName)
 		if !errors.Is(err, tt.wantErr) {
-			t.Errorf("[%s] GetProposals() error = %v, wantErr = %v", tt.name, err, tt.wantErr)
+			t.Errorf("[%s] GetProposal() error = %v, wantErr = %v", tt.name, err, tt.wantErr)
 		}
 
 		if tt.wantResp == nil {
 			if gotResp != nil {
-				t.Errorf("[%s] GetProposals() gotResp = %v, wantResp = %v", tt.name, gotResp, tt.wantResp)
+				t.Errorf("[%s] GetProposal() gotResp = %v, wantResp = %v", tt.name, gotResp, tt.wantResp)
 			}
 		} else {
 			if gotResp == nil {
-				t.Errorf("[%s] GetProposals() gotResp = %v, wantResp = %v", tt.name, gotResp, tt.wantResp)
+				t.Errorf("[%s] GetProposal() gotResp = %v, wantResp = %v", tt.name, gotResp, tt.wantResp)
 			}
 
 			if gotResp.Id != tt.wantResp.Id {
-				t.Errorf("[%s] GetProposals() gotResp.Id = %v, wantResp.Id = %v", tt.name, gotResp.Id, tt.wantResp.Id)
+				t.Errorf("[%s] GetProposal() gotResp.Id = %v, wantResp.Id = %v", tt.name, gotResp.Id, tt.wantResp.Id)
 			}
 			if gotResp.Title != tt.wantResp.Title {
-				t.Errorf("[%s] GetProposals() gotResp.Title = %v, wantResp.Title = %v", tt.name, gotResp.Title, tt.wantResp.Title)
+				t.Errorf("[%s] GetProposal() gotResp.Title = %v, wantResp.Title = %v", tt.name, gotResp.Title, tt.wantResp.Title)
 			}
 			if gotResp.GroupId != tt.wantResp.GroupId {
 				t.Errorf("[%s] GetGroupInfo() gotResp.GroupId = %v, wantResp.GroupId = %v", tt.name, gotResp.GroupId, tt.wantResp.GroupId)

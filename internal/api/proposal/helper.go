@@ -254,7 +254,6 @@ func SaveProposalComponentRecords(db *gorm.DB, proposalId uint, reqComponentData
 // Otherwise, copy the proposal to new record with ver+1, update the metaforo data, and save back as a new record,
 // and the metaforo API invoked here is updateProposal.
 func SaveProposalToMetaforo(db *gorm.DB, proposalRecord *model.Proposal, metaforoAccessToken string) error {
-	// TODO: Build metaforo content from proposal title and content blocks
 	var err error
 
 	var proposalCategory *model.ProposalCategory
@@ -267,7 +266,7 @@ func SaveProposalToMetaforo(db *gorm.DB, proposalRecord *model.Proposal, metafor
 	var contentBlocks []*model.ProposalContentBlock
 	err = db.Where(&model.ProposalContentBlock{ProposalID: proposalRecord.ID}).Find(&contentBlocks).Error
 	if err != nil {
-		log.Error().Msgf("get proposal category error: %+v", err)
+		log.Error().Msgf("get proposal content block error: %+v", err)
 		return err
 	}
 
@@ -298,6 +297,13 @@ func SaveProposalToMetaforo(db *gorm.DB, proposalRecord *model.Proposal, metafor
 			log.Error().Msgf("update metaforoProposal error: %+v", err)
 			return err
 		}
+
+		if proposalRecord.GetMetaforoThreadId() != metaforoProposal.Thread.Id {
+			log.Error().Msgf("Meatforo thread id different with DB record, please check")
+		}
+		metaforoProposalDetail, err := metaforo.GetProposal(proposalRecord.GetMetaforoThreadId(), internal.MetaforoGroupName)
+		jsonStr, _ := json.MarshalIndent(metaforoProposalDetail, "  ", "  ")
+		fmt.Printf("metaforo proposal detail: %q", jsonStr)
 
 		// Create a new model.Proposal record, and copy associated records to it, then bump up the version
 		updatedProposalRecord.Version = proposalRecord.Version + 1
@@ -368,7 +374,14 @@ func SaveProposalToMetaforo(db *gorm.DB, proposalRecord *model.Proposal, metafor
 			return err
 		}
 
-		updatedProposalRecord.ProposalRecordId = fmt.Sprintf("metaforo:%d", metaforoProposal.Thread.Id)
+		if proposalRecord.GetMetaforoThreadId() != metaforoProposal.Thread.Id {
+			log.Error().Msgf("Meatforo thread id different with DB record, please check")
+		}
+		metaforoProposalDetail, err := metaforo.GetProposal(proposalRecord.GetMetaforoThreadId(), internal.MetaforoGroupName)
+		jsonStr, _ := json.MarshalIndent(metaforoProposalDetail, "  ", "  ")
+		fmt.Printf("metaforo proposal detail: %q", jsonStr)
+
+		updatedProposalRecord.ProposalRecordId = model.BuildProposalRecordIdFromMetaforoThreadId(metaforoProposal.Thread.Id)
 		updatedProposalRecord.State = int(model.ProposalStateDraft)
 		if metaforoProposal.Thread.EditHistory.Lists != nil && len(metaforoProposal.Thread.EditHistory.Lists) > 0 {
 			updatedProposalRecord.ArveaveHash = metaforoProposal.Thread.EditHistory.Lists[0].Arweave

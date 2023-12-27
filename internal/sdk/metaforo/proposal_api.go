@@ -12,13 +12,13 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// GetProposals get specified proposal in Metaforo.
+// GetProposal get specified proposal in Metaforo.
 //
 // curl --location 'https://metaforo.io/api/get_thread/47967?group_name=testttt' \
 // --header 'api_key: metaforo_website' \
 // --header 'authorization: Bearer 21831|uLLroQDhdvk2OWKRHTP1wPR5vZX7vu1FmffgnBks'
-func GetProposals(proposalId, groupName string) (*Thread, error) {
-	apiPath := fmt.Sprintf("/api/get_thread/%s", proposalId)
+func GetProposal(threadId int, groupName string) (*Thread, error) {
+	apiPath := fmt.Sprintf("/api/get_thread/%d", threadId)
 
 	_, resp, err := doHttpRequest[ProposalResponse](&httpRequestData{
 		ApiUri:      apiBase + apiPath,
