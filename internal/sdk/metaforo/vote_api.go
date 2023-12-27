@@ -2,9 +2,12 @@ package metaforo
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/rs/zerolog/log"
+	"github.com/valyala/fasthttp"
 )
 
 // CastVote vote a poll
@@ -24,7 +27,7 @@ import (
 //		   "sign_msg": "",
 //		   "group_name": "xs12"
 //	}'
-func CastVote(accessToken, groupName string, pollId int, options []int) error {
+func CastVote(accessToken, groupName string, voteId int, options []int) error {
 	apiPath := "/api/poll/vote"
 
 	// prepare headers
@@ -32,7 +35,7 @@ func CastVote(accessToken, groupName string, pollId int, options []int) error {
 
 	// prepare json body
 	payload := map[string]any{
-		"poll_id":    pollId,
+		"poll_id":    voteId,
 		"options":    options,
 		"login_type": "0",
 		"sign":       "",
@@ -69,7 +72,7 @@ func CastVote(accessToken, groupName string, pollId int, options []int) error {
 //	   },
 //	   "group_name": "xs12"
 //	}'
-func RevokeVote(accessToken, groupName string, pollId int) error {
+func RevokeVote(accessToken, groupName string, voteId int) error {
 	apiPath := "/api/poll/remove"
 
 	// prepare headers
@@ -78,7 +81,7 @@ func RevokeVote(accessToken, groupName string, pollId int) error {
 	// prepare json body
 	payload := map[string]any{
 		"poll_id": map[string]int{
-			"poll_id": pollId,
+			"poll_id": voteId,
 		},
 		"group_name": groupName,
 	}
@@ -95,6 +98,39 @@ func RevokeVote(accessToken, groupName string, pollId int) error {
 		JsonBodyBytes: body,
 		Header:        formHeader,
 	})
+
+	return err
+}
+
+// UpdateVoteTime updates time of not started vote
+// curl --location 'https://metaforo.io/api/poll/edit' \
+// --header 'Authorization: Bearer 22453|uA3gXth....' \
+// --form 'api_key="123"' \
+// --form 'group_name="pic2"' \
+// --form 'poll_id="1739"' \
+// --form 'start_at="2024-06-02 09:40:21"' \
+// --form 'close_at="2024-06-04 08:40:21"
+func UpdateVoteTime(accessToken, groupName string, voteId int, startTs, endTs int64) error {
+	apiPath := "/api/poll/edit"
+
+	// prepare headers
+	formHeader := AuthHeader(accessToken)
+
+	formBody := fasthttp.Args{}
+	formBody.Set("group_name", groupName)
+	formBody.Set("poll_id", fmt.Sprintf("%d", voteId))
+	formBody.Set("start_at", time.Unix(startTs, 0).Format(time.RFC3339))
+	formBody.Set("close_at", time.Unix(endTs, 0).Format(time.RFC3339))
+
+	// send request
+	statusCode, body, err := doHttpRequest[any](&httpRequestData{
+		ApiUri:         apiBase + apiPath,
+		HttpMethod:     http.MethodPost,
+		FormBodyParams: &formBody,
+		Header:         formHeader,
+	})
+
+	log.Error().Msgf("TTT: %d %+v", statusCode, body)
 
 	return err
 }

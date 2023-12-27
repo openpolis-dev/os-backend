@@ -111,7 +111,6 @@ func (p *Proposal) GetMetaforoThreadId() int {
 }
 
 // BumpUpVersion creates a new proposal record with copied content_blocks, components, vote_records and bumps up proposal version.
-// For voteRecords, the field should be filled after vote updated via metaforo API
 // The ArveaveHash will be set to empty string since the file changed
 func (p *Proposal) BumpUpVersion(db *gorm.DB) (*Proposal, error) {
 	newRecord := p
@@ -138,6 +137,15 @@ func (p *Proposal) BumpUpVersion(db *gorm.DB) (*Proposal, error) {
 			component.ID = 0
 			if err := tx.Create(&component).Error; err != nil {
 				log.Error().Msgf("create proposal component block with data %+v failed. error: %+v", component, err)
+				return err
+			}
+		}
+
+		// voteRecords data contains metaforoID, so need to copy to new record, then it can be handled by updateVoteTime API
+		for _, voteRecord := range p.VoteRecords {
+			voteRecord.ID = 0
+			if err := tx.Create(&voteRecord).Error; err != nil {
+				log.Error().Msgf("create vote record with data %+v failed. error: %+v", voteRecord, err)
 				return err
 			}
 		}

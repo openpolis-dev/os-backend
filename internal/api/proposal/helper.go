@@ -31,7 +31,7 @@ func GetProposalFromStringId(db *gorm.DB, idStr string) (*model.Proposal, error)
 }
 
 func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, userWallet string, proposalIdStr string) (*model.Proposal, error) {
-	// If proposalIdStr is not empty string, this request should be an update action, otherwise it is a create action.
+	// If proposalIdStr is not empty string, this request should be an update action, otherwise it is a creation action.
 	// Create:
 	//   1. Create proposal record
 	//   2. Save associated content and component blocks
@@ -52,76 +52,35 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 			return nil, err
 		}
 
-		if dbProposalRcd.State == int(model.ProposalStatePendingSubmit) {
-			// Proposal is in PendingSubmit state, the data can be updated directory w/o bumping up version
-			dbProposalRcd.Title = reqData.Title
-			dbProposalRcd.ProposalCategoryID = reqData.ProposalCategoryId
-
-			voteStartTime := time.Now().UTC().Add(internal.DefaultVoteStartDelay)
-			voteEndTime := time.Now().UTC().Add(internal.DefaultVoteStartDelay + internal.DefaultVoteDuration)
-
-			if err := db.Model(model.ProposalVoteRecord{}).
-				Where("proposal_id = ?", dbProposalRcd.ID).
-				Updates(model.ProposalVoteRecord{StartTs: voteStartTime.Unix(), EndTs: voteEndTime.Unix()}).
-				Error; err != nil {
-				log.Error().Msgf("update proposal error: %+v", err)
-				return nil, err
-			}
-
-			// Update proposal content blocks, includes update existing blocks and remove deleted blocks
-			if err := SaveProposalContentRecords(db, dbProposalRcd, reqData.ContentBlocks); err != nil {
-				log.Error().Msgf("create proposal block error: %+v", err)
-				return nil, err
-			}
-
-			// Create proposal components
-			if err := SaveProposalComponentRecords(db, dbProposalRcd.ID, reqData.Components); err != nil {
-				log.Error().Msgf("create proposal component blocks error: %+v", err)
-				return nil, err
-			}
-			return dbProposalRcd, nil
-		} else {
+		proposalRcd := dbProposalRcd
+		// Bump proposal version if it is not in PendingSubmit state
+		if dbProposalRcd.State != int(model.ProposalStatePendingSubmit) {
 			// Proposal has already published on chain, create new record and bump up version
-			newProposalRecord := model.Proposal{
-				CreateTs:           time.Now().UTC().Unix(),
-				Title:              reqData.Title,
-				Applicant:          common.FormatUserWallet(userWallet),
-				ProposalCategoryID: reqData.ProposalCategoryId,
-				Version:            dbProposalRcd.Version + 1,
-			}
-
-			if err := db.Create(&newProposalRecord).Error; err != nil {
-				log.Error().Msgf("create proposal error: %+v", err)
+			newProposalRecord, err := dbProposalRcd.BumpUpVersion(db)
+			if err != nil {
+				log.Error().Msgf("duplicate proposal error: %+v", err)
 				return nil, err
 			}
-
-			// Remove ID field from request data, then it will be created with new proposal ID
-			newContentBlocks := lo.Map(reqData.ContentBlocks, func(block *FrontendContentBlockRecord, _ int) *FrontendContentBlockRecord {
-				block.ID = 0
-				return block
-			})
-
-			// Create proposal content blocks
-			if err := SaveProposalContentRecords(db, &newProposalRecord, newContentBlocks); err != nil {
-				log.Error().Msgf("create proposal block error: %+v", err)
-				return nil, err
-			}
-
-			newComponents := lo.MapValues(reqData.Components, func(component *ComponentRequestData, _ string) *ComponentRequestData {
-				component.ID = 0
-				return component
-			})
-
-			// Create proposal components
-			if err := SaveProposalComponentRecords(db, newProposalRecord.ID, newComponents); err != nil {
-				log.Error().Msgf("create proposal component blocks error: %+v", err)
-				return nil, err
-			}
-
-			// TODO: Update proposal on Metaforo and vote datetime
-
-			return &newProposalRecord, nil
+			proposalRcd = newProposalRecord
 		}
+
+		// Update fields
+		// Proposal is in PendingSubmit state, the data can be updated directory w/o bumping up version
+		proposalRcd.Title = reqData.Title
+		proposalRcd.ProposalCategoryID = reqData.ProposalCategoryId
+
+		// Update proposal content blocks, includes update existing blocks and remove deleted blocks
+		if err := SaveProposalContentRecords(db, proposalRcd.ID, reqData.ContentBlocks); err != nil {
+			log.Error().Msgf("create proposal block error: %+v", err)
+			return nil, err
+		}
+
+		// Create proposal components
+		if err := SaveProposalComponentRecords(db, proposalRcd.ID, reqData.Components); err != nil {
+			log.Error().Msgf("create proposal component blocks error: %+v", err)
+			return nil, err
+		}
+		return proposalRcd, nil
 	} else {
 		// Init proposal record to get ID
 		proposalRecord := model.Proposal{
@@ -138,7 +97,7 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 		}
 
 		// Create proposal content blocks
-		if err := SaveProposalContentRecords(db, &proposalRecord, reqData.ContentBlocks); err != nil {
+		if err := SaveProposalContentRecords(db, proposalRecord.ID, reqData.ContentBlocks); err != nil {
 			log.Error().Msgf("create proposal block error: %+v", err)
 			return nil, err
 		}
@@ -153,9 +112,9 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 	}
 }
 
-func SaveProposalContentRecords(db *gorm.DB, proposalRecord *model.Proposal, reqContentBlockData []*FrontendContentBlockRecord) error {
+func SaveProposalContentRecords(db *gorm.DB, proposalRecordId uint, reqContentBlockData []*FrontendContentBlockRecord) error {
 	var existingContentBlockIds []uint
-	err := db.Model(&model.ProposalContentBlock{}).Where(model.ProposalContentBlock{ProposalID: proposalRecord.ID}).Pluck("id", &existingContentBlockIds).Error
+	err := db.Model(&model.ProposalContentBlock{}).Where(model.ProposalContentBlock{ProposalID: proposalRecordId}).Pluck("id", &existingContentBlockIds).Error
 	if err != nil {
 		log.Error().Msgf("get proposal content block ids error: %+v", err)
 		return err
@@ -167,7 +126,7 @@ func SaveProposalContentRecords(db *gorm.DB, proposalRecord *model.Proposal, req
 		for _, block := range reqContentBlockData {
 			if err := db.Save(&model.ProposalContentBlock{
 				ID:         block.ID,
-				ProposalID: proposalRecord.ID,
+				ProposalID: proposalRecordId,
 				Title:      block.Title,
 				Content:    block.Content,
 				CreateTs:   time.Now().UTC().Unix(),
@@ -253,20 +212,17 @@ func SaveProposalToMetaforo(db *gorm.DB, origProposalRecord *model.Proposal, met
 
 	var metaforoProposalResponse *metaforo.ProposalResponse
 	updatedProposalRecord := origProposalRecord
+
+	// Vote start and end time, used for create and update proposal
+	voteStartTime := time.Now().UTC().Add(internal.DefaultVoteStartDelay)
+	voteEndTime := time.Now().UTC().Add(internal.DefaultVoteStartDelay + internal.DefaultVoteDuration)
+
 	if origProposalRecord.ProposalRecordId != "" {
-		log.Error().Msgf("DB Record has ProposalRecordId, update metaforo proposal")
+		log.Error().Msgf("TTT: DB Record has ProposalRecordId, update metaforo proposal")
 		// DB Record has ProposalRecordId, this is updating metaforo proposal action, which contains
-		// * Duplicate current proposal record to new one, with bumped version and same ProposalRecordId
 		// * Invoke metaforo.UpdateProposal to update metaforo proposal data
 		// * Save the new metaforo proposal data back to new created DB record
 		// This logic is invoked while changing proposal state form Withdrawn, Rejected to Draft
-
-		// Duplicate current proposal record to new one, with content blocks, components
-		updatedProposalRecord, err = origProposalRecord.BumpUpVersion(db)
-		if err != nil {
-			log.Error().Msgf("duplicate proposal data error: %+v", err)
-			return err
-		}
 
 		metaforoThreadId := updatedProposalRecord.GetMetaforoThreadId()
 		// Update metaforo proposal
@@ -283,9 +239,17 @@ func SaveProposalToMetaforo(db *gorm.DB, origProposalRecord *model.Proposal, met
 			return err
 		}
 
-		// TODO: Invoke update vote start/end ts API to extend the vote start time
 		for _, record := range origProposalRecord.VoteRecords {
-			fmt.Printf("vote metaforo id: %d\n", record.MetaforoID)
+			err = metaforo.UpdateVoteTime(
+				metaforoAccessToken,
+				internal.MetaforoGroupName,
+				record.MetaforoID,
+				voteStartTime.Unix(),
+				voteEndTime.Unix())
+			if err != nil {
+				log.Error().Msgf("update metaforoProposal vote error: %+v", err)
+				return err
+			}
 		}
 
 		metaforoProposalResponse, err = metaforo.GetProposal(metaforoThreadId, internal.MetaforoGroupName)
@@ -298,7 +262,7 @@ func SaveProposalToMetaforo(db *gorm.DB, origProposalRecord *model.Proposal, met
 
 		updatedProposalRecord.State = int(model.ProposalStateDraft)
 	} else {
-		log.Error().Msgf("DB Record has no ProposalRecordId, create metaforo proposal")
+		log.Error().Msgf("TTT: DB Record has no ProposalRecordId, create metaforo proposal")
 		// DB Record has no ProposalRecordId, this is creating metaforo proposal action, which contains:
 		// * Invoke metaforo.CreateProposal to create metaforo proposal record
 		// * Generate vote record form bytes, and send to metaforo via API
@@ -307,19 +271,6 @@ func SaveProposalToMetaforo(db *gorm.DB, origProposalRecord *model.Proposal, met
 
 		// Regards vote record, the data is generated here, and uploaded to metaforo in CreateProposal API.
 		// And the db records will be updated by data returned from Metaforo
-		err := db.Where(model.ProposalVoteRecord{ProposalID: updatedProposalRecord.ID}).Updates(model.ProposalVoteRecord{
-			StartTs: time.Now().Add(internal.DefaultVoteStartDelay).UTC().Unix(),
-			EndTs:   time.Now().Add(internal.DefaultVoteStartDelay + internal.DefaultVoteDuration).UTC().Unix(),
-		}).Error
-		if err != nil {
-			log.Error().Msgf("update proposal vote record start / end ts error: %+v", err)
-			return err
-		}
-
-		// Generate vote form bytes
-		voteStartTime := time.Now().UTC().Add(internal.DefaultVoteStartDelay)
-		voteEndTime := time.Now().UTC().Add(internal.DefaultVoteStartDelay + internal.DefaultVoteDuration)
-
 		voteRecords := []*model.ProposalVoteRecord{
 			{
 				GateID:  0,
@@ -352,23 +303,6 @@ func SaveProposalToMetaforo(db *gorm.DB, origProposalRecord *model.Proposal, met
 			return err
 		}
 
-		// Update vote data from metaforo response
-		for _, poll := range metaforoProposalResponse.Thread.Polls {
-			api.PrintStructAsJson(poll, "TTT: Poll data after creation:")
-			voteRecord := &model.ProposalVoteRecord{
-				Title:      poll.Title,
-				StartTs:    voteStartTime.Unix(),
-				EndTs:      voteEndTime.Unix(),
-				MetaforoID: poll.Id,
-				ProposalID: updatedProposalRecord.ID,
-			}
-			err := db.Create(&voteRecord).Error
-			if err != nil {
-				log.Error().Msgf("save metaforoProposal vode record failed, raw response: %+v error: %+v", metaforoProposalResponse, err)
-				return err
-			}
-		}
-
 		// This branch only invoked while changing proposal state from PendingSubmit to Draft
 		updatedProposalRecord.State = int(model.ProposalStateDraft)
 	}
@@ -376,6 +310,23 @@ func SaveProposalToMetaforo(db *gorm.DB, origProposalRecord *model.Proposal, met
 	updatedProposalRecord.ProposalRecordId = model.BuildProposalRecordIdFromMetaforoThreadId(metaforoProposalResponse.Thread.Id)
 	if metaforoProposalResponse.Thread.EditHistory.Lists != nil && len(metaforoProposalResponse.Thread.EditHistory.Lists) > 0 {
 		updatedProposalRecord.ArveaveHash = metaforoProposalResponse.Thread.EditHistory.Lists[0].Arweave
+	}
+
+	// Update vote data from metaforo response
+	for _, poll := range metaforoProposalResponse.Thread.Polls {
+		api.PrintStructAsJson(poll, "TTT: Poll data after creation:")
+		voteRecord := &model.ProposalVoteRecord{
+			Title:      poll.Title,
+			StartTs:    voteStartTime.Unix(),
+			EndTs:      voteEndTime.Unix(),
+			MetaforoID: poll.Id,
+			ProposalID: updatedProposalRecord.ID,
+		}
+		err := db.Create(&voteRecord).Error
+		if err != nil {
+			log.Error().Msgf("save metaforoProposal vode record failed, raw response: %+v error: %+v", metaforoProposalResponse, err)
+			return err
+		}
 	}
 
 	// Save data backed from metaforo API response to DB
