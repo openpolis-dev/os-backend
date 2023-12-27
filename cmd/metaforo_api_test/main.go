@@ -47,7 +47,14 @@ func main() {
 		SyncNftGate(db, *syncGroup)
 	case "create":
 		createCommand.Parse(os.Args[2:])
-		pollData, err := proposal.BuildMetaforoVoteFormDataBytes("vote for porposal test", time.Now().UTC(), time.Now().UTC().Add(14*24*time.Hour))
+		votesData := []*model.ProposalVoteRecord{
+			{
+				Title:   "vote for proposal test",
+				StartTs: time.Now().UTC().Unix(),
+				EndTs:   time.Now().UTC().Add(14 * 24 * time.Hour).Unix(),
+			},
+		}
+		pollData, err := proposal.BuildMetaforoVoteFormDataBytes(votesData)
 		if err != nil {
 			panic(err)
 		}

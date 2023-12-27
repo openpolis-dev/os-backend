@@ -199,10 +199,10 @@ type ProposalAuditLog struct {
 type ProposalVoteRecord struct {
 	ID         User `gorm:"primary Key"`
 	GateID     uint
+	Title      string
 	VoteGate   *ProposalVoteGate
-	StartTs    int64  `gorm:"index"`
-	EndTs      int64  `gorm:"index"`
-	FormData   string // Saves serialized form data for vote
+	StartTs    int64 `gorm:"index"`
+	EndTs      int64 `gorm:"index"`
 	MetaforoID int
 }
 

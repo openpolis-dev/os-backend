@@ -257,8 +257,9 @@ func createCreateOrUpdateFormData(groupName, title, categoryIndexId, content str
 		t, _ := json.Marshal(tags)
 		_ = writer.WriteField("tags", string(t))
 	}
+
 	if voteFormData != "" {
-		_ = writer.WriteField("polls", voteFormData)
+		_ = writer.WriteField("polls", string(voteFormData))
 	}
 
 	err := writer.Close()

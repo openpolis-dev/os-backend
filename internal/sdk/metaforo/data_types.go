@@ -338,7 +338,7 @@ type GroupInfo struct {
 	GroupSettings  struct {
 		KudosVote  string `json:"kudos_vote"`
 		NeuronVote string `json:"neuron_vote"`
-		ReplyLevel int    `json:"reply_level"`
+		ReplyLevel any    `json:"reply_level"`
 	} `json:"group_settings"`
 	Tags                        []*Tag        `json:"tags"`
 	OrderTags                   []*Tag        `json:"order_tags"`
