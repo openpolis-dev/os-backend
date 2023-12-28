@@ -231,6 +231,7 @@ func DeleteProposal(accessToken, postId, groupName string) error {
 }
 
 func createCreateOrUpdateFormData(groupName, title, categoryIndexId, content string, tags []*NewProposalTagRequest, voteFormData string, threadId int) ([]byte, string, error) {
+	// TODO: multipart body has duplicated logic, need to refactor
 	// prepare multipart body
 	payload := &bytes.Buffer{}
 	writer := multipart.NewWriter(payload)

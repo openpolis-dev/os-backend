@@ -7,6 +7,8 @@ import (
 	"mime/multipart"
 	"net/http"
 
+	"github.com/gomarkdown/markdown"
+	"github.com/microcosm-cc/bluemonday"
 	"github.com/rs/zerolog/log"
 )
 
@@ -23,12 +25,13 @@ import (
 // --form 'reply_id="1964128"' \
 // --form 'thread_id="47945"' \
 // --form 'group_name="testttt"'
-func AddComment(accessToken, groupName string, proposalId int, content []*NewContentRequest, replyId *string) error {
+func AddComment(accessToken, groupName string, proposalId int, content string, replyId string) error {
 	apiPath := "/api/submit_post"
 
 	// prepare headers
 	formHeader := AuthHeader(accessToken)
 
+	// TODO: multipart body has duplicated logic, need to refactor
 	// prepare multipart body
 	payload := &bytes.Buffer{}
 	writer := multipart.NewWriter(payload)
@@ -37,13 +40,19 @@ func AddComment(accessToken, groupName string, proposalId int, content []*NewCon
 	_ = writer.WriteField("login_type", "0")
 	_ = writer.WriteField("thread_id", fmt.Sprintf("%d", proposalId))
 	_ = writer.WriteField("group_name", groupName)
-	if content != nil {
-		c, _ := json.Marshal(content)
-		_ = writer.WriteField("content", string(c))
+
+	// Set editor_type to 1 to support markdown, and for Markdown should be passed
+	_ = writer.WriteField("editor_type", "1")
+	_ = writer.WriteField("content", content)
+
+	maybeUnsafeHTML := markdown.ToHTML([]byte(content), nil, nil)
+	html := bluemonday.UGCPolicy().SanitizeBytes(maybeUnsafeHTML)
+	_ = writer.WriteField("html", string(html))
+
+	if replyId != "" {
+		_ = writer.WriteField("reply_id", replyId)
 	}
-	if replyId != nil {
-		_ = writer.WriteField("reply_id", *replyId)
-	}
+
 	err := writer.Close()
 	if err != nil {
 		log.Error().Msgf("Prepare Multipart paramter error: %s", err)

@@ -64,7 +64,7 @@ func TestAddComment(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := AddComment(tt.args.accessToken, tt.args.groupName, tt.args.proposalId, tt.args.content, tt.args.replyId); !errors.Is(err, tt.wantErr) {
+			if err := AddComment(tt.args.accessToken, tt.args.groupName, tt.args.proposalId, tt.args.content[0].Insert, *tt.args.replyId); !errors.Is(err, tt.wantErr) {
 				t.Errorf("[%s] AddComment() error = %v, wantErr = %v", tt.name, err, tt.wantErr)
 			}
 		})

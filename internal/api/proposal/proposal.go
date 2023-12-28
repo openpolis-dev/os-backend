@@ -206,6 +206,8 @@ func Update(ctx *gin.Context) {
 		return
 	}
 
+	// FIXME: refactor here: If not submitting to metaforo, a new version will be created in DB but no metaforo record.
+	// FIXME: Do we need to force passing the metaforo access token if not in pending submit state?
 	if reqData.SubmitToMetaforo {
 		if err := SaveProposalToMetaforo(db, proposalRecord, reqData.MetaforoAccessToken); err != nil {
 			log.Error().Msgf("create metaforo proposal error: %+v", err)

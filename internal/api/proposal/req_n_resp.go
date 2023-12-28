@@ -46,6 +46,13 @@ type RejectProposalData struct {
 	Reason string `json:"reason"`
 }
 
+type AddCommentData struct {
+	Content string `json:"content"`
+	ReplyId int    `json:"reply_id"`
+
+	MetaforoAccessToken string `json:"metaforo_access_token"`
+}
+
 ///////////////////////
 // Response data definitions
 ///////////////////////

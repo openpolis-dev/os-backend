@@ -349,6 +349,7 @@ func main() {
 		// the proposal will also be published to Metaforo and convert to Draft state
 		proposalGroup.POST("/create", proposal.Create)
 		proposalGroup.POST("/update/:id", proposal.Update)
+		proposalGroup.POST("/add_comment/:id", proposal.AddComment)
 
 		// State change actions for proposals
 		proposalGroup.POST("/withdraw/:id", proposal.Withdraw)
