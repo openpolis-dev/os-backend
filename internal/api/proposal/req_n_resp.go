@@ -70,6 +70,17 @@ type DeleteCommentData struct {
 	MetaforoAccessToken string `json:"metaforo_access_token"`
 }
 
+type CastVoteData struct {
+	MetaforoVoteId      int    `json:"vote_id"`
+	MetaforoVoteOptions []int  `json:"options"`
+	MetaforoAccessToken string `json:"metaforo_access_token"`
+}
+
+type RevokeVoteData struct {
+	MetaforoVoteId      int    `json:"vote_id"`
+	MetaforoAccessToken string `json:"metaforo_access_token"`
+}
+
 ///////////////////////
 // Response data definitions
 ///////////////////////
