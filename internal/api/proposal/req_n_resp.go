@@ -131,7 +131,8 @@ type FrontendProposalDetailRecord struct {
 	Histories any `json:"histories"`
 
 	// Comments
-	Comments []any `json:"comments"`
+	CommentCount int   `json:"comment_count"`
+	Comments     []any `json:"comments"`
 
 	// Vote
 	Votes any `json:"votes"`
@@ -236,6 +237,7 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 		RejectReason:       rejectedComment.Content,
 		Histories:          metaforoProposal.Thread.EditHistory,
 		Arweave:            proposal.ArweaveHash,
+		CommentCount:       metaforoProposal.Thread.PostsCount,
 		Comments:           metaforoProposal.Thread.Posts,
 		Votes:              metaforoProposal.Thread.Polls,
 		CreateTs:           proposal.CreateTs,
