@@ -120,6 +120,9 @@ type FrontendProposalDetailRecord struct {
 	// Comments
 	Comments []any `json:"comments"`
 
+	// Vote
+	Votes any `json:"votes"`
+
 	// Is current user voted for this proposal
 	IsVoted bool `json:"is_voted"`
 
@@ -220,6 +223,7 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 		RejectReason:       rejectedComment.Content,
 		Arveave:            proposal.ArveaveHash,
 		Comments:           metaforoProposal.Thread.Posts,
+		Votes:              metaforoProposal.Thread.Polls,
 		CreateTs:           proposal.CreateTs,
 	}, nil
 }
