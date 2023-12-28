@@ -1,10 +1,14 @@
 package proposal
 
 import (
+	"errors"
+
 	"github.com/samber/lo"
+	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api/component"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
+	"github.com/theseed-labs/os-backend/internal/sdk/metaforo"
 	"gorm.io/gorm"
 )
 
@@ -98,8 +102,15 @@ type FrontendProposalDetailRecord struct {
 	// Arveave Hash
 	Arveave string `json:"arveave"`
 
-	// Vote data
-	IsVoted bool
+	// Reject related data
+	IsRejected   bool   `json:"is_rejected"`
+	RejectReason string `json:"reject_reason"`
+
+	// Comments
+	Comments []any `json:"comments"`
+
+	// Is current user voted for this proposal
+	IsVoted bool `json:"is_voted"`
 
 	// Timestamps
 	CreateTs int64 `json:"create_ts"`
@@ -161,7 +172,25 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 		}
 	})
 
+	metaforoProposal, err := metaforo.GetProposal(proposal.GetMetaforoThreadId(), internal.MetaforoGroupName)
+	if err != nil {
+		return nil, err
+	}
+	// Save arveave if not existing in current DB record
+	// TODO: Merge duplicated code in Update proposal
+	if metaforoProposal.Thread.EditHistory.Lists != nil && len(metaforoProposal.Thread.EditHistory.Lists) > 0 {
+		proposal.ArveaveHash = metaforoProposal.Thread.EditHistory.Lists[0].Arweave
+		db.Save(&proposal)
+	}
+
 	// TODO: Query UserVoteRecord and update isVoted field
+
+	// TODO: Get rejected comments if have
+	rejectedComment := model.ProposalComment{}
+	err = db.Model(model.ProposalComment{}).Where("proposal_id = ? AND is_reject_comment = ?", proposal.ID, true).First(&rejectedComment).Error
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, err
+	}
 
 	// TODO: Optimize the avatar query
 	var applicantAvatarLink string
@@ -176,7 +205,10 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 		Components:         proposalComponentResponse,
 		Applicant:          proposal.Applicant,
 		ApplicantAvatar:    applicantAvatarLink,
+		IsRejected:         proposal.State == int(model.ProposalStateRejected),
+		RejectReason:       rejectedComment.Content,
 		Arveave:            proposal.ArveaveHash,
+		Comments:           metaforoProposal.Thread.Posts,
 		CreateTs:           proposal.CreateTs,
 	}, nil
 }
