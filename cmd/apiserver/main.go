@@ -109,7 +109,7 @@ func main() {
 	// setup database
 	storage.InitGormDB(cfg.DataSource.Dsn, cfg.Casbin.DriverName)
 	db := storage.GetGormDB()
-	err = storage.MigrateTables(db)
+	//err = storage.MigrateTables(db)
 	if err != nil {
 		panic(err)
 	}
