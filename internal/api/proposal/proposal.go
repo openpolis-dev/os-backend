@@ -70,6 +70,10 @@ func List(ctx *gin.Context) {
 		return
 	}
 
+	if queryParams.Q != "" {
+		querySeg.Where(fmt.Sprintf("title ilike '%%%s%%'", queryParams.Q))
+	}
+
 	querySeg = querySeg.Joins("ProposalCategory")
 
 	dbRcds, err := model.QueryRows[model.Proposal](querySeg, page)

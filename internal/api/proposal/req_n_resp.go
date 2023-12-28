@@ -23,6 +23,7 @@ type QueryParams struct {
 	SortOrder  string `form:"sort_order"`
 	State      string `form:"state"`
 	CategoryId uint   `form:"category_id"`
+	Q          string `form:"q"`
 }
 
 // ComponentRequestData represents a component request, which contains component name and associated data
