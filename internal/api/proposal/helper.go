@@ -181,7 +181,7 @@ func SaveProposalComponentRecords(db *gorm.DB, proposalId uint, reqComponentData
 }
 
 // SaveProposalToMetaforo updates proposal record to Metaforo
-// If proposal is in pending submit state, update existing proposal record (state, ProposalRecordId, ArveaveHash) and save back,
+// If proposal is in pending submit state, update existing proposal record (state, ProposalRecordId, ArweaveHash) and save back,
 // the version is keep the same. The metaforo API invoked here is CreateProposal.
 //
 // Otherwise, copy the proposal to new record with ver+1, update the metaforo data, and save back as a new record,
@@ -310,7 +310,7 @@ func SaveProposalToMetaforo(db *gorm.DB, origProposalRecord *model.Proposal, met
 
 	updatedProposalRecord.ProposalRecordId = model.BuildProposalRecordIdFromMetaforoThreadId(metaforoProposalResponse.Thread.Id)
 	if metaforoProposalResponse.Thread.EditHistory.Lists != nil && len(metaforoProposalResponse.Thread.EditHistory.Lists) > 0 {
-		updatedProposalRecord.ArveaveHash = metaforoProposalResponse.Thread.EditHistory.Lists[0].Arweave
+		updatedProposalRecord.ArweaveHash = metaforoProposalResponse.Thread.EditHistory.Lists[0].Arweave
 	}
 
 	// Update vote data from metaforo response

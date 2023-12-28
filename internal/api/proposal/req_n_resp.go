@@ -121,12 +121,14 @@ type FrontendProposalDetailRecord struct {
 	Reviewer        string `json:"reviewer"`
 	ReviewerAvatar  string `json:"reviewer_avatar"`
 
-	// Arveave Hash
-	Arveave string `json:"arveave"`
+	// Arweave Hash
+	Arweave string `json:"arweave"`
 
 	// Reject related data
 	IsRejected   bool   `json:"is_rejected"`
 	RejectReason string `json:"reject_reason"`
+
+	Histories any `json:"histories"`
 
 	// Comments
 	Comments []any `json:"comments"`
@@ -201,10 +203,10 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 	if err != nil {
 		return nil, err
 	}
-	// Save arveave if not existing in current DB record
+	// Save arweave if not existing in current DB record
 	// TODO: Merge duplicated code in Update proposal
 	if metaforoProposal.Thread.EditHistory.Lists != nil && len(metaforoProposal.Thread.EditHistory.Lists) > 0 {
-		proposal.ArveaveHash = metaforoProposal.Thread.EditHistory.Lists[0].Arweave
+		proposal.ArweaveHash = metaforoProposal.Thread.EditHistory.Lists[0].Arweave
 		db.Save(&proposal)
 	}
 
@@ -232,7 +234,8 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 		ApplicantAvatar:    applicantAvatarLink,
 		IsRejected:         proposal.State == int(model.ProposalStateRejected),
 		RejectReason:       rejectedComment.Content,
-		Arveave:            proposal.ArveaveHash,
+		Histories:          metaforoProposal.Thread.EditHistory,
+		Arweave:            proposal.ArweaveHash,
 		Comments:           metaforoProposal.Thread.Posts,
 		Votes:              metaforoProposal.Thread.Polls,
 		CreateTs:           proposal.CreateTs,

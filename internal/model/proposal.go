@@ -70,9 +70,9 @@ type Proposal struct {
 	ProposalRecordId string `gorm:"index:proposalVer"`
 	Version          uint   `gorm:"index:proposalVer"`
 
-	// IPFS CID and Arveave hash for the proposal
+	// IPFS CID and Arweave hash for the proposal
 	IpfsCid     string `gorm:"index"`
-	ArveaveHash string `gorm:"index"`
+	ArweaveHash string `gorm:"index"`
 
 	Applicant string `gorm:"index"`
 
@@ -111,11 +111,11 @@ func (p *Proposal) GetMetaforoThreadId() int {
 }
 
 // BumpUpVersion creates a new proposal record with copied content_blocks, components, vote_records and bumps up proposal version.
-// The ArveaveHash will be set to empty string since the file changed
+// The ArweaveHash will be set to empty string since the file changed
 func (p *Proposal) BumpUpVersion(db *gorm.DB) (*Proposal, error) {
 	newRecord := p
 	newRecord.ID = 0
-	newRecord.ArveaveHash = ""
+	newRecord.ArweaveHash = ""
 	newRecord.Version += 1
 
 	if err := db.Create(&newRecord).Error; err != nil {
