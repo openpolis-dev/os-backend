@@ -407,7 +407,12 @@ func Reject(ctx *gin.Context) {
 	db.Save(&rejectComment)
 
 	// Add reject comment
-	err = metaforo.AddComment(rejectRequestData.MetaforoAccessToken, internal.MetaforoGroupName, int(proposalRecord.ID), rejectComment.Content, "")
+	err = metaforo.AddComment(
+		rejectRequestData.MetaforoAccessToken,
+		internal.MetaforoGroupName,
+		proposalRecord.GetMetaforoThreadId(),
+		rejectComment.Content,
+		"")
 	if err != nil {
 		log.Error().Msgf("add comment to proposal %s error: %+v", proposalIdStr, err)
 		sdk.LogUserSideError(ctx, err)
@@ -431,7 +436,7 @@ func updateProposalState(db *gorm.DB, user *middleware.CurUser, proposalStrId st
 	}
 
 	if proposalRecord.State != int(model.ProposalStateDraft) {
-		return nil, fmt.Errorf("proposal %s in %s state can't be withdrawn", proposalStrId, proposalRecord.StateName())
+		return nil, fmt.Errorf("proposal %s in %s state can't be updated", proposalStrId, proposalRecord.StateName())
 	}
 
 	// Check whether user has permission to the change the proposal state
