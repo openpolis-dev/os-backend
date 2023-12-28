@@ -132,7 +132,6 @@ func SaveProposalContentRecords(db *gorm.DB, proposalRecordId uint, reqContentBl
 				CreateTs:   time.Now().UTC().Unix(),
 			}).Error; err != nil {
 				log.Error().Msgf("create proposal block error: %+v, block data: %+v", err, block)
-				log.Error().Msgf("create proposal block error: %+v", err)
 				return err
 			}
 			if block.ID != 0 {
@@ -239,6 +238,8 @@ func SaveProposalToMetaforo(db *gorm.DB, origProposalRecord *model.Proposal, met
 			return err
 		}
 
+		// Get vote record from original record and update the timestamp
+		// The updated vote record will be saved by response in GetProposal function
 		for _, record := range origProposalRecord.VoteRecords {
 			err = metaforo.UpdateVoteTime(
 				metaforoAccessToken,

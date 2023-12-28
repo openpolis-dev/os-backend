@@ -10,11 +10,13 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
+	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/middleware"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk"
+	"github.com/theseed-labs/os-backend/internal/sdk/metaforo"
 	"github.com/xiaosongfu/gormfind"
 	"gorm.io/gorm"
 )
@@ -422,22 +424,35 @@ func updateProposalState(db *gorm.DB, user *middleware.CurUser, proposalStrId st
 		}
 		proposalRecord.State = int(model.ProposalStateWithdrawn)
 		err = db.Save(&proposalRecord).Error
-		// TODO: Update Metaforo Label: Remove old draft and add new, verify whether metaforo can handle this
+		// TODO: Update Metaforo Label: Remove old label and add new, verify whether metaforo can handle this
 		if err != nil {
 			log.Error().Msgf("change proposal to withdrawn error")
 			return nil, err
 		}
 	case model.ProposalStateApproved:
-		// TODO: Update Metaforo Label: Remove old draft and add new, verify whether metaforo can handle this
+		// TODO: Update Metaforo Label: Remove old label and add new, verify whether metaforo can handle this
 		proposalRecord.State = int(model.ProposalStateApproved)
 		err = db.Save(&proposalRecord).Error
-		// TODO: Update vote record related to this proposal
+		//  TODO: Login with admin account to get metaforoAccessToken
+		//  TODO: Get proposal category default duration
+		for _, record := range proposalRecord.VoteRecords {
+			err := metaforo.UpdateVoteTime("TODOACCESS_TONE",
+				internal.MetaforoGroupName,
+				record.MetaforoID,
+				time.Now().UTC().Unix(),
+				time.Now().UTC().Add(internal.DefaultVoteDuration).Unix(),
+			)
+			if err != nil {
+				log.Error().Msgf("update vote information error: %+v", err)
+				return nil, err
+			}
+		}
 		if err != nil {
 			log.Error().Msgf("change proposal to approved error")
 			return nil, err
 		}
 	case model.ProposalStateRejected:
-		// TODO: Update Metaforo Label: Remove old draft and add new, verify whether metaforo can handle this
+		// TODO: Update Metaforo Label: Remove old label and add new, verify whether metaforo can handle this
 		proposalRecord.State = int(model.ProposalStateRejected)
 		err = db.Save(&proposalRecord).Error
 		if err != nil {
