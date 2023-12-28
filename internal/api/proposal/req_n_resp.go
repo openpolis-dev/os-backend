@@ -97,7 +97,7 @@ type FrontendProposalListRecord struct {
 	// Vote related state
 	// TODO: Vote Gate related logic
 	VoteState string `json:"vote_state"`
-	IsVoted   bool
+	IsVoted   bool   `json:"is_voted"`
 }
 
 type FrontendContentBlockRecord struct {
@@ -127,6 +127,7 @@ type FrontendProposalDetailRecord struct {
 	// Reject related data
 	IsRejected   bool   `json:"is_rejected"`
 	RejectReason string `json:"reject_reason"`
+	RejectTs     int64  `json:"reject_ts"`
 
 	Histories any `json:"histories"`
 
@@ -235,6 +236,7 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 		ApplicantAvatar:    applicantAvatarLink,
 		IsRejected:         proposal.State == int(model.ProposalStateRejected),
 		RejectReason:       rejectedComment.Content,
+		RejectTs:           rejectedComment.CreateTs,
 		Histories:          metaforoProposal.Thread.EditHistory,
 		Arweave:            proposal.ArweaveHash,
 		CommentCount:       metaforoProposal.Thread.PostsCount,
