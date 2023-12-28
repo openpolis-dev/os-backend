@@ -3,6 +3,7 @@ package proposal
 import (
 	"github.com/samber/lo"
 	"github.com/theseed-labs/os-backend/internal/api/component"
+	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"gorm.io/gorm"
 )
@@ -89,16 +90,19 @@ type FrontendProposalDetailRecord struct {
 	ProposalCategoryId uint `json:"proposal_category_id"`
 
 	// Some user information
-	Applicant string `json:"applicant"`
-	Reviewer  string `json:"reviewer"`
+	Applicant       string `json:"applicant"`
+	ApplicantAvatar string `json:"applicant_avatar"`
+	Reviewer        string `json:"reviewer"`
+	ReviewerAvatar  string `json:"reviewer_avatar"`
+
+	// Arveave Hash
+	Arveave string `json:"arveave"`
 
 	// Vote data
-	IsApproved bool `json:"is_approved"`
+	IsVoted bool
 
 	// Timestamps
 	CreateTs int64 `json:"create_ts"`
-
-	IsVoted bool
 }
 
 type FrontendProposalCategory struct {
@@ -157,6 +161,12 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 		}
 	})
 
+	// TODO: Query UserVoteRecord and update isVoted field
+
+	// TODO: Optimize the avatar query
+	var applicantAvatarLink string
+	db.Model(model.User{}).Where("wallet = ?", common.FormatUserWallet(proposal.Applicant)).Select("avatar").First(&applicantAvatarLink)
+
 	return &FrontendProposalDetailRecord{
 		ID:                 proposal.ID,
 		Title:              proposal.Title,
@@ -165,7 +175,8 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 		State:              model.ProposalStateName[proposal.State],
 		Components:         proposalComponentResponse,
 		Applicant:          proposal.Applicant,
-		IsApproved:         false,
+		ApplicantAvatar:    applicantAvatarLink,
+		Arveave:            proposal.ArveaveHash,
 		CreateTs:           proposal.CreateTs,
 	}, nil
 }
