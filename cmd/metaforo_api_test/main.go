@@ -18,6 +18,7 @@ import (
 func main() {
 	syncCommand := flag.NewFlagSet("sync", flag.ExitOnError)
 	createCommand := flag.NewFlagSet("create", flag.ExitOnError)
+	voteCommand := flag.NewFlagSet("vote", flag.ExitOnError)
 
 	// Define flags for sync command
 	syncPage := syncCommand.Int("page", 1, "Page number")
@@ -27,6 +28,13 @@ func main() {
 	// Define flags for create command
 	createAccessToken := createCommand.String("access-token", "", "Access token")
 	createGroup := createCommand.String("group", "testttt", "Group name")
+
+	// vote related
+	voteAccessToken := voteCommand.String("access-token", "", "Access token")
+	voteGroup := voteCommand.String("group", "testttt", "Group name")
+	voteId := voteCommand.Int("id", 0, "Vote id")
+	voteStartTime := voteCommand.String("start", time.Now().UTC().Format(time.RFC3339), "Vote start time, default is now")
+	voteEndTime := voteCommand.String("end", time.Now().UTC().Format(time.RFC3339), "Vote end time, default is now")
 
 	// Parse the command-line arguments
 	if len(os.Args) < 2 {
@@ -69,6 +77,18 @@ func main() {
 		}
 
 		fmt.Printf("response: %+v", resp)
+	case "vote":
+		voteCommand.Parse(os.Args[2:])
+		startTs, err := time.Parse(time.RFC3339, *voteStartTime)
+		if err != nil {
+			panic(err)
+		}
+		endTs, err := time.Parse(time.RFC3339, *voteEndTime)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Printf("StartTs: %s, endTs: %s\n", startTs, endTs)
+		metaforo.UpdateVoteTime(*voteAccessToken, *voteGroup, *voteId, startTs.Unix(), endTs.Unix())
 	default:
 		fmt.Println("Unknown subcommand:", os.Args[1])
 		os.Exit(1)

@@ -376,6 +376,13 @@ func Reject(ctx *gin.Context) {
 		return
 	}
 
+	if rejectRequestData.MetaforoAccessToken == "" {
+		sdk.LogUserSideError(ctx, err)
+		log.Error().Msgf("missing metaforo_access_token value")
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("missing metaforo_access_token value")))
+		return
+	}
+
 	proposalIdStr := ctx.Param("id")
 	proposalRecord, err := updateProposalState(db, user, proposalIdStr, model.ProposalStateRejected)
 	if err != nil {
@@ -399,7 +406,16 @@ func Reject(ctx *gin.Context) {
 	}
 	db.Save(&rejectComment)
 
-	// TODO: Save to metaforo and fill fields related with metaforo
+	// Add reject comment
+	err = metaforo.AddComment(rejectRequestData.MetaforoAccessToken, internal.MetaforoGroupName, int(proposalRecord.ID), rejectComment.Content, "")
+	if err != nil {
+		log.Error().Msgf("add comment to proposal %s error: %+v", proposalIdStr, err)
+		sdk.LogUserSideError(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("add comment error")))
+		return
+	}
+
+	// Comment currently is fetched from Metaforo directly, so only RejectReason is saved in local DB
 
 	ctx.JSON(http.StatusOK, api.Success(nil))
 }

@@ -43,7 +43,8 @@ type CreateOrUpdateProposalData struct {
 }
 
 type RejectProposalData struct {
-	Reason string `json:"reason"`
+	Reason              string `json:"reason"`
+	MetaforoAccessToken string `json:"metaforo_access_token"`
 }
 
 type AddCommentData struct {
