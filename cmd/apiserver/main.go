@@ -351,6 +351,7 @@ func main() {
 		proposalGroup.POST("/update/:id", proposal.Update)
 		proposalGroup.POST("/add_comment/:id", proposal.AddComment)
 		proposalGroup.POST("/edit_comment/:id", proposal.EditComment)
+		proposalGroup.POST("/delete_comment/:id", proposal.DeleteComment)
 
 		// State change actions for proposals
 		proposalGroup.POST("/withdraw/:id", proposal.Withdraw)

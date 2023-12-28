@@ -54,16 +54,19 @@ type RejectProposalData struct {
 }
 
 type AddCommentData struct {
-	Content string `json:"content"`
-	ReplyId int    `json:"reply_id"`
-
-	MetaforoAccessToken string `json:"metaforo_access_token"`
+	Content                  string `json:"content"`
+	ReplyToMetaforoCommentId int    `json:"reply_id"`
+	MetaforoAccessToken      string `json:"metaforo_access_token"`
 }
 
 type EditCommentData struct {
-	Content           string `json:"content"`
-	MetaforoCommentId int    `json:"post_id"`
+	Content             string `json:"content"`
+	MetaforoCommentId   int    `json:"post_id"`
+	MetaforoAccessToken string `json:"metaforo_access_token"`
+}
 
+type DeleteCommentData struct {
+	MetaforoCommentId   int    `json:"post_id"`
 	MetaforoAccessToken string `json:"metaforo_access_token"`
 }
 

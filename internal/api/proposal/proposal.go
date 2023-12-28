@@ -400,7 +400,8 @@ func Reject(ctx *gin.Context) {
 		} else {
 			sdk.LogServerErrorToSentry(ctx, err)
 			log.Error().Msgf("update proposal %s state to rejected error: %+v", proposalIdStr, err)
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("approve proposal error")))
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("reject proposal error")))
+			return
 		}
 	}
 
@@ -415,7 +416,7 @@ func Reject(ctx *gin.Context) {
 	db.Save(&rejectComment)
 
 	// Add reject comment
-	err = metaforo.AddComment(
+	commentData, err := metaforo.AddComment(
 		rejectRequestData.MetaforoAccessToken,
 		internal.MetaforoGroupName,
 		proposalRecord.GetMetaforoThreadId(),
@@ -429,6 +430,7 @@ func Reject(ctx *gin.Context) {
 	}
 
 	// Comment currently is fetched from Metaforo directly, so only RejectReason is saved in local DB
+	db.Model(&rejectComment).Update("metaforo_comment_id", fmt.Sprintf("%d", commentData.Id))
 
 	ctx.JSON(http.StatusOK, api.Success(nil))
 }

@@ -24,7 +24,7 @@ import (
 // --form 'reply_id="1964128"' \
 // --form 'thread_id="47945"' \
 // --form 'group_name="testttt"'
-func AddComment(accessToken, groupName string, proposalId int, content string, replyId string) error {
+func AddComment(accessToken, groupName string, proposalId int, content string, replyId string) (*PostData, error) {
 	apiPath := "/api/submit_post"
 
 	// prepare headers
@@ -55,11 +55,11 @@ func AddComment(accessToken, groupName string, proposalId int, content string, r
 	err := writer.Close()
 	if err != nil {
 		log.Error().Msgf("Prepare Multipart paramter error: %s", err)
-		return err
+		return nil, err
 	}
 
 	// send request
-	_, _, err = doHttpRequest[struct{}](&httpRequestData{
+	_, commentData, err := doHttpRequest[NewCommentResponse](&httpRequestData{
 		ApiUri:               apiBase + apiPath,
 		HttpMethod:           http.MethodPost,
 		MultipartBodyParams:  payload.Bytes(),
@@ -67,7 +67,7 @@ func AddComment(accessToken, groupName string, proposalId int, content string, r
 		Header:               formHeader,
 	})
 
-	return err
+	return commentData.Post, err
 }
 
 func EditComment(accessToken, groupName, postId string, content string) error {

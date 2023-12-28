@@ -238,6 +238,10 @@ type ProposalResponse struct {
 	Attachments []interface{} `json:"attachments"`
 }
 
+type NewCommentResponse struct {
+	Post *PostData `json:"post"`
+}
+
 type CategoriesListResponse struct {
 	Categories []*Category `json:"categories"`
 }

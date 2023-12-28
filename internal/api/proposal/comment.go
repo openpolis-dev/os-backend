@@ -9,6 +9,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api"
+	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk"
 	"github.com/theseed-labs/os-backend/internal/sdk/metaforo"
 	"gorm.io/gorm"
@@ -55,11 +56,11 @@ func AddComment(ctx *gin.Context) {
 	}
 
 	replyId := proposalDetailRecord.Thread.FirstPostId
-	if addComment.ReplyId != 0 {
-		replyId = addComment.ReplyId
+	if addComment.ReplyToMetaforoCommentId != 0 {
+		replyId = addComment.ReplyToMetaforoCommentId
 	}
 
-	err = metaforo.AddComment(
+	_, err = metaforo.AddComment(
 		addComment.MetaforoAccessToken,
 		internal.MetaforoGroupName,
 		proposalRcd.GetMetaforoThreadId(),
@@ -93,7 +94,18 @@ func EditComment(ctx *gin.Context) {
 		return
 	}
 
-	// TODO: Check whether the comment modified is reject comment, if yes update the db content
+	// Check whether the comment modified is reject comment, if yes update the db content
+	db := api.ForContextOnlyDB(ctx)
+	var rejectComment model.ProposalComment
+	err = db.Model(&model.ProposalComment{}).
+		Where("metaforo_comment_id = ? AND is_reject_comment = ?", fmt.Sprintf("%d", editComment.MetaforoCommentId), true).
+		First(&rejectComment).Error
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		log.Error().Msgf("query reject comment error: %+v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("edit comment error")))
+		return
+	}
 
 	err = metaforo.EditComment(
 		editComment.MetaforoAccessToken,
@@ -104,9 +116,71 @@ func EditComment(ctx *gin.Context) {
 	if err != nil {
 		log.Error().Msgf("edit comment error: %+v", err)
 		sdk.LogUserSideError(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("add comment error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("edit comment error")))
 		return
 	}
 
+	if rejectComment.ID != 0 {
+		rejectComment.Content = editComment.Content
+		err = db.Save(&rejectComment).Error
+		if err != nil {
+			log.Error().Msgf("update reject comment error: %+v", err)
+			sdk.LogServerErrorToSentry(ctx, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("edit comment error")))
+			return
+		}
+	}
+
 	ctx.JSON(http.StatusOK, api.Success(nil))
+}
+
+func DeleteComment(ctx *gin.Context) {
+	deleteComment := DeleteCommentData{}
+	err := ctx.BindJSON(&deleteComment)
+	if err != nil {
+		log.Error().Msgf("bind json error: %+v", err)
+		sdk.LogUserSideError(ctx, err)
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
+		return
+	}
+	if deleteComment.MetaforoAccessToken == "" {
+		log.Error().Msgf("missing metaforo access token")
+		sdk.LogUserSideError(ctx, errors.New("missing metaforo access token"))
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("missing metaforo access token")))
+		return
+	}
+
+	user, _, db, _ := api.ForContext(ctx)
+	var rejectComment model.ProposalComment
+	err = db.Model(&model.ProposalComment{}).
+		Where("metaforo_comment_id = ? AND is_reject_comment = ?", fmt.Sprintf("%d", deleteComment.MetaforoCommentId), true).
+		First(&rejectComment).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			// Reject comment not found, the comment can be deleted
+			err = metaforo.DeleteComment(
+				deleteComment.MetaforoAccessToken,
+				internal.MetaforoGroupName,
+				fmt.Sprintf("%d", deleteComment.MetaforoCommentId),
+			)
+			if err != nil {
+				log.Error().Msgf("delete comment error: %+v", err)
+				sdk.LogServerErrorToSentry(ctx, err)
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("delete comment error")))
+				return
+			}
+			ctx.JSON(http.StatusOK, api.Success(nil))
+		} else {
+			log.Error().Msgf("query reject comment error: %+v", err)
+			sdk.LogServerErrorToSentry(ctx, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("delete comment error")))
+			return
+		}
+	} else {
+		// Reject comment found, the comment can not be deleted
+		log.Error().Msgf("try to delete reject comment")
+		sdk.LogUserSideError(ctx, fmt.Errorf("user %s try to delete reject comment with comment metaforo id %s", user.Wallet, rejectComment.MetaforoCommentId))
+		ctx.JSON(http.StatusBadRequest, api.ServerError(errors.New("reject comment can't be deleted")))
+		return
+	}
 }
