@@ -84,14 +84,18 @@ func List(ctx *gin.Context) {
 
 	// Transform proposal records to frontend format
 	resultRows := lo.Map(dbRcds, func(r *model.Proposal, _ int) *FrontendProposalListRecord {
+		// TODO: Optimize the avatar query
+		var applicantAvatarLink string
+		db.Model(model.User{}).Where("wallet = ?", common.FormatUserWallet(r.Applicant)).Select("avatar").First(&applicantAvatarLink)
 		return &FrontendProposalListRecord{
-			ID:           r.ID,
-			Title:        r.Title,
-			Applicant:    r.Applicant,
-			CategoryName: r.ProposalCategory.Name,
-			State:        model.ProposalStateName[r.State],
-			CreateTs:     r.CreateTs,
-			VoteState:    "",
+			ID:              r.ID,
+			Title:           r.Title,
+			Applicant:       r.Applicant,
+			ApplicantAvatar: applicantAvatarLink,
+			CategoryName:    r.ProposalCategory.Name,
+			State:           model.ProposalStateName[r.State],
+			CreateTs:        r.CreateTs,
+			VoteState:       "",
 		}
 	})
 

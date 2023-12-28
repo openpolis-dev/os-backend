@@ -59,12 +59,13 @@ type AddCommentData struct {
 ///////////////////////
 
 type FrontendProposalListRecord struct {
-	ID           uint   `json:"id"`
-	Title        string `json:"title"`
-	Applicant    string `json:"applicant"`
-	CategoryName string `json:"category_name"`
-	State        string `json:"state"`
-	CreateTs     int64  `json:"create_ts"`
+	ID              uint   `json:"id"`
+	Title           string `json:"title"`
+	Applicant       string `json:"applicant"`
+	ApplicantAvatar string `json:"applicant_avatar"`
+	CategoryName    string `json:"category_name"`
+	State           string `json:"state"`
+	CreateTs        int64  `json:"create_ts"`
 
 	// Vote related state
 	// TODO: Vote Gate related logic
