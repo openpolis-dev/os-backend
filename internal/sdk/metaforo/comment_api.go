@@ -2,7 +2,6 @@ package metaforo
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"mime/multipart"
 	"net/http"
@@ -71,7 +70,7 @@ func AddComment(accessToken, groupName string, proposalId int, content string, r
 	return err
 }
 
-func EditComment(accessToken, groupName, postId string, content []*NewContentRequest) error {
+func EditComment(accessToken, groupName, postId string, content string) error {
 	apiPath := "/api/edit_post"
 
 	// prepare headers
@@ -84,10 +83,14 @@ func EditComment(accessToken, groupName, postId string, content []*NewContentReq
 	_ = writer.WriteField("signMsg", "")
 	_ = writer.WriteField("post_id", postId)
 	_ = writer.WriteField("group_name", groupName)
-	if content != nil {
-		c, _ := json.Marshal(content)
-		_ = writer.WriteField("content", string(c))
-	}
+
+	_ = writer.WriteField("editor_type", "1")
+	_ = writer.WriteField("content", content)
+
+	maybeUnsafeHTML := markdown.ToHTML([]byte(content), nil, nil)
+	html := bluemonday.UGCPolicy().SanitizeBytes(maybeUnsafeHTML)
+	_ = writer.WriteField("html", string(html))
+
 	err := writer.Close()
 	if err != nil {
 		log.Error().Msgf("Prepare Multipart paramter error: %s", err)

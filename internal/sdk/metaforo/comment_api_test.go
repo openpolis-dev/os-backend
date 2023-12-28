@@ -96,7 +96,7 @@ func TestEditComment(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := EditComment(tt.args.accessToken, tt.args.groupName, tt.args.postId, tt.args.content); !errors.Is(err, tt.wantErr) {
+			if err := EditComment(tt.args.accessToken, tt.args.groupName, tt.args.postId, commentContent.Insert); !errors.Is(err, tt.wantErr) {
 				t.Errorf("EditComment() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

@@ -38,10 +38,9 @@ func AddComment(ctx *gin.Context) {
 		return
 	}
 
-	// TODO: This code block is used in multiple places, check whether it can be merged to one function
 	db := api.ForContextOnlyDB(ctx)
 	proposalIdStr := ctx.Param("id")
-	proposalRcd, err := GetProposalFromStringId(db, proposalIdStr)
+	proposalRcd, proposalDetailRecord, err := GetMetaforoProposalByInternalId(db, proposalIdStr)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			log.Warn().Msgf("proposal %s not found", proposalIdStr)
@@ -53,14 +52,6 @@ func AddComment(ctx *gin.Context) {
 			ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("get proposal error")))
 			return
 		}
-	}
-
-	proposalDetailRecord, err := metaforo.GetProposal(proposalRcd.GetMetaforoThreadId(), internal.MetaforoGroupName)
-	if err != nil {
-		log.Error().Msgf("get proposal id %s error: %+v", proposalIdStr, err)
-		sdk.LogUserSideError(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get proposal data error")))
-		return
 	}
 
 	replyId := proposalDetailRecord.Thread.FirstPostId
@@ -82,11 +73,38 @@ func AddComment(ctx *gin.Context) {
 		return
 	}
 
-	proposalDetailRecord, err = metaforo.GetProposal(proposalRcd.GetMetaforoThreadId(), internal.MetaforoGroupName)
+	ctx.JSON(http.StatusOK, api.Success(nil))
+}
+
+func EditComment(ctx *gin.Context) {
+	editComment := EditCommentData{}
+	err := ctx.BindJSON(&editComment)
 	if err != nil {
-		log.Error().Msgf("get proposal id %s error: %+v", proposalIdStr, err)
+		log.Error().Msgf("bind json error: %+v", err)
 		sdk.LogUserSideError(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get proposal data error")))
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
+		return
+	}
+
+	if editComment.MetaforoAccessToken == "" {
+		log.Error().Msgf("missing metaforo access token")
+		sdk.LogUserSideError(ctx, errors.New("missing metaforo access token"))
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("missing metaforo access token")))
+		return
+	}
+
+	// TODO: Check whether the comment modified is reject comment, if yes update the db content
+
+	err = metaforo.EditComment(
+		editComment.MetaforoAccessToken,
+		internal.MetaforoGroupName,
+		fmt.Sprintf("%d", editComment.MetaforoCommentId),
+		editComment.Content,
+	)
+	if err != nil {
+		log.Error().Msgf("edit comment error: %+v", err)
+		sdk.LogUserSideError(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("add comment error")))
 		return
 	}
 

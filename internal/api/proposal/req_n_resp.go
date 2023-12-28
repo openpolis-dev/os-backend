@@ -60,6 +60,13 @@ type AddCommentData struct {
 	MetaforoAccessToken string `json:"metaforo_access_token"`
 }
 
+type EditCommentData struct {
+	Content           string `json:"content"`
+	MetaforoCommentId int    `json:"post_id"`
+
+	MetaforoAccessToken string `json:"metaforo_access_token"`
+}
+
 ///////////////////////
 // Response data definitions
 ///////////////////////
