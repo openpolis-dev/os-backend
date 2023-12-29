@@ -269,6 +269,7 @@ func main() {
 		userGroup.GET("/me", user.Detail)
 		userGroup.PUT("/me", user.Update)
 		userGroup.POST("/logout", user.Logout)
+		userGroup.POST("/update_metaforo_data", user.UpdateMetaforoData)
 
 		// project routers
 		projGroup := authorizedGroup.Group("/projects")

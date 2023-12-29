@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/rs/zerolog/log"
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
 
@@ -54,6 +55,9 @@ type MetaforoUser struct {
 
 	// UserWallet saves user wallet address
 	UserWallet string `gorm:"index"`
+
+	// Groups saves groups user joined in metaforo
+	Groups datatypes.JSON
 }
 
 type Proposal struct {
