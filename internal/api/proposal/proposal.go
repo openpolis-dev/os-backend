@@ -466,10 +466,9 @@ func updateProposalState(db *gorm.DB, user *middleware.CurUser, proposalStrId st
 		// TODO: Update Metaforo Label: Remove old label and add new, verify whether metaforo can handle this
 		proposalRecord.State = int(model.ProposalStateApproved)
 		err = db.Save(&proposalRecord).Error
-		//  TODO: Login with admin account to get metaforoAccessToken
 		//  TODO: Get proposal category default duration
 		for _, record := range proposalRecord.VoteRecords {
-			err := metaforo.UpdateVoteTime("TODOACCESS_TONE",
+			err := metaforo.UpdateVoteTime(internal.MetaforoAdminAccessToken,
 				internal.MetaforoGroupName,
 				record.MetaforoID,
 				time.Now().UTC().Unix(),
