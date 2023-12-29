@@ -378,6 +378,56 @@ type GroupInfo struct {
 	} `json:"group_extra_info"`
 }
 
+type UserDetailResponse struct {
+	Id            int           `json:"id"`
+	Email         interface{}   `json:"email"`
+	Web3PublicKey string        `json:"web3_public_key"`
+	CreatedAt     time.Time     `json:"created_at"`
+	UpdatedAt     time.Time     `json:"updated_at"`
+	PhotoUrl      string        `json:"photo_url"`
+	CoverImage    interface{}   `json:"cover_image"`
+	Bio           interface{}   `json:"bio"`
+	PublicKey     interface{}   `json:"public_key"`
+	Likes         int           `json:"likes"`
+	Posts         int           `json:"posts"`
+	Activate      int           `json:"activate"`
+	LastPostTime  time.Time     `json:"last_post_time"`
+	StripeCusId   string        `json:"stripe_cus_id"`
+	Deleted       int           `json:"deleted"`
+	PoapBadge     []interface{} `json:"poap_badge"`
+	Badge         []interface{} `json:"badge"`
+	Title         struct {
+		Field1 []struct {
+			UserId       int         `json:"user_id"`
+			Name         string      `json:"name"`
+			Color        string      `json:"color"`
+			Type         int         `json:"type"`
+			Id           int         `json:"id"`
+			Icon         *string     `json:"icon"`
+			UnicodeEmoji interface{} `json:"unicode_emoji"`
+			Background   string      `json:"background"`
+			GroupId      int         `json:"group_id"`
+			Logo         string      `json:"logo"`
+			GroupName    string      `json:"group_name"`
+		} `json:"4649"`
+	} `json:"title"`
+	Nfts            []interface{} `json:"nfts"`
+	IsUserFollow    bool          `json:"is_user_follow"`
+	Online          bool          `json:"online"`
+	LastSeen        time.Time     `json:"last_seen"`
+	DiscordId       int           `json:"discord_id"`
+	DiscordUsername string        `json:"discord_username"`
+	NeuronAddresses []interface{} `json:"neuron_addresses"`
+	OnlyFollowOne   bool          `json:"only_follow_one"`
+	Username        string        `json:"username"`
+	IsNft           int           `json:"is_nft"`
+	Web3PublicKeys  []struct {
+		UserId  int    `json:"user_id"`
+		Address string `json:"address"`
+		Type    int    `json:"type"`
+	} `json:"web3_public_keys"`
+}
+
 ////////////////////////////
 // Request objects defines struct for sending Metaforo API requests
 ////////////////////////////

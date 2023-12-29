@@ -45,6 +45,17 @@ var ProposalStateName = []string{
 	"vote_failed",
 }
 
+// MetaforoUser saves user mapping between OS and metaforo
+type MetaforoUser struct {
+	ID uint `gorm:"primaryKey"`
+
+	// user id in metaforo system
+	MetaforoUserId int `gorm:"index"`
+
+	// UserWallet saves user wallet address
+	UserWallet string `gorm:"index"`
+}
+
 type Proposal struct {
 	ID uint `gorm:"primaryKey"`
 

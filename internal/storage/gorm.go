@@ -64,6 +64,7 @@ func MigrateTables(db *gorm.DB) error {
 		&model.TreasuryAuditLog{},
 		&model.Event{},
 		&model.Push{},
+		&model.MetaforoUser{},
 		&model.Proposal{},
 		&model.ProposalCategory{},
 		&model.ProposalContentBlock{},
