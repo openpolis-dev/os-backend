@@ -15,12 +15,13 @@ import (
 )
 
 // MetaforoActivities returns metaforo activities by given user id
-// @summary Get metaforo activities
-// @tags user
-// @tags metaforo
-// @params userId query string true "Metaforo user id"
-// @params size query int true "Size of activities"
-// @success 200 {object} api.Reply{data=UserActivity}
+//
+//	@summary	Get metaforo activities
+//	@tags		user
+//	@tags		metaforo
+//	@params		userId query string true "Metaforo user id"
+//	@params		size query int true "Size of activities"
+//	@success	200	{object}	api.Reply{data=UserActivity}
 func MetaforoActivities(ctx *gin.Context) {
 	userId := ctx.Param("userId")
 	size := ctx.Param("size")
@@ -37,11 +38,12 @@ func MetaforoActivities(ctx *gin.Context) {
 }
 
 // UpdateMetaforoData received metaforo login response data sent from frontend side and build associated relationship between metaforo
-// @summary build metaforo account relationship between OS user
-// @tags user
-// @tags metaforo
-// @Param          JsonBody        body            metaforo.User true    "user data from login request"
-// @success 200 {object} api.Reply{data=UserActivity}
+//
+//	@summary	build metaforo account relationship between OS user
+//	@tags		user
+//	@tags		metaforo
+//	@Param		JsonBody	body		metaforo.User	true	"user data from login request"
+//	@success	200			{object}	api.Reply{data=UserActivity}
 func UpdateMetaforoData(ctx *gin.Context) {
 	metaforoUser := metaforo.User{}
 	err := ctx.BindJSON(&metaforoUser)

@@ -19,9 +19,9 @@ import (
 //
 //	@summary	Attach comment to specified proposal or comment
 //	@router		/proposals/add_comment/:id [post]
-//	@Param			id		path		string		true	"id of the proposal"
-//	@Param			request	body		AddCommentData	true	"Comment data"
-//	@success	200	{object}	api.Reply{data=nil}
+//	@Param		id		path		string					true	"id of the proposal"
+//	@Param		request	body		proposal.AddCommentData	true	"Comment data"
+//	@success	200		{object}	api.Reply{data=nil}
 func AddComment(ctx *gin.Context) {
 	addComment := AddCommentData{}
 	err := ctx.BindJSON(&addComment)
