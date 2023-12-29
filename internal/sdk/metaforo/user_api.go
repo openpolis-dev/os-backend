@@ -27,3 +27,19 @@ func UserActivities(accessToken, userId, filter string, perPage string) ([]*User
 
 	return resp.UserActivities, nil
 }
+
+func UserDetail(userId string) (*UserDetailResponse, error) {
+	apiPath := fmt.Sprintf("/api/profile/%s", userId)
+
+	// send request
+	_, resp, err := doHttpRequest[UserDetailResponse](&httpRequestData{
+		ApiUri:     apiBase + apiPath,
+		HttpMethod: "GET",
+		Header:     BaseHeader,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return resp, nil
+}
