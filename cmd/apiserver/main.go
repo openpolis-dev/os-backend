@@ -247,6 +247,9 @@ func main() {
 		componentRouter.GET("/", proposal.ListComponents)
 		componentRouter.GET("/:id", proposal.GetComponent)
 
+		proposalTmplRouter := v1.Group("/proposal_tmpl")
+		proposalTmplRouter.GET("/", proposal.ListTemplates)
+
 		proposalCategoryRouter := v1.Group("/proposal_categories")
 		proposalCategoryRouter.GET("/", proposal.ListCategories)
 

@@ -191,7 +191,7 @@ type ProposalContentBlock struct {
 }
 
 // ProposalComponentRecord saves components in proposal.
-// It builds the association between Component and Proposal records, one Component can be used in many Proposals
+// It builds the association between ProposalComponent and Proposal records, one ProposalComponent can be used in many Proposals
 type ProposalComponentRecord struct {
 	ID       uint  `gorm:"primaryKey"`
 	CreateTs int64 `gorm:"index"`
@@ -233,6 +233,8 @@ type ProposalCategory struct {
 	ParentID   uint `gorm:"index"` // Save category hierarchy information
 	Name       string
 	MetaforoId uint
+
+	IsActive bool
 }
 
 // ProposalVoteGate saves the token requirements to vote
@@ -303,9 +305,9 @@ type ProposalUserVoteRecord struct {
 	VoteTs int64 `gorm:"index"`
 }
 
-// Component defines the automation actions should be done and related data structure
+// ProposalComponent defines the automation actions should be done and related data structure
 // The required data is defined in schema, and the actions are defined by action ids
-type Component struct {
+type ProposalComponent struct {
 	ID       uint  `gorm:"primaryKey"`
 	CreateTs int64 `gorm:"index"`
 	UpdateTs int64 `gorm:"index"`
@@ -319,9 +321,9 @@ type Component struct {
 	RejectActionId  uint // RejectActionId indicates the action will be executed when the component is rejected
 }
 
-// ComponentAction saves automate actions will be executed
+// ProposalComponentAction saves automate actions will be executed
 // The Command field currently saves predefined command name that can be recognized by code and launch pre defined automate action.
-type ComponentAction struct {
+type ProposalComponentAction struct {
 	ID       uint  `gorm:"primaryKey"`
 	CreateTs int64 `gorm:"index"`
 	UpdateTs int64 `gorm:"index"`
@@ -329,4 +331,13 @@ type ComponentAction struct {
 	// Command field saves the automation commands will be executed by component
 	// Currently it saves the command name which is implemented in code.
 	Command string
+}
+
+type ProposalTemplate struct {
+	ID       uint  `gorm:"primaryKey"`
+	CreateTs int64 `gorm:"index"`
+	UpdateTs int64 `gorm:"index"`
+
+	Name   string
+	Schema string
 }

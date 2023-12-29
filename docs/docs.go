@@ -1308,6 +1308,37 @@ const docTemplate = `{
                 }
             }
         },
+        "/proposal_tmpl/": {
+            "get": {
+                "tags": [
+                    "proposals"
+                ],
+                "summary": "list templates and return to frontend",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Reply"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/proposal.TemplateResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/proposals": {
             "get": {
                 "tags": [
@@ -4051,6 +4082,20 @@ const docTemplate = `{
                 },
                 "vote_id": {
                     "type": "integer"
+                }
+            }
+        },
+        "proposal.TemplateResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "schema": {
+                    "type": "string"
                 }
             }
         },

@@ -1074,6 +1074,15 @@ definitions:
       vote_id:
         type: integer
     type: object
+  proposal.TemplateResponse:
+    properties:
+      id:
+        type: integer
+      name:
+        type: string
+      schema:
+        type: string
+    type: object
   publicdata.Vault:
     properties:
       wallets:
@@ -2107,6 +2116,23 @@ paths:
       summary: list all proposal categories
       tags:
       - proposal
+  /proposal_tmpl/:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/proposal.TemplateResponse'
+                  type: array
+              type: object
+      summary: list templates and return to frontend
+      tags:
+      - proposals
   /proposals:
     get:
       parameters:

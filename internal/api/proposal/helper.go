@@ -155,7 +155,7 @@ func SaveProposalComponentRecords(db *gorm.DB, proposalId uint, reqComponentData
 	return db.Transaction(func(tx *gorm.DB) error {
 		for _, componentData := range reqComponentData {
 			// Try to get component record from DB
-			componentRecord := model.Component{
+			componentRecord := model.ProposalComponent{
 				Name: componentData.Name,
 			}
 			if err := tx.Where(&componentRecord).Error; err != nil {
