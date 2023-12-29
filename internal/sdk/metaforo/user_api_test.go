@@ -13,6 +13,7 @@ func TestUserActivities(t *testing.T) {
 		userId      string
 		filter      string
 		perPage     string
+		session     string
 	}
 	tests := []struct {
 		name    string
@@ -26,12 +27,13 @@ func TestUserActivities(t *testing.T) {
 				userId:      userId,
 				filter:      "all",
 				perPage:     "1",
+				session:     "",
 			},
 			wantErr: nil,
 		},
 	}
 	for _, tt := range tests {
-		got, err := UserActivities(tt.args.accessToken, tt.args.userId, tt.args.filter, tt.args.perPage)
+		got, err := UserActivities(tt.args.userId, tt.args.filter, tt.args.perPage, tt.args.session)
 		if !errors.Is(err, tt.wantErr) {
 			t.Errorf("[%s] UserActivities() error = %v, wantErr = %v", tt.name, err, tt.wantErr)
 		}

@@ -184,6 +184,7 @@ func main() {
 		userGroup.POST("/login", user.Login)
 		userGroup.GET("/users", user.Users)
 		userGroup.GET("/casbin", user.GetFrontendPermission)
+		userGroup.GET("/metaforo_activities", user.MetaforoActivities)
 
 		// project routers
 		projGroup := v1.Group("/projects")

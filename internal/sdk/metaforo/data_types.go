@@ -226,6 +226,7 @@ type LoginResponse struct {
 
 type UserActivitiesResponse struct {
 	UserActivities []*UserActivity `json:"user_activities"`
+	Session        string          `json:"session"` // location for next request
 }
 
 type ProposalListResponse struct {

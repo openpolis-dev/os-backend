@@ -206,8 +206,9 @@ type ProposalComment struct {
 	ParentID string
 
 	// Reference ID for proposal and specified version
-	ProposalID uint `gorm:"index"`
-	Proposal   *Proposal
+	ProposalID       uint `gorm:"index"`
+	Proposal         *Proposal
+	ProposalRecordID uint `gorm:"index"`
 
 	Content string
 

@@ -187,14 +187,14 @@ func TestGetProposals(t *testing.T) {
 				t.Errorf("[%s] GetProposal() gotResp = %v, wantResp = %v", tt.name, gotResp, tt.wantResp)
 			}
 
-			if gotResp.Id != tt.wantResp.Id {
-				t.Errorf("[%s] GetProposal() gotResp.Id = %v, wantResp.Id = %v", tt.name, gotResp.Id, tt.wantResp.Id)
+			if gotResp.Thread.Id != tt.wantResp.Id {
+				t.Errorf("[%s] GetProposal() gotResp.Id = %v, wantResp.Id = %v", tt.name, gotResp.Thread.Id, tt.wantResp.Id)
 			}
-			if gotResp.Title != tt.wantResp.Title {
-				t.Errorf("[%s] GetProposal() gotResp.Title = %v, wantResp.Title = %v", tt.name, gotResp.Title, tt.wantResp.Title)
+			if gotResp.Thread.Title != tt.wantResp.Title {
+				t.Errorf("[%s] GetProposal() gotResp.Title = %v, wantResp.Title = %v", tt.name, gotResp.Thread.Title, tt.wantResp.Title)
 			}
-			if gotResp.GroupId != tt.wantResp.GroupId {
-				t.Errorf("[%s] GetGroupInfo() gotResp.GroupId = %v, wantResp.GroupId = %v", tt.name, gotResp.GroupId, tt.wantResp.GroupId)
+			if gotResp.Thread.GroupId != tt.wantResp.GroupId {
+				t.Errorf("[%s] GetGroupInfo() gotResp.GroupId = %v, wantResp.GroupId = %v", tt.name, gotResp.Thread.GroupId, tt.wantResp.GroupId)
 			}
 		}
 	}
