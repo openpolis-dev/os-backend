@@ -1521,44 +1521,6 @@ paths:
       summary: updates cityhall member, if group name existing in the request, the
         grouped sponsors field will be updated, otherwise the sponsors field will
         be updated
-  /components/:
-    get:
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/api.Reply'
-            - properties:
-                data:
-                  items:
-                    $ref: '#/definitions/proposal.ComponentResponse'
-                  type: array
-              type: object
-      summary: list components from DB
-      tags:
-      - proposal
-  /components/:id:
-    get:
-      parameters:
-      - description: component ID
-        in: path
-        name: id
-        required: true
-        type: number
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/api.Reply'
-            - properties:
-                data:
-                  $ref: '#/definitions/proposal.ComponentResponse'
-              type: object
-      summary: Get component detail from DB
-      tags:
-      - proposal
   /data_srv/aggr_scr:
     get:
       responses:
@@ -2114,6 +2076,44 @@ paths:
                   type: array
               type: object
       summary: list all proposal categories
+      tags:
+      - proposal
+  /proposal_components/:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/proposal.ComponentResponse'
+                  type: array
+              type: object
+      summary: list components from DB
+      tags:
+      - proposal
+  /proposal_components/:id:
+    get:
+      parameters:
+      - description: component ID
+        in: path
+        name: id
+        required: true
+        type: number
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  $ref: '#/definitions/proposal.ComponentResponse'
+              type: object
+      summary: Get component detail from DB
       tags:
       - proposal
   /proposal_tmpl/:

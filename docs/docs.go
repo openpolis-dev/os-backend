@@ -329,74 +329,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/components/": {
-            "get": {
-                "tags": [
-                    "proposal"
-                ],
-                "summary": "list components from DB",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/api.Reply"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/proposal.ComponentResponse"
-                                            }
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            }
-        },
-        "/components/:id": {
-            "get": {
-                "tags": [
-                    "proposal"
-                ],
-                "summary": "Get component detail from DB",
-                "parameters": [
-                    {
-                        "type": "number",
-                        "description": "component ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/api.Reply"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/proposal.ComponentResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            }
-        },
         "/data_srv/aggr_scr": {
             "get": {
                 "summary": "returns aggregated credit score and node calculation result",
@@ -1299,6 +1231,74 @@ const docTemplate = `{
                                             "items": {
                                                 "$ref": "#/definitions/proposal.FrontendProposalCategory"
                                             }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/proposal_components/": {
+            "get": {
+                "tags": [
+                    "proposal"
+                ],
+                "summary": "list components from DB",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Reply"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/proposal.ComponentResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/proposal_components/:id": {
+            "get": {
+                "tags": [
+                    "proposal"
+                ],
+                "summary": "Get component detail from DB",
+                "parameters": [
+                    {
+                        "type": "number",
+                        "description": "component ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Reply"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/proposal.ComponentResponse"
                                         }
                                     }
                                 }
