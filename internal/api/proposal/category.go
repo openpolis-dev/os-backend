@@ -20,7 +20,9 @@ import (
 //	@success	200	{object}	api.Reply{data=[]proposal.FrontendProposalCategory}
 func ListCategories(ctx *gin.Context) {
 	db := api.ForContextOnlyDB(ctx)
-	proposalCategories, err := model.QueryRows[model.ProposalCategory](db.Model(&model.ProposalCategory{}), nil)
+	proposalCategories, err := model.QueryRows[model.ProposalCategory](
+		db.Model(&model.ProposalCategory{}).Where(model.ProposalCategory{IsActive: true}),
+		nil)
 
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
