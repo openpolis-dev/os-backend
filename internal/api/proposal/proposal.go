@@ -25,6 +25,7 @@ import (
 //
 //	@summary	lists all proposals based on query params and return in JSON format
 //	@router		/proposals [get]
+//	@tags		proposal
 //	@Param		page		query		int		false	"which page"
 //	@Param		size		query		int		false	"size of each page"
 //	@Param		sort_field	query		string	false	"sort by which field"
@@ -114,6 +115,7 @@ func List(ctx *gin.Context) {
 // Detail function returns proposal detail data
 //
 //	@router		/proposals/show/:id [get]
+//	@tags		proposal
 //	@summary	Show proposals with given ID
 //	@success	200	{object}	api.Reply{data=FrontendProposalDetailRecord}
 func Detail(ctx *gin.Context) {
@@ -240,6 +242,7 @@ func Update(ctx *gin.Context) {
 // Create function saves proposal to DB and create Metaforo thread as well, the proposal will be in Draft state
 //
 //	@router		/proposals/create [post]
+//	@tags		proposal
 //	@summary	Create metaforo proposal and public to others
 //	@Param		JsonBody	body		CreateOrUpdateProposalData	true	"request json body"
 //	@success	200			{object}	api.Reply{}
@@ -290,6 +293,7 @@ func Create(ctx *gin.Context) {
 // Withdraw changes proposal state to withdrawn
 //
 //	@router		/proposals/withdraw/:id [post]
+//	@tags		proposal
 //	@summary	withdraw proposal in Draft state, the proposal will be changed to withdrawn state after success. Only proposal applicant can withdraw the proposal
 //	@param		id	query		int	true	"proposal id"
 //	@success	200	{object}	api.Reply{data=nil}
@@ -315,6 +319,7 @@ func Withdraw(ctx *gin.Context) {
 // Approve changes proposal state to approved
 //
 //	@router		/proposals/approve/:id [post]
+//	@tags		proposal
 //	@summary	approve proposal in Draft state, the proposal will be changed to approved state after success. Only user has cityhall permission can do this
 //	@param		id	query		int	true	"proposal id"
 //	@success	200	{object}	api.Reply{data=nil}
@@ -355,6 +360,7 @@ func Approve(ctx *gin.Context) {
 // Reject changes proposal state to approved
 //
 //	@router		/proposals/reject/:id [post]
+//	@tags		proposal
 //	@summary	reject proposal in Draft state, the proposal will be changed to rejected state after success. Only user has cityhall permission can do this
 //	@param		id	query		int	true	"proposal id"
 //	@success	200	{object}	api.Reply{data=nil}

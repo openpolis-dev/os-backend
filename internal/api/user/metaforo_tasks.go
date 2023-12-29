@@ -21,7 +21,7 @@ import (
 //	@tags		metaforo
 //	@params		userId query string true "Metaforo user id"
 //	@params		size query int true "Size of activities"
-//	@success	200	{object}	api.Reply{data=UserActivity}
+//	@success	200	{object}	api.Reply{data=metaforo.UserActivity}
 func MetaforoActivities(ctx *gin.Context) {
 	userId := ctx.Param("userId")
 	size := ctx.Param("size")
@@ -43,7 +43,7 @@ func MetaforoActivities(ctx *gin.Context) {
 //	@tags		user
 //	@tags		metaforo
 //	@Param		JsonBody	body		metaforo.User	true	"user data from login request"
-//	@success	200			{object}	api.Reply{data=UserActivity}
+//	@success	200			{object}	api.Reply{data=nil}
 func UpdateMetaforoData(ctx *gin.Context) {
 	metaforoUser := metaforo.User{}
 	err := ctx.BindJSON(&metaforoUser)

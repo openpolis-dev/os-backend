@@ -329,6 +329,74 @@ const docTemplate = `{
                 }
             }
         },
+        "/components/": {
+            "get": {
+                "tags": [
+                    "proposal"
+                ],
+                "summary": "list components from DB",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Reply"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/proposal.ComponentResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/components/:id": {
+            "get": {
+                "tags": [
+                    "proposal"
+                ],
+                "summary": "Get component detail from DB",
+                "parameters": [
+                    {
+                        "type": "number",
+                        "description": "component ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Reply"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/proposal.ComponentResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/data_srv/aggr_scr": {
             "get": {
                 "summary": "returns aggregated credit score and node calculation result",
@@ -1209,6 +1277,440 @@ const docTemplate = `{
                 }
             }
         },
+        "/proposal_categories": {
+            "get": {
+                "tags": [
+                    "proposal"
+                ],
+                "summary": "list all proposal categories",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Reply"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/proposal.FrontendProposalCategory"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/proposals": {
+            "get": {
+                "tags": [
+                    "proposal"
+                ],
+                "summary": "lists all proposals based on query params and return in JSON format",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "which page",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "size of each page",
+                        "name": "size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "sort by which field",
+                        "name": "sort_field",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "order of sort",
+                        "name": "sort_order",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "state of proposal",
+                        "name": "state",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "filter proposal records with specified category",
+                        "name": "category_id",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Reply"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "allOf": [
+                                                {
+                                                    "$ref": "#/definitions/api.ListReplyData"
+                                                },
+                                                {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "rows": {
+                                                            "$ref": "#/definitions/proposal.FrontendProposalListRecord"
+                                                        }
+                                                    }
+                                                }
+                                            ]
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/proposals/add_comment/:id": {
+            "post": {
+                "summary": "Attach comment to specified proposal or comment",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "id of the proposal",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Comment data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/proposal.AddCommentData"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Reply"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/proposals/approve/:id": {
+            "post": {
+                "tags": [
+                    "proposal"
+                ],
+                "summary": "approve proposal in Draft state, the proposal will be changed to approved state after success. Only user has cityhall permission can do this",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "proposal id",
+                        "name": "id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Reply"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/proposals/create": {
+            "post": {
+                "tags": [
+                    "proposal"
+                ],
+                "summary": "Create metaforo proposal and public to others",
+                "parameters": [
+                    {
+                        "description": "request json body",
+                        "name": "JsonBody",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/proposal.CreateOrUpdateProposalData"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.Reply"
+                        }
+                    }
+                }
+            }
+        },
+        "/proposals/delete_comment/:id": {
+            "post": {
+                "tags": [
+                    "proposals"
+                ],
+                "summary": "delete comment from metaforo. The reject reason comment can't be deleted",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "id of the proposal",
+                        "name": "id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "description": "Delete Comment request data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/proposal.DeleteCommentData"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Reply"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/proposals/edit_comment/:id": {
+            "post": {
+                "tags": [
+                    "proposals"
+                ],
+                "summary": "edit comment and save back to metaforo. If the comment is reject_comment, the data saved in db will also be saved",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "id of the proposal",
+                        "name": "id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "description": "Comment data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/proposal.EditCommentData"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Reply"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/proposals/reject/:id": {
+            "post": {
+                "tags": [
+                    "proposal"
+                ],
+                "summary": "reject proposal in Draft state, the proposal will be changed to rejected state after success. Only user has cityhall permission can do this",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "proposal id",
+                        "name": "id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Reply"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/proposals/show/:id": {
+            "get": {
+                "tags": [
+                    "proposal"
+                ],
+                "summary": "Show proposals with given ID",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Reply"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/proposal.FrontendProposalDetailRecord"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/proposals/update/:id": {
+            "post": {
+                "summary": "Update proposals with passed in data",
+                "parameters": [
+                    {
+                        "description": "request json body",
+                        "name": "JsonBody",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/proposal.CreateOrUpdateProposalData"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.Reply"
+                        }
+                    }
+                }
+            }
+        },
+        "/proposals/withdraw/:id": {
+            "post": {
+                "tags": [
+                    "proposal"
+                ],
+                "summary": "withdraw proposal in Draft state, the proposal will be changed to withdrawn state after success. Only proposal applicant can withdraw the proposal",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "proposal id",
+                        "name": "id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Reply"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/public_data/discord_member_count": {
             "get": {
                 "consumes": [
@@ -1353,6 +1855,40 @@ const docTemplate = `{
                 }
             }
         },
+        "/public_data/safe_vault": {
+            "get": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "PublicData"
+                ],
+                "summary": "SafeVault returns the data of the safe vault",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Reply"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/publicdata.Vault"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/push": {
             "get": {
                 "consumes": [
@@ -1457,6 +1993,52 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/api.Reply"
+                        }
+                    }
+                }
+            }
+        },
+        "/revoke_vote/:id": {
+            "post": {
+                "tags": [
+                    "proposals"
+                ],
+                "summary": "revoke vote on existing metaforo vote",
+                "parameters": [
+                    {
+                        "type": "number",
+                        "description": "proposal ID",
+                        "name": "id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "description": "revoke vote data",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/proposal.RevokeVoteData"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Reply"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     }
                 }
@@ -1793,12 +2375,46 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/model.User"
+                                                "$ref": "#/definitions/user.UserModelWithSomeSeepassData"
                                             }
                                         }
                                     }
                                 }
                             ]
+                        }
+                    }
+                }
+            }
+        },
+        "/vote/:id": {
+            "post": {
+                "tags": [
+                    "proposals"
+                ],
+                "summary": "Cast a vote",
+                "parameters": [
+                    {
+                        "type": "number",
+                        "description": "proposal ID",
+                        "name": "id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "description": "Vote data",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/proposal.CastVoteData"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "$ref": "#/definitions/api.Reply"
                         }
                     }
                 }
@@ -2056,6 +2672,26 @@ const docTemplate = `{
                 }
             }
         },
+        "component.ComponentInstance": {
+            "type": "object",
+            "properties": {
+                "component_id": {
+                    "type": "integer"
+                },
+                "create_ts": {
+                    "type": "integer"
+                },
+                "data": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "schema": {
+                    "type": "string"
+                }
+            }
+        },
         "data_srv.CreditDetail": {
             "type": "object",
             "properties": {
@@ -2257,6 +2893,178 @@ const docTemplate = `{
                     "items": {
                         "type": "string"
                     }
+                }
+            }
+        },
+        "metaforo.User": {
+            "type": "object",
+            "properties": {
+                "activate": {
+                    "type": "integer"
+                },
+                "email": {},
+                "group_profiles": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "display_avatar": {
+                                "type": "string"
+                            },
+                            "display_name": {},
+                            "group_id": {
+                                "type": "integer"
+                            },
+                            "group_name": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "id": {
+                    "description": "TODO delete unused fields",
+                    "type": "integer"
+                },
+                "is_nft": {
+                    "type": "integer"
+                },
+                "last_post_time": {
+                    "type": "string"
+                },
+                "likes": {
+                    "type": "integer"
+                },
+                "photo_url": {
+                    "type": "string"
+                },
+                "posts": {
+                    "type": "integer"
+                },
+                "username": {
+                    "type": "string"
+                },
+                "web3_public_key": {
+                    "type": "string"
+                },
+                "web3_public_keys": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "address": {
+                                "type": "string"
+                            },
+                            "type": {
+                                "type": "integer"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "metaforo.UserActivity": {
+            "type": "object",
+            "properties": {
+                "_import_source_deleted_by_id": {},
+                "_import_source_import_id": {},
+                "_import_source_post_id": {},
+                "_import_source_post_number": {},
+                "_import_source_thread_id": {},
+                "_import_source_user_id": {},
+                "arweave": {
+                    "type": "string"
+                },
+                "content": {
+                    "type": "string"
+                },
+                "cooked": {},
+                "created_at": {
+                    "type": "string"
+                },
+                "deleted": {
+                    "type": "integer"
+                },
+                "deleted_at": {},
+                "deleted_by": {
+                    "type": "integer"
+                },
+                "depth": {
+                    "type": "integer"
+                },
+                "domain_url": {},
+                "editor_type": {
+                    "type": "integer"
+                },
+                "first_post_id": {
+                    "type": "integer"
+                },
+                "group_id": {
+                    "type": "integer"
+                },
+                "group_name": {
+                    "type": "string"
+                },
+                "group_post_id": {},
+                "group_thread_id": {},
+                "group_title": {
+                    "type": "string"
+                },
+                "html": {
+                    "type": "string"
+                },
+                "id": {
+                    "description": "TODO delete unused fields",
+                    "type": "integer"
+                },
+                "ipfs": {},
+                "nsfw": {
+                    "type": "integer"
+                },
+                "nsfw_score": {
+                    "type": "integer"
+                },
+                "parent_id": {
+                    "type": "integer"
+                },
+                "parent_poster_name": {},
+                "reply_count": {
+                    "type": "integer"
+                },
+                "reply_count_with_soft_del": {
+                    "type": "integer"
+                },
+                "reply_pid": {
+                    "type": "integer"
+                },
+                "reply_uid": {
+                    "type": "integer"
+                },
+                "sign": {},
+                "sign_data": {},
+                "sign_msg": {},
+                "thread_id": {
+                    "type": "integer"
+                },
+                "thread_poster_id": {
+                    "type": "integer"
+                },
+                "thread_poster_name": {
+                    "type": "string"
+                },
+                "thread_title": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "user_avatar": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "integer"
+                },
+                "username": {
+                    "type": "string"
                 }
             }
         },
@@ -2953,6 +3761,330 @@ const docTemplate = `{
                 }
             }
         },
+        "proposal.AddCommentData": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "type": "string"
+                },
+                "metaforo_access_token": {
+                    "type": "string"
+                },
+                "reply_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "proposal.CastVoteData": {
+            "type": "object",
+            "properties": {
+                "metaforo_access_token": {
+                    "type": "string"
+                },
+                "options": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "vote_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "proposal.ComponentRequestData": {
+            "type": "object",
+            "properties": {
+                "auto_action": {
+                    "type": "string"
+                },
+                "component_name": {
+                    "type": "string"
+                },
+                "data": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "proposal.ComponentResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "schema": {
+                    "type": "string"
+                }
+            }
+        },
+        "proposal.CreateOrUpdateProposalData": {
+            "type": "object",
+            "properties": {
+                "components": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "#/definitions/proposal.ComponentRequestData"
+                    }
+                },
+                "content_blocks": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/proposal.FrontendContentBlockRecord"
+                    }
+                },
+                "metaforo_access_token": {
+                    "type": "string"
+                },
+                "proposal_category_id": {
+                    "type": "integer"
+                },
+                "submit_to_metaforo": {
+                    "type": "boolean"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "vote_gate_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "proposal.DeleteCommentData": {
+            "type": "object",
+            "properties": {
+                "metaforo_access_token": {
+                    "type": "string"
+                },
+                "post_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "proposal.EditCommentData": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "type": "string"
+                },
+                "metaforo_access_token": {
+                    "type": "string"
+                },
+                "post_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "proposal.FrontendContentBlockRecord": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "proposal.FrontendProposalCategory": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "metaforo_id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "parent_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "proposal.FrontendProposalDetailRecord": {
+            "type": "object",
+            "properties": {
+                "applicant": {
+                    "description": "Some user information",
+                    "type": "string"
+                },
+                "applicant_avatar": {
+                    "type": "string"
+                },
+                "arweave": {
+                    "description": "Arweave Hash",
+                    "type": "string"
+                },
+                "comment_count": {
+                    "description": "Comments",
+                    "type": "integer"
+                },
+                "comments": {
+                    "type": "array",
+                    "items": {}
+                },
+                "components": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/component.ComponentInstance"
+                    }
+                },
+                "content_blocks": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/proposal.FrontendContentBlockRecord"
+                    }
+                },
+                "create_ts": {
+                    "description": "Timestamps",
+                    "type": "integer"
+                },
+                "histories": {},
+                "id": {
+                    "type": "integer"
+                },
+                "is_rejected": {
+                    "description": "Reject related data",
+                    "type": "boolean"
+                },
+                "is_voted": {
+                    "description": "Is current user voted for this proposal",
+                    "type": "boolean"
+                },
+                "proposal_category_id": {
+                    "type": "integer"
+                },
+                "reject_reason": {
+                    "type": "string"
+                },
+                "reject_ts": {
+                    "type": "integer"
+                },
+                "reviewer": {
+                    "type": "string"
+                },
+                "reviewer_avatar": {
+                    "type": "string"
+                },
+                "state": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "votes": {
+                    "description": "Vote"
+                }
+            }
+        },
+        "proposal.FrontendProposalListRecord": {
+            "type": "object",
+            "properties": {
+                "applicant": {
+                    "type": "string"
+                },
+                "applicant_avatar": {
+                    "type": "string"
+                },
+                "category_name": {
+                    "type": "string"
+                },
+                "create_ts": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "is_voted": {
+                    "type": "boolean"
+                },
+                "state": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "vote_state": {
+                    "description": "Vote related state\nTODO: Vote Gate related logic",
+                    "type": "string"
+                }
+            }
+        },
+        "proposal.FrontendVoteGateResponse": {
+            "type": "object",
+            "properties": {
+                "chain_type": {
+                    "type": "string"
+                },
+                "contract_addr": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "token_id": {
+                    "type": "string"
+                },
+                "token_type": {
+                    "type": "string"
+                }
+            }
+        },
+        "proposal.RevokeVoteData": {
+            "type": "object",
+            "properties": {
+                "metaforo_access_token": {
+                    "type": "string"
+                },
+                "vote_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "publicdata.Vault": {
+            "type": "object",
+            "properties": {
+                "wallets": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/publicdata.Wallet"
+                    }
+                }
+            }
+        },
+        "publicdata.Wallet": {
+            "type": "object",
+            "properties": {
+                "chainId": {
+                    "type": "integer"
+                },
+                "fiatTotal": {
+                    "type": "string"
+                },
+                "owners": {
+                    "type": "integer"
+                },
+                "threshold": {
+                    "type": "integer"
+                },
+                "wallet": {
+                    "type": "string"
+                }
+            }
+        },
         "publicdata.discord": {
             "type": "object",
             "properties": {
@@ -3212,6 +4344,62 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "twitter_profile": {
+                    "type": "string"
+                },
+                "wechat": {
+                    "type": "string"
+                }
+            }
+        },
+        "user.UserModelWithSomeSeepassData": {
+            "type": "object",
+            "properties": {
+                "assets": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.UserAssetRecord"
+                    }
+                },
+                "avatar": {
+                    "type": "string"
+                },
+                "bio": {
+                    "type": "string"
+                },
+                "create_ts": {
+                    "type": "integer"
+                },
+                "discord_profile": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "github_profile": {
+                    "type": "string"
+                },
+                "google_profile": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "mirror": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "sp": {
+                    "$ref": "#/definitions/sdk.SeepassResponse"
+                },
+                "twitter_profile": {
+                    "type": "string"
+                },
+                "update_ts": {
+                    "type": "integer"
+                },
+                "wallet": {
                     "type": "string"
                 },
                 "wechat": {

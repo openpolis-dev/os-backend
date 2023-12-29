@@ -77,6 +77,17 @@ func AddComment(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, api.Success(nil))
 }
 
+// EditComment handles the editing of a comment.
+//
+// ctx: The gin context.
+// Returns: None.
+//
+//	@summary	edit comment and save back to metaforo. If the comment is reject_comment, the data saved in db will also be saved
+//	@router		/proposals/edit_comment/:id [post]
+//	@tags		proposals
+//	@param		id		query		string						true	"id of the proposal"
+//	@param		request	body		proposal.EditCommentData	true	"Comment data"
+//	@success	200		{object}	api.Reply{data=nil}
 func EditComment(ctx *gin.Context) {
 	editComment := EditCommentData{}
 	err := ctx.BindJSON(&editComment)
@@ -134,6 +145,17 @@ func EditComment(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, api.Success(nil))
 }
 
+// DeleteComment deletes a comment from the database and the Metaforo API.
+//
+// It takes a gin.Context object as a parameter.
+// Returns nothing.
+//
+//	@summary	delete comment from metaforo. The reject reason comment can't be deleted
+//	@router		/proposals/delete_comment/:id [post]
+//	@tags		proposals
+//	@param		id		query		string						true	"id of the proposal"
+//	@param		request	body		proposal.DeleteCommentData	true	"Delete Comment request data"
+//	@success	200		{object}	api.Reply{data=nil}
 func DeleteComment(ctx *gin.Context) {
 	deleteComment := DeleteCommentData{}
 	err := ctx.BindJSON(&deleteComment)

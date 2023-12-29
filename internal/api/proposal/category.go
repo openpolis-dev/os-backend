@@ -16,6 +16,7 @@ import (
 //
 //	@summary	list all proposal categories
 //	@router		/proposal_categories [get]
+//	@tags		proposal
 //	@success	200	{object}	api.Reply{data=[]proposal.FrontendProposalCategory}
 func ListCategories(ctx *gin.Context) {
 	db := api.ForContextOnlyDB(ctx)
