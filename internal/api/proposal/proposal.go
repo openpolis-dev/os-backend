@@ -57,21 +57,21 @@ func List(ctx *gin.Context) {
 	}
 
 	if queryParams.CategoryId != 0 {
-		querySeg.Where("proposal_category_id = ?", queryParams.CategoryId)
+		querySeg = querySeg.Where("proposal_category_id = ?", queryParams.CategoryId)
+	}
+
+	if queryParams.Q != "" {
+		querySeg = querySeg.Where(fmt.Sprintf("title ilike '%%%s%%'", queryParams.Q))
 	}
 
 	total, err := gormfind.Count(querySeg)
 	if err != nil {
-		log.Error().Msgf("get proposal count error: %+v, query sql: %s, query params: %+v", err, querySeg)
+		log.Error().Msgf("get proposal count error: %+v, query params: %+v", err, querySeg)
 		ctx.JSON(http.StatusBadRequest, api.Reply{
 			Code: -1,
 			Msg:  fmt.Sprintf("query proposal error: %+v", err),
 		})
 		return
-	}
-
-	if queryParams.Q != "" {
-		querySeg.Where(fmt.Sprintf("title ilike '%%%s%%'", queryParams.Q))
 	}
 
 	querySeg = querySeg.Joins("ProposalCategory")
