@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog/log"
+	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/api/proposal"
 	"github.com/theseed-labs/os-backend/internal/config"
 	"github.com/theseed-labs/os-backend/internal/model"
@@ -19,6 +20,7 @@ func main() {
 	syncCommand := flag.NewFlagSet("sync", flag.ExitOnError)
 	createCommand := flag.NewFlagSet("create", flag.ExitOnError)
 	voteCommand := flag.NewFlagSet("vote", flag.ExitOnError)
+	showCommand := flag.NewFlagSet("show", flag.ExitOnError)
 
 	// Define flags for sync command
 	syncPage := syncCommand.Int("page", 1, "Page number")
@@ -35,6 +37,9 @@ func main() {
 	voteId := voteCommand.Int("id", 0, "Vote id")
 	voteStartTime := voteCommand.String("start", time.Now().UTC().Format(time.RFC3339), "Vote start time, default is now")
 	voteEndTime := voteCommand.String("end", time.Now().UTC().Format(time.RFC3339), "Vote end time, default is now")
+
+	showThreadId := showCommand.Int("id", 0, "Thread id")
+	showGroup := showCommand.String("group", "testttt", "group name")
 
 	// Parse the command-line arguments
 	if len(os.Args) < 2 {
@@ -89,6 +94,10 @@ func main() {
 		}
 		fmt.Printf("StartTs: %s, endTs: %s\n", startTs, endTs)
 		metaforo.UpdateVoteTime(*voteAccessToken, *voteGroup, *voteId, startTs.Unix(), endTs.Unix())
+	case "show":
+		showCommand.Parse(os.Args[2:])
+		proposal, _ := metaforo.GetProposal(*showThreadId, *showGroup, 0)
+		api.PrintStructAsJson(proposal, "")
 	default:
 		fmt.Println("Unknown subcommand:", os.Args[1])
 		os.Exit(1)
