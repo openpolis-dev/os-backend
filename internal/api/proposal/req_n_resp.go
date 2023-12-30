@@ -46,6 +46,7 @@ type CreateOrUpdateProposalData struct {
 	VoteGateId          uint                             `json:"vote_gate_id"`
 	MetaforoAccessToken string                           `json:"metaforo_access_token"`
 	SubmitToMetaforo    bool                             `json:"submit_to_metaforo"`
+	EditorType          int                              `json:"editor_type"`
 }
 
 type RejectProposalData struct {
@@ -174,7 +175,7 @@ type UpdateProposalCategoryReq struct {
 // Some converter functions
 ///////////////////////
 
-func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal) (*FrontendProposalDetailRecord, error) {
+func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal, startPostId int) (*FrontendProposalDetailRecord, error) {
 	var proposalBlocks []*model.ProposalContentBlock
 	if err := db.Where(&model.ProposalContentBlock{ProposalID: proposal.ID}).Find(&proposalBlocks).Error; err != nil {
 		return nil, err
@@ -203,7 +204,7 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 		}
 	})
 
-	metaforoProposal, err := metaforo.GetProposal(proposal.GetMetaforoThreadId(), internal.MetaforoGroupName)
+	metaforoProposal, err := metaforo.GetProposal(proposal.GetMetaforoThreadId(), internal.MetaforoGroupName, startPostId)
 	if err != nil {
 		return nil, err
 	}

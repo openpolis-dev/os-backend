@@ -186,7 +186,7 @@ func SaveProposalComponentRecords(db *gorm.DB, proposalId uint, reqComponentData
 //
 // Otherwise, copy the proposal to new record with ver+1, update the metaforo data, and save back as a new record,
 // and the metaforo API invoked here is updateProposal.
-func SaveProposalToMetaforo(db *gorm.DB, origProposalRecord *model.Proposal, metaforoAccessToken string) error {
+func SaveProposalToMetaforo(db *gorm.DB, origProposalRecord *model.Proposal, metaforoAccessToken string, EditorType int) error {
 	var err error
 
 	// Load current proposal data
@@ -253,7 +253,7 @@ func SaveProposalToMetaforo(db *gorm.DB, origProposalRecord *model.Proposal, met
 			}
 		}
 
-		metaforoProposalResponse, err = metaforo.GetProposal(metaforoThreadId, internal.MetaforoGroupName)
+		metaforoProposalResponse, err = metaforo.GetProposal(metaforoThreadId, internal.MetaforoGroupName, 0)
 		api.PrintStructAsJson(metaforoProposalResponse, "TTT: metaforo proposal after getting detail")
 
 		if err != nil {
@@ -296,7 +296,7 @@ func SaveProposalToMetaforo(db *gorm.DB, origProposalRecord *model.Proposal, met
 			return err
 		}
 
-		metaforoProposalResponse, err = metaforo.GetProposal(metaforoCreateProposalResponse.Thread.Id, internal.MetaforoGroupName)
+		metaforoProposalResponse, err = metaforo.GetProposal(metaforoCreateProposalResponse.Thread.Id, internal.MetaforoGroupName, 0)
 		api.PrintStructAsJson(metaforoProposalResponse, "TTT: metaforo proposal after getting detail")
 
 		if err != nil {

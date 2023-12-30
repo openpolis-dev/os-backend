@@ -375,8 +375,7 @@ definitions:
       group_thread_id: {}
       group_title:
         type: string
-      html:
-        type: string
+      html: {}
       id:
         description: TODO delete unused fields
         type: integer
@@ -928,6 +927,8 @@ definitions:
         items:
           $ref: '#/definitions/proposal.FrontendContentBlockRecord'
         type: array
+      editor_type:
+        type: integer
       metaforo_access_token:
         type: string
       proposal_category_id:

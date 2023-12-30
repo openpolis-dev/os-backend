@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -125,8 +126,19 @@ func List(ctx *gin.Context) {
 //	@router		/proposals/show/:id [get]
 //	@tags		proposal
 //	@summary	Show proposals with given ID
+//	@params		start_post_id query int false "start post ID"
 //	@success	200	{object}	api.Reply{data=FrontendProposalDetailRecord}
 func Detail(ctx *gin.Context) {
+	startPostIdStr := ctx.Query("start_post_id")
+	startPostId := 0
+	if startPostIdStr != "" {
+		var err error
+		startPostId, err = strconv.Atoi(startPostIdStr)
+		if err != nil {
+			log.Warn().Msgf("parse ")
+		}
+	}
+
 	db := api.ForContextOnlyDB(ctx)
 	proposalRecord, err := GetProposalFromStringId(db, ctx.Param("id"))
 	if err != nil {
@@ -160,7 +172,7 @@ func Detail(ctx *gin.Context) {
 		return
 	}
 
-	responseData, err := ConvertProposalToFrontendDetailRecord(db, proposalRecord)
+	responseData, err := ConvertProposalToFrontendDetailRecord(db, proposalRecord, startPostId)
 	if err != nil {
 		log.Error().Msgf("convert proposal to frontend format error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
@@ -227,7 +239,7 @@ func Update(ctx *gin.Context) {
 	// FIXME: refactor here: If not submitting to metaforo, a new version will be created in DB but no metaforo record.
 	// FIXME: Do we need to force passing the metaforo access token if not in pending submit state?
 	if reqData.SubmitToMetaforo {
-		if err := SaveProposalToMetaforo(db, proposalRecord, reqData.MetaforoAccessToken); err != nil {
+		if err := SaveProposalToMetaforo(db, proposalRecord, reqData.MetaforoAccessToken, reqData.EditorType); err != nil {
 			log.Error().Msgf("create metaforo proposal error: %+v", err)
 			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
@@ -235,7 +247,7 @@ func Update(ctx *gin.Context) {
 		}
 	}
 
-	responseData, err := ConvertProposalToFrontendDetailRecord(db, proposalRecord)
+	responseData, err := ConvertProposalToFrontendDetailRecord(db, proposalRecord, 0)
 	if err != nil {
 		log.Error().Msgf("convert proposal to frontend format error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
@@ -276,7 +288,7 @@ func Create(ctx *gin.Context) {
 	}
 
 	if reqData.SubmitToMetaforo {
-		if err := SaveProposalToMetaforo(db, proposalRecord, reqData.MetaforoAccessToken); err != nil {
+		if err := SaveProposalToMetaforo(db, proposalRecord, reqData.MetaforoAccessToken, reqData.EditorType); err != nil {
 			log.Error().Msgf("create metaforo proposal error: %+v", err)
 			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
@@ -284,7 +296,7 @@ func Create(ctx *gin.Context) {
 		}
 	}
 
-	responseData, err := ConvertProposalToFrontendDetailRecord(db, proposalRecord)
+	responseData, err := ConvertProposalToFrontendDetailRecord(db, proposalRecord, 0)
 	if err != nil {
 		log.Error().Msgf("convert proposal to frontend format error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)

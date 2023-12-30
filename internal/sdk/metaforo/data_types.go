@@ -76,7 +76,7 @@ type UserActivity struct {
 	ReplyPid                int         `json:"reply_pid"`
 	ReplyCount              int         `json:"reply_count"`
 	ReplyCountWithSoftDel   int         `json:"reply_count_with_soft_del"`
-	Html                    string      `json:"html"`
+	Html                    any         `json:"html"`
 	EditorType              int         `json:"editor_type"`
 	ImportSourceImportId    interface{} `json:"_import_source_import_id"`
 	ImportSourceUserId      interface{} `json:"_import_source_user_id"`
@@ -128,7 +128,7 @@ type PostData struct {
 	Sign        interface{}   `json:"sign"`
 	SignMsg     interface{}   `json:"sign_msg"`
 	EditorType  int           `json:"editor_type"`
-	Html        string        `json:"html"`
+	Html        any           `json:"html"`
 	UpdatedAt   time.Time     `json:"updated_at"`
 	CreatedAt   time.Time     `json:"created_at"`
 	TotalLikes  int           `json:"total_likes"`
@@ -243,7 +243,7 @@ type PollRecord struct {
 	IsVote               int           `json:"is_vote"`
 	Average              int           `json:"average"`
 	LeftTime             string        `json:"leftTime"`
-	WaitTime             string        `json:"waitTime"`
+	WaitTime             any           `json:"waitTime"`
 	Status               string        `json:"status"`
 	Percent              int           `json:"percent"`
 	Options              []*PollOption `json:"options"`
@@ -258,7 +258,7 @@ type PollRecord struct {
 type PollOption struct {
 	Id                       int         `json:"id"`
 	PollId                   int         `json:"poll_id"`
-	Html                     string      `json:"html"`
+	Html                     any         `json:"html"`
 	CreatedAt                time.Time   `json:"created_at"`
 	UpdatedAt                time.Time   `json:"updated_at"`
 	Voters                   int         `json:"voters"`
