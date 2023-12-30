@@ -67,6 +67,11 @@ func AddComment(accessToken, groupName string, proposalId int, content string, r
 		Header:               formHeader,
 	})
 
+	if err != nil {
+		log.Error().Msgf("Add comment error: %s", err)
+		return nil, err
+	}
+
 	return commentData.Post, err
 }
 

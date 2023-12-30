@@ -74,9 +74,13 @@ func doHttpRequest[T any](requestData *httpRequestData) (int, *T, error) {
 		req.Header.SetContentType(requestData.MultipartContentType)
 	}
 
+	log.Debug().Msgf("Request: %+v", req)
+
 	if err := fasthttp.Do(req, resp); err != nil {
 		log.Error().Msgf("Send request error: %s, req: %+v, resp: %+v", err, req, resp)
 	}
+
+	log.Debug().Msgf("Response: %+v", resp)
 
 	// check status code
 	if resp.StatusCode() != http.StatusOK {
@@ -96,7 +100,6 @@ func doHttpRequest[T any](requestData *httpRequestData) (int, *T, error) {
 	// { "status": true, "code": 20000, "description": "", "server": "rest", "data": { ... }}
 	// {"status":false,"code":40001,"description":"Group not exist","server":"master","data":{}}
 	// {"status":false,"code":40004,"description":"delete Tags Failed!","server":"master","data":{}}
-	// {"status": false, "code": 40011, "description": "INCARNA NFT is required to perform this action. Please check your NFT assets.", "server": "master", "data": {} }
 	// {"status": false, "code": 40090, "description": "The token address is invalid!", "server": "master", "data": {} } // add gate token
 	// {"status":false,"code":41002,"description":"Please login.","server":"master","data":{}}
 	// {"status":false,"code":41004,"description":"sign error","server":"master","data":{}}
@@ -107,9 +110,6 @@ func doHttpRequest[T any](requestData *httpRequestData) (int, *T, error) {
 	} else {
 		if apiResp.Code == 40001 {
 			return resp.StatusCode(), nil, GroupNotExist
-		}
-		if apiResp.Code == 40011 {
-			return resp.StatusCode(), nil, NoVoteRight
 		}
 		if apiResp.Code == 40090 {
 			return resp.StatusCode(), nil, TokenAddrInvalid
