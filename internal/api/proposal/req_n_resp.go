@@ -3,6 +3,7 @@ package proposal
 import (
 	"errors"
 
+	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api/component"
@@ -217,7 +218,6 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 
 	// TODO: Query UserVoteRecord and update isVoted field
 
-	// TODO: Get rejected comments if have
 	rejectedComment := model.ProposalComment{}
 	err = db.Model(model.ProposalComment{}).Where("proposal_id = ? AND is_reject_comment = ?", proposal.ID, true).First(&rejectedComment).Error
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
@@ -227,6 +227,12 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 	// TODO: Optimize the avatar query
 	var applicantAvatarLink string
 	db.Model(model.User{}).Where("wallet = ?", common.FormatUserWallet(proposal.Applicant)).Select("avatar").First(&applicantAvatarLink)
+
+	editHistory, err := GetLocalEditHistories(db, metaforoProposal)
+	if err != nil {
+		log.Error().Msgf("fetch local history record error: %+v", err)
+		return nil, err
+	}
 
 	return &FrontendProposalDetailRecord{
 		ID:                 proposal.ID,
@@ -240,7 +246,7 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 		IsRejected:         proposal.State == int(model.ProposalStateRejected),
 		RejectReason:       rejectedComment.Content,
 		RejectTs:           rejectedComment.CreateTs,
-		Histories:          metaforoProposal.Thread.EditHistory,
+		Histories:          editHistory,
 		Arweave:            proposal.ArweaveHash,
 		CommentCount:       metaforoProposal.Thread.PostsCount,
 		Comments:           metaforoProposal.Thread.Posts,

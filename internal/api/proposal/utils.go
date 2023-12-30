@@ -36,16 +36,29 @@ func GetMetaforoProposalByInternalId(db *gorm.DB, proposalIdStr string) (*model.
 		return nil, nil, err
 	}
 
-	proposalRecordId := model.BuildProposalRecordIdFromMetaforoThreadId(proposalDetailRecord.Thread.Id)
+	editHistory, err := GetLocalEditHistories(db, proposalDetailRecord)
+	if err != nil {
+		log.Error().Msgf("fetch local history record error: %+v", err)
+		return nil, nil, err
+	}
+
+	proposalDetailRecord.Thread.EditHistory.Lists = editHistory
+	proposalDetailRecord.Thread.EditHistory.Count = len(editHistory)
+
+	return proposalRcd, proposalDetailRecord, nil
+}
+
+func GetLocalEditHistories(db *gorm.DB, metaforoProposal *metaforo.ProposalResponse) ([]*metaforo.PostEditHistoryRecord, error) {
+	proposalRecordId := model.BuildProposalRecordIdFromMetaforoThreadId(metaforoProposal.Thread.Id)
 	var histRecords []*model.Proposal
-	err = db.Model(model.Proposal{}).
+	err := db.Model(model.Proposal{}).
 		Where("proposal_record_id = ?", proposalRecordId).
 		Select("title").
 		Order("create_ts desc").
 		Find(&histRecords).Error
 	if err != nil {
 		log.Error().Msgf("fetch proposal history record error: %+v", err)
-		return nil, nil, err
+		return nil, err
 	}
 
 	editHistory := lo.Map(histRecords, func(r *model.Proposal, _ int) *metaforo.PostEditHistoryRecord {
@@ -55,8 +68,5 @@ func GetMetaforoProposalByInternalId(db *gorm.DB, proposalIdStr string) (*model.
 		}
 	})
 
-	proposalDetailRecord.Thread.EditHistory.Lists = editHistory
-	proposalDetailRecord.Thread.EditHistory.Count = len(editHistory)
-
-	return proposalRcd, proposalDetailRecord, nil
+	return editHistory, nil
 }
