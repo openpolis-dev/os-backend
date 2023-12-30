@@ -14,6 +14,11 @@ import (
 	"github.com/theseed-labs/os-backend/internal/sdk/metaforo"
 )
 
+type JoinOrLeaveGroupReq struct {
+	GroupName           string `json:"group_name"`
+	MetaforoAccessToken string `json:"metaforo_access_token"`
+}
+
 // MetaforoActivities returns metaforo activities by given user id
 //
 //	@summary	Get metaforo activities
@@ -77,6 +82,60 @@ func UpdateMetaforoData(ctx *gin.Context) {
 		log.Error().Msgf("update metaforo user error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("update user info error")))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, api.Success(nil))
+}
+
+// JoinMetaforoGroup allow user joins metaforo group
+//
+//	@router		/user/join_metaforo_group [post]
+//	@summary	Join a Metaforo group
+//	@param		req	body		JoinOrLeaveGroupReq	true	"Join group request body"
+//	@success	200	{object}	api.Reply{data=nil}
+func JoinMetaforoGroup(ctx *gin.Context) {
+	var req JoinOrLeaveGroupReq
+	err := ctx.BindJSON(&req)
+	if err != nil {
+		sdk.LogUserSideError(ctx, err)
+		log.Error().Msgf("parse join group request error: %+v", err)
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
+		return
+	}
+
+	err = metaforo.JoinGroup(req.MetaforoAccessToken, req.GroupName)
+	if err != nil {
+		log.Error().Msgf("join group error: %+v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("join group error")))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, api.Success(nil))
+}
+
+// LeaveMetaforoGroup allow user joins metaforo group
+//
+//	@router		/user/leave_metaforo_group [post]
+//	@summary	Leave a Metaforo group
+//	@param		req	body		JoinOrLeaveGroupReq	true	"Join group request body"
+//	@success	200	{object}	api.Reply{data=nil}
+func LeaveMetaforoGroup(ctx *gin.Context) {
+	var req JoinOrLeaveGroupReq
+	err := ctx.BindJSON(&req)
+	if err != nil {
+		sdk.LogUserSideError(ctx, err)
+		log.Error().Msgf("parse leave group request error: %+v", err)
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
+		return
+	}
+
+	err = metaforo.LeaveGroup(req.MetaforoAccessToken, req.GroupName)
+	if err != nil {
+		log.Error().Msgf("leave group error: %+v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("leave group error")))
 		return
 	}
 

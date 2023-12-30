@@ -2147,6 +2147,78 @@ const docTemplate = `{
                 }
             }
         },
+        "/user/join_metaforo_group": {
+            "post": {
+                "summary": "Join a Metaforo group",
+                "parameters": [
+                    {
+                        "description": "Join group request body",
+                        "name": "req",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/user.JoinOrLeaveGroupReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Reply"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/user/leave_metaforo_group": {
+            "post": {
+                "summary": "Leave a Metaforo group",
+                "parameters": [
+                    {
+                        "description": "Join group request body",
+                        "name": "req",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/user.JoinOrLeaveGroupReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Reply"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/user/login": {
             "post": {
                 "consumes": [
@@ -4349,6 +4421,17 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "start_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "user.JoinOrLeaveGroupReq": {
+            "type": "object",
+            "properties": {
+                "group_name": {
+                    "type": "string"
+                },
+                "metaforo_access_token": {
                     "type": "string"
                 }
             }

@@ -1207,6 +1207,13 @@ definitions:
       start_at:
         type: string
     type: object
+  user.JoinOrLeaveGroupReq:
+    properties:
+      group_name:
+        type: string
+      metaforo_access_token:
+        type: string
+    type: object
   user.LoginReply:
     properties:
       token:
@@ -2608,6 +2615,46 @@ paths:
       summary: Query frontend permission by user wallet
       tags:
       - Permission
+  /user/join_metaforo_group:
+    post:
+      parameters:
+      - description: Join group request body
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/user.JoinOrLeaveGroupReq'
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  type: object
+              type: object
+      summary: Join a Metaforo group
+  /user/leave_metaforo_group:
+    post:
+      parameters:
+      - description: Join group request body
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/user.JoinOrLeaveGroupReq'
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  type: object
+              type: object
+      summary: Leave a Metaforo group
   /user/login:
     post:
       consumes:
