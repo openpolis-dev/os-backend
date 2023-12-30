@@ -92,12 +92,14 @@ type FrontendProposalListRecord struct {
 	ApplicantAvatar string `json:"applicant_avatar"`
 	CategoryName    string `json:"category_name"`
 	State           string `json:"state"`
+	StateId         int    `json:"-"`
 	CreateTs        int64  `json:"create_ts"`
+	Version         uint   `json:"version"`
 
 	// Vote related state
 	// TODO: Vote Gate related logic
-	VoteState string `json:"vote_state"`
-	IsVoted   bool   `json:"is_voted"`
+	VoteState string `json:"-"`
+	IsVoted   bool   `json:"-"`
 }
 
 type FrontendContentBlockRecord struct {

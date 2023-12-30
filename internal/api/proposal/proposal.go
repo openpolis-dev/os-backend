@@ -17,9 +17,25 @@ import (
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk"
 	"github.com/theseed-labs/os-backend/internal/sdk/metaforo"
-	"github.com/xiaosongfu/gormfind"
 	"gorm.io/gorm"
 )
+
+const ListProposalsSQL = `
+SELECT p.id,
+       p.title,
+       lower(p.applicant) as applicant,
+       u.avatar as applicant_avatar,
+       pc.name  as category_name,
+       p.create_ts,
+       p.version,
+       p.state as state_id
+FROM proposals p
+         JOIN (SELECT proposal_record_id, MAX(version) AS max_version
+               FROM proposals
+               GROUP BY proposal_record_id) t2
+              ON p.proposal_record_id = t2.proposal_record_id AND p.version = t2.max_version
+         JOIN proposal_categories pc ON p.proposal_category_id = pc.id
+         JOIN users u ON p.applicant = u.wallet`
 
 // List handles the HTTP request to list proposals.
 //
@@ -46,11 +62,14 @@ func List(ctx *gin.Context) {
 	// Parse pagination
 	page := api.ParseAndConvertPageParam(ctx)
 
+	querySql := ListProposalsSQL
+	sqlQueryParams := make(map[string]any)
+
 	// Execute query
-	querySeg := db.Model(&model.Proposal{})
 	if queryParams.State != "" {
 		if stateVal, found := model.ProposalStateIdNameMapping[queryParams.State]; found {
-			querySeg = querySeg.Where("state = ?", stateVal)
+			querySql += " AND state = @state"
+			sqlQueryParams["state"] = fmt.Sprintf("%d", stateVal)
 		} else {
 			sdk.LogUserSideError(ctx, fmt.Errorf("query proposal state %s error", queryParams.State))
 			log.Warn().Msgf("query proposal state %s error", queryParams.State)
@@ -58,50 +77,37 @@ func List(ctx *gin.Context) {
 	}
 
 	if queryParams.CategoryId != 0 {
-		querySeg = querySeg.Where("proposal_category_id = ?", queryParams.CategoryId)
+		querySql += " AND proposal_category_id = @category_id"
+		sqlQueryParams["state"] = queryParams.CategoryId
 	}
 
 	if queryParams.Q != "" {
-		querySeg = querySeg.Where(fmt.Sprintf("title ilike '%%%s%%'", queryParams.Q))
+		querySql += " AND title ilike %@query%"
+		sqlQueryParams["query"] = queryParams.Q
 	}
 
-	total, err := gormfind.Count(querySeg)
+	total := db.Raw(querySql, sqlQueryParams).First(&model.FrontendApplicationRecord{}).RowsAffected
+
+	orderByClause := fmt.Sprintf("%s %s ", *page.SortField, *page.Order)
+	querySql += fmt.Sprintf("\nORDER BY %s ", orderByClause)
+	querySql += "LIMIT @limit OFFSET @offset"
+	sqlQueryParams["offset"] = (page.Page - 1) * page.Size
+	sqlQueryParams["limit"] = page.Size
+
+	var resultRows []*FrontendProposalListRecord
+	querySeg := db.Raw(querySql, sqlQueryParams)
+	err := db.Raw(querySql, sqlQueryParams).Find(&resultRows).Error
 	if err != nil {
-		log.Error().Msgf("get proposal count error: %+v, query params: %+v", err, querySeg)
-		ctx.JSON(http.StatusBadRequest, api.Reply{
-			Code: -1,
-			Msg:  fmt.Sprintf("query proposal error: %+v", err),
-		})
+		log.Error().Msgf("get proposal list error: query sql: %s, query params: %+v", err, querySeg)
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get proposal count error")))
 		return
 	}
 
-	querySeg = querySeg.Joins("ProposalCategory")
-
-	dbRcds, err := model.QueryRows[model.Proposal](querySeg, page)
-	if err != nil {
-		log.Error().Msgf("get proposal list error: %+v, query sql: %s, query params: %+v", err, querySeg)
-		ctx.JSON(http.StatusBadRequest, api.Reply{
-			Code: -1,
-			Msg:  fmt.Sprintf("query proposal error: %+v", err),
-		})
-		return
-	}
-
-	// Transform proposal records to frontend format
-	resultRows := lo.Map(dbRcds, func(r *model.Proposal, _ int) *FrontendProposalListRecord {
-		// TODO: Optimize the avatar query
-		var applicantAvatarLink string
-		db.Model(model.User{}).Where("wallet = ?", common.FormatUserWallet(r.Applicant)).Select("avatar").First(&applicantAvatarLink)
-		return &FrontendProposalListRecord{
-			ID:              r.ID,
-			Title:           r.Title,
-			Applicant:       r.Applicant,
-			ApplicantAvatar: applicantAvatarLink,
-			CategoryName:    r.ProposalCategory.Name,
-			State:           model.ProposalStateName[r.State],
-			CreateTs:        r.CreateTs,
-			VoteState:       "",
-		}
+	resultRows = lo.Map(resultRows, func(r *FrontendProposalListRecord, _ int) *FrontendProposalListRecord {
+		dup_r := r
+		dup_r.State = model.ProposalStateName[r.StateId]
+		return dup_r
 	})
 
 	ctx.JSON(http.StatusOK, api.Success(api.ListReplyData{
