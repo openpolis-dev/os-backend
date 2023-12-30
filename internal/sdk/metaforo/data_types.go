@@ -106,13 +106,15 @@ type Tag struct {
 }
 
 type UserData struct {
-	Id        int           `json:"id"`
-	PhotoUrl  string        `json:"photo_url"`
-	UserTitle interface{}   `json:"user_title"`
-	Badges    []interface{} `json:"badges"`
-	Online    bool          `json:"online"`
-	Username  string        `json:"username"`
-	IsNft     int           `json:"is_nft"`
+	Id         int           `json:"id"`
+	PhotoUrl   string        `json:"photo_url"`
+	UserTitle  interface{}   `json:"user_title"`
+	Badges     []interface{} `json:"badges"`
+	Online     bool          `json:"online"`
+	Username   string        `json:"username"`
+	IsNft      int           `json:"is_nft"`
+	Wallet     string        `json:"wallet"`
+	AvatarLink string        `json:"avatar_link"`
 }
 
 type PostData struct {
@@ -279,6 +281,7 @@ type PostEditHistoryRecord struct {
 	PostId    int       `json:"post_id"`
 	UserId    int       `json:"user_id"`
 	Arweave   string    `json:"arweave"`
+	Title     string    `json:"title"`
 	PostType  int       `json:"post_type"`
 }
 

@@ -81,7 +81,8 @@ type Proposal struct {
 	ProposalCategoryID uint `gorm:"index"`
 	ProposalCategory   ProposalCategory
 
-	// ProposalRecordId used to identify proposal version
+	//  Fields for versioned proposals
+	// ProposalRecordId is built from metaforo thread ID, which should be kept same in various versions
 	ProposalRecordId string `gorm:"index:proposalVer"`
 	Version          uint   `gorm:"index:proposalVer"`
 
