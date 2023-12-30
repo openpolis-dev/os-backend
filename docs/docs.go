@@ -3040,9 +3040,7 @@ const docTemplate = `{
                 "group_title": {
                     "type": "string"
                 },
-                "html": {
-                    "type": "string"
-                },
+                "html": {},
                 "id": {
                     "description": "TODO delete unused fields",
                     "type": "integer"
@@ -3868,6 +3866,9 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/proposal.FrontendContentBlockRecord"
                     }
+                },
+                "editor_type": {
+                    "type": "integer"
                 },
                 "metaforo_access_token": {
                     "type": "string"
