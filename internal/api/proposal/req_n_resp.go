@@ -59,12 +59,14 @@ type AddCommentData struct {
 	Content                  string `json:"content"`
 	ReplyToMetaforoCommentId int    `json:"reply_id"`
 	MetaforoAccessToken      string `json:"metaforo_access_token"`
+	EditorType               int    `json:"editor_type"`
 }
 
 type EditCommentData struct {
 	Content             string `json:"content"`
 	MetaforoCommentId   int    `json:"post_id"`
 	MetaforoAccessToken string `json:"metaforo_access_token"`
+	EditorType          int    `json:"editor_type"`
 }
 
 type DeleteCommentData struct {

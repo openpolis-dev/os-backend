@@ -447,7 +447,8 @@ func Reject(ctx *gin.Context) {
 		internal.MetaforoGroupName,
 		proposalRecord.GetMetaforoThreadId(),
 		rejectComment.Content,
-		"")
+		"",
+		1)
 	if err != nil {
 		log.Error().Msgf("add comment to proposal %s error: %+v", proposalIdStr, err)
 		sdk.LogUserSideError(ctx, err)

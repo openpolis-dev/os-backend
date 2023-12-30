@@ -24,7 +24,7 @@ import (
 // --form 'reply_id="1964128"' \
 // --form 'thread_id="47945"' \
 // --form 'group_name="testttt"'
-func AddComment(accessToken, groupName string, proposalId int, content string, replyId string) (*PostData, error) {
+func AddComment(accessToken, groupName string, proposalId int, content string, replyId string, editorType int) (*PostData, error) {
 	apiPath := "/api/submit_post"
 
 	// prepare headers
@@ -41,7 +41,7 @@ func AddComment(accessToken, groupName string, proposalId int, content string, r
 	_ = writer.WriteField("group_name", groupName)
 
 	// Set editor_type to 1 to support markdown, and for Markdown should be passed
-	_ = writer.WriteField("editor_type", "1")
+	_ = writer.WriteField("editor_type", fmt.Sprintf("%d", editorType))
 	_ = writer.WriteField("content", content)
 
 	maybeUnsafeHTML := markdown.ToHTML([]byte(content), nil, nil)
@@ -75,7 +75,7 @@ func AddComment(accessToken, groupName string, proposalId int, content string, r
 	return commentData.Post, err
 }
 
-func EditComment(accessToken, groupName, postId string, content string) error {
+func EditComment(accessToken, groupName, postId string, content string, editorType int) error {
 	apiPath := "/api/edit_post"
 
 	// prepare headers
@@ -89,7 +89,7 @@ func EditComment(accessToken, groupName, postId string, content string) error {
 	_ = writer.WriteField("post_id", postId)
 	_ = writer.WriteField("group_name", groupName)
 
-	_ = writer.WriteField("editor_type", "1")
+	_ = writer.WriteField("editor_type", fmt.Sprintf("%d", editorType))
 	_ = writer.WriteField("content", content)
 
 	maybeUnsafeHTML := markdown.ToHTML([]byte(content), nil, nil)

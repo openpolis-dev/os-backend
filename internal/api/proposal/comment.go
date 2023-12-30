@@ -66,6 +66,7 @@ func AddComment(ctx *gin.Context) {
 		proposalRcd.GetMetaforoThreadId(),
 		addComment.Content,
 		fmt.Sprintf("%d", replyId),
+		addComment.EditorType,
 	)
 	if err != nil {
 		log.Error().Msgf("add comment to proposal %s error: %+v", proposalIdStr, err)
@@ -123,6 +124,7 @@ func EditComment(ctx *gin.Context) {
 		internal.MetaforoGroupName,
 		fmt.Sprintf("%d", editComment.MetaforoCommentId),
 		editComment.Content,
+		editComment.EditorType,
 	)
 	if err != nil {
 		log.Error().Msgf("edit comment error: %+v", err)

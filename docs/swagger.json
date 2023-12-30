@@ -3929,6 +3929,9 @@
                 "content": {
                     "type": "string"
                 },
+                "editor_type": {
+                    "type": "integer"
+                },
                 "metaforo_access_token": {
                     "type": "string"
                 },
@@ -4036,6 +4039,9 @@
             "properties": {
                 "content": {
                     "type": "string"
+                },
+                "editor_type": {
+                    "type": "integer"
                 },
                 "metaforo_access_token": {
                     "type": "string"

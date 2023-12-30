@@ -881,6 +881,8 @@ definitions:
     properties:
       content:
         type: string
+      editor_type:
+        type: integer
       metaforo_access_token:
         type: string
       reply_id:
@@ -951,6 +953,8 @@ definitions:
     properties:
       content:
         type: string
+      editor_type:
+        type: integer
       metaforo_access_token:
         type: string
       post_id:

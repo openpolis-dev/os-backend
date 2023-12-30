@@ -3936,6 +3936,9 @@ const docTemplate = `{
                 "content": {
                     "type": "string"
                 },
+                "editor_type": {
+                    "type": "integer"
+                },
                 "metaforo_access_token": {
                     "type": "string"
                 },
@@ -4043,6 +4046,9 @@ const docTemplate = `{
             "properties": {
                 "content": {
                     "type": "string"
+                },
+                "editor_type": {
+                    "type": "integer"
                 },
                 "metaforo_access_token": {
                     "type": "string"
