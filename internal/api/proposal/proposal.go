@@ -63,13 +63,11 @@ func List(ctx *gin.Context) {
 	page := api.ParseAndConvertPageParam(ctx)
 
 	querySql := ListProposalsSQL
-	sqlQueryParams := make(map[string]any)
 
 	// Execute query
 	if queryParams.State != "" {
 		if stateVal, found := model.ProposalStateIdNameMapping[queryParams.State]; found {
-			querySql += " AND state = @state"
-			sqlQueryParams["state"] = fmt.Sprintf("%d", stateVal)
+			querySql += fmt.Sprintf(" AND state = %d", stateVal)
 		} else {
 			sdk.LogUserSideError(ctx, fmt.Errorf("query proposal state %s error", queryParams.State))
 			log.Warn().Msgf("query proposal state %s error", queryParams.State)
@@ -77,30 +75,34 @@ func List(ctx *gin.Context) {
 	}
 
 	if queryParams.CategoryId != 0 {
-		querySql += " AND proposal_category_id = @category_id"
-		sqlQueryParams["state"] = queryParams.CategoryId
+		querySql += fmt.Sprintf(" AND proposal_category_id = %d", queryParams.CategoryId)
 	}
 
 	if queryParams.Q != "" {
-		querySql += " AND title ilike %@query%"
-		sqlQueryParams["query"] = queryParams.Q
+		querySql += fmt.Sprintf(" AND title ilike '%%%s%%'", queryParams.Q)
 	}
 
-	total := db.Raw(querySql, sqlQueryParams).First(&model.FrontendApplicationRecord{}).RowsAffected
+	var tmpRcd []*FrontendProposalListRecord
+	var countTx *gorm.DB
+	countTx = db.Raw(querySql).Scan(&tmpRcd)
+	if err := countTx.Error; err != nil {
+		log.Error().Msgf("get proposal count error: %+v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get proposal count error")))
+		return
+	}
+	total := countTx.RowsAffected
 
 	orderByClause := fmt.Sprintf("%s %s ", *page.SortField, *page.Order)
 	querySql += fmt.Sprintf("\nORDER BY %s ", orderByClause)
-	querySql += "LIMIT @limit OFFSET @offset"
-	sqlQueryParams["offset"] = (page.Page - 1) * page.Size
-	sqlQueryParams["limit"] = page.Size
+	querySql += fmt.Sprintf("LIMIT %d OFFSET %d", page.Size, (page.Page-1)*page.Size)
 
 	var resultRows []*FrontendProposalListRecord
-	querySeg := db.Raw(querySql, sqlQueryParams)
-	err := db.Raw(querySql, sqlQueryParams).Find(&resultRows).Error
+	err := db.Raw(querySql).Find(&resultRows).Error
 	if err != nil {
-		log.Error().Msgf("get proposal list error: query sql: %s, query params: %+v", err, querySeg)
+		log.Error().Msgf("get proposal list error: query sql: %s, err: %+v", querySql, err)
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get proposal count error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get proposal error")))
 		return
 	}
 
