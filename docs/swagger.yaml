@@ -1040,17 +1040,12 @@ definitions:
         type: integer
       id:
         type: integer
-      is_voted:
-        type: boolean
       state:
         type: string
       title:
         type: string
-      vote_state:
-        description: |-
-          Vote related state
-          TODO: Vote Gate related logic
-        type: string
+      version:
+        type: integer
     type: object
   proposal.FrontendVoteGateResponse:
     properties:

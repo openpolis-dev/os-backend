@@ -4036,18 +4036,14 @@ const docTemplate = `{
                 "id": {
                     "type": "integer"
                 },
-                "is_voted": {
-                    "type": "boolean"
-                },
                 "state": {
                     "type": "string"
                 },
                 "title": {
                     "type": "string"
                 },
-                "vote_state": {
-                    "description": "Vote related state\nTODO: Vote Gate related logic",
-                    "type": "string"
+                "version": {
+                    "type": "integer"
                 }
             }
         },
