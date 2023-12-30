@@ -2687,6 +2687,21 @@ paths:
       summary: Update user info
       tags:
       - User
+  /user/metaforo_activities:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  $ref: '#/definitions/metaforo.UserActivity'
+              type: object
+      summary: Get metaforo activities
+      tags:
+      - metaforo
   /user/refresh_nonce:
     post:
       consumes:
@@ -2738,6 +2753,29 @@ paths:
       summary: Retrieve nonce
       tags:
       - Auth
+  /user/update_metaforo_data:
+    post:
+      parameters:
+      - description: user data from login request
+        in: body
+        name: JsonBody
+        required: true
+        schema:
+          $ref: '#/definitions/metaforo.User'
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  type: object
+              type: object
+      summary: build metaforo account relationship between OS user
+      tags:
+      - user
+      - metaforo
   /user/users:
     get:
       consumes:

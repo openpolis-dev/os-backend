@@ -2279,6 +2279,34 @@ const docTemplate = `{
                 }
             }
         },
+        "/user/metaforo_activities": {
+            "get": {
+                "tags": [
+                    "metaforo"
+                ],
+                "summary": "Get metaforo activities",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Reply"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/metaforo.UserActivity"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/user/refresh_nonce": {
             "post": {
                 "consumes": [
@@ -2358,6 +2386,46 @@ const docTemplate = `{
                                     "properties": {
                                         "data": {
                                             "$ref": "#/definitions/user.RetrieveNonceReply"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/user/update_metaforo_data": {
+            "post": {
+                "tags": [
+                    "user",
+                    "metaforo"
+                ],
+                "summary": "build metaforo account relationship between OS user",
+                "parameters": [
+                    {
+                        "description": "user data from login request",
+                        "name": "JsonBody",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/metaforo.User"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Reply"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object"
                                         }
                                     }
                                 }
