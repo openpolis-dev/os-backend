@@ -2759,6 +2759,21 @@ paths:
       - User
   /user/metaforo_activities:
     get:
+      parameters:
+      - description: Metaforo user id
+        in: query
+        name: userId
+        required: true
+        type: string
+      - description: Size of activities
+        in: query
+        name: size
+        required: true
+        type: integer
+      - description: params for next page
+        in: query
+        name: session
+        type: string
       responses:
         "200":
           description: OK

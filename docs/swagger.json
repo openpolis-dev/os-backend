@@ -2365,6 +2365,28 @@
                     "metaforo"
                 ],
                 "summary": "Get metaforo activities",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Metaforo user id",
+                        "name": "userId",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Size of activities",
+                        "name": "size",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "params for next page",
+                        "name": "session",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",

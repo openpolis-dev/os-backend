@@ -30,10 +30,10 @@ type JoinOrLeaveGroupReq struct {
 //	@summary	Get metaforo activities
 //	@router		/user/metaforo_activities [get]
 //	@tags		metaforo
-//	@params		userId query string true "Metaforo user id"
-//	@params		size query int true "Size of activities"
-//	@params		session query string false "params for next page"
-//	@success	200	{object}	api.Reply{data=metaforo.UserActivity}
+//	@param		userId	query		string	true	"Metaforo user id"
+//	@param		size	query		int		true	"Size of activities"
+//	@param		session	query		string	false	"params for next page"
+//	@success	200		{object}	api.Reply{data=metaforo.UserActivity}
 func MetaforoActivities(ctx *gin.Context) {
 	userId := ctx.Param("userId")
 	size := ctx.Param("size")
