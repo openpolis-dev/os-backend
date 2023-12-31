@@ -2372,6 +2372,46 @@
                 }
             }
         },
+        "/user/prepare_metaforo": {
+            "post": {
+                "tags": [
+                    "user",
+                    "metaforo"
+                ],
+                "summary": "Upload metaforo user data to link with os user, and invoke join group",
+                "parameters": [
+                    {
+                        "description": "meatforo user data and access_token",
+                        "name": "JsonBody",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/user.PrepareMetaforoUserReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Reply"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/user/refresh_nonce": {
             "post": {
                 "consumes": [
@@ -2451,46 +2491,6 @@
                                     "properties": {
                                         "data": {
                                             "$ref": "#/definitions/user.RetrieveNonceReply"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            }
-        },
-        "/user/update_metaforo_data": {
-            "post": {
-                "tags": [
-                    "user",
-                    "metaforo"
-                ],
-                "summary": "build metaforo account relationship between OS user",
-                "parameters": [
-                    {
-                        "description": "user data from login request",
-                        "name": "JsonBody",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/metaforo.User"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/api.Reply"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "object"
                                         }
                                     }
                                 }
@@ -4481,6 +4481,20 @@
                 },
                 "wallet_type": {
                     "type": "string"
+                }
+            }
+        },
+        "user.PrepareMetaforoUserReq": {
+            "type": "object",
+            "properties": {
+                "group_name": {
+                    "type": "string"
+                },
+                "metaforo_access_token": {
+                    "type": "string"
+                },
+                "metaforo_user": {
+                    "$ref": "#/definitions/metaforo.User"
                 }
             }
         },

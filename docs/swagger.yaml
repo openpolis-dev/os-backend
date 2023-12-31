@@ -1252,6 +1252,15 @@ definitions:
     - wallet
     - wallet_type
     type: object
+  user.PrepareMetaforoUserReq:
+    properties:
+      group_name:
+        type: string
+      metaforo_access_token:
+        type: string
+      metaforo_user:
+        $ref: '#/definitions/metaforo.User'
+    type: object
   user.RefreshNonceReply:
     properties:
       nonce:
@@ -2753,6 +2762,29 @@ paths:
       summary: Get metaforo activities
       tags:
       - metaforo
+  /user/prepare_metaforo:
+    post:
+      parameters:
+      - description: meatforo user data and access_token
+        in: body
+        name: JsonBody
+        required: true
+        schema:
+          $ref: '#/definitions/user.PrepareMetaforoUserReq'
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  type: object
+              type: object
+      summary: Upload metaforo user data to link with os user, and invoke join group
+      tags:
+      - user
+      - metaforo
   /user/refresh_nonce:
     post:
       consumes:
@@ -2804,29 +2836,6 @@ paths:
       summary: Retrieve nonce
       tags:
       - Auth
-  /user/update_metaforo_data:
-    post:
-      parameters:
-      - description: user data from login request
-        in: body
-        name: JsonBody
-        required: true
-        schema:
-          $ref: '#/definitions/metaforo.User'
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/api.Reply'
-            - properties:
-                data:
-                  type: object
-              type: object
-      summary: build metaforo account relationship between OS user
-      tags:
-      - user
-      - metaforo
   /user/users:
     get:
       consumes:
