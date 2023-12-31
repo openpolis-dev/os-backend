@@ -2337,6 +2337,16 @@ paths:
       - proposal
   /proposals/show/:id:
     get:
+      parameters:
+      - description: start post ID
+        in: query
+        name: start_post_id
+        type: integer
+      - description: metaforo access token
+        in: query
+        name: access_token
+        required: true
+        type: string
       responses:
         "200":
           description: OK

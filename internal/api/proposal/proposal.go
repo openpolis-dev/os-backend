@@ -125,11 +125,12 @@ func List(ctx *gin.Context) {
 
 // Detail function returns proposal detail data
 //
+//	@summary	Show proposals with given ID
 //	@router		/proposals/show/:id [get]
 //	@tags		proposal
-//	@summary	Show proposals with given ID
-//	@params		start_post_id query int false "start post ID"
-//	@success	200	{object}	api.Reply{data=FrontendProposalDetailRecord}
+//	@param		start_post_id	query		int		false	"start post ID"
+//	@param		access_token	query		string	true	"metaforo access token"
+//	@success	200				{object}	api.Reply{data=FrontendProposalDetailRecord}
 func Detail(ctx *gin.Context) {
 	startPostIdStr := ctx.Query("start_post_id")
 	metaforoAccessToken := ctx.Query("access_token")

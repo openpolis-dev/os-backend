@@ -1659,6 +1659,21 @@ const docTemplate = `{
                     "proposal"
                 ],
                 "summary": "Show proposals with given ID",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "start post ID",
+                        "name": "start_post_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "metaforo access token",
+                        "name": "access_token",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
