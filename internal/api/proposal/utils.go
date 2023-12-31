@@ -23,7 +23,7 @@ func GetMetaforoProposalByInternalId(db *gorm.DB, proposalIdStr string) (*model.
 		return nil, nil, err
 	}
 
-	proposalDetailRecord, err := metaforo.GetProposal(proposalRcd.GetMetaforoThreadId(), internal.MetaforoGroupName, 0)
+	proposalDetailRecord, err := metaforo.GetProposal(proposalRcd.GetMetaforoThreadId(), internal.MetaforoGroupName, "", 0)
 	if err != nil {
 		log.Error().Msgf("get metaforo proposal error: %+v", err)
 		return nil, nil, err

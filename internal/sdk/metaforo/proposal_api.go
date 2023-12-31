@@ -18,18 +18,23 @@ import (
 // curl --location 'https://metaforo.io/api/get_thread/47967?group_name=testttt' \
 // --header 'api_key: metaforo_website' \
 // --header 'authorization: Bearer 21831|uLLroQDhdvk2OWKRHTP1wPR5vZX7vu1FmffgnBks'
-func GetProposal(threadId int, groupName string, startPostId int) (*ProposalResponse, error) {
+func GetProposal(threadId int, groupName string, accessToken string, startPostId int) (*ProposalResponse, error) {
 	apiPath := fmt.Sprintf("/api/get_thread/%d", threadId)
 	queryParams := map[string]string{"group_name": groupName}
 	if startPostId != 0 {
 		queryParams["start_post_id"] = strconv.Itoa(startPostId)
 	}
 
+	header := BaseHeader
+	if accessToken != "" {
+		header = AuthHeader(accessToken)
+	}
+
 	_, resp, err := doHttpRequest[ProposalResponse](&httpRequestData{
 		ApiUri:      apiBase + apiPath,
 		HttpMethod:  http.MethodGet,
 		QueryParams: queryParams,
-		Header:      BaseHeader,
+		Header:      header,
 	})
 	if err != nil {
 		return nil, err

@@ -173,7 +173,7 @@ func TestGetProposals(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		gotResp, err := GetProposal(tt.args.proposalId, tt.args.groupName, 0)
+		gotResp, err := GetProposal(tt.args.proposalId, tt.args.groupName, "", 0)
 		if !errors.Is(err, tt.wantErr) {
 			t.Errorf("[%s] GetProposal() error = %v, wantErr = %v", tt.name, err, tt.wantErr)
 		}

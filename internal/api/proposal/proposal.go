@@ -132,6 +132,7 @@ func List(ctx *gin.Context) {
 //	@success	200	{object}	api.Reply{data=FrontendProposalDetailRecord}
 func Detail(ctx *gin.Context) {
 	startPostIdStr := ctx.Query("start_post_id")
+	metaforoAccessToken := ctx.Query("access_token")
 	startPostId := 0
 	if startPostIdStr != "" {
 		var err error
@@ -174,7 +175,7 @@ func Detail(ctx *gin.Context) {
 		return
 	}
 
-	responseData, err := ConvertProposalToFrontendDetailRecord(db, proposalRecord, startPostId)
+	responseData, err := ConvertProposalToFrontendDetailRecord(db, proposalRecord, startPostId, metaforoAccessToken)
 	if err != nil {
 		log.Error().Msgf("convert proposal to frontend format error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
@@ -249,7 +250,7 @@ func Update(ctx *gin.Context) {
 		}
 	}
 
-	responseData, err := ConvertProposalToFrontendDetailRecord(db, proposalRecord, 0)
+	responseData, err := ConvertProposalToFrontendDetailRecord(db, proposalRecord, 0, reqData.MetaforoAccessToken)
 	if err != nil {
 		log.Error().Msgf("convert proposal to frontend format error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
@@ -298,7 +299,7 @@ func Create(ctx *gin.Context) {
 		}
 	}
 
-	responseData, err := ConvertProposalToFrontendDetailRecord(db, proposalRecord, 0)
+	responseData, err := ConvertProposalToFrontendDetailRecord(db, proposalRecord, 0, reqData.MetaforoAccessToken)
 	if err != nil {
 		log.Error().Msgf("convert proposal to frontend format error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)

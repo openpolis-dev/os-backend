@@ -96,7 +96,7 @@ func main() {
 		metaforo.UpdateVoteTime(*voteAccessToken, *voteGroup, *voteId, startTs.Unix(), endTs.Unix())
 	case "show":
 		showCommand.Parse(os.Args[2:])
-		proposal, _ := metaforo.GetProposal(*showThreadId, *showGroup, 0)
+		proposal, _ := metaforo.GetProposal(*showThreadId, *showGroup, "", 0)
 		api.PrintStructAsJson(proposal, "")
 	default:
 		fmt.Println("Unknown subcommand:", os.Args[1])

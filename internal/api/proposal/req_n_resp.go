@@ -178,7 +178,7 @@ type UpdateProposalCategoryReq struct {
 // Some converter functions
 ///////////////////////
 
-func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal, startPostId int) (*FrontendProposalDetailRecord, error) {
+func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal, startPostId int, accessToken string) (*FrontendProposalDetailRecord, error) {
 	var proposalBlocks []*model.ProposalContentBlock
 	if err := db.Where(&model.ProposalContentBlock{ProposalID: proposal.ID}).Find(&proposalBlocks).Error; err != nil {
 		return nil, err
@@ -207,7 +207,7 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 		}
 	})
 
-	metaforoProposal, err := metaforo.GetProposal(proposal.GetMetaforoThreadId(), internal.MetaforoGroupName, startPostId)
+	metaforoProposal, err := metaforo.GetProposal(proposal.GetMetaforoThreadId(), internal.MetaforoGroupName, accessToken, startPostId)
 	if err != nil {
 		return nil, err
 	}
