@@ -119,8 +119,9 @@ func UpdateVoteTime(accessToken, groupName string, voteId int, startTs, endTs in
 	formBody := fasthttp.Args{}
 	formBody.Set("group_name", groupName)
 	formBody.Set("poll_id", fmt.Sprintf("%d", voteId))
-	formBody.Set("start_at", time.Unix(startTs, 0).Format(time.RFC3339))
-	formBody.Set("close_at", time.Unix(endTs, 0).Format(time.RFC3339))
+	// The start_at and close_at should be UTC timestamp
+	formBody.Set("start_at", time.Unix(startTs, 0).UTC().Format(time.RFC3339))
+	formBody.Set("close_at", time.Unix(endTs, 0).UTC().Format(time.RFC3339))
 
 	// send request
 	statusCode, body, err := doHttpRequest[any](&httpRequestData{

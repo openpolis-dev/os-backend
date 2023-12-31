@@ -373,6 +373,7 @@ func Approve(ctx *gin.Context) {
 			sdk.LogServerErrorToSentry(ctx, err)
 			log.Error().Msgf("update proposal %s state to approved error: %+v", proposalIdStr, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("approve proposal error")))
+			return
 		}
 	}
 
@@ -493,25 +494,37 @@ func updateProposalState(db *gorm.DB, user *middleware.CurUser, proposalStrId st
 		}
 	case model.ProposalStateApproved:
 		// TODO: Update Metaforo Label: Remove old label and add new, verify whether metaforo can handle this
-		proposalRecord.State = int(model.ProposalStateApproved)
-		err = db.Save(&proposalRecord).Error
-		//  TODO: Get proposal category default duration
-		for _, record := range proposalRecord.VoteRecords {
-			err := metaforo.UpdateVoteTime(internal.MetaforoAdminAccessToken,
-				internal.MetaforoGroupName,
-				record.MetaforoID,
-				time.Now().UTC().Unix(),
-				time.Now().UTC().Add(internal.DefaultVoteDuration).Unix(),
-			)
+		return nil, db.Transaction(func(tx *gorm.DB) error {
+			proposalRecord.State = int(model.ProposalStateApproved)
+			err = tx.Save(&proposalRecord).Error
+			//  TODO: Get proposal category default duration
+			var voteRecords []*model.ProposalVoteRecord
+			err = db.Model(proposalRecord).Association("VoteRecords").Find(&voteRecords)
 			if err != nil {
-				log.Error().Msgf("update vote information error: %+v", err)
-				return nil, err
+				log.Error().Msgf("get vote records error: %+v", err)
+				return err
 			}
-		}
-		if err != nil {
-			log.Error().Msgf("change proposal to approved error")
-			return nil, err
-		}
+			log.Error().Msgf("TTT: Prepare to update votes, votes: %+v", voteRecords)
+
+			for _, record := range voteRecords {
+				log.Error().Msgf("TTT: vote record: %+v", record)
+				err := metaforo.UpdateVoteTime(internal.MetaforoAdminAccessToken,
+					internal.MetaforoGroupName,
+					record.MetaforoID,
+					time.Now().UTC().Unix(),
+					time.Now().UTC().Add(internal.DefaultVoteDuration).Unix(),
+				)
+				if err != nil {
+					log.Error().Msgf("update vote information error: %+v", err)
+					return err
+				}
+			}
+			if err != nil {
+				log.Error().Msgf("change proposal to approved error")
+				return err
+			}
+			return nil
+		})
 	case model.ProposalStateRejected:
 		// TODO: Update Metaforo Label: Remove old label and add new, verify whether metaforo can handle this
 		proposalRecord.State = int(model.ProposalStateRejected)
