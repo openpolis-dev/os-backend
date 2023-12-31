@@ -73,6 +73,8 @@ func List(ctx *gin.Context) {
 			sdk.LogUserSideError(ctx, fmt.Errorf("query proposal state %s error", queryParams.State))
 			log.Warn().Msgf("query proposal state %s error", queryParams.State)
 		}
+	} else {
+		querySql += fmt.Sprintf(" AND state != %d", model.ProposalStatePendingSubmit)
 	}
 
 	if queryParams.CategoryId != 0 {
