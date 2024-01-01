@@ -131,9 +131,10 @@ type FrontendProposalDetailRecord struct {
 	Arweave string `json:"arweave"`
 
 	// Reject related data
-	IsRejected   bool   `json:"is_rejected"`
-	RejectReason string `json:"reject_reason"`
-	RejectTs     int64  `json:"reject_ts"`
+	IsRejected              bool   `json:"is_rejected"`
+	RejectReason            string `json:"reject_reason"`
+	RejectTs                int64  `json:"reject_ts"`
+	RejectMetaforoCommentId string `json:"reject_metaforo_comment_id"`
 
 	Histories any `json:"histories"`
 
@@ -237,22 +238,23 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 	}
 
 	return &FrontendProposalDetailRecord{
-		ID:                 proposal.ID,
-		Title:              proposal.Title,
-		ContentBlocks:      proposalContentResponse,
-		ProposalCategoryId: proposal.ProposalCategoryID,
-		State:              model.ProposalStateName[proposal.State],
-		Components:         proposalComponentResponse,
-		Applicant:          proposal.Applicant,
-		ApplicantAvatar:    applicantAvatarLink,
-		IsRejected:         proposal.State == int(model.ProposalStateRejected),
-		RejectReason:       rejectedComment.Content,
-		RejectTs:           rejectedComment.CreateTs,
-		Histories:          editHistory,
-		Arweave:            proposal.ArweaveHash,
-		CommentCount:       metaforoProposal.Thread.PostsCount,
-		Comments:           metaforoProposal.Thread.Posts,
-		Votes:              metaforoProposal.Thread.Polls,
-		CreateTs:           proposal.CreateTs,
+		ID:                      proposal.ID,
+		Title:                   proposal.Title,
+		ContentBlocks:           proposalContentResponse,
+		ProposalCategoryId:      proposal.ProposalCategoryID,
+		State:                   model.ProposalStateName[proposal.State],
+		Components:              proposalComponentResponse,
+		Applicant:               proposal.Applicant,
+		ApplicantAvatar:         applicantAvatarLink,
+		IsRejected:              proposal.State == int(model.ProposalStateRejected),
+		RejectReason:            rejectedComment.Content,
+		RejectTs:                rejectedComment.CreateTs,
+		RejectMetaforoCommentId: rejectedComment.MetaforoCommentId,
+		Histories:               editHistory,
+		Arweave:                 proposal.ArweaveHash,
+		CommentCount:            metaforoProposal.Thread.PostsCount,
+		Comments:                metaforoProposal.Thread.Posts,
+		Votes:                   metaforoProposal.Thread.Polls,
+		CreateTs:                proposal.CreateTs,
 	}, nil
 }
