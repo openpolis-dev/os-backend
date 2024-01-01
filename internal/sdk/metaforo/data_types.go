@@ -247,7 +247,7 @@ type PollRecord struct {
 	LeftTime             string        `json:"leftTime"`
 	WaitTime             any           `json:"waitTime"`
 	Status               string        `json:"status"`
-	Percent              int           `json:"percent"`
+	Percent              string        `json:"percent"`
 	Options              []*PollOption `json:"options"`
 	TotalVotes           int           `json:"totalVotes"`
 	TotalVotesFormat     string        `json:"totalVotes_format"`
@@ -269,7 +269,7 @@ type PollOption struct {
 	ImportSourceImportId     interface{} `json:"_import_source_import_id"`
 	ImportSourcePollId       interface{} `json:"_import_source_poll_id"`
 	ImportSourcePollOptionId interface{} `json:"_import_source_poll_option_id"`
-	Percent                  int         `json:"percent"`
+	Percent                  string      `json:"percent"`
 	IsVote                   int         `json:"is_vote"`
 	VotersFormat             string      `json:"voters_format"`
 }
