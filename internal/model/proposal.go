@@ -331,7 +331,7 @@ type ProposalComponentAction struct {
 
 	// Command field saves the automation commands will be executed by component
 	// Currently it saves the command name which is implemented in code.
-	Command string
+	Command string `gorm:"uniqueIndex"`
 }
 
 type ProposalTemplate struct {
@@ -339,6 +339,11 @@ type ProposalTemplate struct {
 	CreateTs int64 `gorm:"index"`
 	UpdateTs int64 `gorm:"index"`
 
-	Name   string
-	Schema string
+	Name string `gorm:"uniqueIndex"`
+
+	// ContentSchema saves content blocks used for this template, each block contains one title and one content field
+	ContentSchema string
+
+	// Components saves component used in this template,
+	Components []*ProposalComponent `gorm:"many2many:template_components;"`
 }
