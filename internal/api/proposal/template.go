@@ -2,6 +2,7 @@ package proposal
 
 import (
 	"errors"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/samber/lo"
@@ -11,9 +12,10 @@ import (
 )
 
 type TemplateResponse struct {
-	ID     uint   `json:"id"`
-	Name   string `json:"name"`
-	Schema string `json:"schema"`
+	ID            uint                 `json:"id"`
+	Name          string               `json:"name"`
+	ContentSchema string               `json:"schema"`
+	Components    []*ComponentResponse `json:"components"`
 }
 
 // ListTemplates list templates and return to frontend
@@ -24,18 +26,25 @@ type TemplateResponse struct {
 //	@router		/proposal_tmpl/ [get]
 func ListTemplates(ctx *gin.Context) {
 	db := api.ForContextOnlyDB(ctx)
-	var dbRcds []*TemplateResponse
-	if err := db.Model(&model.ProposalTemplate{}).Find(&dbRcds).Error; err != nil {
+	var dbRcds []*model.ProposalTemplate
+	if err := db.Model(&model.ProposalTemplate{}).Preload("Components").Find(&dbRcds).Error; err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(500, api.ServerError(errors.New("list templates failed")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("list templates failed")))
 		return
 	}
 
-	respRcds := lo.Map(dbRcds, func(r *TemplateResponse, _ int) *TemplateResponse {
+	respRcds := lo.Map(dbRcds, func(r *model.ProposalTemplate, _ int) *TemplateResponse {
 		return &TemplateResponse{
-			ID:     r.ID,
-			Name:   r.Name,
-			Schema: r.Schema,
+			ID:            r.ID,
+			Name:          r.Name,
+			ContentSchema: r.ContentSchema,
+			Components: lo.Map(r.Components, func(c *model.ProposalComponent, _ int) *ComponentResponse {
+				return &ComponentResponse{
+					ID:     c.ID,
+					Name:   c.Name,
+					Schema: c.Schema,
+				}
+			}),
 		}
 	})
 
