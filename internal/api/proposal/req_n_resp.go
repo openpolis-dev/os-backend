@@ -250,11 +250,17 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 		RejectReason:            rejectedComment.Content,
 		RejectTs:                rejectedComment.CreateTs,
 		RejectMetaforoCommentId: rejectedComment.MetaforoCommentId,
-		Histories:               editHistory,
-		Arweave:                 proposal.ArweaveHash,
-		CommentCount:            metaforoProposal.Thread.PostsCount,
-		Comments:                metaforoProposal.Thread.Posts,
-		Votes:                   metaforoProposal.Thread.Polls,
-		CreateTs:                proposal.CreateTs,
+		Histories: struct {
+			TotalCount int                               `json:"total_count"`
+			Lists      []*metaforo.PostEditHistoryRecord `json:"lists"`
+		}{
+			TotalCount: len(editHistory),
+			Lists:      editHistory,
+		},
+		Arweave:      proposal.ArweaveHash,
+		CommentCount: metaforoProposal.Thread.PostsCount,
+		Comments:     metaforoProposal.Thread.Posts,
+		Votes:        metaforoProposal.Thread.Polls,
+		CreateTs:     proposal.CreateTs,
 	}, nil
 }
