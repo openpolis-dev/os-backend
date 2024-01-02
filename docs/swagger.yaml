@@ -1018,6 +1018,8 @@ definitions:
         type: boolean
       proposal_category_id:
         type: integer
+      reject_metaforo_comment_id:
+        type: string
       reject_reason:
         type: string
       reject_ts:
@@ -1076,6 +1078,10 @@ definitions:
     type: object
   proposal.TemplateResponse:
     properties:
+      components:
+        items:
+          $ref: '#/definitions/proposal.ComponentResponse'
+        type: array
       id:
         type: integer
       name:

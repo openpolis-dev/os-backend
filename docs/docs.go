@@ -4179,6 +4179,9 @@ const docTemplate = `{
                 "proposal_category_id": {
                     "type": "integer"
                 },
+                "reject_metaforo_comment_id": {
+                    "type": "string"
+                },
                 "reject_reason": {
                     "type": "string"
                 },
@@ -4268,6 +4271,12 @@ const docTemplate = `{
         "proposal.TemplateResponse": {
             "type": "object",
             "properties": {
+                "components": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/proposal.ComponentResponse"
+                    }
+                },
                 "id": {
                     "type": "integer"
                 },
