@@ -80,7 +80,7 @@ func RevokeVote(ctx *gin.Context) {
 //
 //	@summary	revoke vote on existing metaforo vote
 //	@tags		Proposal
-//	@param		vote_id	query		number											true	"Vote ID"
+//	@param		vote_id	path		number											true	"Vote ID"
 //	@param		page	query		number											false	"page of the vote list"
 //	@success	200		{object}	api.Reply{data=metaforo.UserPollRecordResponse}	"Success"
 //	@router		/proposals/vote_detail/:vote_id [get]

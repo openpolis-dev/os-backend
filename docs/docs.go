@@ -1838,7 +1838,7 @@ const docTemplate = `{
                         "type": "number",
                         "description": "Vote ID",
                         "name": "vote_id",
-                        "in": "query",
+                        "in": "path",
                         "required": true
                     },
                     {

@@ -2491,7 +2491,7 @@ paths:
     get:
       parameters:
       - description: Vote ID
-        in: query
+        in: path
         name: vote_id
         required: true
         type: number
