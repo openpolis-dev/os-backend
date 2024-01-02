@@ -1860,7 +1860,10 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/metaforo.UserPollRecordResponse"
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/metaforo.UserPollRecordResponse"
+                                            }
                                         }
                                     }
                                 }
@@ -3356,7 +3359,7 @@ const docTemplate = `{
                 }
             }
         },
-        "metaforo.UserPollRecordResponse": {
+        "metaforo.UserPollRecord": {
             "type": "object",
             "properties": {
                 "_import_source_import_id": {},
@@ -3409,6 +3412,17 @@ const docTemplate = `{
                 },
                 "weight": {
                     "type": "integer"
+                }
+            }
+        },
+        "metaforo.UserPollRecordResponse": {
+            "type": "object",
+            "properties": {
+                "list": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/metaforo.UserPollRecord"
+                    }
                 }
             }
         },

@@ -495,7 +495,7 @@ type UserDetailResponse struct {
 	} `json:"web3_public_keys"`
 }
 
-type UserPollRecordResponse struct {
+type UserPollRecord struct {
 	Id                       int           `json:"id"`
 	PollId                   int           `json:"poll_id"`
 	PollOptionId             int           `json:"poll_option_id"`
@@ -515,6 +515,10 @@ type UserPollRecordResponse struct {
 	User                     *User         `json:"user"`
 	Badge                    []interface{} `json:"badge"`
 	UserTitle                []interface{} `json:"user_title"`
+}
+
+type UserPollRecordResponse struct {
+	List []*UserPollRecord `json:"list"`
 }
 
 ////////////////////////////

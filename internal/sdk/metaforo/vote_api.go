@@ -136,7 +136,7 @@ func UpdateVoteTime(accessToken, groupName string, voteId int, startTs, endTs in
 	return err
 }
 
-func GetVoteList(groupName string, OptionId int, page int) (*UserPollRecordResponse, error) {
+func GetVoteList(groupName string, OptionId int, page int) ([]*UserPollRecord, error) {
 	apiPath := "/api/poll/list"
 	formBody := fasthttp.Args{}
 	formBody.Set("group_name", groupName)
@@ -156,5 +156,5 @@ func GetVoteList(groupName string, OptionId int, page int) (*UserPollRecordRespo
 		return nil, err
 	}
 
-	return body, nil
+	return body.List, nil
 }

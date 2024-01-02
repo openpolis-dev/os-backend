@@ -415,7 +415,7 @@ definitions:
       username:
         type: string
     type: object
-  metaforo.UserPollRecordResponse:
+  metaforo.UserPollRecord:
     properties:
       _import_source_import_id: {}
       _import_source_poll_id: {}
@@ -453,6 +453,13 @@ definitions:
         type: array
       weight:
         type: integer
+    type: object
+  metaforo.UserPollRecordResponse:
+    properties:
+      list:
+        items:
+          $ref: '#/definitions/metaforo.UserPollRecord'
+        type: array
     type: object
   model.ApplicationState:
     enum:
@@ -2507,7 +2514,9 @@ paths:
             - $ref: '#/definitions/api.Reply'
             - properties:
                 data:
-                  $ref: '#/definitions/metaforo.UserPollRecordResponse'
+                  items:
+                    $ref: '#/definitions/metaforo.UserPollRecordResponse'
+                  type: array
               type: object
       summary: revoke vote on existing metaforo vote
       tags:
