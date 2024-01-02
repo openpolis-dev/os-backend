@@ -3,6 +3,7 @@ package proposal
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
@@ -73,4 +74,47 @@ func RevokeVote(ctx *gin.Context) {
 
 	}
 	ctx.JSON(http.StatusOK, api.Success(nil))
+}
+
+// ShowVoteDetail returns vote detail for specified vote
+//
+//	@summary	revoke vote on existing metaforo vote
+//	@tags		proposal
+//	@param		vote_id	query		number											true	"Vote ID"
+//	@param		page	query		number											false	"page of the vote list"
+//	@success	200		{object}	api.Reply{data=metaforo.UserPollRecordResponse}	"Success"
+//	@router		/proposals/vote_detail/:vote_id [get]
+func ShowVoteDetail(ctx *gin.Context) {
+	voteIdStr := ctx.Param("vote_id")
+	voteId, err := strconv.Atoi(voteIdStr)
+	if err != nil {
+		err := fmt.Errorf("parse request data error: %+v", err)
+		log.Error().Msgf(err.Error())
+		sdk.LogUserSideError(ctx, err)
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("parse request data error: %+v", err)))
+		return
+	}
+
+	page := 1
+	pageStr := ctx.Query("page")
+	if pageStr != "" {
+		page, err = strconv.Atoi(pageStr)
+		if err != nil {
+			err := fmt.Errorf("parse request data error: %+v", err)
+			log.Error().Msgf(err.Error())
+			sdk.LogUserSideError(ctx, err)
+			ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("parse request data error: %+v", err)))
+			return
+		}
+	}
+
+	voteList, err := metaforo.GetVoteList(internal.MetaforoGroupName, voteId, page)
+	if err != nil {
+		log.Error().Msgf("get vote list error: %+v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(fmt.Errorf("get vote list error")))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, api.Success(voteList))
 }

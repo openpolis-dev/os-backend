@@ -135,3 +135,26 @@ func UpdateVoteTime(accessToken, groupName string, voteId int, startTs, endTs in
 
 	return err
 }
+
+func GetVoteList(groupName string, OptionId int, page int) (*UserPollRecordResponse, error) {
+	apiPath := "/api/poll/list"
+	formBody := fasthttp.Args{}
+	formBody.Set("group_name", groupName)
+	formBody.Set("option_id", fmt.Sprintf("%d", OptionId))
+	formBody.Set("page", fmt.Sprintf("%d", page))
+
+	// send request
+	statusCode, body, err := doHttpRequest[UserPollRecordResponse](&httpRequestData{
+		ApiUri:         apiBase + apiPath,
+		HttpMethod:     http.MethodPost,
+		FormBodyParams: &formBody,
+		Header:         BaseHeader,
+	})
+
+	if statusCode != http.StatusOK || err != nil {
+		log.Error().Msgf("create proposal request failed: %+v", err)
+		return nil, err
+	}
+
+	return body, nil
+}
