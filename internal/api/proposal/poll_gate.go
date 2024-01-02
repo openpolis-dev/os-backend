@@ -16,7 +16,7 @@ import (
 //
 //	@summary	lists all vote gates
 //	@route		/v1/proposal_vote_gates [get]
-//	@tags		proposal
+//	@tags		Proposal
 //	@success	200	{object}	api.Reply{data=[]FrontendVoteGateResponse}
 func ListVoteGates(ctx *gin.Context) {
 	db := api.ForContextOnlyDB(ctx)

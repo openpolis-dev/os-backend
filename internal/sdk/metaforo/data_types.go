@@ -495,6 +495,28 @@ type UserDetailResponse struct {
 	} `json:"web3_public_keys"`
 }
 
+type UserPollRecordResponse struct {
+	Id                       int           `json:"id"`
+	PollId                   int           `json:"poll_id"`
+	PollOptionId             int           `json:"poll_option_id"`
+	UserId                   int           `json:"user_id"`
+	CreatedAt                string        `json:"created_at"`
+	UpdatedAt                string        `json:"updated_at"`
+	Weight                   int           `json:"weight"`
+	ImportSourceImportId     interface{}   `json:"_import_source_import_id"`
+	ImportSourcePollId       interface{}   `json:"_import_source_poll_id"`
+	ImportSourcePollOptionId interface{}   `json:"_import_source_poll_option_id"`
+	ImportSourceUserId       interface{}   `json:"_import_source_user_id"`
+	Name                     string        `json:"name"`
+	LastTime                 string        `json:"last_time"`
+	Uid                      int           `json:"uid"`
+	PhotoUrl                 string        `json:"photo_url"`
+	Online                   bool          `json:"online"`
+	User                     *User         `json:"user"`
+	Badge                    []interface{} `json:"badge"`
+	UserTitle                []interface{} `json:"user_title"`
+}
+
 ////////////////////////////
 // Request objects defines struct for sending Metaforo API requests
 ////////////////////////////

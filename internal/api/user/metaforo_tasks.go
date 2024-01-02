@@ -29,7 +29,7 @@ type JoinOrLeaveGroupReq struct {
 //
 //	@summary	Get metaforo activities
 //	@router		/user/metaforo_activities [get]
-//	@tags		metaforo
+//	@tags		Metaforo
 //	@param		userId	query		string	true	"Metaforo user id"
 //	@param		size	query		int		true	"Size of activities"
 //	@param		session	query		string	false	"params for next page"
@@ -53,6 +53,7 @@ func MetaforoActivities(ctx *gin.Context) {
 //
 //	@router		/user/join_metaforo_group [post]
 //	@summary	Join a Metaforo group
+//	@tags		Metaforo
 //	@param		req	body		JoinOrLeaveGroupReq	true	"Join group request body"
 //	@success	200	{object}	api.Reply{data=nil}
 func JoinMetaforoGroup(ctx *gin.Context) {
@@ -80,6 +81,7 @@ func JoinMetaforoGroup(ctx *gin.Context) {
 //
 //	@router		/user/leave_metaforo_group [post]
 //	@summary	Leave a Metaforo group
+//	@tags		Metaforo
 //	@param		req	body		JoinOrLeaveGroupReq	true	"Join group request body"
 //	@success	200	{object}	api.Reply{data=nil}
 func LeaveMetaforoGroup(ctx *gin.Context) {

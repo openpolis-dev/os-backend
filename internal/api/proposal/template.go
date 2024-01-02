@@ -21,9 +21,9 @@ type TemplateResponse struct {
 // ListTemplates list templates and return to frontend
 //
 //	@summary	list templates and return to frontend
-//	@tags		proposals
+//	@tags		Proposal
 //	@success	200	{object}	api.Reply{data=[]TemplateResponse}
-//	@router		/proposal_tmpl/ [get]
+//	@router		/proposals/proposal_tmpl/ [get]
 func ListTemplates(ctx *gin.Context) {
 	db := api.ForContextOnlyDB(ctx)
 	var dbRcds []*model.ProposalTemplate

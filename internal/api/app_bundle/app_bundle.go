@@ -47,11 +47,10 @@ type ListAvailableProjectAndGuildResp struct {
 
 // ListAvailableProjectsAndGuilds returns available projects and guilds for current user
 //
-// @Summary	List available projects and guilds for current user
-// @Router		/available_projects_guilds [get]
-// @Tags		app_bundle
-//
-// @Success	200	{object}	api.Reply{data=ListAvailableProjectAndGuildResp}
+// @summary	List available projects and guilds for current user
+// @router		/available_projects_guilds [get]
+// @tags		AppBundle
+// @success	200	{object}	api.Reply{data=ListAvailableProjectAndGuildResp}
 func ListAvailableProjectsAndGuilds(ctx *gin.Context) {
 	user, enforcer, db, _ := api.ForContext(ctx)
 
@@ -103,20 +102,19 @@ func ListAvailableProjectsAndGuilds(ctx *gin.Context) {
 
 // ListAppBundle returns application bundles with passed in query types
 //
-//	@Summary	List all application bundles match the query params
-//	@Router		/app_bundles [get]
-//	@Tags		app_bundle
-//	@Param		page		query		string	false	"which page"
-//	@Param		size		query		string	false	"size of each page"
-//	@Param		sort_field	query		string	false	"sort by which field"
-//	@Param		sort_order	query		string	false	"order of sort"			Enum(asc desc)
-//	@Param		state		query		string	false	"state of app bundle"	Enum(open approved rejected)
-//	@Param		applicant	query		string	false	"applicant of app bundle"
-//	@Param		season_id	query		int		false	"season id"
-//	@Param		entity		query		string	false	"entity name to be filter"	Enum(project guild)
-//	@Param		entity_id	query		string	false	"entity id"
-//
-//	@Success	200			{object}	AppBundleResponseRecord
+//	@summary	List all application bundles match the query params
+//	@router		/app_bundles [get]
+//	@tags		AppBundle
+//	@param		page		query		string	false	"which page"
+//	@param		size		query		string	false	"size of each page"
+//	@param		sort_field	query		string	false	"sort by which field"
+//	@param		sort_order	query		string	false	"order of sort"			Enum(asc desc)
+//	@param		state		query		string	false	"state of app bundle"	Enum(open approved rejected)
+//	@param		applicant	query		string	false	"applicant of app bundle"
+//	@param		season_id	query		int		false	"season id"
+//	@param		entity		query		string	false	"entity name to be filter"	Enum(project guild)
+//	@param		entity_id	query		string	false	"entity id"
+//	@success	200			{object}	AppBundleResponseRecord
 func ListAppBundle(ctx *gin.Context) {
 	var err error
 	db := api.ForContextOnlyDB(ctx)
@@ -206,12 +204,11 @@ func ListAppBundle(ctx *gin.Context) {
 
 // CreateAppBundle returns application bundles with passed in query types
 //
-//	@Summary	Create app bundles based on request data
-//	@Router		/app_bundles [post]
-//	@Tags		app_bundle
-//	@Param		request	body		model.NewAppBundleRequest	true	"New application bundle request"
-//
-//	@Success	201		{string}	AppBundleResponseRecord
+//	@summary	Create app bundles based on request data
+//	@router		/app_bundles [post]
+//	@tags		AppBundle
+//	@param		request	body		model.NewAppBundleRequest	true	"New application bundle request"
+//	@success	201		{string}	AppBundleResponseRecord
 func CreateAppBundle(ctx *gin.Context) {
 	var newAppBundleReq model.NewAppBundleRequest
 	if err := ctx.BindJSON(&newAppBundleReq); err != nil {
@@ -342,24 +339,22 @@ func CreateAppBundle(ctx *gin.Context) {
 
 // ApproveAppBundles approve appBundle and associated applications
 //
-//	@Summary	Approve app bundle and associated applications
-//	@Router		/app_bundle_approve [post]
-//	@Tags		app_bundle
-//	@Param		JsonBody	body		[]string	true	"app bundle IDs"
-//
-//	@Success	200			{string}	nil
+//	@summary	Approve app bundle and associated applications
+//	@router		/app_bundle_approve [post]
+//	@tags		AppBundle
+//	@param		JsonBody	body		[]string	true	"app bundle IDs"
+//	@success	200			{string}	nil
 func ApproveAppBundles(ctx *gin.Context) {
 	updateAppBundleToNewState(ctx, model.ApplicationStateApproved)
 }
 
 // RejectAppBundles reject appBundle and associated applications
 //
-//	@Summary	Reject app bundle and associated applications
-//	@Router		/app_bundles_reject [post]
-//	@Tags		app_bundle
-//	@Param		JsonBody	body		[]string	true	"app bundle IDs"
-//
-//	@Success	200			{string}	nil
+//	@summary	Reject app bundle and associated applications
+//	@router		/app_bundles_reject [post]
+//	@tags		AppBundle
+//	@param		JsonBody	body		[]string	true	"app bundle IDs"
+//	@success	200			{string}	nil
 func RejectAppBundles(ctx *gin.Context) {
 	updateAppBundleToNewState(ctx, model.ApplicationStateRejected)
 }

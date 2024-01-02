@@ -21,7 +21,7 @@ type ComponentResponse struct {
 //
 //	@summary	list components from DB
 //	@router		/proposal_components/ [get]
-//	@tags		proposal
+//	@tags		Proposal
 //
 //	@success	200	{object}	api.Reply{data=[]ComponentResponse}
 func ListComponents(ctx *gin.Context) {
@@ -41,7 +41,7 @@ func ListComponents(ctx *gin.Context) {
 //	@summary	Get component detail from DB
 //	@router		/proposal_components/:id [get]
 //	@param		id	path	number	true	"component ID"
-//	@tags		proposal
+//	@tags		Proposal
 //
 //	@success	200	{object}	api.Reply{data=ComponentResponse}
 func GetComponent(ctx *gin.Context) {

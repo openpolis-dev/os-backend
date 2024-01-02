@@ -19,9 +19,10 @@ import (
 // AddComment attach comment to specified proposal
 //
 //	@summary	Attach comment to specified proposal or comment
+//	@tags		Proposal
 //	@router		/proposals/add_comment/:id [post]
-//	@Param		id		path		string					true	"id of the proposal"
-//	@Param		request	body		proposal.AddCommentData	true	"Comment data"
+//	@param		id		path		string					true	"id of the proposal"
+//	@param		request	body		proposal.AddCommentData	true	"Comment data"
 //	@success	200		{object}	api.Reply{data=nil}
 func AddComment(ctx *gin.Context) {
 	addComment := AddCommentData{}
@@ -120,7 +121,7 @@ func AddComment(ctx *gin.Context) {
 //
 //	@summary	edit comment and save back to metaforo. If the comment is reject_comment, the data saved in db will also be saved
 //	@router		/proposals/edit_comment/:id [post]
-//	@tags		proposals
+//	@tags		Proposal
 //	@param		id		query		string						true	"id of the proposal"
 //	@param		request	body		proposal.EditCommentData	true	"Comment data"
 //	@success	200		{object}	api.Reply{data=nil}
@@ -189,7 +190,7 @@ func EditComment(ctx *gin.Context) {
 //
 //	@summary	delete comment from metaforo. The reject reason comment can't be deleted
 //	@router		/proposals/delete_comment/:id [post]
-//	@tags		proposals
+//	@tags		Proposal
 //	@param		id		query		string						true	"id of the proposal"
 //	@param		request	body		proposal.DeleteCommentData	true	"Delete Comment request data"
 //	@success	200		{object}	api.Reply{data=nil}

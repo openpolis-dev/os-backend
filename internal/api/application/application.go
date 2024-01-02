@@ -36,6 +36,7 @@ type ApplicantListResponse struct {
 // ListApplicants list all applicants existing in applications table for filter
 //
 //	@summary	List all applicants existing in applications table for filter
+//	@tags		Application
 //	@router		/apps_applicants [get]
 //	@success	200	{object}	ApplicantListResponse
 func ListApplicants(ctx *gin.Context) {
@@ -61,6 +62,7 @@ func ListApplicants(ctx *gin.Context) {
 // List lists all applications based on query params and return in JSON format
 //
 //	@summary	lists all applications based on query params and return in JSON format
+//	@tags		Application
 //	@router		/applications [get]
 //	@success	200	{object}	api.Reply{data=api.ListReplyData{rows=model.FrontendApplicationRecord}}
 func List(ctx *gin.Context) {
@@ -93,6 +95,7 @@ func List(ctx *gin.Context) {
 // An audit log record will be created with application at same time with action open
 //
 //	@summary	create single application, for now only CLOSE_PROJECT type is allowed
+//	@tags		Application
 //	@router		/applications [post]
 //	@param		JsonBody	body		[]model.NewApplicationRequest	true	"new application request"
 //	@success	200			{string}	nil
@@ -202,6 +205,7 @@ func Create(ctx *gin.Context) {
 // Download downloads all applications based on query params and sends Excel file for downloading
 //
 //	@summary	downloads all applications based on query params and sends Excel file for downloading
+//	@tags		Application
 //	@router		/download_applications [get]
 //	@success	200	{object}	api.Reply{data=api.ListReplyData{rows=model.FrontendApplicationRecord}}
 func Download(ctx *gin.Context) {

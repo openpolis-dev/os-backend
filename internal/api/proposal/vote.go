@@ -16,11 +16,11 @@ import (
 // CastVote handles the casting of votes.
 //
 //	@summary	Cast a vote
-//	@tags		proposals
+//	@tags		Proposal
 //	@param		id		query		number			true	"proposal ID"
 //	@param		data	body		CastVoteData	true	"Vote data"
 //	@success	200		{object}	api.Reply		"Success"
-//	@router		/vote/:id [post]
+//	@router		/proposals/vote/:id [post]
 func CastVote(ctx *gin.Context) {
 	reqData := CastVoteData{}
 	if err := ctx.BindJSON(&reqData); err != nil {
@@ -48,11 +48,11 @@ func CastVote(ctx *gin.Context) {
 // RevokeVote revoke vote on existing metaforo vote
 //
 //	@summary	revoke vote on existing metaforo vote
-//	@tags		proposals
+//	@tags		Proposal
 //	@param		id		query		number				true	"proposal ID"
 //	@param		data	body		RevokeVoteData		true	"revoke vote data"
 //	@success	200		{object}	api.Reply{data=nil}	"Success"
-//	@router		/revoke_vote/:id [post]
+//	@router		/proposals/revoke_vote/:id [post]
 func RevokeVote(ctx *gin.Context) {
 	reqData := RevokeVoteData{}
 	if err := ctx.BindJSON(&reqData); err != nil {
@@ -79,7 +79,7 @@ func RevokeVote(ctx *gin.Context) {
 // ShowVoteDetail returns vote detail for specified vote
 //
 //	@summary	revoke vote on existing metaforo vote
-//	@tags		proposal
+//	@tags		Proposal
 //	@param		vote_id	query		number											true	"Vote ID"
 //	@param		page	query		number											false	"page of the vote list"
 //	@success	200		{object}	api.Reply{data=metaforo.UserPollRecordResponse}	"Success"

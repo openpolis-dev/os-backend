@@ -21,7 +21,7 @@ const docTemplate = `{
         "/app_bundle_approve": {
             "post": {
                 "tags": [
-                    "app_bundle"
+                    "AppBundle"
                 ],
                 "summary": "Approve app bundle and associated applications",
                 "parameters": [
@@ -51,7 +51,7 @@ const docTemplate = `{
         "/app_bundles": {
             "get": {
                 "tags": [
-                    "app_bundle"
+                    "AppBundle"
                 ],
                 "summary": "List all application bundles match the query params",
                 "parameters": [
@@ -121,7 +121,7 @@ const docTemplate = `{
             },
             "post": {
                 "tags": [
-                    "app_bundle"
+                    "AppBundle"
                 ],
                 "summary": "Create app bundles based on request data",
                 "parameters": [
@@ -148,7 +148,7 @@ const docTemplate = `{
         "/app_bundles_reject": {
             "post": {
                 "tags": [
-                    "app_bundle"
+                    "AppBundle"
                 ],
                 "summary": "Reject app bundle and associated applications",
                 "parameters": [
@@ -177,6 +177,9 @@ const docTemplate = `{
         },
         "/applications": {
             "get": {
+                "tags": [
+                    "Application"
+                ],
                 "summary": "lists all applications based on query params and return in JSON format",
                 "responses": {
                     "200": {
@@ -212,6 +215,9 @@ const docTemplate = `{
                 }
             },
             "post": {
+                "tags": [
+                    "Application"
+                ],
                 "summary": "create single application, for now only CLOSE_PROJECT type is allowed",
                 "parameters": [
                     {
@@ -239,6 +245,9 @@ const docTemplate = `{
         },
         "/apps_applicants": {
             "get": {
+                "tags": [
+                    "Application"
+                ],
                 "summary": "List all applicants existing in applications table for filter",
                 "responses": {
                     "200": {
@@ -253,7 +262,7 @@ const docTemplate = `{
         "/available_projects_guilds": {
             "get": {
                 "tags": [
-                    "app_bundle"
+                    "AppBundle"
                 ],
                 "summary": "List available projects and guilds for current user",
                 "responses": {
@@ -280,6 +289,9 @@ const docTemplate = `{
         },
         "/cityhall/batch_update_members": {
             "post": {
+                "tags": [
+                    "CityHall"
+                ],
                 "summary": "updates multiple group member info in single request, the logic is same with single update",
                 "parameters": [
                     {
@@ -307,6 +319,9 @@ const docTemplate = `{
         },
         "/cityhall/update_members": {
             "post": {
+                "tags": [
+                    "CityHall"
+                ],
                 "summary": "updates cityhall member, if group name existing in the request, the grouped sponsors field will be updated, otherwise the sponsors field will be updated",
                 "parameters": [
                     {
@@ -331,6 +346,9 @@ const docTemplate = `{
         },
         "/data_srv/aggr_scr": {
             "get": {
+                "tags": [
+                    "DataService"
+                ],
                 "summary": "returns aggregated credit score and node calculation result",
                 "responses": {
                     "200": {
@@ -347,6 +365,9 @@ const docTemplate = `{
         },
         "/download_applications": {
             "get": {
+                "tags": [
+                    "Application"
+                ],
                 "summary": "downloads all applications based on query params and sends Excel file for downloading",
                 "responses": {
                     "200": {
@@ -1212,7 +1233,7 @@ const docTemplate = `{
         "/proposal_categories": {
             "get": {
                 "tags": [
-                    "proposal"
+                    "Proposal"
                 ],
                 "summary": "list all proposal categories",
                 "responses": {
@@ -1243,7 +1264,7 @@ const docTemplate = `{
         "/proposal_components/": {
             "get": {
                 "tags": [
-                    "proposal"
+                    "Proposal"
                 ],
                 "summary": "list components from DB",
                 "responses": {
@@ -1274,7 +1295,7 @@ const docTemplate = `{
         "/proposal_components/:id": {
             "get": {
                 "tags": [
-                    "proposal"
+                    "Proposal"
                 ],
                 "summary": "Get component detail from DB",
                 "parameters": [
@@ -1308,12 +1329,30 @@ const docTemplate = `{
                 }
             }
         },
-        "/proposal_tmpl/": {
-            "get": {
+        "/proposals/add_comment/:id": {
+            "post": {
                 "tags": [
-                    "proposals"
+                    "Proposal"
                 ],
-                "summary": "list templates and return to frontend",
+                "summary": "Attach comment to specified proposal or comment",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "id of the proposal",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Comment data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/proposal.AddCommentData"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -1326,10 +1365,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/proposal.TemplateResponse"
-                                            }
+                                            "type": "object"
                                         }
                                     }
                                 }
@@ -1339,10 +1375,166 @@ const docTemplate = `{
                 }
             }
         },
-        "/proposals": {
+        "/proposals/approve/:id": {
+            "post": {
+                "tags": [
+                    "Proposal"
+                ],
+                "summary": "approve proposal in Draft state, the proposal will be changed to approved state after success. Only user has cityhall permission can do this",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "proposal id",
+                        "name": "id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Reply"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/proposals/create": {
+            "post": {
+                "tags": [
+                    "Proposal"
+                ],
+                "summary": "Create metaforo proposal and public to others",
+                "parameters": [
+                    {
+                        "description": "request json body",
+                        "name": "JsonBody",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/proposal.CreateOrUpdateProposalData"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.Reply"
+                        }
+                    }
+                }
+            }
+        },
+        "/proposals/delete_comment/:id": {
+            "post": {
+                "tags": [
+                    "Proposal"
+                ],
+                "summary": "delete comment from metaforo. The reject reason comment can't be deleted",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "id of the proposal",
+                        "name": "id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "description": "Delete Comment request data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/proposal.DeleteCommentData"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Reply"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/proposals/edit_comment/:id": {
+            "post": {
+                "tags": [
+                    "Proposal"
+                ],
+                "summary": "edit comment and save back to metaforo. If the comment is reject_comment, the data saved in db will also be saved",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "id of the proposal",
+                        "name": "id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "description": "Comment data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/proposal.EditCommentData"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Reply"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/proposals/list": {
             "get": {
                 "tags": [
-                    "proposal"
+                    "Proposal"
                 ],
                 "summary": "lists all proposals based on query params and return in JSON format",
                 "parameters": [
@@ -1417,27 +1609,12 @@ const docTemplate = `{
                 }
             }
         },
-        "/proposals/add_comment/:id": {
-            "post": {
-                "summary": "Attach comment to specified proposal or comment",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "id of the proposal",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Comment data",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/proposal.AddCommentData"
-                        }
-                    }
+        "/proposals/proposal_tmpl/": {
+            "get": {
+                "tags": [
+                    "Proposal"
                 ],
+                "summary": "list templates and return to frontend",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -1450,163 +1627,10 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "object"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            }
-        },
-        "/proposals/approve/:id": {
-            "post": {
-                "tags": [
-                    "proposal"
-                ],
-                "summary": "approve proposal in Draft state, the proposal will be changed to approved state after success. Only user has cityhall permission can do this",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "proposal id",
-                        "name": "id",
-                        "in": "query",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/api.Reply"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "object"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            }
-        },
-        "/proposals/create": {
-            "post": {
-                "tags": [
-                    "proposal"
-                ],
-                "summary": "Create metaforo proposal and public to others",
-                "parameters": [
-                    {
-                        "description": "request json body",
-                        "name": "JsonBody",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/proposal.CreateOrUpdateProposalData"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/api.Reply"
-                        }
-                    }
-                }
-            }
-        },
-        "/proposals/delete_comment/:id": {
-            "post": {
-                "tags": [
-                    "proposals"
-                ],
-                "summary": "delete comment from metaforo. The reject reason comment can't be deleted",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "id of the proposal",
-                        "name": "id",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "description": "Delete Comment request data",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/proposal.DeleteCommentData"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/api.Reply"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "object"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            }
-        },
-        "/proposals/edit_comment/:id": {
-            "post": {
-                "tags": [
-                    "proposals"
-                ],
-                "summary": "edit comment and save back to metaforo. If the comment is reject_comment, the data saved in db will also be saved",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "id of the proposal",
-                        "name": "id",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "description": "Comment data",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/proposal.EditCommentData"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/api.Reply"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "object"
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/proposal.TemplateResponse"
+                                            }
                                         }
                                     }
                                 }
@@ -1619,7 +1643,7 @@ const docTemplate = `{
         "/proposals/reject/:id": {
             "post": {
                 "tags": [
-                    "proposal"
+                    "Proposal"
                 ],
                 "summary": "reject proposal in Draft state, the proposal will be changed to rejected state after success. Only user has cityhall permission can do this",
                 "parameters": [
@@ -1653,10 +1677,56 @@ const docTemplate = `{
                 }
             }
         },
+        "/proposals/revoke_vote/:id": {
+            "post": {
+                "tags": [
+                    "Proposal"
+                ],
+                "summary": "revoke vote on existing metaforo vote",
+                "parameters": [
+                    {
+                        "type": "number",
+                        "description": "proposal ID",
+                        "name": "id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "description": "revoke vote data",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/proposal.RevokeVoteData"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Reply"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/proposals/show/:id": {
             "get": {
                 "tags": [
-                    "proposal"
+                    "Proposal"
                 ],
                 "summary": "Show proposals with given ID",
                 "parameters": [
@@ -1698,6 +1768,9 @@ const docTemplate = `{
         },
         "/proposals/update/:id": {
             "post": {
+                "tags": [
+                    "Proposal"
+                ],
                 "summary": "Update proposals with passed in data",
                 "parameters": [
                     {
@@ -1720,10 +1793,87 @@ const docTemplate = `{
                 }
             }
         },
+        "/proposals/vote/:id": {
+            "post": {
+                "tags": [
+                    "Proposal"
+                ],
+                "summary": "Cast a vote",
+                "parameters": [
+                    {
+                        "type": "number",
+                        "description": "proposal ID",
+                        "name": "id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "description": "Vote data",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/proposal.CastVoteData"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "$ref": "#/definitions/api.Reply"
+                        }
+                    }
+                }
+            }
+        },
+        "/proposals/vote_detail/:vote_id": {
+            "get": {
+                "tags": [
+                    "Proposal"
+                ],
+                "summary": "revoke vote on existing metaforo vote",
+                "parameters": [
+                    {
+                        "type": "number",
+                        "description": "Vote ID",
+                        "name": "vote_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "number",
+                        "description": "page of the vote list",
+                        "name": "page",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Reply"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/metaforo.UserPollRecordResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/proposals/withdraw/:id": {
             "post": {
                 "tags": [
-                    "proposal"
+                    "Proposal"
                 ],
                 "summary": "withdraw proposal in Draft state, the proposal will be changed to withdrawn state after success. Only proposal applicant can withdraw the proposal",
                 "parameters": [
@@ -2044,54 +2194,11 @@ const docTemplate = `{
                 }
             }
         },
-        "/revoke_vote/:id": {
-            "post": {
-                "tags": [
-                    "proposals"
-                ],
-                "summary": "revoke vote on existing metaforo vote",
-                "parameters": [
-                    {
-                        "type": "number",
-                        "description": "proposal ID",
-                        "name": "id",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "description": "revoke vote data",
-                        "name": "data",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/proposal.RevokeVoteData"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Success",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/api.Reply"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "object"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            }
-        },
         "/seasons/": {
             "get": {
+                "tags": [
+                    "Season"
+                ],
                 "summary": "returns all seasons currently existing in database",
                 "responses": {
                     "200": {
@@ -2108,6 +2215,9 @@ const docTemplate = `{
         },
         "/seasons/curr": {
             "get": {
+                "tags": [
+                    "Season"
+                ],
                 "summary": "returns current season",
                 "responses": {
                     "200": {
@@ -2164,6 +2274,9 @@ const docTemplate = `{
         },
         "/user/join_metaforo_group": {
             "post": {
+                "tags": [
+                    "Metaforo"
+                ],
                 "summary": "Join a Metaforo group",
                 "parameters": [
                     {
@@ -2200,6 +2313,9 @@ const docTemplate = `{
         },
         "/user/leave_metaforo_group": {
             "post": {
+                "tags": [
+                    "Metaforo"
+                ],
                 "summary": "Leave a Metaforo group",
                 "parameters": [
                     {
@@ -2369,7 +2485,7 @@ const docTemplate = `{
         "/user/metaforo_activities": {
             "get": {
                 "tags": [
-                    "metaforo"
+                    "Metaforo"
                 ],
                 "summary": "Get metaforo activities",
                 "parameters": [
@@ -2589,40 +2705,6 @@ const docTemplate = `{
                                     }
                                 }
                             ]
-                        }
-                    }
-                }
-            }
-        },
-        "/vote/:id": {
-            "post": {
-                "tags": [
-                    "proposals"
-                ],
-                "summary": "Cast a vote",
-                "parameters": [
-                    {
-                        "type": "number",
-                        "description": "proposal ID",
-                        "name": "id",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "description": "Vote data",
-                        "name": "data",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/proposal.CastVoteData"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Success",
-                        "schema": {
-                            "$ref": "#/definitions/api.Reply"
                         }
                     }
                 }
@@ -3271,6 +3353,62 @@ const docTemplate = `{
                 },
                 "username": {
                     "type": "string"
+                }
+            }
+        },
+        "metaforo.UserPollRecordResponse": {
+            "type": "object",
+            "properties": {
+                "_import_source_import_id": {},
+                "_import_source_poll_id": {},
+                "_import_source_poll_option_id": {},
+                "_import_source_user_id": {},
+                "badge": {
+                    "type": "array",
+                    "items": {}
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "last_time": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "online": {
+                    "type": "boolean"
+                },
+                "photo_url": {
+                    "type": "string"
+                },
+                "poll_id": {
+                    "type": "integer"
+                },
+                "poll_option_id": {
+                    "type": "integer"
+                },
+                "uid": {
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "user": {
+                    "$ref": "#/definitions/metaforo.User"
+                },
+                "user_id": {
+                    "type": "integer"
+                },
+                "user_title": {
+                    "type": "array",
+                    "items": {}
+                },
+                "weight": {
+                    "type": "integer"
                 }
             }
         },

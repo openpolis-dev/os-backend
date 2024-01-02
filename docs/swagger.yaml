@@ -415,6 +415,45 @@ definitions:
       username:
         type: string
     type: object
+  metaforo.UserPollRecordResponse:
+    properties:
+      _import_source_import_id: {}
+      _import_source_poll_id: {}
+      _import_source_poll_option_id: {}
+      _import_source_user_id: {}
+      badge:
+        items: {}
+        type: array
+      created_at:
+        type: string
+      id:
+        type: integer
+      last_time:
+        type: string
+      name:
+        type: string
+      online:
+        type: boolean
+      photo_url:
+        type: string
+      poll_id:
+        type: integer
+      poll_option_id:
+        type: integer
+      uid:
+        type: integer
+      updated_at:
+        type: string
+      user:
+        $ref: '#/definitions/metaforo.User'
+      user_id:
+        type: integer
+      user_title:
+        items: {}
+        type: array
+      weight:
+        type: integer
+    type: object
   model.ApplicationState:
     enum:
     - open
@@ -1368,7 +1407,7 @@ paths:
             type: string
       summary: Approve app bundle and associated applications
       tags:
-      - app_bundle
+      - AppBundle
   /app_bundles:
     get:
       parameters:
@@ -1415,7 +1454,7 @@ paths:
             $ref: '#/definitions/app_bundle.AppBundleResponseRecord'
       summary: List all application bundles match the query params
       tags:
-      - app_bundle
+      - AppBundle
     post:
       parameters:
       - description: New application bundle request
@@ -1431,7 +1470,7 @@ paths:
             type: string
       summary: Create app bundles based on request data
       tags:
-      - app_bundle
+      - AppBundle
   /app_bundles_reject:
     post:
       parameters:
@@ -1450,7 +1489,7 @@ paths:
             type: string
       summary: Reject app bundle and associated applications
       tags:
-      - app_bundle
+      - AppBundle
   /applications:
     get:
       responses:
@@ -1469,6 +1508,8 @@ paths:
                     type: object
               type: object
       summary: lists all applications based on query params and return in JSON format
+      tags:
+      - Application
     post:
       parameters:
       - description: new application request
@@ -1485,6 +1526,8 @@ paths:
           schema:
             type: string
       summary: create single application, for now only CLOSE_PROJECT type is allowed
+      tags:
+      - Application
   /apps_applicants:
     get:
       responses:
@@ -1493,6 +1536,8 @@ paths:
           schema:
             $ref: '#/definitions/application.ApplicantListResponse'
       summary: List all applicants existing in applications table for filter
+      tags:
+      - Application
   /available_projects_guilds:
     get:
       responses:
@@ -1507,7 +1552,7 @@ paths:
               type: object
       summary: List available projects and guilds for current user
       tags:
-      - app_bundle
+      - AppBundle
   /cityhall/batch_update_members:
     post:
       parameters:
@@ -1526,6 +1571,8 @@ paths:
             type: string
       summary: updates multiple group member info in single request, the logic is
         same with single update
+      tags:
+      - CityHall
   /cityhall/update_members:
     post:
       parameters:
@@ -1543,6 +1590,8 @@ paths:
       summary: updates cityhall member, if group name existing in the request, the
         grouped sponsors field will be updated, otherwise the sponsors field will
         be updated
+      tags:
+      - CityHall
   /data_srv/aggr_scr:
     get:
       responses:
@@ -1553,6 +1602,8 @@ paths:
               $ref: '#/definitions/data_srv.CreditDetail'
             type: array
       summary: returns aggregated credit score and node calculation result
+      tags:
+      - DataService
   /download_applications:
     get:
       responses:
@@ -1572,6 +1623,8 @@ paths:
               type: object
       summary: downloads all applications based on query params and sends Excel file
         for downloading
+      tags:
+      - Application
   /guilds:
     get:
       consumes:
@@ -2099,7 +2152,7 @@ paths:
               type: object
       summary: list all proposal categories
       tags:
-      - proposal
+      - Proposal
   /proposal_components/:
     get:
       responses:
@@ -2116,7 +2169,7 @@ paths:
               type: object
       summary: list components from DB
       tags:
-      - proposal
+      - Proposal
   /proposal_components/:id:
     get:
       parameters:
@@ -2137,9 +2190,21 @@ paths:
               type: object
       summary: Get component detail from DB
       tags:
-      - proposal
-  /proposal_tmpl/:
-    get:
+      - Proposal
+  /proposals/add_comment/:id:
+    post:
+      parameters:
+      - description: id of the proposal
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Comment data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/proposal.AddCommentData'
       responses:
         "200":
           description: OK
@@ -2148,14 +2213,106 @@ paths:
             - $ref: '#/definitions/api.Reply'
             - properties:
                 data:
-                  items:
-                    $ref: '#/definitions/proposal.TemplateResponse'
-                  type: array
+                  type: object
               type: object
-      summary: list templates and return to frontend
+      summary: Attach comment to specified proposal or comment
       tags:
-      - proposals
-  /proposals:
+      - Proposal
+  /proposals/approve/:id:
+    post:
+      parameters:
+      - description: proposal id
+        in: query
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  type: object
+              type: object
+      summary: approve proposal in Draft state, the proposal will be changed to approved
+        state after success. Only user has cityhall permission can do this
+      tags:
+      - Proposal
+  /proposals/create:
+    post:
+      parameters:
+      - description: request json body
+        in: body
+        name: JsonBody
+        required: true
+        schema:
+          $ref: '#/definitions/proposal.CreateOrUpdateProposalData'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.Reply'
+      summary: Create metaforo proposal and public to others
+      tags:
+      - Proposal
+  /proposals/delete_comment/:id:
+    post:
+      parameters:
+      - description: id of the proposal
+        in: query
+        name: id
+        required: true
+        type: string
+      - description: Delete Comment request data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/proposal.DeleteCommentData'
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  type: object
+              type: object
+      summary: delete comment from metaforo. The reject reason comment can't be deleted
+      tags:
+      - Proposal
+  /proposals/edit_comment/:id:
+    post:
+      parameters:
+      - description: id of the proposal
+        in: query
+        name: id
+        required: true
+        type: string
+      - description: Comment data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/proposal.EditCommentData'
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  type: object
+              type: object
+      summary: edit comment and save back to metaforo. If the comment is reject_comment,
+        the data saved in db will also be saved
+      tags:
+      - Proposal
+  /proposals/list:
     get:
       parameters:
       - description: which page
@@ -2199,21 +2356,9 @@ paths:
               type: object
       summary: lists all proposals based on query params and return in JSON format
       tags:
-      - proposal
-  /proposals/add_comment/:id:
-    post:
-      parameters:
-      - description: id of the proposal
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Comment data
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/proposal.AddCommentData'
+      - Proposal
+  /proposals/proposal_tmpl/:
+    get:
       responses:
         "200":
           description: OK
@@ -2222,103 +2367,13 @@ paths:
             - $ref: '#/definitions/api.Reply'
             - properties:
                 data:
-                  type: object
+                  items:
+                    $ref: '#/definitions/proposal.TemplateResponse'
+                  type: array
               type: object
-      summary: Attach comment to specified proposal or comment
-  /proposals/approve/:id:
-    post:
-      parameters:
-      - description: proposal id
-        in: query
-        name: id
-        required: true
-        type: integer
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/api.Reply'
-            - properties:
-                data:
-                  type: object
-              type: object
-      summary: approve proposal in Draft state, the proposal will be changed to approved
-        state after success. Only user has cityhall permission can do this
+      summary: list templates and return to frontend
       tags:
-      - proposal
-  /proposals/create:
-    post:
-      parameters:
-      - description: request json body
-        in: body
-        name: JsonBody
-        required: true
-        schema:
-          $ref: '#/definitions/proposal.CreateOrUpdateProposalData'
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/api.Reply'
-      summary: Create metaforo proposal and public to others
-      tags:
-      - proposal
-  /proposals/delete_comment/:id:
-    post:
-      parameters:
-      - description: id of the proposal
-        in: query
-        name: id
-        required: true
-        type: string
-      - description: Delete Comment request data
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/proposal.DeleteCommentData'
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/api.Reply'
-            - properties:
-                data:
-                  type: object
-              type: object
-      summary: delete comment from metaforo. The reject reason comment can't be deleted
-      tags:
-      - proposals
-  /proposals/edit_comment/:id:
-    post:
-      parameters:
-      - description: id of the proposal
-        in: query
-        name: id
-        required: true
-        type: string
-      - description: Comment data
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/proposal.EditCommentData'
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/api.Reply'
-            - properties:
-                data:
-                  type: object
-              type: object
-      summary: edit comment and save back to metaforo. If the comment is reject_comment,
-        the data saved in db will also be saved
-      tags:
-      - proposals
+      - Proposal
   /proposals/reject/:id:
     post:
       parameters:
@@ -2340,7 +2395,34 @@ paths:
       summary: reject proposal in Draft state, the proposal will be changed to rejected
         state after success. Only user has cityhall permission can do this
       tags:
-      - proposal
+      - Proposal
+  /proposals/revoke_vote/:id:
+    post:
+      parameters:
+      - description: proposal ID
+        in: query
+        name: id
+        required: true
+        type: number
+      - description: revoke vote data
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/proposal.RevokeVoteData'
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  type: object
+              type: object
+      summary: revoke vote on existing metaforo vote
+      tags:
+      - Proposal
   /proposals/show/:id:
     get:
       parameters:
@@ -2365,7 +2447,7 @@ paths:
               type: object
       summary: Show proposals with given ID
       tags:
-      - proposal
+      - Proposal
   /proposals/update/:id:
     post:
       parameters:
@@ -2381,6 +2463,55 @@ paths:
           schema:
             $ref: '#/definitions/api.Reply'
       summary: Update proposals with passed in data
+      tags:
+      - Proposal
+  /proposals/vote/:id:
+    post:
+      parameters:
+      - description: proposal ID
+        in: query
+        name: id
+        required: true
+        type: number
+      - description: Vote data
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/proposal.CastVoteData'
+      responses:
+        "200":
+          description: Success
+          schema:
+            $ref: '#/definitions/api.Reply'
+      summary: Cast a vote
+      tags:
+      - Proposal
+  /proposals/vote_detail/:vote_id:
+    get:
+      parameters:
+      - description: Vote ID
+        in: query
+        name: vote_id
+        required: true
+        type: number
+      - description: page of the vote list
+        in: query
+        name: page
+        type: number
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  $ref: '#/definitions/metaforo.UserPollRecordResponse'
+              type: object
+      summary: revoke vote on existing metaforo vote
+      tags:
+      - Proposal
   /proposals/withdraw/:id:
     post:
       parameters:
@@ -2402,7 +2533,7 @@ paths:
       summary: withdraw proposal in Draft state, the proposal will be changed to withdrawn
         state after success. Only proposal applicant can withdraw the proposal
       tags:
-      - proposal
+      - Proposal
   /public_data/discord_member_count:
     get:
       consumes:
@@ -2574,33 +2705,6 @@ paths:
       summary: Create a push
       tags:
       - Push
-  /revoke_vote/:id:
-    post:
-      parameters:
-      - description: proposal ID
-        in: query
-        name: id
-        required: true
-        type: number
-      - description: revoke vote data
-        in: body
-        name: data
-        required: true
-        schema:
-          $ref: '#/definitions/proposal.RevokeVoteData'
-      responses:
-        "200":
-          description: Success
-          schema:
-            allOf:
-            - $ref: '#/definitions/api.Reply'
-            - properties:
-                data:
-                  type: object
-              type: object
-      summary: revoke vote on existing metaforo vote
-      tags:
-      - proposals
   /seasons/:
     get:
       responses:
@@ -2611,6 +2715,8 @@ paths:
               $ref: '#/definitions/season.SeasonResponse'
             type: array
       summary: returns all seasons currently existing in database
+      tags:
+      - Season
   /seasons/curr:
     get:
       responses:
@@ -2619,6 +2725,8 @@ paths:
           schema:
             $ref: '#/definitions/season.SeasonResponse'
       summary: returns current season
+      tags:
+      - Season
   /user/casbin:
     get:
       consumes:
@@ -2664,6 +2772,8 @@ paths:
                   type: object
               type: object
       summary: Join a Metaforo group
+      tags:
+      - Metaforo
   /user/leave_metaforo_group:
     post:
       parameters:
@@ -2684,6 +2794,8 @@ paths:
                   type: object
               type: object
       summary: Leave a Metaforo group
+      tags:
+      - Metaforo
   /user/login:
     post:
       consumes:
@@ -2792,7 +2904,7 @@ paths:
               type: object
       summary: Get metaforo activities
       tags:
-      - metaforo
+      - Metaforo
   /user/prepare_metaforo:
     post:
       parameters:
@@ -2897,28 +3009,6 @@ paths:
       summary: Query multiple users by wallet array on batch
       tags:
       - User
-  /vote/:id:
-    post:
-      parameters:
-      - description: proposal ID
-        in: query
-        name: id
-        required: true
-        type: number
-      - description: Vote data
-        in: body
-        name: data
-        required: true
-        schema:
-          $ref: '#/definitions/proposal.CastVoteData'
-      responses:
-        "200":
-          description: Success
-          schema:
-            $ref: '#/definitions/api.Reply'
-      summary: Cast a vote
-      tags:
-      - proposals
   /webhook/tally:
     post:
       consumes:

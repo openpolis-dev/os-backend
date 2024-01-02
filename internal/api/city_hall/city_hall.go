@@ -62,8 +62,8 @@ func getOrCreateCityHallProject(db *gorm.DB, enforcer *casbin.Enforcer) (*model.
 // Info returns cityhall info
 //
 //	@summary	Return cityhall info
+//	@tags		CityHall
 //	@route		/cityhall/info [get]
-//
 //	@success	200	{object}	CityHallDetailReply
 func Info(ctx *gin.Context) {
 	_, enforcer, db, _ := api.ForContext(ctx)
@@ -91,10 +91,9 @@ func Info(ctx *gin.Context) {
 // UpdateBudget updates cityhall budget for current season
 //
 //	@summary	updates cityhall budget for current season
+//	@tags		CityHall
 //	@route		/cityhall/update_budget [post]
-//
 //	@param		JsonBody	body		CityHallUpdateBudgetReq	true	"update budget request"
-//
 //	@success	200			{string}	nil
 func UpdateBudget(ctx *gin.Context) {
 	user, enforcer, db, _ := api.ForContext(ctx)
@@ -184,6 +183,7 @@ func UpdateBudget(ctx *gin.Context) {
 // UpdateMember updates cityhall member, if group name existing in the request, the grouped sponsors field will be updated, otherwise the sponsors field will be updated
 //
 //	@summary	updates cityhall member, if group name existing in the request, the grouped sponsors field will be updated, otherwise the sponsors field will be updated
+//	@tags		CityHall
 //	@router		/cityhall/update_members [post]
 //	@param		JsonBody	body		CityHallUpdateMemberReq	true	"member data"
 //	@success	200			{string}	nil
@@ -254,6 +254,7 @@ func UpdateMember(ctx *gin.Context) {
 // BatchUpdateMembers updates multiple group member info in single request, the logic is same with single update
 //
 //	@summary	updates multiple group member info in single request, the logic is same with single update
+//	@tags		CityHall
 //	@router		/cityhall/batch_update_members [post]
 //	@param		JsonBody	body		[]CityHallUpdateMemberReq	true	"member data"
 //	@success	200			{string}	nil

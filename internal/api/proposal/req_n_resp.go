@@ -17,7 +17,7 @@ import (
 // Request data definitions
 ///////////////////////
 
-type QueryParams struct {
+type ListProposalQueryParams struct {
 	Page       int    `form:"page"`
 	Size       int    `form:"size"`
 	SortField  string `form:"sort_field"`
