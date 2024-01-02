@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
@@ -60,7 +61,7 @@ func AddComment(ctx *gin.Context) {
 		replyId = addComment.ReplyToMetaforoCommentId
 	}
 
-	_, err = metaforo.AddComment(
+	metaforoCommentData, err := metaforo.AddComment(
 		addComment.MetaforoAccessToken,
 		internal.MetaforoGroupName,
 		proposalRcd.GetMetaforoThreadId(),
@@ -72,6 +73,40 @@ func AddComment(ctx *gin.Context) {
 		log.Error().Msgf("add comment to proposal %s error: %+v", proposalIdStr, err)
 		sdk.LogUserSideError(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("add comment error")))
+		return
+	}
+
+	var parentComment model.ProposalComment
+	if addComment.ReplyToMetaforoCommentId != 0 {
+		err := db.Model(model.ProposalComment{}).Where("metaforo_comment_id = ?", fmt.Sprintf("%d", addComment.ReplyToMetaforoCommentId)).First(&parentComment).Error
+		if err != nil {
+			if !errors.Is(err, gorm.ErrRecordNotFound) {
+				log.Error().Msgf("get parent comment error: %+v", err)
+				sdk.LogServerErrorToSentry(ctx, err)
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get parent comment error")))
+				return
+			} else {
+				// This branch indicates that the parent comment has been added to metaforo but haven't saved in DB
+				// Check whether it can be synced from some API calls
+			}
+		}
+	}
+
+	proposalComment := model.ProposalComment{
+		CreateTs:          time.Now().UTC().Unix(),
+		ParentID:          parentComment.ID,
+		ProposalID:        proposalRcd.ID,
+		ProposalRecordID:  proposalRcd.ProposalRecordId,
+		Content:           addComment.Content,
+		MetaforoCommentId: fmt.Sprintf("%d", metaforoCommentData.Id),
+		IsRejectComment:   false, // Reject comment is
+	}
+
+	err = db.Create(&proposalComment).Error
+	if err != nil {
+		log.Error().Msgf("create proposal comment error: %+v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal comment error")))
 		return
 	}
 

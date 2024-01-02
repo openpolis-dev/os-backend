@@ -101,10 +101,10 @@ func (p *Proposal) StateName() string {
 	return ProposalStateName[p.State]
 }
 
-// CanBeUpdated returns bool value indicates whether this proposal can be updated.
+// StateIsUpdatable returns bool value indicates whether this proposal can be updated.
 // The record can be updated if value returned is true
 // Only proposal in those states can be updated: PendingSubmit, Withdrawn and Rejected
-func (p *Proposal) CanBeUpdated() bool {
+func (p *Proposal) StateIsUpdatable() bool {
 	return p.State == int(ProposalStatePendingSubmit) ||
 		p.State == int(ProposalStateWithdrawn) ||
 		p.State == int(ProposalStateRejected)
@@ -113,7 +113,7 @@ func (p *Proposal) CanBeUpdated() bool {
 // CanBeUpdatedBy returns bool value indicates whether this proposal can be updated by specified user wallet
 // The logic is the proposal in updatable state and the applicant equals to passed in wallet
 func (p *Proposal) CanBeUpdatedBy(wallet string) bool {
-	return p.CanBeUpdated() && strings.EqualFold(p.Applicant, wallet)
+	return p.StateIsUpdatable() && strings.EqualFold(p.Applicant, wallet)
 }
 
 func (p *Proposal) GetMetaforoThreadId() int {
@@ -208,12 +208,12 @@ type ProposalComment struct {
 	CreateTs int64 `gorm:"index"`
 	UpdateTs int64 `gorm:"index"`
 
-	ParentID string
+	ParentID uint
 
 	// Reference ID for proposal and specified version
 	ProposalID       uint `gorm:"index"`
 	Proposal         *Proposal
-	ProposalRecordID uint `gorm:"index"`
+	ProposalRecordID string `gorm:"index"`
 
 	Content string
 
