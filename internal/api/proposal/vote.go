@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
+	"github.com/samber/lo"
 	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/sdk"
@@ -86,9 +87,9 @@ func RevokeVote(ctx *gin.Context) {
 //
 //	@summary	revoke vote on existing metaforo vote
 //	@tags		Proposal
-//	@param		vote_option_id	path		number												true	"Vote ID"
-//	@param		page			query		number												false	"page of the vote list"
-//	@success	200				{object}	api.Reply{data=[]metaforo.UserPollRecordResponse}	"Success"
+//	@param		vote_option_id	path		number										true	"Vote ID"
+//	@param		page			query		number										false	"page of the vote list"
+//	@success	200				{object}	api.Reply{data=[]JointMetaforoAndOsUser}	"Success"
 //	@router		/proposals/vote_detail/:vote_option_id [get]
 func ShowVoteDetail(ctx *gin.Context) {
 	voteIdStr := ctx.Param("vote_option_id")
@@ -123,15 +124,8 @@ func ShowVoteDetail(ctx *gin.Context) {
 	}
 
 	db := api.ForContextOnlyDB(ctx)
-	db.Raw(QueryMetaforoUserWithOsUserBaseSQL)
-	// TODO: Find OS user with voter user id
-	OsVoterRecords := make([]*VoterInfo, 0)
-	for _, voterInfo := range voterList {
-		osVoterInfo := &VoterInfo{
-			MetaforoUserId: voterInfo.UserId,
-		}
-		OsVoterRecords = append(OsVoterRecords, osVoterInfo)
-	}
 
-	ctx.JSON(http.StatusOK, api.Success(OsVoterRecords))
+	metaforoUserIds := lo.Map(voterList, func(item *metaforo.UserPollRecord, index int) int { return item.UserId })
+	userRecords, err := GetOsUserFromMetaforoUserId(db, metaforoUserIds)
+	ctx.JSON(http.StatusOK, api.Success(userRecords))
 }

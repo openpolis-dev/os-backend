@@ -1862,7 +1862,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/metaforo.UserPollRecordResponse"
+                                                "$ref": "#/definitions/proposal.JointMetaforoAndOsUser"
                                             }
                                         }
                                     }
@@ -3358,73 +3358,6 @@ const docTemplate = `{
                 }
             }
         },
-        "metaforo.UserPollRecord": {
-            "type": "object",
-            "properties": {
-                "_import_source_import_id": {},
-                "_import_source_poll_id": {},
-                "_import_source_poll_option_id": {},
-                "_import_source_user_id": {},
-                "badge": {
-                    "type": "array",
-                    "items": {}
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "last_time": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "online": {
-                    "type": "boolean"
-                },
-                "photo_url": {
-                    "type": "string"
-                },
-                "poll_id": {
-                    "type": "integer"
-                },
-                "poll_option_id": {
-                    "type": "integer"
-                },
-                "uid": {
-                    "type": "integer"
-                },
-                "updated_at": {
-                    "type": "string"
-                },
-                "user": {
-                    "$ref": "#/definitions/metaforo.User"
-                },
-                "user_id": {
-                    "type": "integer"
-                },
-                "user_title": {
-                    "type": "array",
-                    "items": {}
-                },
-                "weight": {
-                    "type": "integer"
-                }
-            }
-        },
-        "metaforo.UserPollRecordResponse": {
-            "type": "object",
-            "properties": {
-                "list": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/metaforo.UserPollRecord"
-                    }
-                }
-            }
-        },
         "model.ApplicationState": {
             "type": "string",
             "enum": [
@@ -4407,6 +4340,26 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "token_type": {
+                    "type": "string"
+                }
+            }
+        },
+        "proposal.JointMetaforoAndOsUser": {
+            "type": "object",
+            "properties": {
+                "metaforo_user_id": {
+                    "type": "integer"
+                },
+                "os_avatar": {
+                    "type": "string"
+                },
+                "os_user_id": {
+                    "type": "integer"
+                },
+                "os_user_name": {
+                    "type": "string"
+                },
+                "wallet": {
                     "type": "string"
                 }
             }
