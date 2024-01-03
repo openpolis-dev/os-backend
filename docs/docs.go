@@ -2544,12 +2544,12 @@ const docTemplate = `{
                 "summary": "Upload metaforo user data to link with os user, and invoke join group",
                 "parameters": [
                     {
-                        "description": "meatforo user data and access_token",
+                        "description": "metaforo response after login",
                         "name": "JsonBody",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/user.PrepareMetaforoUserReq"
+                            "$ref": "#/definitions/metaforo.LoginResponse"
                         }
                     }
                 ],
@@ -3186,6 +3186,17 @@ const docTemplate = `{
                     "items": {
                         "type": "string"
                     }
+                }
+            }
+        },
+        "metaforo.LoginResponse": {
+            "type": "object",
+            "properties": {
+                "api_token": {
+                    "type": "string"
+                },
+                "user": {
+                    "$ref": "#/definitions/metaforo.User"
                 }
             }
         },
@@ -4686,20 +4697,6 @@ const docTemplate = `{
                 },
                 "wallet_type": {
                     "type": "string"
-                }
-            }
-        },
-        "user.PrepareMetaforoUserReq": {
-            "type": "object",
-            "properties": {
-                "group_name": {
-                    "type": "string"
-                },
-                "metaforo_access_token": {
-                    "type": "string"
-                },
-                "metaforo_user": {
-                    "$ref": "#/definitions/metaforo.User"
                 }
             }
         },

@@ -296,6 +296,13 @@ definitions:
           type: string
         type: array
     type: object
+  metaforo.LoginResponse:
+    properties:
+      api_token:
+        type: string
+      user:
+        $ref: '#/definitions/metaforo.User'
+    type: object
   metaforo.User:
     properties:
       activate:
@@ -1303,15 +1310,6 @@ definitions:
     - signature
     - wallet
     - wallet_type
-    type: object
-  user.PrepareMetaforoUserReq:
-    properties:
-      group_name:
-        type: string
-      metaforo_access_token:
-        type: string
-      metaforo_user:
-        $ref: '#/definitions/metaforo.User'
     type: object
   user.RefreshNonceReply:
     properties:
@@ -2917,12 +2915,12 @@ paths:
   /user/prepare_metaforo:
     post:
       parameters:
-      - description: meatforo user data and access_token
+      - description: metaforo response after login
         in: body
         name: JsonBody
         required: true
         schema:
-          $ref: '#/definitions/user.PrepareMetaforoUserReq'
+          $ref: '#/definitions/metaforo.LoginResponse'
       responses:
         "200":
           description: OK

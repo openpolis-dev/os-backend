@@ -108,7 +108,7 @@ func LeaveMetaforoGroup(ctx *gin.Context) {
 //	@router		/user/prepare_metaforo [post]
 //	@tags		User
 //	@tags		Metaforo
-//	@Param		JsonBody	body		PrepareMetaforoUserReq	true	"meatforo user data and access_token"
+//	@Param		JsonBody	body		metaforo.LoginResponse	true	"metaforo response after login"
 //	@success	200			{object}	api.Reply{data=nil}
 func PrepareMetaforoData(ctx *gin.Context) {
 	var req metaforo.LoginResponse
