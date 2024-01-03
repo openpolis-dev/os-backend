@@ -37,5 +37,7 @@ var ProposalVoteOptions = []*metaforo.VoteOption{
 }
 
 const DefaultVoteStartDelay = 14 * 24 * time.Hour
-const DefaultVoteDuration = 14 * 24 * time.Hour
+
+// const DefaultVoteDuration = 14 * 24 * time.Hour
+const DefaultVoteDuration = 5 * time.Minute
 const MetaforoAdminAccessToken = "21826|C16zyP8o10wY0easORsNiCa1KTxp0AZwICUAXp6W"
