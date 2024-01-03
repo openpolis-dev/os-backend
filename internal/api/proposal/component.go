@@ -12,9 +12,10 @@ import (
 )
 
 type ComponentResponse struct {
-	ID     uint   `json:"id"`
-	Name   string `json:"name"`
-	Schema string `json:"schema"`
+	ID            uint   `json:"id"`
+	Name          string `json:"name"`
+	Schema        string `json:"schema"`
+	ScreenshotUri string `json:"screenshot_uri"`
 }
 
 // ListComponents returns component list from database

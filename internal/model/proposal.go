@@ -313,10 +313,11 @@ type ProposalComponent struct {
 	CreateTs int64 `gorm:"index"`
 	UpdateTs int64 `gorm:"index"`
 
-	Name      string `gorm:"uniqueIndex"`
-	Author    string
-	Schema    string
-	Thumbnail string
+	Name          string `gorm:"uniqueIndex"`
+	Author        string
+	Schema        string
+	Thumbnail     string
+	ScreenshotUri string
 
 	ApproveActionId uint // ApproveActionId indicates the action will be executed when the component is approved
 	RejectActionId  uint // RejectActionId indicates the action will be executed when the component is rejected
@@ -340,6 +341,8 @@ type ProposalTemplate struct {
 	UpdateTs int64 `gorm:"index"`
 
 	Name string `gorm:"uniqueIndex"`
+
+	ScreenshotUri string
 
 	// ContentSchema saves content blocks used for this template, each block contains one title and one content field
 	ContentSchema string

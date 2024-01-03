@@ -14,6 +14,7 @@ import (
 type TemplateResponse struct {
 	ID            uint                 `json:"id"`
 	Name          string               `json:"name"`
+	ScreenshotUri string               `json:"screenshot_uri"`
 	ContentSchema string               `json:"schema"`
 	Components    []*ComponentResponse `json:"components"`
 }
@@ -38,11 +39,13 @@ func ListTemplates(ctx *gin.Context) {
 			ID:            r.ID,
 			Name:          r.Name,
 			ContentSchema: r.ContentSchema,
+			ScreenshotUri: r.ScreenshotUri,
 			Components: lo.Map(r.Components, func(c *model.ProposalComponent, _ int) *ComponentResponse {
 				return &ComponentResponse{
-					ID:     c.ID,
-					Name:   c.Name,
-					Schema: c.Schema,
+					ID:            c.ID,
+					Name:          c.Name,
+					Schema:        c.Schema,
+					ScreenshotUri: c.ScreenshotUri,
 				}
 			}),
 		}
