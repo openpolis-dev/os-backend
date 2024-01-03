@@ -90,41 +90,6 @@ func RefreshNonce(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, api.Success(&RefreshNonceReply{Nonce: nonce}))
 }
 
-type RetrieveNonceReply struct {
-	Nonce string `json:"nonce"`
-}
-
-// RetrieveNonce  retrieve nonce
-//
-//	`GET /retrieve_nonce?wallet=0x123
-//
-//	@Summary	Retrieve nonce
-//	@Tags		Auth
-//	@Accept		json
-//	@Produce	json
-//	@Param		wallet	query		string	true	"wallet address"
-//	@Success	200		{object}	api.Reply{data=RetrieveNonceReply}
-//	@Router		/user/retrieve_nonce [get]
-func RetrieveNonce(ctx *gin.Context) {
-	wallet := ctx.Query("wallet")
-
-	db, cfg := api.ForContextDBAndConfig(ctx)
-
-	userNonce, err := model.UserNonceModel.RecentNonce(db, wallet, cfg.Auth.NonceLifespan)
-	if err != nil {
-		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("nonce not found")))
-		return
-	}
-
-	if userNonce == nil {
-		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("no-login-request-recently")))
-		return
-	}
-
-	ctx.JSON(http.StatusOK, api.Success(&RetrieveNonceReply{Nonce: userNonce.Nonce}))
-}
-
 type LoginReq struct {
 	Wallet         string `json:"wallet" binding:"required"`
 	WalletType     string `json:"wallet_type" binding:"required"`
