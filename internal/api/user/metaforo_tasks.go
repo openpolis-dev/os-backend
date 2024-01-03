@@ -32,9 +32,9 @@ type JoinOrLeaveGroupReq struct {
 //	@param		session	query		string	false	"params for next page"
 //	@success	200		{object}	api.Reply{data=metaforo.UserActivity}
 func MetaforoActivities(ctx *gin.Context) {
-	userId := ctx.Param("userId")
-	size := ctx.Param("size")
-	session := ctx.Param("session")
+	userId := ctx.Query("userId")
+	size := ctx.Query("size")
+	session := ctx.Query("session")
 	activities, err := metaforo.UserActivities(userId, "all", size, session)
 	if err != nil {
 		log.Error().Msgf("get metaforo activities error: %+v", err)
