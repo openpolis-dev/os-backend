@@ -258,13 +258,13 @@ func PrepareMetaforoData(ctx *gin.Context) {
 		return
 	}
 
-	var metaforoUser metaforo.User
-	err = db.Where(model.MetaforoUser{
+	var metaforoUser model.MetaforoUser
+	err = db.Model(model.MetaforoUser{}).Where(model.MetaforoUser{
 		MetaforoUserId: req.User.Id,
 		UserWallet:     common.FormatUserWallet(req.User.Web3PublicKey),
 	}).Attrs(model.MetaforoUser{
 		Groups: userGroupsBytes,
-	}).FirstOrInit(&metaforoUser).Error
+	}).FirstOrCreate(&metaforoUser).Error
 
 	if err != nil {
 		log.Error().Msgf("update metaforo user error: %+v", err)
