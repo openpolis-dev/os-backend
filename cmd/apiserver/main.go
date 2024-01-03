@@ -174,6 +174,12 @@ func main() {
 		userGroup.GET("/users", user.Users)
 		userGroup.GET("/casbin", user.GetFrontendPermission)
 
+		// SeeAuth apis
+		seeAuth := v1.Group("/seeauth")
+		seeAuth.GET("/nonce/:wallet", user.SeeAuthNonce)
+		seeAuth.POST("/login", user.LoginWithSeeAuth)
+		seeAuth.POST("/seeauth_3rd_test", user.SeeAuthTestApi)
+
 		// project routers
 		projGroup := v1.Group("/projects")
 		projGroup.GET("/", project.List)
