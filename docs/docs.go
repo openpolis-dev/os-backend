@@ -2660,7 +2660,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/metaforo.UserActivity"
+                                            "$ref": "#/definitions/user.MetaforoActivityRecord"
                                         }
                                     }
                                 }
@@ -3355,110 +3355,6 @@ const docTemplate = `{
                             }
                         }
                     }
-                }
-            }
-        },
-        "metaforo.UserActivity": {
-            "type": "object",
-            "properties": {
-                "_import_source_deleted_by_id": {},
-                "_import_source_import_id": {},
-                "_import_source_post_id": {},
-                "_import_source_post_number": {},
-                "_import_source_thread_id": {},
-                "_import_source_user_id": {},
-                "arweave": {
-                    "type": "string"
-                },
-                "content": {
-                    "type": "string"
-                },
-                "cooked": {},
-                "created_at": {
-                    "type": "string"
-                },
-                "deleted": {
-                    "type": "integer"
-                },
-                "deleted_at": {},
-                "deleted_by": {
-                    "type": "integer"
-                },
-                "depth": {
-                    "type": "integer"
-                },
-                "domain_url": {},
-                "editor_type": {
-                    "type": "integer"
-                },
-                "first_post_id": {
-                    "type": "integer"
-                },
-                "group_id": {
-                    "type": "integer"
-                },
-                "group_name": {
-                    "type": "string"
-                },
-                "group_post_id": {},
-                "group_thread_id": {},
-                "group_title": {
-                    "type": "string"
-                },
-                "html": {},
-                "id": {
-                    "description": "TODO delete unused fields",
-                    "type": "integer"
-                },
-                "ipfs": {},
-                "nsfw": {
-                    "type": "integer"
-                },
-                "nsfw_score": {
-                    "type": "integer"
-                },
-                "parent_id": {
-                    "type": "integer"
-                },
-                "parent_poster_name": {},
-                "reply_count": {
-                    "type": "integer"
-                },
-                "reply_count_with_soft_del": {
-                    "type": "integer"
-                },
-                "reply_pid": {
-                    "type": "integer"
-                },
-                "reply_uid": {
-                    "type": "integer"
-                },
-                "sign": {},
-                "sign_data": {},
-                "sign_msg": {},
-                "thread_id": {
-                    "type": "integer"
-                },
-                "thread_poster_id": {
-                    "type": "integer"
-                },
-                "thread_poster_name": {
-                    "type": "string"
-                },
-                "thread_title": {
-                    "type": "string"
-                },
-                "updated_at": {
-                    "type": "string"
-                },
-                "user_avatar": {
-                    "type": "string"
-                },
-                "user_id": {
-                    "type": "integer"
-                },
-                "username": {
-                    "type": "string"
                 }
             }
         },
@@ -4863,6 +4759,29 @@ const docTemplate = `{
                 },
                 "user": {
                     "$ref": "#/definitions/model.User"
+                }
+            }
+        },
+        "user.MetaforoActivityRecord": {
+            "type": "object",
+            "properties": {
+                "action_ts": {
+                    "type": "integer"
+                },
+                "metaforo_action": {
+                    "type": "string"
+                },
+                "metaforo_thread_id": {
+                    "type": "integer"
+                },
+                "proposal_id": {
+                    "type": "integer"
+                },
+                "target_title": {
+                    "type": "string"
+                },
+                "wallet": {
+                    "type": "string"
                 }
             }
         },

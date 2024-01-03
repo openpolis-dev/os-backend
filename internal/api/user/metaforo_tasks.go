@@ -47,7 +47,7 @@ type MetaforoActivityResponse struct {
 //	@param		userId	query		string	true	"Metaforo user id"
 //	@param		size	query		int		true	"Size of activities"
 //	@param		session	query		string	false	"params for next page"
-//	@success	200		{object}	api.Reply{data=metaforo.UserActivity}
+//	@success	200		{object}	api.Reply{data=MetaforoActivityRecord}
 func MetaforoActivities(ctx *gin.Context) {
 	var err error
 
