@@ -6,15 +6,29 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	"github.com/theseed-labs/os-backend/internal"
-	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk/metaforo"
 	"gorm.io/gorm"
 )
 
 const QueryMetaforoUserWithOsUserBaseSQL = `
-select u.avatar as avatar_link, u.wallet as wallet, mu.* from users u inner join metaforo_users mu on u.wallet = mu.user_wallet
-`
+SELECT u.wallet            AS wallet,
+       mu.metaforo_user_id AS metaforo_user_id,
+       u.id                AS os_user_id,
+       u.avatar            AS os_avatar,
+       u.name              AS os_username
+FROM users u
+         INNER JOIN metaforo_users mu ON u.wallet = mu.user_wallet`
+
+type JointMetaforoAndOsUser struct {
+	Wallet string `json:"wallet"`
+
+	MetaforoUserID int `json:"metaforo_user_id"`
+
+	OsUserID   int    `json:"os_user_id"`
+	OsAvatar   string `json:"os_avatar"`
+	OsUserName string `json:"os_user_name"`
+}
 
 func GetMetaforoProposalByInternalId(db *gorm.DB, proposalIdStr string) (*model.Proposal, *metaforo.ProposalResponse, error) {
 	proposalRcd, err := GetProposalFromStringId(db, proposalIdStr)
@@ -71,13 +85,11 @@ func GetLocalEditHistories(db *gorm.DB, metaforoProposal *metaforo.ProposalRespo
 	return editHistory, nil
 }
 
-func GetOsUserFromMetaforoUserId(db *gorm.DB, metaforoUserIds []int) ([]*model.User, error) {
-	var records map[string]any
+func GetOsUserFromMetaforoUserId(db *gorm.DB, metaforoUserIds []int) ([]*JointMetaforoAndOsUser, error) {
+	var records []*JointMetaforoAndOsUser
 	err := db.Raw(QueryMetaforoUserWithOsUserBaseSQL+" WHERE mu.metaforo_user_id in ?", metaforoUserIds).Find(&records).Error
 	if err != nil {
 		return nil, err
 	}
-	log.Error().Msgf("Found users: %d", len(records))
-	api.PrintStructAsJson(records, "")
-	return nil, nil
+	return records, nil
 }

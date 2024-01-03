@@ -94,6 +94,9 @@ type UserActivity struct {
 	ParentPosterName        interface{} `json:"parent_poster_name"`
 	ThreadPosterName        string      `json:"thread_poster_name"`
 	DomainUrl               interface{} `json:"domain_url"`
+	LikeId                  int         `json:"like_id"`
+	LikeUsername            string      `json:"like_username"`
+	LikeCreatedAt           string      `json:"like_created_at"`
 }
 
 type Tag struct {

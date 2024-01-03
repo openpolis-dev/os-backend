@@ -29,6 +29,7 @@ var CityhallGroupNames = map[string]bool{"G_GOVERNANCE": true, "G_BRANDING": tru
 
 // TODO: Update to real seedao group
 const MetaforoGroupName = "testttt"
+const MetaforoGroupId = 10434
 
 var ProposalVoteOptions = []*metaforo.VoteOption{
 	{"同意", 0},
