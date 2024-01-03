@@ -3,22 +3,19 @@ package user
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
+	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk"
 	"github.com/theseed-labs/os-backend/internal/sdk/metaforo"
 )
-
-type PrepareMetaforoUserReq struct {
-	GroupName           string        `json:"group_name"`
-	MetaforoUser        metaforo.User `json:"metaforo_user"`
-	MetaforoAccessToken string        `json:"metaforo_access_token"`
-}
 
 type JoinOrLeaveGroupReq struct {
 	GroupName           string `json:"group_name"`
@@ -114,7 +111,7 @@ func LeaveMetaforoGroup(ctx *gin.Context) {
 //	@Param		JsonBody	body		PrepareMetaforoUserReq	true	"meatforo user data and access_token"
 //	@success	200			{object}	api.Reply{data=nil}
 func PrepareMetaforoData(ctx *gin.Context) {
-	var req PrepareMetaforoUserReq
+	var req metaforo.LoginResponse
 	err := ctx.BindJSON(&req)
 	if err != nil {
 		sdk.LogUserSideError(ctx, err)
@@ -123,21 +120,29 @@ func PrepareMetaforoData(ctx *gin.Context) {
 		return
 	}
 
-	userGroupsBytes, err := json.Marshal(req.MetaforoUser.GroupProfiles)
+	userGroupsBytes, err := json.Marshal(req.User.GroupProfiles)
 	if err != nil {
-		log.Error().Msgf("parse metaforo user error: %+v", err)
+		log.Error().Msgf("serialize metaforo user group info error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("parse user info error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("processing user info error")))
 		return
 	}
 
 	user, _, db, _ := api.ForContext(ctx)
-	err = db.Model(model.MetaforoUser{}).
-		Where(&model.MetaforoUser{UserWallet: common.FormatUserWallet(user.Wallet)}).
-		Updates(&model.MetaforoUser{
-			MetaforoUserId: req.MetaforoUser.Id,
-			Groups:         userGroupsBytes,
-		}).Error
+	if strings.EqualFold(user.Wallet, req.User.Web3PublicKey) {
+		err := fmt.Errorf("login user %s do not equals to metaforo user %s", user.Wallet, req.User.Web3PublicKey)
+		sdk.LogUserSideError(ctx, err)
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
+		return
+	}
+
+	var metaforoUser metaforo.User
+	err = db.Where(model.MetaforoUser{
+		MetaforoUserId: req.User.Id,
+		UserWallet:     common.FormatUserWallet(req.User.Web3PublicKey),
+	}).Attrs(model.MetaforoUser{
+		Groups: userGroupsBytes,
+	}).FirstOrInit(&metaforoUser).Error
 
 	if err != nil {
 		log.Error().Msgf("update metaforo user error: %+v", err)
@@ -145,7 +150,8 @@ func PrepareMetaforoData(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("update user info error")))
 		return
 	}
-	err = metaforo.JoinGroup(req.MetaforoAccessToken, req.GroupName)
+
+	err = metaforo.JoinGroup(req.ApiToken, internal.MetaforoGroupName)
 	if err != nil {
 		log.Error().Msgf("join group error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
