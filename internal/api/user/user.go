@@ -305,7 +305,7 @@ type LoginWithSeeAuthReply struct {
 //	@Accept		json
 //	@Produce	json
 //	@Param		JsonBody	body		LoginReq	true	"request json body"
-//	@Success	200			{object}	api.Reply{data=LoginV2Reply}
+//	@Success	200			{object}	api.Reply{data=LoginWithSeeAuthReply}
 //	@Router		/seeauth/login [post]
 func LoginWithSeeAuth(ctx *gin.Context) {
 	req := seeauth.SeeLogin{}
@@ -392,14 +392,6 @@ func LoginWithSeeAuth(ctx *gin.Context) {
 }
 
 // SeeAuthTestApi SeeAuth test api
-//
-//	@Summary	SeeAuth test api
-//	@Tags		SeeAuth
-//	@Accept		json
-//	@Produce	json
-//	@Param		JsonBody	body		seeauth.SeeAuth	true	"request json body"
-//	@Success	200			{string}	string
-//	@Router		/seeauth/seeauth_3rd_test [post]
 func SeeAuthTestApi(ctx *gin.Context) {
 	req := seeauth.SeeAuth{}
 	err := ctx.BindJSON(&req)
