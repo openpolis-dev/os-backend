@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
@@ -251,17 +250,10 @@ func PrepareMetaforoData(ctx *gin.Context) {
 	}
 
 	user, _, db, _ := api.ForContext(ctx)
-	if strings.EqualFold(user.Wallet, req.User.Web3PublicKey) {
-		err := fmt.Errorf("login user %s do not equals to metaforo user %s", user.Wallet, req.User.Web3PublicKey)
-		sdk.LogUserSideError(ctx, err)
-		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
-		return
-	}
-
 	var metaforoUser model.MetaforoUser
 	err = db.Model(model.MetaforoUser{}).Where(model.MetaforoUser{
 		MetaforoUserId: req.User.Id,
-		UserWallet:     common.FormatUserWallet(req.User.Web3PublicKey),
+		UserWallet:     common.FormatUserWallet(user.Wallet),
 	}).Attrs(model.MetaforoUser{
 		Groups: userGroupsBytes,
 	}).FirstOrCreate(&metaforoUser).Error
