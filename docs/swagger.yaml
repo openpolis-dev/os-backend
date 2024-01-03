@@ -2494,12 +2494,12 @@ paths:
       summary: Cast a vote
       tags:
       - Proposal
-  /proposals/vote_detail/:vote_id:
+  /proposals/vote_detail/:vote_option_id:
     get:
       parameters:
       - description: Vote ID
         in: path
-        name: vote_id
+        name: vote_option_id
         required: true
         type: number
       - description: page of the vote list
@@ -2935,8 +2935,8 @@ paths:
               type: object
       summary: Upload metaforo user data to link with os user, and invoke join group
       tags:
-      - user
-      - metaforo
+      - User
+      - Metaforo
   /user/refresh_nonce:
     post:
       consumes:

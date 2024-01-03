@@ -260,7 +260,7 @@ func main() {
 		proposalGroup := v1.Group("/proposals")
 		proposalGroup.GET("/list", proposal.List)
 		proposalGroup.GET("/show/:id", proposal.Detail)
-		proposalGroup.GET("/vote_detail/:vote_id", proposal.ShowVoteDetail)
+		proposalGroup.GET("/vote_detail/:vote_option_id", proposal.ShowVoteDetail)
 
 		// foo routers
 	}

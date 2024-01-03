@@ -1827,7 +1827,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/proposals/vote_detail/:vote_id": {
+        "/proposals/vote_detail/:vote_option_id": {
             "get": {
                 "tags": [
                     "Proposal"
@@ -1837,7 +1837,7 @@ const docTemplate = `{
                     {
                         "type": "number",
                         "description": "Vote ID",
-                        "name": "vote_id",
+                        "name": "vote_option_id",
                         "in": "path",
                         "required": true
                     },
@@ -2538,8 +2538,8 @@ const docTemplate = `{
         "/user/prepare_metaforo": {
             "post": {
                 "tags": [
-                    "user",
-                    "metaforo"
+                    "User",
+                    "Metaforo"
                 ],
                 "summary": "Upload metaforo user data to link with os user, and invoke join group",
                 "parameters": [
