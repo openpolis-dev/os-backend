@@ -2232,6 +2232,141 @@ const docTemplate = `{
                 }
             }
         },
+        "/seeauth/login": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "SeeAuth"
+                ],
+                "summary": "Login",
+                "parameters": [
+                    {
+                        "description": "request json body",
+                        "name": "JsonBody",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/user.LoginReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Reply"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/user.LoginWithSeeAuthReply"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/seeauth/nonce/:wallet": {
+            "get": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "SeeAuth"
+                ],
+                "summary": "get nonce of SeeAuth",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "request json body",
+                        "name": "wallet",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Reply"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/user.RefreshNonceReply"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/url_for_uploading_s3": {
+            "get": {
+                "summary": "Get pre-signed URL for S3 upload",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Name of the file",
+                        "name": "filename",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Type of the file",
+                        "name": "type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "S3 bucket name, should be created in advanced",
+                        "name": "bucket",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Reply"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/user/casbin": {
             "get": {
                 "consumes": [
@@ -2611,49 +2746,6 @@ const docTemplate = `{
                                     "properties": {
                                         "data": {
                                             "$ref": "#/definitions/user.RefreshNonceReply"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            }
-        },
-        "/user/retrieve_nonce": {
-            "get": {
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Auth"
-                ],
-                "summary": "Retrieve nonce",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "wallet address",
-                        "name": "wallet",
-                        "in": "query",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/api.Reply"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/user.RetrieveNonceReply"
                                         }
                                     }
                                 }
@@ -4192,6 +4284,9 @@ const docTemplate = `{
                 },
                 "schema": {
                     "type": "string"
+                },
+                "screenshot_uri": {
+                    "type": "string"
                 }
             }
         },
@@ -4448,6 +4543,9 @@ const docTemplate = `{
                 },
                 "schema": {
                     "type": "string"
+                },
+                "screenshot_uri": {
+                    "type": "string"
                 }
             }
         },
@@ -4640,6 +4738,56 @@ const docTemplate = `{
                 }
             }
         },
+        "seeauth.Proof": {
+            "type": "object",
+            "properties": {
+                "proof": {
+                    "type": "string"
+                }
+            }
+        },
+        "seeauth.SeeAuth": {
+            "type": "object",
+            "properties": {
+                "proof": {
+                    "$ref": "#/definitions/seeauth.Proof"
+                },
+                "signature": {
+                    "$ref": "#/definitions/seeauth.Signature"
+                },
+                "wallet": {
+                    "type": "string"
+                },
+                "walletName": {
+                    "$ref": "#/definitions/seeauth.WalletName"
+                }
+            }
+        },
+        "seeauth.Signature": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                },
+                "nonce": {
+                    "type": "string"
+                },
+                "signature": {
+                    "type": "string"
+                }
+            }
+        },
+        "seeauth.WalletName": {
+            "type": "string",
+            "enum": [
+                "metamask",
+                "joyid"
+            ],
+            "x-enum-varnames": [
+                "WalletNameMetamask",
+                "WalletNameJoyid"
+            ]
+        },
         "user.JoinOrLeaveGroupReq": {
             "type": "object",
             "properties": {
@@ -4700,6 +4848,24 @@ const docTemplate = `{
                 }
             }
         },
+        "user.LoginWithSeeAuthReply": {
+            "type": "object",
+            "properties": {
+                "see_auth": {
+                    "$ref": "#/definitions/seeauth.SeeAuth"
+                },
+                "token": {
+                    "type": "string"
+                },
+                "token_exp": {
+                    "description": "time unit: seconds",
+                    "type": "integer"
+                },
+                "user": {
+                    "$ref": "#/definitions/model.User"
+                }
+            }
+        },
         "user.RefreshNonceReply": {
             "type": "object",
             "properties": {
@@ -4712,14 +4878,6 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "wallet": {
-                    "type": "string"
-                }
-            }
-        },
-        "user.RetrieveNonceReply": {
-            "type": "object",
-            "properties": {
-                "nonce": {
                     "type": "string"
                 }
             }

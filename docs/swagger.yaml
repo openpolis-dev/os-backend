@@ -971,6 +971,8 @@ definitions:
         type: string
       schema:
         type: string
+      screenshot_uri:
+        type: string
     type: object
   proposal.CreateOrUpdateProposalData:
     properties:
@@ -1141,6 +1143,8 @@ definitions:
         type: string
       schema:
         type: string
+      screenshot_uri:
+        type: string
     type: object
   publicdata.Vault:
     properties:
@@ -1270,6 +1274,39 @@ definitions:
       start_at:
         type: string
     type: object
+  seeauth.Proof:
+    properties:
+      proof:
+        type: string
+    type: object
+  seeauth.SeeAuth:
+    properties:
+      proof:
+        $ref: '#/definitions/seeauth.Proof'
+      signature:
+        $ref: '#/definitions/seeauth.Signature'
+      wallet:
+        type: string
+      walletName:
+        $ref: '#/definitions/seeauth.WalletName'
+    type: object
+  seeauth.Signature:
+    properties:
+      message:
+        type: string
+      nonce:
+        type: string
+      signature:
+        type: string
+    type: object
+  seeauth.WalletName:
+    enum:
+    - metamask
+    - joyid
+    type: string
+    x-enum-varnames:
+    - WalletNameMetamask
+    - WalletNameJoyid
   user.JoinOrLeaveGroupReq:
     properties:
       group_name:
@@ -1311,6 +1348,18 @@ definitions:
     - wallet
     - wallet_type
     type: object
+  user.LoginWithSeeAuthReply:
+    properties:
+      see_auth:
+        $ref: '#/definitions/seeauth.SeeAuth'
+      token:
+        type: string
+      token_exp:
+        description: 'time unit: seconds'
+        type: integer
+      user:
+        $ref: '#/definitions/model.User'
+    type: object
   user.RefreshNonceReply:
     properties:
       nonce:
@@ -1319,11 +1368,6 @@ definitions:
   user.RefreshNonceReq:
     properties:
       wallet:
-        type: string
-    type: object
-  user.RetrieveNonceReply:
-    properties:
-      nonce:
         type: string
     type: object
   user.UpdateReq:
@@ -2734,6 +2778,85 @@ paths:
       summary: returns current season
       tags:
       - Season
+  /seeauth/login:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: request json body
+        in: body
+        name: JsonBody
+        required: true
+        schema:
+          $ref: '#/definitions/user.LoginReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  $ref: '#/definitions/user.LoginWithSeeAuthReply'
+              type: object
+      summary: Login
+      tags:
+      - SeeAuth
+  /seeauth/nonce/:wallet:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: request json body
+        in: path
+        name: wallet
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  $ref: '#/definitions/user.RefreshNonceReply'
+              type: object
+      summary: get nonce of SeeAuth
+      tags:
+      - SeeAuth
+  /url_for_uploading_s3:
+    get:
+      parameters:
+      - description: Name of the file
+        in: query
+        name: filename
+        required: true
+        type: string
+      - description: Type of the file
+        in: query
+        name: type
+        type: string
+      - description: S3 bucket name, should be created in advanced
+        in: query
+        name: bucket
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  type: string
+              type: object
+      summary: Get pre-signed URL for S3 upload
   /user/casbin:
     get:
       consumes:
@@ -2959,31 +3082,6 @@ paths:
                   $ref: '#/definitions/user.RefreshNonceReply'
               type: object
       summary: Refresh nonce
-      tags:
-      - Auth
-  /user/retrieve_nonce:
-    get:
-      consumes:
-      - application/json
-      parameters:
-      - description: wallet address
-        in: query
-        name: wallet
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/api.Reply'
-            - properties:
-                data:
-                  $ref: '#/definitions/user.RetrieveNonceReply'
-              type: object
-      summary: Retrieve nonce
       tags:
       - Auth
   /user/users:

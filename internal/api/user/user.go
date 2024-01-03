@@ -257,8 +257,8 @@ func Logout(ctx *gin.Context) {
 //	@Tags		SeeAuth
 //	@Accept		json
 //	@Produce	json
-//	@Param		wallet	    path		string	true	"request json body"
-//	@Success	200			{object}	api.Reply{data=RefreshNonceReply}
+//	@Param		wallet	path		string	true	"request json body"
+//	@Success	200		{object}	api.Reply{data=RefreshNonceReply}
 //	@Router		/seeauth/nonce/:wallet [get]
 func SeeAuthNonce(ctx *gin.Context) {
 	wallet := ctx.Param("wallet") // DIFFERENT with `RefreshNonce` api
