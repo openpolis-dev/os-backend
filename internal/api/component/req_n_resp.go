@@ -5,7 +5,7 @@ package component
 type ComponentInstance struct {
 	ID            uint   `json:"id"`
 	ComponentId   uint   `json:"component_id"`
-	ComponentName string `json:"component_id"`
+	ComponentName string `json:"component_name"`
 	Schema        string `json:"schema"`
 	Data          string `json:"data"`
 

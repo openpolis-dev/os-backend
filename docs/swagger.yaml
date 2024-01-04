@@ -152,6 +152,8 @@ definitions:
     properties:
       component_id:
         type: integer
+      component_name:
+        type: string
       create_ts:
         type: integer
       data:
@@ -910,7 +912,8 @@ definitions:
       component_name:
         type: string
       data:
-        type: string
+        additionalProperties: {}
+        type: object
       id:
         type: integer
     type: object

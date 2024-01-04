@@ -3103,6 +3103,9 @@ const docTemplate = `{
                 "component_id": {
                     "type": "integer"
                 },
+                "component_name": {
+                    "type": "string"
+                },
                 "create_ts": {
                     "type": "integer"
                 },
@@ -4241,7 +4244,8 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "data": {
-                    "type": "string"
+                    "type": "object",
+                    "additionalProperties": {}
                 },
                 "id": {
                     "type": "integer"

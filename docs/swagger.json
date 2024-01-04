@@ -3096,6 +3096,9 @@
                 "component_id": {
                     "type": "integer"
                 },
+                "component_name": {
+                    "type": "string"
+                },
                 "create_ts": {
                     "type": "integer"
                 },
@@ -4234,7 +4237,8 @@
                     "type": "string"
                 },
                 "data": {
-                    "type": "string"
+                    "type": "object",
+                    "additionalProperties": {}
                 },
                 "id": {
                     "type": "integer"
