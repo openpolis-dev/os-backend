@@ -224,12 +224,20 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 	})
 
 	proposalComponentResponse := lo.Map(proposalComponentRecords, func(item *model.ProposalComponentRecord, _ int) *component.ComponentInstance {
+		var componentRecord model.ProposalComponent
+		err := db.Find(&componentRecord, item.ComponentID).Error
+		if err != nil {
+			log.Error().Msgf("fetch component %d from DB error: %+v", item.ComponentID, err)
+			return nil
+		}
+
 		return &component.ComponentInstance{
-			ID:          item.ID,
-			ComponentId: item.ComponentID,
-			Schema:      "",
-			Data:        item.Data,
-			CreateTs:    item.CreateTs,
+			ID:            item.ID,
+			ComponentId:   item.ComponentID,
+			ComponentName: componentRecord.Name,
+			Schema:        "",
+			Data:          item.Data,
+			CreateTs:      item.CreateTs,
 		}
 	})
 
