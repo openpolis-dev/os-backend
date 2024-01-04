@@ -112,6 +112,13 @@ type FrontendContentBlockRecord struct {
 	Content string `json:"content"`
 }
 
+type FrontendProposalEditHistories struct {
+	Title      string `json:"title"`
+	Wallet     string `json:"wallet"`
+	OsUsername string `json:"os_username"`
+	CreateTs   int64  `json:"create_ts"`
+}
+
 type FrontendProposalDetailRecord struct {
 	ID            uint                           `json:"id"`
 	Title         string                         `json:"title"`
@@ -212,13 +219,11 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 	if err != nil {
 		return nil, err
 	}
-	// Save arweave if not existing in current DB record
-	// TODO: Merge duplicated code in Update proposal
-	if metaforoProposal.Thread.EditHistory.Lists != nil && len(metaforoProposal.Thread.EditHistory.Lists) > 0 {
-		proposal.ArweaveHash = metaforoProposal.Thread.EditHistory.Lists[0].Arweave
-		db.Save(&proposal)
+	// TODO: Merge duplicated code (save edit histories arweave hash) in Update proposal
+	err = UpdateDbRecordsFromMetaforoProposalResponse(db, proposal, metaforoProposal)
+	if err != nil {
+		return nil, err
 	}
-
 	// TODO: Query UserVoteRecord and update isVoted field
 
 	rejectedComment := model.ProposalComment{}
@@ -263,4 +268,21 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 		Votes:        metaforoProposal.Thread.Polls,
 		CreateTs:     proposal.CreateTs,
 	}, nil
+}
+
+// UpdateDbRecordsFromMetaforoProposalResponse updates proposal data with db records. For now, it contains:
+// * Arweave hash: current and historical versions
+func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcd *model.Proposal, metaforoProposal *metaforo.ProposalResponse) error {
+	var err error
+	// Save current version proposal arweave hash if not existing in current DB record
+	if metaforoProposal.Thread.EditHistory.Lists != nil && len(metaforoProposal.Thread.EditHistory.Lists) > 0 {
+		dbProposalRcd.ArweaveHash = metaforoProposal.Thread.EditHistory.Lists[0].Arweave
+		err = db.Save(&dbProposalRcd).Error
+		if err != nil {
+			return err
+		}
+	}
+
+	// TODO: Save historical version proposal arweave hash, and merge with save with current version
+	return nil
 }

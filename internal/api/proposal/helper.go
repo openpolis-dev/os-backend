@@ -309,8 +309,10 @@ func SaveProposalToMetaforo(db *gorm.DB, origProposalRecord *model.Proposal, met
 	}
 
 	updatedProposalRecord.ProposalRecordId = model.BuildProposalRecordIdFromMetaforoThreadId(metaforoProposalResponse.Thread.Id)
-	if metaforoProposalResponse.Thread.EditHistory.Lists != nil && len(metaforoProposalResponse.Thread.EditHistory.Lists) > 0 {
-		updatedProposalRecord.ArweaveHash = metaforoProposalResponse.Thread.EditHistory.Lists[0].Arweave
+	err = UpdateDbRecordsFromMetaforoProposalResponse(db, updatedProposalRecord, metaforoProposalResponse)
+	if err != nil {
+		log.Error().Msgf("update db proposal record with metaforo response error: %+v", err)
+		return err
 	}
 
 	// Update vote data from metaforo response

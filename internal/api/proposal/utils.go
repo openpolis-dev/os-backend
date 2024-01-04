@@ -31,35 +31,19 @@ type JointMetaforoAndOsUser struct {
 }
 
 func GetMetaforoProposalByInternalId(db *gorm.DB, proposalIdStr string) (*model.Proposal, *metaforo.ProposalResponse, error) {
-	proposalRcd, err := GetProposalFromStringId(db, proposalIdStr)
+	osProposalRcd, err := GetProposalFromStringId(db, proposalIdStr)
 	if err != nil {
 		log.Error().Msgf("get db proposal id %s error: %+v", proposalIdStr, err)
 		return nil, nil, err
 	}
 
-	proposalDetailRecord, err := metaforo.GetProposal(proposalRcd.GetMetaforoThreadId(), internal.MetaforoGroupName, "", 0)
+	metaforoProposalRcd, err := metaforo.GetProposal(osProposalRcd.GetMetaforoThreadId(), internal.MetaforoGroupName, "", 0)
 	if err != nil {
 		log.Error().Msgf("get metaforo proposal error: %+v", err)
 		return nil, nil, err
 	}
 
-	var userdata model.User
-	err = db.Model(model.User{}).Where("wallet = ?", proposalRcd.Applicant).First(&userdata).Error
-	if err != nil {
-		log.Error().Msgf("fetch user data error: %+v", err)
-		return nil, nil, err
-	}
-
-	editHistory, err := GetLocalEditHistories(db, proposalDetailRecord)
-	if err != nil {
-		log.Error().Msgf("fetch local history record error: %+v", err)
-		return nil, nil, err
-	}
-
-	proposalDetailRecord.Thread.EditHistory.Lists = editHistory
-	proposalDetailRecord.Thread.EditHistory.Count = len(editHistory)
-
-	return proposalRcd, proposalDetailRecord, nil
+	return osProposalRcd, metaforoProposalRcd, nil
 }
 
 func GetLocalEditHistories(db *gorm.DB, metaforoProposal *metaforo.ProposalResponse) ([]*metaforo.PostEditHistoryRecord, error) {

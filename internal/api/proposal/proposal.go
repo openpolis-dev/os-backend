@@ -159,24 +159,6 @@ func Detail(ctx *gin.Context) {
 		}
 	}
 
-	// Load proposal content block
-	var proposalContents []*model.ProposalContentBlock
-	if err := db.Where(model.ProposalContentBlock{ProposalID: proposalRecord.ID}).Find(&proposalContents).Error; err != nil {
-		sdk.LogServerErrorToSentry(ctx, err)
-		log.Error().Msgf("get proposal blocks error: %+v", err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get proposal error")))
-		return
-	}
-
-	// Load proposal components
-	var proposalComponents []*model.ProposalComponentRecord
-	if err := db.Where(model.ProposalComponentRecord{ProposalID: proposalRecord.ID}).Find(&proposalComponents).Error; err != nil {
-		sdk.LogServerErrorToSentry(ctx, err)
-		log.Error().Msgf("get proposal components error: %+v", err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get proposal error")))
-		return
-	}
-
 	responseData, err := ConvertProposalToFrontendDetailRecord(db, proposalRecord, startPostId, metaforoAccessToken)
 	if err != nil {
 		log.Error().Msgf("convert proposal to frontend format error: %+v", err)
