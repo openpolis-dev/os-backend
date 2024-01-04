@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
+	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
@@ -26,7 +27,7 @@ type WidgetDataResponse struct {
 //	@summary	returns data required by widget.
 //	@tags		DataService
 //	@router		/data_srv/widget_data [get]
-//	@param		type	query		string	true	"data type"	Enum(project_list guild_list entity_list)
+//	@param		type	query		string	true	"data type"	Enum(project_list guild_list entity_list asset_type)
 //	@success	200		{object}	api.Reply{data=[]WidgetDataResponse}
 func WidgetData(ctx *gin.Context) {
 	dataType := ctx.Query("type")
@@ -89,6 +90,11 @@ func WidgetData(ctx *gin.Context) {
 			return
 		}
 		ctx.JSON(http.StatusOK, api.Success(lo.Union(projectRcds, guildRcds)))
+		return
+	case "asset_type":
+		ctx.JSON(http.StatusOK, api.Success([]*WidgetDataResponse{
+			{internal.AssetTypeScrId, internal.AssetTypeScrName}, {internal.AssetTypeUsdtId, internal.AssetTypeUsdtName},
+		}))
 		return
 	default:
 		err := errors.New("invalid data type")
