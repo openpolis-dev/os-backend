@@ -237,6 +237,9 @@ type ProposalCategory struct {
 	Name       string
 	MetaforoId uint
 
+	ProposalVoteGateId uint
+	ProposalVoteGate   *ProposalVoteGate
+
 	IsActive bool
 }
 

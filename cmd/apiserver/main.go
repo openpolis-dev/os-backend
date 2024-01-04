@@ -255,9 +255,6 @@ func main() {
 		proposalTmplRouter := v1.Group("/proposal_tmpl")
 		proposalTmplRouter.GET("/", proposal.ListTemplates)
 
-		proposalCategoryRouter := v1.Group("/proposal_categories")
-		proposalCategoryRouter.GET("/", proposal.ListCategories)
-
 		proposalPollGateRouter := v1.Group("/proposal_vote_gates")
 		proposalPollGateRouter.GET("/", proposal.ListVoteGates)
 
@@ -373,6 +370,10 @@ func main() {
 
 		proposalGroup.POST("/vote/:id", proposal.CastVote)
 		proposalGroup.POST("/revoke_vote/:id", proposal.RevokeVote)
+
+		// List proposal categories
+		proposalCategoryRouter := authorizedGroup.Group("/proposal_categories")
+		proposalCategoryRouter.GET("/", proposal.ListCategories)
 
 		// Data services API
 		dataSrv := authorizedGroup.Group("/data_srv")

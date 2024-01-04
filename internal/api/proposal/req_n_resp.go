@@ -178,10 +178,11 @@ type FrontendProposalDetailRecord struct {
 }
 
 type FrontendProposalCategory struct {
-	ID         uint   `json:"id"`
-	ParentID   uint   `json:"parent_id"`
-	Name       string `json:"name"`
-	MetaforoId uint   `json:"metaforo_id"`
+	ID         uint   `json:"id"`          // Proposal Category ID
+	ParentID   uint   `json:"parent_id"`   // Parent ID of this category
+	Name       string `json:"name"`        // Name of the category
+	MetaforoId uint   `json:"metaforo_id"` // Metaforo ID for the category
+	HasPerm    bool   `json:"has_perm"`    // Whether the requester has permission to create proposal in this category
 }
 
 type FrontendVoteGateResponse struct {

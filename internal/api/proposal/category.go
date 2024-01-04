@@ -3,6 +3,7 @@ package proposal
 import (
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
@@ -19,11 +20,15 @@ import (
 //	@tags		Proposal
 //	@success	200	{object}	api.Reply{data=[]proposal.FrontendProposalCategory}
 func ListCategories(ctx *gin.Context) {
-	db := api.ForContextOnlyDB(ctx)
-	proposalCategories, err := model.QueryRows[model.ProposalCategory](
-		db.Model(&model.ProposalCategory{}).Where(model.ProposalCategory{IsActive: true}),
-		nil)
+	user, _, db, _ := api.ForContext(ctx)
 
+	sppClient := sdk.GetSppClient()
+	userSeepassData, err := sppClient.GetSeepassData(user.Wallet)
+
+	var proposalCategories []*model.ProposalCategory
+	err = db.Model(&model.ProposalCategory{}).
+		Joins("ProposalVoteGate").
+		Where(model.ProposalCategory{IsActive: true}).Find(&proposalCategories).Error
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		log.Error().Msgf("get proposal categories error: %+v", err)
@@ -31,12 +36,28 @@ func ListCategories(ctx *gin.Context) {
 		return
 	}
 
-	categoryResp := lo.Map(proposalCategories, func(item *model.ProposalCategory, index int) *FrontendProposalCategory {
+	categoryResp := lo.Map(proposalCategories, func(r *model.ProposalCategory, index int) *FrontendProposalCategory {
+		userHasPerm := false
+		if r.ProposalVoteGateId != 0 {
+			for _, sbtInfo := range userSeepassData.Sbt {
+				if strings.EqualFold(sbtInfo.ContractAddr, r.ProposalVoteGate.TokenAddress) {
+					if r.ProposalVoteGate.TokenTypeName() == "ERC1155" {
+						userHasPerm = strings.EqualFold(r.ProposalVoteGate.TokenId, sbtInfo.TokenId)
+					} else {
+						userHasPerm = true
+					}
+				}
+			}
+		} else {
+			// No nft gate set, every one can create proposal
+			userHasPerm = true
+		}
 		return &FrontendProposalCategory{
-			ID:         item.ID,
-			ParentID:   item.ParentID,
-			Name:       item.Name,
-			MetaforoId: item.MetaforoId,
+			ID:         r.ID,
+			ParentID:   r.ParentID,
+			Name:       r.Name,
+			MetaforoId: r.MetaforoId,
+			HasPerm:    userHasPerm,
 		}
 	})
 
