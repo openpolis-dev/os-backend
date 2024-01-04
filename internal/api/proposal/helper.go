@@ -23,7 +23,7 @@ func GetProposalFromStringId(db *gorm.DB, idStr string) (*model.Proposal, error)
 		return nil, err
 	}
 	var proposalRecord model.Proposal
-	if err := db.Joins("ProposalCategory").Find(&proposalRecord, proposalId).Error; err != nil {
+	if err := db.Joins("ProposalCategory").First(&proposalRecord, proposalId).Error; err != nil {
 		return nil, err
 	}
 

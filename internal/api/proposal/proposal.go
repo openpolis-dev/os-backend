@@ -143,12 +143,13 @@ func Detail(ctx *gin.Context) {
 		}
 	}
 
+	proposalIdStr := ctx.Param("id")
 	db := api.ForContextOnlyDB(ctx)
-	proposalRecord, err := GetProposalFromStringId(db, ctx.Param("id"))
+	proposalRecord, err := GetProposalFromStringId(db, proposalIdStr)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			log.Warn().Msgf("proposal %s not found", proposalRecord.ID)
-			ctx.JSON(http.StatusNotFound, nil)
+			log.Warn().Msgf("proposal %s not found", proposalIdStr)
+			ctx.JSON(http.StatusNotFound, api.BadRequest(err))
 			return
 		} else {
 			sdk.LogUserSideError(ctx, err)
