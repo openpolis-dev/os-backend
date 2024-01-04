@@ -4355,6 +4355,9 @@
         "proposal.FrontendProposalCommentRecord": {
             "type": "object",
             "properties": {
+                "avatar": {
+                    "type": "string"
+                },
                 "children": {
                     "type": "array",
                     "items": {
@@ -4363,6 +4366,9 @@
                 },
                 "content": {
                     "type": "string"
+                },
+                "created_ts": {
+                    "type": "integer"
                 },
                 "metaforo_post_id": {
                     "type": "integer"

@@ -4362,6 +4362,9 @@ const docTemplate = `{
         "proposal.FrontendProposalCommentRecord": {
             "type": "object",
             "properties": {
+                "avatar": {
+                    "type": "string"
+                },
                 "children": {
                     "type": "array",
                     "items": {
@@ -4370,6 +4373,9 @@ const docTemplate = `{
                 },
                 "content": {
                     "type": "string"
+                },
+                "created_ts": {
+                    "type": "integer"
                 },
                 "metaforo_post_id": {
                     "type": "integer"

@@ -988,12 +988,16 @@ definitions:
     type: object
   proposal.FrontendProposalCommentRecord:
     properties:
+      avatar:
+        type: string
       children:
         items:
           $ref: '#/definitions/proposal.FrontendProposalCommentRecord'
         type: array
       content:
         type: string
+      created_ts:
+        type: integer
       metaforo_post_id:
         type: integer
       proposal_arweave_hash:
