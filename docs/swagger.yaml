@@ -941,7 +941,8 @@ definitions:
       create_ts:
         description: Timestamps
         type: integer
-      histories: {}
+      histories:
+        $ref: '#/definitions/proposal.FrontendProposalEditHistories'
       id:
         type: integer
       is_rejected:
@@ -968,6 +969,26 @@ definitions:
         type: string
       votes:
         description: Vote
+    type: object
+  proposal.FrontendProposalEditHistories:
+    properties:
+      lists:
+        items:
+          $ref: '#/definitions/proposal.FrontendProposalEditHistoryRecord'
+        type: array
+      total_count:
+        type: integer
+    type: object
+  proposal.FrontendProposalEditHistoryRecord:
+    properties:
+      create_ts:
+        type: integer
+      os_username:
+        type: string
+      title:
+        type: string
+      wallet:
+        type: string
     type: object
   proposal.FrontendProposalListRecord:
     properties:

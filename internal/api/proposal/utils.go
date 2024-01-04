@@ -1,10 +1,7 @@
 package proposal
 
 import (
-	"time"
-
 	"github.com/rs/zerolog/log"
-	"github.com/samber/lo"
 	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk/metaforo"
@@ -19,6 +16,13 @@ SELECT u.wallet            AS wallet,
        u.name              AS os_username
 FROM users u
          INNER JOIN metaforo_users mu ON u.wallet = mu.user_wallet`
+
+const QueryProposalWithJointUserBaseSQL = `
+SELECT p.title AS title,
+u.wallet            AS wallet,
+u.name AS os_username,
+p.create_ts AS create_ts
+FROM users u INNER JOIN proposals p ON u.wallet = p.applicant`
 
 type JointMetaforoAndOsUser struct {
 	Wallet string `json:"wallet"`
@@ -46,27 +50,17 @@ func GetMetaforoProposalByInternalId(db *gorm.DB, proposalIdStr string) (*model.
 	return osProposalRcd, metaforoProposalRcd, nil
 }
 
-func GetLocalEditHistories(db *gorm.DB, metaforoProposal *metaforo.ProposalResponse) ([]*metaforo.PostEditHistoryRecord, error) {
-	proposalRecordId := model.BuildProposalRecordIdFromMetaforoThreadId(metaforoProposal.Thread.Id)
-	var histRecords []*model.Proposal
-	err := db.Model(model.Proposal{}).
-		Where("proposal_record_id = ?", proposalRecordId).
-		Select("title").
-		Order("create_ts desc").
-		Find(&histRecords).Error
+func GetLocalEditHistoriesWithOsUserData(db *gorm.DB, proposalRecordId string) ([]*FrontendProposalEditHistoryRecord, error) {
+	// Get proposal records with same RecordId
+	var localHistoryRecords []*FrontendProposalEditHistoryRecord
+	querySql := QueryProposalWithJointUserBaseSQL + " WHERE proposal_record_id = ? ORDER BY create_ts desc"
+	err := db.Raw(querySql, proposalRecordId).Find(&localHistoryRecords).Error
 	if err != nil {
-		log.Error().Msgf("fetch proposal history record error: %+v", err)
+		log.Error().Msgf("fetch history proposal record error: %+v", err)
 		return nil, err
 	}
 
-	editHistory := lo.Map(histRecords, func(r *model.Proposal, _ int) *metaforo.PostEditHistoryRecord {
-		return &metaforo.PostEditHistoryRecord{
-			CreatedAt: time.Unix(r.CreateTs, 0),
-			Title:     r.Title,
-		}
-	})
-
-	return editHistory, nil
+	return localHistoryRecords, nil
 }
 
 func GetOsUserFromMetaforoUserId(db *gorm.DB, metaforoUserIds []int) ([]*JointMetaforoAndOsUser, error) {

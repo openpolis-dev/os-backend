@@ -113,6 +113,11 @@ type FrontendContentBlockRecord struct {
 }
 
 type FrontendProposalEditHistories struct {
+	TotalCount int                                  `json:"total_count"`
+	Lists      []*FrontendProposalEditHistoryRecord `json:"lists"`
+}
+
+type FrontendProposalEditHistoryRecord struct {
 	Title      string `json:"title"`
 	Wallet     string `json:"wallet"`
 	OsUsername string `json:"os_username"`
@@ -143,7 +148,7 @@ type FrontendProposalDetailRecord struct {
 	RejectTs                int64  `json:"reject_ts"`
 	RejectMetaforoCommentId string `json:"reject_metaforo_comment_id"`
 
-	Histories any `json:"histories"`
+	Histories *FrontendProposalEditHistories `json:"histories"`
 
 	// Comments
 	CommentCount int   `json:"comment_count"`
@@ -219,7 +224,7 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 	if err != nil {
 		return nil, err
 	}
-	// TODO: Merge duplicated code (save edit histories arweave hash) in Update proposal
+
 	err = UpdateDbRecordsFromMetaforoProposalResponse(db, proposal, metaforoProposal)
 	if err != nil {
 		return nil, err
@@ -236,7 +241,7 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 	var applicantAvatarLink string
 	db.Model(model.User{}).Where("wallet = ?", common.FormatUserWallet(proposal.Applicant)).Select("avatar").First(&applicantAvatarLink)
 
-	editHistory, err := GetLocalEditHistories(db, metaforoProposal)
+	editHistoryRecords, err := GetLocalEditHistoriesWithOsUserData(db, proposal.ProposalRecordId)
 	if err != nil {
 		log.Error().Msgf("fetch local history record error: %+v", err)
 		return nil, err
@@ -255,12 +260,9 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 		RejectReason:            rejectedComment.Content,
 		RejectTs:                rejectedComment.CreateTs,
 		RejectMetaforoCommentId: rejectedComment.MetaforoCommentId,
-		Histories: struct {
-			TotalCount int                               `json:"total_count"`
-			Lists      []*metaforo.PostEditHistoryRecord `json:"lists"`
-		}{
-			TotalCount: len(editHistory),
-			Lists:      editHistory,
+		Histories: &FrontendProposalEditHistories{
+			TotalCount: len(editHistoryRecords),
+			Lists:      editHistoryRecords,
 		},
 		Arweave:      proposal.ArweaveHash,
 		CommentCount: metaforoProposal.Thread.PostsCount,

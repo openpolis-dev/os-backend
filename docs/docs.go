@@ -4251,7 +4251,9 @@ const docTemplate = `{
                     "description": "Timestamps",
                     "type": "integer"
                 },
-                "histories": {},
+                "histories": {
+                    "$ref": "#/definitions/proposal.FrontendProposalEditHistories"
+                },
                 "id": {
                     "type": "integer"
                 },
@@ -4289,6 +4291,37 @@ const docTemplate = `{
                 },
                 "votes": {
                     "description": "Vote"
+                }
+            }
+        },
+        "proposal.FrontendProposalEditHistories": {
+            "type": "object",
+            "properties": {
+                "lists": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/proposal.FrontendProposalEditHistoryRecord"
+                    }
+                },
+                "total_count": {
+                    "type": "integer"
+                }
+            }
+        },
+        "proposal.FrontendProposalEditHistoryRecord": {
+            "type": "object",
+            "properties": {
+                "create_ts": {
+                    "type": "integer"
+                },
+                "os_username": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "wallet": {
+                    "type": "string"
                 }
             }
         },
