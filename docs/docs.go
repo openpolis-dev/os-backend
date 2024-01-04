@@ -4725,12 +4725,18 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "metaforo_thread_id": {
+                    "description": "Metaforo thread id",
                     "type": "integer"
                 },
                 "proposal_id": {
                     "type": "integer"
                 },
+                "reply_to_wallet": {
+                    "description": "User this action is performed on",
+                    "type": "string"
+                },
                 "target_title": {
+                    "description": "Thread name this action is performed on",
                     "type": "string"
                 },
                 "wallet": {
