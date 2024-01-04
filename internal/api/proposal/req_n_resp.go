@@ -241,37 +241,47 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 		}
 	})
 
-	metaforoProposal, err := metaforo.GetProposal(proposal.GetMetaforoThreadId(), internal.MetaforoGroupName, accessToken, startPostId)
-	if err != nil {
-		return nil, err
-	}
-
-	err = UpdateDbRecordsFromMetaforoProposalResponse(db, proposal, metaforoProposal)
-	if err != nil {
-		return nil, err
-	}
-	// TODO: Query UserVoteRecord and update isVoted field
-
-	rejectedComment := model.ProposalComment{}
-	err = db.Model(model.ProposalComment{}).Where("proposal_id = ? AND is_reject_comment = ?", proposal.ID, true).First(&rejectedComment).Error
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, err
-	}
-
 	var applicantAvatarLink string
 	db.Model(model.User{}).Where("wallet = ?", common.FormatUserWallet(proposal.Applicant)).Select("avatar").First(&applicantAvatarLink)
 
-	editHistoryRecords, err := GetLocalEditHistoriesWithOsUserData(db, proposal.ProposalRecordId)
-	if err != nil {
-		log.Error().Msgf("fetch local history record error: %+v", err)
-		return nil, err
-	}
+	var editHistoryRecords []*FrontendProposalEditHistoryRecord
+	var frontendCommentsRecords []*FrontendProposalCommentRecord
+	var votes []metaforo.PollRecord
+	rejectedComment := model.ProposalComment{}
+	commentCount := 0
 
-	// Process comments
-	frontendCommentsRecords, err := GetProposalCommentsWithOsUserData(db, metaforoProposal.Thread.Posts)
-	if err != nil {
-		log.Error().Msgf("fetch proposal comments error: %+v", err)
-		return nil, err
+	if proposal.ProposalRecordId != "" {
+		metaforoProposal, err := metaforo.GetProposal(proposal.GetMetaforoThreadId(), internal.MetaforoGroupName, accessToken, startPostId)
+		if err != nil {
+			return nil, err
+		}
+
+		commentCount = metaforoProposal.Thread.PostsCount
+		votes = metaforoProposal.Thread.Polls
+
+		err = UpdateDbRecordsFromMetaforoProposalResponse(db, proposal, metaforoProposal)
+		if err != nil {
+			return nil, err
+		}
+		// TODO: Query UserVoteRecord and update isVoted field
+
+		err = db.Model(model.ProposalComment{}).Where("proposal_id = ? AND is_reject_comment = ?", proposal.ID, true).First(&rejectedComment).Error
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, err
+		}
+
+		editHistoryRecords, err = GetLocalEditHistoriesWithOsUserData(db, proposal.ProposalRecordId)
+		if err != nil {
+			log.Error().Msgf("fetch local history record error: %+v", err)
+			return nil, err
+		}
+
+		// Process comments
+		frontendCommentsRecords, err = GetProposalCommentsWithOsUserData(db, metaforoProposal.Thread.Posts)
+		if err != nil {
+			log.Error().Msgf("fetch proposal comments error: %+v", err)
+			return nil, err
+		}
 	}
 
 	return &FrontendProposalDetailRecord{
@@ -292,9 +302,9 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 			Lists:      editHistoryRecords,
 		},
 		Arweave:      proposal.ArweaveHash,
-		CommentCount: metaforoProposal.Thread.PostsCount,
+		CommentCount: commentCount,
 		Comments:     frontendCommentsRecords,
-		Votes:        metaforoProposal.Thread.Polls,
+		Votes:        votes,
 		CreateTs:     proposal.CreateTs,
 	}, nil
 }
