@@ -373,6 +373,10 @@ func main() {
 
 		proposalGroup.POST("/vote/:id", proposal.CastVote)
 		proposalGroup.POST("/revoke_vote/:id", proposal.RevokeVote)
+
+		// Data services API
+		dataSrv := authorizedGroup.Group("/data_srv")
+		dataSrv.GET("/widget_data", data_srv.WidgetData)
 	}
 
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
