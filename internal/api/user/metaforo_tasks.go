@@ -28,8 +28,9 @@ type MetaforoActivityRecord struct {
 	Wallet           string `json:"wallet"`
 	ProposalID       uint   `json:"proposal_id"`
 	Action           string `json:"metaforo_action"`
-	ThreadTitle      string `json:"target_title"`
-	MetaforoThreadId int    `json:"metaforo_thread_id"`
+	ThreadTitle      string `json:"target_title"`       // Thread name this action is performed on
+	MetaforoThreadId int    `json:"metaforo_thread_id"` // Metaforo thread id
+	ReplyToWallet    string `json:"reply_to_wallet"`    // User this action is performed on
 	ActionTs         int64  `json:"action_ts"`
 }
 
@@ -58,14 +59,6 @@ func MetaforoActivities(ctx *gin.Context) {
 		log.Error().Msgf("missing metaforo user id")
 		sdk.LogUserSideError(ctx, errors.New("missing metaforo user id"))
 		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("missing metaforo user id")))
-		return
-	}
-
-	userIdVal, err := strconv.Atoi(userId)
-	if err != nil {
-		log.Error().Msgf("parse user id error: %+v", err)
-		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("parse user id error")))
 		return
 	}
 
@@ -98,6 +91,7 @@ func MetaforoActivities(ctx *gin.Context) {
 	for _, activity := range activities {
 		userIdActivityMap[activity.UserId] = activity
 		metaforoUserIds = append(metaforoUserIds, activity.UserId)
+		metaforoUserIds = append(metaforoUserIds, activity.ThreadPosterId)
 	}
 
 	db := api.ForContextOnlyDB(ctx)
@@ -120,7 +114,7 @@ func MetaforoActivities(ctx *gin.Context) {
 		metaforoThreadIdToProposalIdMapping[proposal.GetMetaforoThreadId()] = proposal.ID
 	}
 
-	userRecords, err := proposal.GetOsUserFromMetaforoUserId(db, []int{userIdVal})
+	userRecords, err := proposal.GetOsUserFromMetaforoUserId(db, metaforoUserIds)
 	if err != nil {
 		log.Error().Msgf("get os user error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
@@ -128,12 +122,9 @@ func MetaforoActivities(ctx *gin.Context) {
 		return
 	}
 
-	wallet := ""
-	if len(userRecords) == 0 {
-		log.Warn().Msgf("metaforo user id %d not found in DB", userIdVal)
-	} else {
-		wallet = userRecords[0].Wallet
-	}
+	metaforoUidUserMapping := lo.KeyBy(userRecords, func(r *proposal.JointMetaforoAndOsUser) int {
+		return r.MetaforoUserID
+	})
 
 	rsltRcds := make([]*MetaforoActivityRecord, 0)
 	for idx := range activities {
@@ -151,8 +142,19 @@ func MetaforoActivities(ctx *gin.Context) {
 			action = "comment"
 		}
 
+		selfWallet := ""
+		if selfUserRcd, found := metaforoUidUserMapping[r.UserId]; found {
+			selfWallet = selfUserRcd.Wallet
+		}
+
+		replyToWallet := ""
+		if replyToUserRcd, found := metaforoUidUserMapping[r.ThreadPosterId]; found {
+			replyToWallet = replyToUserRcd.Wallet
+		}
+
 		rsltRcds = append(rsltRcds, &MetaforoActivityRecord{
-			Wallet:           wallet,
+			Wallet:           selfWallet,
+			ReplyToWallet:    replyToWallet,
 			ProposalID:       metaforoThreadIdToProposalIdMapping[r.ThreadId],
 			Action:           action,
 			ThreadTitle:      r.ThreadTitle,
