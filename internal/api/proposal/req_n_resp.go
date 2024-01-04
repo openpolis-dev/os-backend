@@ -124,6 +124,17 @@ type FrontendProposalEditHistoryRecord struct {
 	CreateTs   int64  `json:"create_ts"`
 }
 
+type FrontendProposalCommentRecord struct {
+	MetaforoPostId      int                              `json:"metaforo_post_id"`
+	Content             string                           `json:"content"`
+	Wallet              string                           `json:"wallet"`
+	ReplyMetaforoPostId int                              `json:"reply_metaforo_post_id"`
+	Children            []*FrontendProposalCommentRecord `json:"children"`
+
+	ProposalTitle       string `json:"proposal_title"`
+	ProposalArweaveHash string `json:"proposal_arweave_hash"`
+}
+
 type FrontendProposalDetailRecord struct {
 	ID            uint                           `json:"id"`
 	Title         string                         `json:"title"`
@@ -146,13 +157,13 @@ type FrontendProposalDetailRecord struct {
 	IsRejected              bool   `json:"is_rejected"`
 	RejectReason            string `json:"reject_reason"`
 	RejectTs                int64  `json:"reject_ts"`
-	RejectMetaforoCommentId string `json:"reject_metaforo_comment_id"`
+	RejectMetaforoCommentId int    `json:"reject_metaforo_comment_id"`
 
 	Histories *FrontendProposalEditHistories `json:"histories"`
 
 	// Comments
-	CommentCount int   `json:"comment_count"`
-	Comments     []any `json:"comments"`
+	CommentCount int                              `json:"comment_count"`
+	Comments     []*FrontendProposalCommentRecord `json:"comments"`
 
 	// Vote
 	Votes any `json:"votes"`
@@ -237,7 +248,6 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 		return nil, err
 	}
 
-	// TODO: Optimize the avatar query
 	var applicantAvatarLink string
 	db.Model(model.User{}).Where("wallet = ?", common.FormatUserWallet(proposal.Applicant)).Select("avatar").First(&applicantAvatarLink)
 
@@ -245,6 +255,40 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 	if err != nil {
 		log.Error().Msgf("fetch local history record error: %+v", err)
 		return nil, err
+	}
+
+	// Process comments
+	var frontendCommentsRecords []*FrontendProposalCommentRecord
+	for _, metaforoComment := range metaforoProposal.Thread.Posts {
+		userWallet := ""
+		if len(metaforoComment.User.Web3PublicKeys) > 0 {
+			userWallet = common.FormatUserWallet(metaforoComment.User.Web3PublicKeys[0].Address)
+		}
+
+		proposalTitle := ""
+		proposalArweaveHash := ""
+		dbComment := model.ProposalComment{MetaforoCommentId: metaforoComment.Id}
+		err = db.Model(model.ProposalComment{}).Joins("Proposal").Where(dbComment).First(&dbComment).Error
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				log.Warn().Msgf("porposal comment with metaforo id %d not found, metaforo resposne: %+v", metaforoComment.Id, metaforoComment)
+			} else {
+				return nil, err
+			}
+		} else {
+			proposalTitle = dbComment.Proposal.Title
+			proposalArweaveHash = dbComment.Proposal.ArweaveHash
+		}
+
+		frontendCommentsRecords = append(frontendCommentsRecords, &FrontendProposalCommentRecord{
+			MetaforoPostId:      metaforoComment.Id,
+			Content:             metaforoComment.Html,
+			Wallet:              userWallet,
+			ReplyMetaforoPostId: metaforoComment.ReplyPid,
+			Children:            nil,
+			ProposalTitle:       proposalTitle,
+			ProposalArweaveHash: proposalArweaveHash,
+		})
 	}
 
 	return &FrontendProposalDetailRecord{
@@ -266,7 +310,7 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 		},
 		Arweave:      proposal.ArweaveHash,
 		CommentCount: metaforoProposal.Thread.PostsCount,
-		Comments:     metaforoProposal.Thread.Posts,
+		Comments:     frontendCommentsRecords,
 		Votes:        metaforoProposal.Thread.Polls,
 		CreateTs:     proposal.CreateTs,
 	}, nil
@@ -286,5 +330,6 @@ func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcd *mod
 	}
 
 	// TODO: Save historical version proposal arweave hash, and merge with save with current version
+	// TODO: Save user id and wallet from comments data
 	return nil
 }

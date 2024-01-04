@@ -32,7 +32,7 @@ func TestLogin(t *testing.T) {
 				walletType: "5",
 			},
 			wantResp: &LoginResponse{
-				User: &User{
+				User: &UserDetailResponse{
 					Web3PublicKey: wallet,
 				},
 			},

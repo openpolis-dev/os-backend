@@ -24,30 +24,6 @@ type ApiResponseWrapper[T any] struct {
 	Data        *T     `json:"data"`
 }
 
-type User struct {
-	// TODO delete unused fields
-	Id             int         `json:"id"`
-	Email          interface{} `json:"email"`
-	PhotoUrl       string      `json:"photo_url"`
-	Likes          int         `json:"likes"`
-	Posts          int         `json:"posts"`
-	Activate       int         `json:"activate"`
-	LastPostTime   time.Time   `json:"last_post_time"`
-	Web3PublicKey  string      `json:"web3_public_key"`
-	Web3PublicKeys []struct {
-		Type    int    `json:"type"`
-		Address string `json:"address"`
-	} `json:"web3_public_keys"`
-	GroupProfiles []struct {
-		GroupId       int         `json:"group_id"`
-		GroupName     string      `json:"group_name"`
-		DisplayName   interface{} `json:"display_name"`
-		DisplayAvatar string      `json:"display_avatar"`
-	} `json:"group_profiles"`
-	Username string `json:"username"`
-	IsNft    int    `json:"is_nft"`
-}
-
 type UserActivity struct {
 	// TODO delete unused fields
 	Id                      int         `json:"id"`
@@ -121,24 +97,69 @@ type UserData struct {
 }
 
 type PostData struct {
-	Id          int           `json:"id"`
-	UserId      int           `json:"user_id"`
-	GroupId     int           `json:"group_id"`
-	ParentId    int           `json:"parent_id"`
-	Content     string        `json:"content"`
-	Depth       int           `json:"depth"`
-	ThreadId    int           `json:"thread_id"`
-	ReplyUid    int           `json:"reply_uid"`
-	ReplyPid    int           `json:"reply_pid"`
-	Sign        interface{}   `json:"sign"`
-	SignMsg     interface{}   `json:"sign_msg"`
-	EditorType  int           `json:"editor_type"`
-	Html        any           `json:"html"`
-	UpdatedAt   time.Time     `json:"updated_at"`
-	CreatedAt   time.Time     `json:"created_at"`
-	TotalLikes  int           `json:"total_likes"`
-	TotalReport int           `json:"total_report"`
-	Attachments []interface{} `json:"attachments"`
+	Arweave       string        `json:"arweave"`
+	AttachedFiles []interface{} `json:"attached_files"`
+	Attachments   []interface{} `json:"attachments"`
+	Badge         []interface{} `json:"badge"`
+	CanDelete     bool          `json:"can_delete"`
+	CanEdit       bool          `json:"can_edit"`
+	CanFlag       bool          `json:"can_flag"`
+	Children      struct {
+		Posts []interface{} `json:"posts"`
+	} `json:"children"`
+	ChildrenCount         int           `json:"children_count"`
+	Content               string        `json:"content"`
+	CreatedAt             time.Time     `json:"created_at"`
+	Deleted               int           `json:"deleted"`
+	DeletedBy             interface{}   `json:"deleted_by"`
+	EditorType            int           `json:"editor_type"`
+	Flags                 []interface{} `json:"flags"`
+	GroupId               int           `json:"group_id"`
+	Html                  string        `json:"html"`
+	Id                    int           `json:"id"`
+	IsBan                 interface{}   `json:"is_ban"`
+	Liked                 int           `json:"liked"`
+	Likes                 []interface{} `json:"likes"`
+	Nsfw                  int           `json:"nsfw"`
+	Online                bool          `json:"online"`
+	ParentId              int           `json:"parent_id"`
+	PostNumber            int           `json:"post_number"`
+	ReplyCount            int           `json:"reply_count"`
+	ReplyCountWithSoftDel int           `json:"reply_count_with_soft_del"`
+	ReplyPid              int           `json:"reply_pid"`
+	ReplyUid              int           `json:"reply_uid"`
+	ReplyUser             struct {
+		Id       int    `json:"id"`
+		IsNft    int    `json:"is_nft"`
+		PhotoUrl string `json:"photo_url"`
+		Username string `json:"username"`
+	} `json:"reply_user"`
+	Sign        interface{} `json:"sign"`
+	ThreadId    int         `json:"thread_id"`
+	TipCount    int         `json:"tip_count"`
+	Tipped      interface{} `json:"tipped"`
+	TotalLikes  int         `json:"total_likes"`
+	TotalReport int         `json:"total_report"`
+	UpdatedAt   time.Time   `json:"updated_at"`
+	User        struct {
+		DisplayAvatar  string      `json:"display_avatar"`
+		DisplayName    interface{} `json:"display_name"`
+		Id             int         `json:"id"`
+		IsNft          int         `json:"is_nft"`
+		PhotoUrl       string      `json:"photo_url"`
+		Username       string      `json:"username"`
+		Web3PublicKeys []struct {
+			Address string `json:"address"`
+			Id      int    `json:"id"`
+			Type    int    `json:"type"`
+			UserId  int    `json:"user_id"`
+		} `json:"web3_public_keys"`
+	} `json:"user"`
+	UserGroupLevel int           `json:"user_group_level"`
+	UserId         int           `json:"user_id"`
+	UserTitle      []interface{} `json:"user_title"`
+	Depth          int           `json:"depth"`
+	SignMsg        interface{}   `json:"sign_msg"`
 }
 
 type Thread struct {
@@ -162,7 +183,7 @@ type Thread struct {
 	Slug            any           `json:"slug"`
 	Badge           []interface{} `json:"badge"`
 	UserTitle       []interface{} `json:"user_title"`
-	Posts           []interface{} `json:"posts"`
+	Posts           []PostData    `json:"posts"`
 	//PostsMap        []interface{} `json:"posts_map"` // map[string]int
 	FirstLevelCount int           `json:"first_level_count"`
 	IsSubscribe     bool          `json:"is_subscribe"`
@@ -289,8 +310,8 @@ type PostEditHistoryRecord struct {
 }
 
 type LoginResponse struct {
-	User     *User  `json:"user"`
-	ApiToken string `json:"api_token"`
+	User     *UserDetailResponse `json:"user"`
+	ApiToken string              `json:"api_token"`
 }
 
 type UserActivitiesResponse struct {
@@ -496,28 +517,34 @@ type UserDetailResponse struct {
 		Address string `json:"address"`
 		Type    int    `json:"type"`
 	} `json:"web3_public_keys"`
+	GroupProfiles []struct {
+		GroupId       int         `json:"group_id"`
+		GroupName     string      `json:"group_name"`
+		DisplayName   interface{} `json:"display_name"`
+		DisplayAvatar string      `json:"display_avatar"`
+	} `json:"group_profiles"`
 }
 
 type UserPollRecord struct {
-	Id                       int           `json:"id"`
-	PollId                   int           `json:"poll_id"`
-	PollOptionId             int           `json:"poll_option_id"`
-	UserId                   int           `json:"user_id"`
-	CreatedAt                string        `json:"created_at"`
-	UpdatedAt                string        `json:"updated_at"`
-	Weight                   int           `json:"weight"`
-	ImportSourceImportId     interface{}   `json:"_import_source_import_id"`
-	ImportSourcePollId       interface{}   `json:"_import_source_poll_id"`
-	ImportSourcePollOptionId interface{}   `json:"_import_source_poll_option_id"`
-	ImportSourceUserId       interface{}   `json:"_import_source_user_id"`
-	Name                     string        `json:"name"`
-	LastTime                 string        `json:"last_time"`
-	Uid                      int           `json:"uid"`
-	PhotoUrl                 string        `json:"photo_url"`
-	Online                   bool          `json:"online"`
-	User                     *User         `json:"user"`
-	Badge                    []interface{} `json:"badge"`
-	UserTitle                []interface{} `json:"user_title"`
+	Id                       int                 `json:"id"`
+	PollId                   int                 `json:"poll_id"`
+	PollOptionId             int                 `json:"poll_option_id"`
+	UserId                   int                 `json:"user_id"`
+	CreatedAt                string              `json:"created_at"`
+	UpdatedAt                string              `json:"updated_at"`
+	Weight                   int                 `json:"weight"`
+	ImportSourceImportId     interface{}         `json:"_import_source_import_id"`
+	ImportSourcePollId       interface{}         `json:"_import_source_poll_id"`
+	ImportSourcePollOptionId interface{}         `json:"_import_source_poll_option_id"`
+	ImportSourceUserId       interface{}         `json:"_import_source_user_id"`
+	Name                     string              `json:"name"`
+	LastTime                 string              `json:"last_time"`
+	Uid                      int                 `json:"uid"`
+	PhotoUrl                 string              `json:"photo_url"`
+	Online                   bool                `json:"online"`
+	User                     *UserDetailResponse `json:"user"`
+	Badge                    []interface{}       `json:"badge"`
+	UserTitle                []interface{}       `json:"user_title"`
 }
 
 type UserPollRecordResponse struct {

@@ -99,7 +99,7 @@ func AddComment(ctx *gin.Context) {
 		ProposalID:        proposalRcd.ID,
 		ProposalRecordID:  proposalRcd.ProposalRecordId,
 		Content:           addComment.Content,
-		MetaforoCommentId: fmt.Sprintf("%d", metaforoCommentData.Id),
+		MetaforoCommentId: metaforoCommentData.Id,
 		IsRejectComment:   false, // Reject comment is
 	}
 
@@ -239,7 +239,7 @@ func DeleteComment(ctx *gin.Context) {
 	} else {
 		// Reject comment found, the comment can not be deleted
 		log.Error().Msgf("try to delete reject comment")
-		sdk.LogUserSideError(ctx, fmt.Errorf("user %s try to delete reject comment with comment metaforo id %s", user.Wallet, rejectComment.MetaforoCommentId))
+		sdk.LogUserSideError(ctx, fmt.Errorf("user %s try to delete reject comment with comment metaforo id %d", user.Wallet, rejectComment.MetaforoCommentId))
 		ctx.JSON(http.StatusBadRequest, api.ServerError(errors.New("reject comment can't be deleted")))
 		return
 	}
