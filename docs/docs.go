@@ -3103,9 +3103,6 @@ const docTemplate = `{
                 "component_id": {
                     "type": "integer"
                 },
-                "component_name": {
-                    "type": "string"
-                },
                 "create_ts": {
                     "type": "integer"
                 },
@@ -3114,6 +3111,9 @@ const docTemplate = `{
                 },
                 "id": {
                     "type": "integer"
+                },
+                "name": {
+                    "type": "string"
                 },
                 "schema": {
                     "type": "string"

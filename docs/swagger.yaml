@@ -152,14 +152,14 @@ definitions:
     properties:
       component_id:
         type: integer
-      component_name:
-        type: string
       create_ts:
         type: integer
       data:
         type: string
       id:
         type: integer
+      name:
+        type: string
       schema:
         type: string
     type: object
