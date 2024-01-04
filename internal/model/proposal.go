@@ -210,6 +210,8 @@ type ProposalComment struct {
 
 	ParentID uint
 
+	AuthorWallet string `gorm:"index"`
+
 	// Reference ID for proposal and specified version
 	ProposalID       uint `gorm:"index"`
 	Proposal         *Proposal

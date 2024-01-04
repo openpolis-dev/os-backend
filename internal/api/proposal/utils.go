@@ -1,8 +1,11 @@
 package proposal
 
 import (
+	"errors"
+
 	"github.com/rs/zerolog/log"
 	"github.com/theseed-labs/os-backend/internal"
+	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk/metaforo"
 	"gorm.io/gorm"
@@ -70,4 +73,65 @@ func GetOsUserFromMetaforoUserId(db *gorm.DB, metaforoUserIds []int) ([]*JointMe
 		return nil, err
 	}
 	return records, nil
+}
+
+func GetProposalCommentsWithOsUserData(db *gorm.DB, metaforoComments []metaforo.PostData) ([]*FrontendProposalCommentRecord, error) {
+	var err error
+	var frontendCommentsRecords []*FrontendProposalCommentRecord
+
+	for _, metaforoComment := range metaforoComments {
+		userWallet := ""
+		if len(metaforoComment.User.Web3PublicKeys) > 0 {
+			userWallet = common.FormatUserWallet(metaforoComment.User.Web3PublicKeys[0].Address)
+		}
+
+		proposalTitle := ""
+		proposalArweaveHash := ""
+		dbComment := model.ProposalComment{MetaforoCommentId: metaforoComment.Id}
+		err = db.Model(model.ProposalComment{}).Joins("Proposal").Where(dbComment).First(&dbComment).Error
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				log.Warn().Msgf("porposal comment with metaforo id %d not found, metaforo resposne: %+v", metaforoComment.Id, metaforoComment)
+			} else {
+				return nil, err
+			}
+		} else {
+			proposalTitle = dbComment.Proposal.Title
+			proposalArweaveHash = dbComment.Proposal.ArweaveHash
+		}
+
+		userRecords, err := GetOsUserFromMetaforoUserId(db, []int{metaforoComment.UserId})
+		if err != nil {
+			log.Error().Msgf("get user info by wallet %s error: %+v", dbComment.AuthorWallet, err)
+			return nil, err
+		}
+
+		userAvatar := ""
+		if len(userRecords) > 0 {
+			userAvatar = userRecords[0].OsAvatar
+		}
+
+		var childrenRecords []*FrontendProposalCommentRecord
+		if metaforoComment.ChildrenCount > 0 {
+			childrenRecords, err = GetProposalCommentsWithOsUserData(db, metaforoComment.Children.Posts)
+			if err != nil {
+				log.Error().Msgf("convert children comments error: %+v", err)
+				return nil, err
+			}
+		}
+
+		frontendCommentsRecords = append(frontendCommentsRecords, &FrontendProposalCommentRecord{
+			MetaforoPostId:      metaforoComment.Id,
+			Content:             metaforoComment.Content,
+			Wallet:              userWallet,
+			Avatar:              userAvatar,
+			ReplyMetaforoPostId: metaforoComment.ReplyPid,
+			Children:            childrenRecords,
+			ProposalTitle:       proposalTitle,
+			ProposalArweaveHash: proposalArweaveHash,
+			CreatedTs:           metaforoComment.CreatedAt.UTC().Unix(),
+		})
+	}
+
+	return frontendCommentsRecords, nil
 }

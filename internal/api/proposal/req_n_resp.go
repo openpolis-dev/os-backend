@@ -128,11 +128,13 @@ type FrontendProposalCommentRecord struct {
 	MetaforoPostId      int                              `json:"metaforo_post_id"`
 	Content             string                           `json:"content"`
 	Wallet              string                           `json:"wallet"`
+	Avatar              string                           `json:"avatar"`
 	ReplyMetaforoPostId int                              `json:"reply_metaforo_post_id"`
 	Children            []*FrontendProposalCommentRecord `json:"children"`
 
 	ProposalTitle       string `json:"proposal_title"`
 	ProposalArweaveHash string `json:"proposal_arweave_hash"`
+	CreatedTs           int64  `json:"created_ts"`
 }
 
 type FrontendProposalDetailRecord struct {
@@ -258,37 +260,10 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 	}
 
 	// Process comments
-	var frontendCommentsRecords []*FrontendProposalCommentRecord
-	for _, metaforoComment := range metaforoProposal.Thread.Posts {
-		userWallet := ""
-		if len(metaforoComment.User.Web3PublicKeys) > 0 {
-			userWallet = common.FormatUserWallet(metaforoComment.User.Web3PublicKeys[0].Address)
-		}
-
-		proposalTitle := ""
-		proposalArweaveHash := ""
-		dbComment := model.ProposalComment{MetaforoCommentId: metaforoComment.Id}
-		err = db.Model(model.ProposalComment{}).Joins("Proposal").Where(dbComment).First(&dbComment).Error
-		if err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				log.Warn().Msgf("porposal comment with metaforo id %d not found, metaforo resposne: %+v", metaforoComment.Id, metaforoComment)
-			} else {
-				return nil, err
-			}
-		} else {
-			proposalTitle = dbComment.Proposal.Title
-			proposalArweaveHash = dbComment.Proposal.ArweaveHash
-		}
-
-		frontendCommentsRecords = append(frontendCommentsRecords, &FrontendProposalCommentRecord{
-			MetaforoPostId:      metaforoComment.Id,
-			Content:             metaforoComment.Html,
-			Wallet:              userWallet,
-			ReplyMetaforoPostId: metaforoComment.ReplyPid,
-			Children:            nil,
-			ProposalTitle:       proposalTitle,
-			ProposalArweaveHash: proposalArweaveHash,
-		})
+	frontendCommentsRecords, err := GetProposalCommentsWithOsUserData(db, metaforoProposal.Thread.Posts)
+	if err != nil {
+		log.Error().Msgf("fetch proposal comments error: %+v", err)
+		return nil, err
 	}
 
 	return &FrontendProposalDetailRecord{

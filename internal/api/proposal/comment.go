@@ -10,6 +10,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api"
+	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk"
 	"github.com/theseed-labs/os-backend/internal/sdk/metaforo"
@@ -41,7 +42,7 @@ func AddComment(ctx *gin.Context) {
 		return
 	}
 
-	db := api.ForContextOnlyDB(ctx)
+	user, _, db, _ := api.ForContext(ctx)
 	proposalIdStr := ctx.Param("id")
 	proposalRcd, proposalDetailRecord, err := GetMetaforoProposalByInternalId(db, proposalIdStr)
 	if err != nil {
@@ -100,7 +101,8 @@ func AddComment(ctx *gin.Context) {
 		ProposalRecordID:  proposalRcd.ProposalRecordId,
 		Content:           addComment.Content,
 		MetaforoCommentId: metaforoCommentData.Id,
-		IsRejectComment:   false, // Reject comment is
+		IsRejectComment:   false, // Reject comment is added in other API endpoint
+		AuthorWallet:      common.FormatUserWallet(user.Wallet),
 	}
 
 	err = db.Create(&proposalComment).Error

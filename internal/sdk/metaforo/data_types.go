@@ -105,7 +105,7 @@ type PostData struct {
 	CanEdit       bool          `json:"can_edit"`
 	CanFlag       bool          `json:"can_flag"`
 	Children      struct {
-		Posts []interface{} `json:"posts"`
+		Posts []PostData `json:"posts"`
 	} `json:"children"`
 	ChildrenCount         int           `json:"children_count"`
 	Content               string        `json:"content"`
