@@ -164,13 +164,20 @@ func SaveProposalComponentRecords(db *gorm.DB, proposalId uint, reqComponentData
 				return err
 			}
 
+			proposalDataStr, err := json.Marshal(componentData.Data)
+			if err != nil {
+				tx.Rollback()
+				log.Error().Msgf("create proposal component error: %+v", err)
+				return err
+			}
+
 			// Create proposal component record and save to DB
 			if err := db.Save(&model.ProposalComponentRecord{
 				ID:          componentRecord.ID,
 				CreateTs:    time.Now().UTC().Unix(),
 				ComponentID: componentRecord.ID,
 				ProposalID:  proposalId,
-				Data:        componentData.Data,
+				Data:        string(proposalDataStr),
 			}).Error; err != nil {
 				log.Error().Msgf("create proposal component error: %+v", err)
 				return err

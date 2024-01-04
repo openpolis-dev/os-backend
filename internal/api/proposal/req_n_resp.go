@@ -33,10 +33,10 @@ type ListProposalQueryParams struct {
 // If the ID field has no value, this is a new component should be created,
 // while if it has value, this is an existing component should be updated.
 type ComponentRequestData struct {
-	ID         uint   `json:"id"`
-	AutoAction string `json:"auto_action"`
-	Name       string `json:"component_name"`
-	Data       string `json:"data"`
+	ID         uint           `json:"id"`
+	AutoAction string         `json:"auto_action"`
+	Name       string         `json:"component_name"`
+	Data       map[string]any `json:"data"`
 }
 
 type CreateOrUpdateProposalData struct {
