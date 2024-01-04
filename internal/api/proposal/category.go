@@ -38,19 +38,21 @@ func ListCategories(ctx *gin.Context) {
 
 	categoryResp := lo.Map(proposalCategories, func(r *model.ProposalCategory, index int) *FrontendProposalCategory {
 		userHasPerm := false
-		if r.ProposalVoteGateId != 0 {
-			for _, sbtInfo := range userSeepassData.Sbt {
-				if strings.EqualFold(sbtInfo.ContractAddr, r.ProposalVoteGate.TokenAddress) {
-					if r.ProposalVoteGate.TokenTypeName() == "ERC1155" {
-						userHasPerm = strings.EqualFold(r.ProposalVoteGate.TokenId, sbtInfo.TokenId)
-					} else {
-						userHasPerm = true
+		if userSeepassData != nil {
+			if r.ProposalVoteGateId != 0 {
+				for _, sbtInfo := range userSeepassData.Sbt {
+					if strings.EqualFold(sbtInfo.ContractAddr, r.ProposalVoteGate.TokenAddress) {
+						if r.ProposalVoteGate.TokenTypeName() == "ERC1155" {
+							userHasPerm = strings.EqualFold(r.ProposalVoteGate.TokenId, sbtInfo.TokenId)
+						} else {
+							userHasPerm = true
+						}
 					}
 				}
+			} else {
+				// No nft gate set, every one can create proposal
+				userHasPerm = true
 			}
-		} else {
-			// No nft gate set, every one can create proposal
-			userHasPerm = true
 		}
 		return &FrontendProposalCategory{
 			ID:         r.ID,
