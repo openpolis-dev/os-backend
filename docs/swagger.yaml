@@ -191,6 +191,13 @@ definitions:
       total:
         type: string
     type: object
+  data_srv.WidgetDataResponse:
+    properties:
+      id:
+        type: integer
+      name:
+        type: string
+    type: object
   guild.BudgetParam:
     properties:
       name:
@@ -301,12 +308,25 @@ definitions:
       api_token:
         type: string
       user:
-        $ref: '#/definitions/metaforo.User'
+        $ref: '#/definitions/metaforo.UserDetailResponse'
     type: object
-  metaforo.User:
+  metaforo.UserDetailResponse:
     properties:
       activate:
         type: integer
+      badge:
+        items: {}
+        type: array
+      bio: {}
+      cover_image: {}
+      created_at:
+        type: string
+      deleted:
+        type: integer
+      discord_id:
+        type: integer
+      discord_username:
+        type: string
       email: {}
       group_profiles:
         items:
@@ -321,18 +341,68 @@ definitions:
           type: object
         type: array
       id:
-        description: TODO delete unused fields
         type: integer
       is_nft:
         type: integer
+      is_user_follow:
+        type: boolean
       last_post_time:
+        type: string
+      last_seen:
         type: string
       likes:
         type: integer
+      neuron_addresses:
+        items: {}
+        type: array
+      nfts:
+        items: {}
+        type: array
+      online:
+        type: boolean
+      only_follow_one:
+        type: boolean
       photo_url:
         type: string
+      poap_badge:
+        items: {}
+        type: array
       posts:
         type: integer
+      public_key: {}
+      stripe_cus_id:
+        type: string
+      title:
+        properties:
+          "4649":
+            items:
+              properties:
+                background:
+                  type: string
+                color:
+                  type: string
+                group_id:
+                  type: integer
+                group_name:
+                  type: string
+                icon:
+                  type: string
+                id:
+                  type: integer
+                logo:
+                  type: string
+                name:
+                  type: string
+                type:
+                  type: integer
+                unicode_emoji: {}
+                user_id:
+                  type: integer
+              type: object
+            type: array
+        type: object
+      updated_at:
+        type: string
       username:
         type: string
       web3_public_key:
@@ -343,6 +413,8 @@ definitions:
             address:
               type: string
             type:
+              type: integer
+            user_id:
               type: integer
           type: object
         type: array
@@ -914,6 +986,25 @@ definitions:
       parent_id:
         type: integer
     type: object
+  proposal.FrontendProposalCommentRecord:
+    properties:
+      children:
+        items:
+          $ref: '#/definitions/proposal.FrontendProposalCommentRecord'
+        type: array
+      content:
+        type: string
+      metaforo_post_id:
+        type: integer
+      proposal_arweave_hash:
+        type: string
+      proposal_title:
+        type: string
+      reply_metaforo_post_id:
+        type: integer
+      wallet:
+        type: string
+    type: object
   proposal.FrontendProposalDetailRecord:
     properties:
       applicant:
@@ -928,7 +1019,8 @@ definitions:
         description: Comments
         type: integer
       comments:
-        items: {}
+        items:
+          $ref: '#/definitions/proposal.FrontendProposalCommentRecord'
         type: array
       components:
         items:
@@ -954,7 +1046,7 @@ definitions:
       proposal_category_id:
         type: integer
       reject_metaforo_comment_id:
-        type: string
+        type: integer
       reject_reason:
         type: string
       reject_ts:
@@ -1584,6 +1676,29 @@ paths:
               $ref: '#/definitions/data_srv.CreditDetail'
             type: array
       summary: returns aggregated credit score and node calculation result
+      tags:
+      - DataService
+  /data_srv/widget_data:
+    get:
+      parameters:
+      - description: data type
+        in: query
+        name: type
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/data_srv.WidgetDataResponse'
+                  type: array
+              type: object
+      summary: returns data required by widget.
       tags:
       - DataService
   /download_applications:

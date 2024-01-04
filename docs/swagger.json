@@ -356,6 +356,46 @@
                 }
             }
         },
+        "/data_srv/widget_data": {
+            "get": {
+                "tags": [
+                    "DataService"
+                ],
+                "summary": "returns data required by widget.",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "data type",
+                        "name": "type",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Reply"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/data_srv.WidgetDataResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/download_applications": {
             "get": {
                 "tags": [
@@ -3116,6 +3156,17 @@
                 }
             }
         },
+        "data_srv.WidgetDataResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
         "guild.BudgetParam": {
             "type": "object",
             "properties": {
@@ -3281,15 +3332,33 @@
                     "type": "string"
                 },
                 "user": {
-                    "$ref": "#/definitions/metaforo.User"
+                    "$ref": "#/definitions/metaforo.UserDetailResponse"
                 }
             }
         },
-        "metaforo.User": {
+        "metaforo.UserDetailResponse": {
             "type": "object",
             "properties": {
                 "activate": {
                     "type": "integer"
+                },
+                "badge": {
+                    "type": "array",
+                    "items": {}
+                },
+                "bio": {},
+                "cover_image": {},
+                "created_at": {
+                    "type": "string"
+                },
+                "deleted": {
+                    "type": "integer"
+                },
+                "discord_id": {
+                    "type": "integer"
+                },
+                "discord_username": {
+                    "type": "string"
                 },
                 "email": {},
                 "group_profiles": {
@@ -3311,23 +3380,97 @@
                     }
                 },
                 "id": {
-                    "description": "TODO delete unused fields",
                     "type": "integer"
                 },
                 "is_nft": {
                     "type": "integer"
                 },
+                "is_user_follow": {
+                    "type": "boolean"
+                },
                 "last_post_time": {
+                    "type": "string"
+                },
+                "last_seen": {
                     "type": "string"
                 },
                 "likes": {
                     "type": "integer"
                 },
+                "neuron_addresses": {
+                    "type": "array",
+                    "items": {}
+                },
+                "nfts": {
+                    "type": "array",
+                    "items": {}
+                },
+                "online": {
+                    "type": "boolean"
+                },
+                "only_follow_one": {
+                    "type": "boolean"
+                },
                 "photo_url": {
                     "type": "string"
                 },
+                "poap_badge": {
+                    "type": "array",
+                    "items": {}
+                },
                 "posts": {
                     "type": "integer"
+                },
+                "public_key": {},
+                "stripe_cus_id": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "object",
+                    "properties": {
+                        "4649": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "background": {
+                                        "type": "string"
+                                    },
+                                    "color": {
+                                        "type": "string"
+                                    },
+                                    "group_id": {
+                                        "type": "integer"
+                                    },
+                                    "group_name": {
+                                        "type": "string"
+                                    },
+                                    "icon": {
+                                        "type": "string"
+                                    },
+                                    "id": {
+                                        "type": "integer"
+                                    },
+                                    "logo": {
+                                        "type": "string"
+                                    },
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "type": {
+                                        "type": "integer"
+                                    },
+                                    "unicode_emoji": {},
+                                    "user_id": {
+                                        "type": "integer"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "updated_at": {
+                    "type": "string"
                 },
                 "username": {
                     "type": "string"
@@ -3344,6 +3487,9 @@
                                 "type": "string"
                             },
                             "type": {
+                                "type": "integer"
+                            },
+                            "user_id": {
                                 "type": "integer"
                             }
                         }
@@ -4206,6 +4352,35 @@
                 }
             }
         },
+        "proposal.FrontendProposalCommentRecord": {
+            "type": "object",
+            "properties": {
+                "children": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/proposal.FrontendProposalCommentRecord"
+                    }
+                },
+                "content": {
+                    "type": "string"
+                },
+                "metaforo_post_id": {
+                    "type": "integer"
+                },
+                "proposal_arweave_hash": {
+                    "type": "string"
+                },
+                "proposal_title": {
+                    "type": "string"
+                },
+                "reply_metaforo_post_id": {
+                    "type": "integer"
+                },
+                "wallet": {
+                    "type": "string"
+                }
+            }
+        },
         "proposal.FrontendProposalDetailRecord": {
             "type": "object",
             "properties": {
@@ -4226,7 +4401,9 @@
                 },
                 "comments": {
                     "type": "array",
-                    "items": {}
+                    "items": {
+                        "$ref": "#/definitions/proposal.FrontendProposalCommentRecord"
+                    }
                 },
                 "components": {
                     "type": "array",
@@ -4262,7 +4439,7 @@
                     "type": "integer"
                 },
                 "reject_metaforo_comment_id": {
-                    "type": "string"
+                    "type": "integer"
                 },
                 "reject_reason": {
                     "type": "string"

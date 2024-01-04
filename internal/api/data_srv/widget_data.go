@@ -21,6 +21,13 @@ type WidgetDataResponse struct {
 
 // TODO: Currently the data service is handled by RESTful API and query params, will be migrate to GraphQL in future
 
+// WidgetData returns data required by widget
+//
+//	@summary	returns data required by widget.
+//	@tags		DataService
+//	@router		/data_srv/widget_data [get]
+//	@param		type	query		string	true	"data type"	Enum(project_list guild_list entity_list)
+//	@success	200		{object}	api.Reply{data=[]WidgetDataResponse}
 func WidgetData(ctx *gin.Context) {
 	dataType := ctx.Query("type")
 	if dataType == "" {
