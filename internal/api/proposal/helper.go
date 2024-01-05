@@ -436,15 +436,10 @@ func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcd *mod
 		if err == nil {
 			err = db.Transaction(func(tx *gorm.DB) error {
 				for idx := 0; idx < metaforoProposal.Thread.EditHistory.Count; idx++ {
-					dbProposals[idx].ArweaveHash = metaforoProposal.Thread.EditHistory.Lists[idx].Arweave
-					db.Save(&dbProposals[idx])
+					tx.Model(&dbProposals[idx]).Update("arweave_hash", metaforoProposal.Thread.EditHistory.Lists[idx].Arweave)
 				}
 				return nil
 			})
-			err = db.Updates(&dbProposals).Error
-			if err != nil {
-				log.Error().Msgf("update proposal arweave hash error: %+v", err)
-			}
 		} else {
 			log.Error().Msgf("fetch proposal data with recordId %s hash error: %+v", dbProposalRcd.ProposalRecordId, err)
 		}
