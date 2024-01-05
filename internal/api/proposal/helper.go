@@ -398,8 +398,10 @@ func IsUserMetVoteGate(userSeepassData *sdk.SeepassResponse, proposalVoteGate *m
 	if userSeepassData == nil {
 		return false
 	}
+
+	// No nft gate set, this vote should be opened to all users
 	if proposalVoteGate == nil {
-		return false
+		return true
 	}
 
 	for _, sbtInfo := range userSeepassData.Sbt {

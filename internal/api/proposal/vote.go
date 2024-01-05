@@ -1,6 +1,7 @@
 package proposal
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -10,6 +11,7 @@ import (
 	"github.com/samber/lo"
 	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api"
+	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk"
 	"github.com/theseed-labs/os-backend/internal/sdk/metaforo"
 )
@@ -29,6 +31,39 @@ type VoterInfo struct {
 //	@success	200		{object}	api.Reply		"Success"
 //	@router		/proposals/vote/:id [post]
 func CastVote(ctx *gin.Context) {
+	user, _, db, _ := api.ForContext(ctx)
+
+	proposalIdString := ctx.Param("id")
+	proposal, err := GetProposalFromStringId(db, proposalIdString)
+	if err != nil {
+		log.Error().Msgf("get proposal error: %+v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusBadRequest, api.ServerError(errors.New("get proposal error")))
+		return
+	}
+
+	// Verify NFT gate
+	seepassData, err := api.GetCachedSeepassData(sdk.GetSppClient(), user.Wallet, false)
+	if err != nil {
+		log.Error().Msgf("get seepass data error: %+v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusBadRequest, api.ServerError(errors.New("get user data error")))
+		return
+	}
+
+	var proposalCategory *model.ProposalCategory
+	err = db.Model(&model.ProposalCategory{}).
+		Joins("ProposalVoteGate").
+		Where(model.ProposalCategory{ID: proposal.ProposalCategoryID}).First(&proposalCategory).Error
+
+	if !IsUserMetVoteGate(seepassData, proposalCategory.ProposalVoteGate) {
+		err := fmt.Errorf("user %s not met vote gate requirements: %+v, seepass data: %+v", user.Wallet, proposalCategory.ProposalVoteGate, seepassData)
+		log.Err(err)
+		sdk.LogUserSideError(ctx, err)
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("user does not met vote gate requirements")))
+		return
+	}
+
 	reqData := CastVoteData{}
 	if err := ctx.BindJSON(&reqData); err != nil {
 		log.Error().Msgf("parse request data error: %+v", err)
