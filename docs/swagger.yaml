@@ -980,13 +980,21 @@ definitions:
     type: object
   proposal.FrontendProposalCategory:
     properties:
+      has_perm:
+        description: Whether the requester has permission to create proposal in this
+          category
+        type: boolean
       id:
+        description: Proposal Category ID
         type: integer
       metaforo_id:
+        description: Metaforo ID for the category
         type: integer
       name:
+        description: Name of the category
         type: string
       parent_id:
+        description: Parent ID of this category
         type: integer
     type: object
   proposal.FrontendProposalCommentRecord:
@@ -2240,7 +2248,7 @@ paths:
       summary: list my projects
       tags:
       - Project
-  /proposal_categories:
+  /proposal_categories/list:
     get:
       responses:
         "200":
@@ -2255,6 +2263,23 @@ paths:
                   type: array
               type: object
       summary: list all proposal categories
+      tags:
+      - Proposal
+  /proposal_categories/list_with_perm:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/proposal.FrontendProposalCategory'
+                  type: array
+              type: object
+      summary: list all proposal categories with permission field
       tags:
       - Proposal
   /proposal_components/:

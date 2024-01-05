@@ -12,13 +12,13 @@ import (
 	"github.com/theseed-labs/os-backend/internal/sdk"
 )
 
-// ListCategories function lists all proposal categories
+// ListCategoriesWithPerm function lists all proposal categories with permissions
 //
-//	@summary	list all proposal categories
-//	@router		/proposal_categories [get]
+//	@summary	list all proposal categories with permission field
+//	@router		/proposal_categories/list_with_perm [get]
 //	@tags		Proposal
 //	@success	200	{object}	api.Reply{data=[]proposal.FrontendProposalCategory}
-func ListCategories(ctx *gin.Context) {
+func ListCategoriesWithPerm(ctx *gin.Context) {
 	user, _, db, _ := api.ForContext(ctx)
 
 	sppClient := sdk.GetSppClient()
@@ -64,6 +64,39 @@ func UpdateCategories(ctx *gin.Context) {
 
 	// TODO: Find record in DB with ID, and update parentID, name, metaforoId
 	// TODO: Load meatforoID from parent record (if have) and sync name and hierarchical relationship to Metaforo
+}
+
+// ListAllCategories return all categories data, open to public
+//
+//	@summary	list all proposal categories
+//	@router		/proposal_categories/list [get]
+//	@tags		Proposal
+//	@success	200	{object}	api.Reply{data=[]proposal.FrontendProposalCategory}
+func ListAllCategories(ctx *gin.Context) {
+	var err error
+	db := api.ForContextOnlyDB(ctx)
+	var proposalCategories []*model.ProposalCategory
+	err = db.Model(&model.ProposalCategory{}).Where(model.ProposalCategory{IsActive: true}).Find(&proposalCategories).Error
+	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
+		log.Error().Msgf("get proposal categories error: %+v", err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get proposal categories error")))
+		return
+	}
+
+	categoryResp := lo.Map(proposalCategories, func(r *model.ProposalCategory, index int) *FrontendProposalCategory {
+		return &FrontendProposalCategory{
+			ID:         r.ID,
+			ParentID:   r.ParentID,
+			Name:       r.Name,
+			MetaforoId: r.MetaforoId,
+		}
+	})
+
+	ctx.JSON(http.StatusOK, api.Reply{
+		Data: categoryResp,
+	})
+
 }
 
 // SyncFromMetaforo is used to sync metaforo categories to local DB

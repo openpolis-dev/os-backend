@@ -265,6 +265,10 @@ func main() {
 		proposalGroup.GET("/show/:id", proposal.Detail)
 		proposalGroup.GET("/vote_detail/:vote_option_id", proposal.ShowVoteDetail)
 
+		// All proposal categories for non login users
+		proposalCategoryRouter := v1.Group("/proposal_categories")
+		proposalCategoryRouter.GET("/list", proposal.ListAllCategories)
+
 		// foo routers
 	}
 	// --> auth required
@@ -374,7 +378,7 @@ func main() {
 
 		// List proposal categories
 		proposalCategoryRouter := authorizedGroup.Group("/proposal_categories")
-		proposalCategoryRouter.GET("/", proposal.ListCategories)
+		proposalCategoryRouter.GET("/list_with_perm", proposal.ListCategoriesWithPerm)
 
 		// Data services API
 		dataSrv := authorizedGroup.Group("/data_srv")

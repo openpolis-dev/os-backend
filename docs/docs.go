@@ -1270,12 +1270,43 @@ const docTemplate = `{
                 }
             }
         },
-        "/proposal_categories": {
+        "/proposal_categories/list": {
             "get": {
                 "tags": [
                     "Proposal"
                 ],
                 "summary": "list all proposal categories",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Reply"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/proposal.FrontendProposalCategory"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/proposal_categories/list_with_perm": {
+            "get": {
+                "tags": [
+                    "Proposal"
+                ],
+                "summary": "list all proposal categories with permission field",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -4349,16 +4380,24 @@ const docTemplate = `{
         "proposal.FrontendProposalCategory": {
             "type": "object",
             "properties": {
+                "has_perm": {
+                    "description": "Whether the requester has permission to create proposal in this category",
+                    "type": "boolean"
+                },
                 "id": {
+                    "description": "Proposal Category ID",
                     "type": "integer"
                 },
                 "metaforo_id": {
+                    "description": "Metaforo ID for the category",
                     "type": "integer"
                 },
                 "name": {
+                    "description": "Name of the category",
                     "type": "string"
                 },
                 "parent_id": {
+                    "description": "Parent ID of this category",
                     "type": "integer"
                 }
             }
