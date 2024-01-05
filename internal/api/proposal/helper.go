@@ -160,7 +160,7 @@ func SaveProposalComponentRecords(db *gorm.DB, proposalId uint, reqComponentData
 			componentRecord := model.ProposalComponent{
 				Name: componentData.Name,
 			}
-			if err := tx.First(&componentRecord).Error; err != nil {
+			if err := tx.Where(componentRecord).First(&componentRecord).Error; err != nil {
 				tx.Rollback()
 				log.Error().Msgf("find proposal component %s error: %+v", componentData.Name, err)
 				return err
