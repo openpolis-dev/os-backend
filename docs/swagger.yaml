@@ -1011,6 +1011,8 @@ definitions:
         type: string
       created_ts:
         type: integer
+      deleted:
+        type: boolean
       metaforo_post_id:
         type: integer
       proposal_arweave_hash:

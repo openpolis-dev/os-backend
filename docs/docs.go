@@ -4454,6 +4454,9 @@ const docTemplate = `{
                 "created_ts": {
                     "type": "integer"
                 },
+                "deleted": {
+                    "type": "boolean"
+                },
                 "metaforo_post_id": {
                     "type": "integer"
                 },
