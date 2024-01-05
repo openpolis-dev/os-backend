@@ -95,6 +95,8 @@ type Proposal struct {
 	VoteRecords []*ProposalVoteRecord
 
 	IsHidden bool
+
+	TemplateId uint
 }
 
 func (p *Proposal) StateName() string {

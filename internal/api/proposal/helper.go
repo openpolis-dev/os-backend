@@ -91,6 +91,7 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 			Applicant:          common.FormatUserWallet(userWallet),
 			ProposalCategoryID: reqData.ProposalCategoryId,
 			Version:            1,
+			TemplateId:         reqData.TemplateId,
 		}
 
 		if err := db.Create(&proposalRecord).Error; err != nil {

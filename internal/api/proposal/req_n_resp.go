@@ -40,6 +40,7 @@ type ComponentRequestData struct {
 }
 
 type CreateOrUpdateProposalData struct {
+	TemplateId          uint                             `json:"template_id"`
 	Title               string                           `json:"title"`
 	ProposalCategoryId  uint                             `json:"proposal_category_id"`
 	ContentBlocks       []*FrontendContentBlockRecord    `json:"content_blocks"`
@@ -173,6 +174,8 @@ type FrontendProposalDetailRecord struct {
 	// Is current user voted for this proposal
 	IsVoted bool `json:"is_voted"`
 
+	IsBasedOnTemplate bool `json:"is_based_on_template"`
+
 	// Timestamps
 	CreateTs int64 `json:"create_ts"`
 }
@@ -302,11 +305,12 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 			TotalCount: len(editHistoryRecords),
 			Lists:      editHistoryRecords,
 		},
-		Arweave:      proposal.ArweaveHash,
-		CommentCount: commentCount,
-		Comments:     frontendCommentsRecords,
-		Votes:        votes,
-		CreateTs:     proposal.CreateTs,
+		Arweave:           proposal.ArweaveHash,
+		CommentCount:      commentCount,
+		Comments:          frontendCommentsRecords,
+		Votes:             votes,
+		CreateTs:          proposal.CreateTs,
+		IsBasedOnTemplate: proposal.TemplateId != 0,
 	}, nil
 }
 
