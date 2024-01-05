@@ -124,6 +124,7 @@ type FrontendProposalEditHistoryRecord struct {
 	Wallet     string `json:"wallet"`
 	OsUsername string `json:"os_username"`
 	CreateTs   int64  `json:"create_ts"`
+	Arweave    string `json:"arweave"`
 }
 
 type FrontendProposalCommentRecord struct {

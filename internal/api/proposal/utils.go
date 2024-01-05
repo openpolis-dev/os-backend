@@ -24,7 +24,8 @@ const QueryProposalWithJointUserBaseSQL = `
 SELECT p.title AS title,
 u.wallet            AS wallet,
 u.name AS os_username,
-p.create_ts AS create_ts
+p.create_ts AS create_ts,
+p.arweave_hash as arweave
 FROM users u INNER JOIN proposals p ON u.wallet = p.applicant`
 
 type JointMetaforoAndOsUser struct {
