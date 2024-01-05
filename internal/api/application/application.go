@@ -131,17 +131,17 @@ func Create(ctx *gin.Context) {
 
 			//  check permission: `(0x..., proj_1, create_app)` (0x..., guild_1, create_app)
 			obj := lo.
-				If(req.Entity == "project", fmt.Sprintf("%s%d", api.ObjProjPrefix, req.EntityId)).
-				ElseIf(req.Entity == "guild", fmt.Sprintf("%s%d", api.ObjGuildPrefix, req.EntityId)).
+				If(req.Entity == "project", fmt.Sprintf("%s%d", internal.ObjProjPrefix, req.EntityId)).
+				ElseIf(req.Entity == "guild", fmt.Sprintf("%s%d", internal.ObjGuildPrefix, req.EntityId)).
 				Else("")
-			ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), obj, api.ActCreateApplication)
+			ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), obj, internal.ActCreateApplication)
 			if err != nil {
 				sdk.LogServerErrorToSentry(ctx, err)
 				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 				return err
 			}
 			if !ok {
-				sdk.LogForbiddenError(ctx, user.Wallet, obj, api.ActCreateApplication)
+				sdk.LogForbiddenError(ctx, user.Wallet, obj, internal.ActCreateApplication)
 				ctx.JSON(http.StatusForbidden, api.Forbidden())
 				return err
 			}
@@ -386,14 +386,14 @@ func BatchProcess(ctx *gin.Context) {
 	user, enforcer, db, _ := api.ForContext(ctx)
 
 	//  check permission: `(0x..., proj_and_guild, audit_app)`
-	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), api.ObjProjAndGuild, api.ActAuditApplication)
+	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), internal.ObjProjAndGuild, internal.ActAuditApplication)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 		return
 	}
 	if !ok {
-		sdk.LogForbiddenError(ctx, user.Wallet, api.ObjProjAndGuild, api.ActCreateApplication)
+		sdk.LogForbiddenError(ctx, user.Wallet, internal.ObjProjAndGuild, internal.ActCreateApplication)
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
@@ -451,14 +451,14 @@ func BatchApprove(ctx *gin.Context) {
 	user, enforcer, db, _ := api.ForContext(ctx)
 
 	//  check permission: `(0x..., proj_and_guild, audit_app)`
-	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), api.ObjProjAndGuild, api.ActAuditApplication)
+	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), internal.ObjProjAndGuild, internal.ActAuditApplication)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 		return
 	}
 	if !ok {
-		sdk.LogForbiddenError(ctx, user.Wallet, api.ObjProjAndGuild, api.ActCreateApplication)
+		sdk.LogForbiddenError(ctx, user.Wallet, internal.ObjProjAndGuild, internal.ActCreateApplication)
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
@@ -487,14 +487,14 @@ func BatchReject(ctx *gin.Context) {
 	user, enforcer, db, _ := api.ForContext(ctx)
 
 	//  check permission: `(0x..., proj_and_guild, audit_app)`
-	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), api.ObjProjAndGuild, api.ActAuditApplication)
+	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), internal.ObjProjAndGuild, internal.ActAuditApplication)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 		return
 	}
 	if !ok {
-		sdk.LogForbiddenError(ctx, user.Wallet, api.ObjProjAndGuild, api.ActCreateApplication)
+		sdk.LogForbiddenError(ctx, user.Wallet, internal.ObjProjAndGuild, internal.ActCreateApplication)
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
@@ -517,14 +517,14 @@ func BatchComplete(ctx *gin.Context) {
 	user, enforcer, db, _ := api.ForContext(ctx)
 
 	//  check permission: `(0x..., proj_and_guild, audit_app)`
-	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), api.ObjProjAndGuild, api.ActAuditApplication)
+	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), internal.ObjProjAndGuild, internal.ActAuditApplication)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 		return
 	}
 	if !ok {
-		sdk.LogForbiddenError(ctx, user.Wallet, api.ObjProjAndGuild, api.ActCreateApplication)
+		sdk.LogForbiddenError(ctx, user.Wallet, internal.ObjProjAndGuild, internal.ActCreateApplication)
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
@@ -613,7 +613,7 @@ func auditApplication(ctx *gin.Context, application *model.Application, auditAct
 	push := api.ForContextOnlyPush(ctx)
 
 	//  check permission: `(0x..., proj_and_guild, audit_app)`
-	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), api.ObjProjAndGuild, api.ActAuditApplication)
+	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), internal.ObjProjAndGuild, internal.ActAuditApplication)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))

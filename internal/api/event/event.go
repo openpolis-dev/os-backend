@@ -71,14 +71,14 @@ func MyList(ctx *gin.Context) {
 func Create(ctx *gin.Context) {
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
-	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), api.ObjEvent, api.ActCreateEvent)
+	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), internal.ObjEvent, internal.ActCreateEvent)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 		return
 	}
 	if !ok {
-		sdk.LogForbiddenError(ctx, user.Wallet, api.ObjEvent, api.ActCreateEvent)
+		sdk.LogForbiddenError(ctx, user.Wallet, internal.ObjEvent, internal.ActCreateEvent)
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
@@ -171,14 +171,14 @@ func Delete(ctx *gin.Context) {
 func Update(ctx *gin.Context) {
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
-	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), api.ObjEvent, api.ActCreateEvent)
+	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), internal.ObjEvent, internal.ActCreateEvent)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 		return
 	}
 	if !ok {
-		sdk.LogForbiddenError(ctx, user.Wallet, api.ObjEvent, api.ActCreateEvent)
+		sdk.LogForbiddenError(ctx, user.Wallet, internal.ObjEvent, internal.ActCreateEvent)
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}

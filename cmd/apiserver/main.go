@@ -7,6 +7,7 @@ import (
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/pkgerrors"
+	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api/proposal"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/graph/generated"
@@ -79,9 +80,9 @@ func main() {
 	}
 	// add default policies
 	defaultPolicies := [][]string{
-		{api.RoleHall, "*", "*"}, // `p, hall, *, *` hall can do anything
-		{api.RoleTreasuryManager, api.ObjTreasury, api.ActUpdateAssertBudget}, // `p, treasury_manager, treasury, u_assert_budget`
-		{api.RoleEventManager, api.ObjEvent, api.ActCreateEvent},              // `p, event_manager, event, create_event`
+		{internal.RoleHall, "*", "*"}, // `p, hall, *, *` hall can do anything
+		{internal.RoleTreasuryManager, internal.ObjTreasury, internal.ActUpdateAssertBudget}, // `p, treasury_manager, treasury, u_assert_budget`
+		{internal.RoleEventManager, internal.ObjEvent, internal.ActCreateEvent},              // `p, event_manager, event, create_event`
 	}
 	_, err = enforcer.AddPolicies(defaultPolicies)
 	if err != nil {
@@ -89,7 +90,7 @@ func main() {
 	}
 	// add default users
 	groupPolicies := lo.Map[string, []string](cfg.Casbin.SuperUsers, func(user string, _ int) []string {
-		return []string{common.FormatUserWallet(user), api.RoleHall}
+		return []string{common.FormatUserWallet(user), internal.RoleHall}
 	})
 	_, err = enforcer.AddGroupingPolicies(groupPolicies) // add default hall wallets
 	if err != nil {

@@ -91,14 +91,14 @@ func Create(ctx *gin.Context) {
 
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
-	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), api.ObjProj, api.ActCreate)
+	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), internal.ObjProj, internal.ActCreate)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 		return
 	}
 	if !ok {
-		sdk.LogForbiddenError(ctx, user.Wallet, api.ObjProj, api.ActCreate)
+		sdk.LogForbiddenError(ctx, user.Wallet, internal.ObjProj, internal.ActCreate)
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
@@ -150,10 +150,10 @@ func Create(ctx *gin.Context) {
 		// p, proj_sponsor_1, proj_1, create_app
 		// p, proj_sponsor_1, proj_1, u_member
 		// p, proj_sponsor_1, proj_1, u_budget
-		{fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, proj.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, proj.ID), api.ActModify},
-		{fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, proj.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, proj.ID), api.ActCreateApplication},
-		{fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, proj.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, proj.ID), api.ActUpdateMember},
-		{fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, proj.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, proj.ID), api.ActUpdateBudget},
+		{fmt.Sprintf("%s%d", internal.RoleProjSponsorPrefix, proj.ID), fmt.Sprintf("%s%d", internal.ObjProjPrefix, proj.ID), internal.ActModify},
+		{fmt.Sprintf("%s%d", internal.RoleProjSponsorPrefix, proj.ID), fmt.Sprintf("%s%d", internal.ObjProjPrefix, proj.ID), internal.ActCreateApplication},
+		{fmt.Sprintf("%s%d", internal.RoleProjSponsorPrefix, proj.ID), fmt.Sprintf("%s%d", internal.ObjProjPrefix, proj.ID), internal.ActUpdateMember},
+		{fmt.Sprintf("%s%d", internal.RoleProjSponsorPrefix, proj.ID), fmt.Sprintf("%s%d", internal.ObjProjPrefix, proj.ID), internal.ActUpdateBudget},
 		//// p, proj_member_1, proj_1, modify
 		//// p, proj_member_1, proj_1, create_app
 		//{fmt.Sprintf("%s%d", api.RoleProjMemberPrefix, proj.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, proj.ID), api.ActModify},
@@ -168,7 +168,7 @@ func Create(ctx *gin.Context) {
 	// add roles
 	sponsorGroupingPolicies := lo.Map(req.Sponsors, func(sponsor string, _ int) []string {
 		// g, 0xc13..1283 proj_sponsor_1
-		return []string{common.FormatUserWallet(sponsor), fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, proj.ID)}
+		return []string{common.FormatUserWallet(sponsor), fmt.Sprintf("%s%d", internal.RoleProjSponsorPrefix, proj.ID)}
 	})
 	//memberGroupingPolicies := lo.Map(req.Members, func(member string, _ int) []string {
 	//	// g, 0xc13..1283 proj_member_1
@@ -231,14 +231,14 @@ func Update(ctx *gin.Context) {
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
 	permObject := buildProjectPermObject(id)
-	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), permObject, api.ActModify)
+	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), permObject, internal.ActModify)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 		return
 	}
 	if !ok {
-		sdk.LogForbiddenError(ctx, user.Wallet, permObject, api.ActModify)
+		sdk.LogForbiddenError(ctx, user.Wallet, permObject, internal.ActModify)
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
@@ -302,14 +302,14 @@ func Close(ctx *gin.Context) {
 
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
-	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), api.ObjProj, api.ActClose)
+	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), internal.ObjProj, internal.ActClose)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 		return
 	}
 	if !ok {
-		sdk.LogForbiddenError(ctx, user.Wallet, api.ObjProj, api.ActClose)
+		sdk.LogForbiddenError(ctx, user.Wallet, internal.ObjProj, internal.ActClose)
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
@@ -511,28 +511,28 @@ func UpdateStaffs(ctx *gin.Context) {
 	//  check permission
 	if req.Sponsors != nil && len(req.Sponsors) != 0 {
 		permObject := buildProjectPermObject(id)
-		ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), permObject, api.ActUpdateSponsor)
+		ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), permObject, internal.ActUpdateSponsor)
 		if err != nil {
 			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 			return
 		}
 		if !ok {
-			sdk.LogForbiddenError(ctx, user.Wallet, permObject, api.ActUpdateSponsor)
+			sdk.LogForbiddenError(ctx, user.Wallet, permObject, internal.ActUpdateSponsor)
 			ctx.JSON(http.StatusForbidden, api.Forbidden())
 			return
 		}
 	}
 	if req.Members != nil && len(req.Members) != 0 {
 		permObject := buildProjectPermObject(id)
-		ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), permObject, api.ActUpdateMember)
+		ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), permObject, internal.ActUpdateMember)
 		if err != nil {
 			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 			return
 		}
 		if !ok {
-			sdk.LogForbiddenError(ctx, user.Wallet, permObject, api.ActUpdateMember)
+			sdk.LogForbiddenError(ctx, user.Wallet, permObject, internal.ActUpdateMember)
 			ctx.JSON(http.StatusForbidden, api.Forbidden())
 			return
 		}
@@ -589,7 +589,7 @@ func UpdateStaffs(ctx *gin.Context) {
 			// add roles for new sponsors
 			newSponsorGroupingPolicies := lo.Map(req.Sponsors, func(sponsor string, _ int) []string {
 				// g, 0xc13..1283 proj_sponsor_1
-				return []string{common.FormatUserWallet(sponsor), fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, proj.ID)}
+				return []string{common.FormatUserWallet(sponsor), fmt.Sprintf("%s%d", internal.RoleProjSponsorPrefix, proj.ID)}
 			})
 			_, err = enforcer.AddGroupingPolicies(newSponsorGroupingPolicies)
 			if err != nil {
@@ -671,7 +671,7 @@ func UpdateStaffs(ctx *gin.Context) {
 			// remove roles for old sponsors
 			oldSponsorGroupingPolicies := lo.Map(proj.Sponsors, func(sponsor string, _ int) []string {
 				// g, 0xc13..1283 proj_sponsor_1
-				return []string{sponsor, fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, proj.ID)}
+				return []string{sponsor, fmt.Sprintf("%s%d", internal.RoleProjSponsorPrefix, proj.ID)}
 			})
 			_, err = enforcer.RemoveGroupingPolicies(oldSponsorGroupingPolicies)
 			if err != nil {
@@ -769,14 +769,14 @@ func UpdateBudget(ctx *gin.Context) {
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
 	permObject := buildProjectPermObject(id)
-	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), permObject, api.ActUpdateBudget)
+	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), permObject, internal.ActUpdateBudget)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 		return
 	}
 	if !ok {
-		sdk.LogForbiddenError(ctx, user.Wallet, permObject, api.ActUpdateBudget)
+		sdk.LogForbiddenError(ctx, user.Wallet, permObject, internal.ActUpdateBudget)
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
@@ -843,14 +843,14 @@ func AddRelatedProposal(ctx *gin.Context) {
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
 	permObject := buildProjectPermObject(id)
-	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), permObject, api.ActModify)
+	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), permObject, internal.ActModify)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 		return
 	}
 	if !ok {
-		sdk.LogForbiddenError(ctx, user.Wallet, permObject, api.ActModify)
+		sdk.LogForbiddenError(ctx, user.Wallet, permObject, internal.ActModify)
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
@@ -888,7 +888,7 @@ func AddRelatedProposal(ctx *gin.Context) {
 }
 
 func buildProjectPermObject(projectId int) string {
-	return fmt.Sprintf("%s%d", api.ObjProjPrefix, projectId)
+	return fmt.Sprintf("%s%d", internal.ObjProjPrefix, projectId)
 }
 
 func NormalizeWalletAddrInProject(project *model.Project) *model.Project {

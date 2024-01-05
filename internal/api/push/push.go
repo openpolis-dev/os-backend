@@ -45,14 +45,14 @@ func Create(ctx *gin.Context) {
 
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
-	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), api.ObjPush, api.ActCreatePush)
+	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), internal.ObjPush, internal.ActCreatePush)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 		return
 	}
 	if !ok {
-		sdk.LogForbiddenError(ctx, user.Wallet, api.ObjPush, api.ActCreatePush)
+		sdk.LogForbiddenError(ctx, user.Wallet, internal.ObjPush, internal.ActCreatePush)
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}

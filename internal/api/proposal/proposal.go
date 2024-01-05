@@ -336,7 +336,7 @@ func Approve(ctx *gin.Context) {
 	formattedWallet := common.FormatUserWallet(user.Wallet)
 
 	//  check permission
-	ok, err := enforcer.HasRoleForUser(formattedWallet, api.RoleHall)
+	ok, err := enforcer.HasRoleForUser(formattedWallet, internal.RoleHall)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall permission error")))
@@ -344,7 +344,7 @@ func Approve(ctx *gin.Context) {
 	}
 
 	if !ok {
-		sdk.LogForbiddenError(ctx, user.Wallet, api.RoleHall, "access")
+		sdk.LogForbiddenError(ctx, user.Wallet, internal.RoleHall, "access")
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
@@ -378,7 +378,7 @@ func Reject(ctx *gin.Context) {
 	formattedWallet := common.FormatUserWallet(user.Wallet)
 
 	//  check permission
-	ok, err := enforcer.HasRoleForUser(formattedWallet, api.RoleHall)
+	ok, err := enforcer.HasRoleForUser(formattedWallet, internal.RoleHall)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall permission error")))
@@ -386,7 +386,7 @@ func Reject(ctx *gin.Context) {
 	}
 
 	if !ok {
-		sdk.LogForbiddenError(ctx, user.Wallet, api.RoleHall, "access")
+		sdk.LogForbiddenError(ctx, user.Wallet, internal.RoleHall, "access")
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}

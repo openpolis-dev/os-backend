@@ -40,7 +40,7 @@ type (
 
 // getOrCreateCityHallProject validate user's permission and then get or create cityhall project in DB
 func getOrCreateCityHallProject(db *gorm.DB, enforcer *casbin.Enforcer) (*model.Project, error) {
-	configuredCityHallUser, err := enforcer.GetUsersForRole(api.RoleHall)
+	configuredCityHallUser, err := enforcer.GetUsersForRole(internal.RoleHall)
 	if err != nil {
 		return nil, errors.New("get cityhall permission error")
 	}
@@ -114,7 +114,7 @@ func UpdateBudget(ctx *gin.Context) {
 	}
 
 	//  check permission
-	ok, err := enforcer.HasRoleForUser(formattedWallet, api.RoleHall)
+	ok, err := enforcer.HasRoleForUser(formattedWallet, internal.RoleHall)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall permission error")))
@@ -122,7 +122,7 @@ func UpdateBudget(ctx *gin.Context) {
 	}
 
 	if !ok {
-		sdk.LogForbiddenError(ctx, user.Wallet, api.RoleHall, "access")
+		sdk.LogForbiddenError(ctx, user.Wallet, internal.RoleHall, "access")
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
@@ -199,7 +199,7 @@ func UpdateMember(ctx *gin.Context) {
 	}
 
 	//  check permission
-	ok, err := enforcer.HasRoleForUser(formattedWallet, api.RoleHall)
+	ok, err := enforcer.HasRoleForUser(formattedWallet, internal.RoleHall)
 	if err != nil {
 		log.Error().Msgf("check permission error %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
@@ -209,7 +209,7 @@ func UpdateMember(ctx *gin.Context) {
 
 	if !ok {
 		log.Warn().Msgf("permission deny for user %s", formattedWallet)
-		sdk.LogForbiddenError(ctx, user.Wallet, api.RoleHall, "access")
+		sdk.LogForbiddenError(ctx, user.Wallet, internal.RoleHall, "access")
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
@@ -271,7 +271,7 @@ func BatchUpdateMembers(ctx *gin.Context) {
 	}
 
 	//  check permission
-	ok, err := enforcer.HasRoleForUser(formattedWallet, api.RoleHall)
+	ok, err := enforcer.HasRoleForUser(formattedWallet, internal.RoleHall)
 	if err != nil {
 		log.Error().Msgf("check permission error %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
@@ -281,7 +281,7 @@ func BatchUpdateMembers(ctx *gin.Context) {
 
 	if !ok {
 		log.Warn().Msgf("permission deny for user %s", formattedWallet)
-		sdk.LogForbiddenError(ctx, user.Wallet, api.RoleHall, "access")
+		sdk.LogForbiddenError(ctx, user.Wallet, internal.RoleHall, "access")
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
@@ -354,7 +354,7 @@ func updateGroupedMembers(cityHallProject *model.Project, req *CityHallUpdateMem
 	var addHallGroupingPolicy [][]string
 	for _, memberAddr := range req.AddMember {
 		sponsorsMap[common.FormatUserWallet(memberAddr)] = true
-		addHallGroupingPolicy = append(addHallGroupingPolicy, []string{common.FormatUserWallet(memberAddr), api.RoleHall})
+		addHallGroupingPolicy = append(addHallGroupingPolicy, []string{common.FormatUserWallet(memberAddr), internal.RoleHall})
 	}
 
 	// Add user to hall group
@@ -371,7 +371,7 @@ func updateGroupedMembers(cityHallProject *model.Project, req *CityHallUpdateMem
 	var removeHallGroupingPolicy [][]string
 	for _, memberAddr := range req.RemoveMember {
 		sponsorsMap[common.FormatUserWallet(memberAddr)] = false
-		removeHallGroupingPolicy = append(removeHallGroupingPolicy, []string{common.FormatUserWallet(memberAddr), api.RoleHall})
+		removeHallGroupingPolicy = append(removeHallGroupingPolicy, []string{common.FormatUserWallet(memberAddr), internal.RoleHall})
 	}
 
 	// Remove user from hall group
