@@ -35,7 +35,7 @@ type ListProposalQueryParams struct {
 type ComponentRequestData struct {
 	ID         uint           `json:"id"`
 	AutoAction string         `json:"auto_action"`
-	Name       string         `json:"component_name"`
+	Name       string         `json:"name"`
 	Data       map[string]any `json:"data"`
 }
 
