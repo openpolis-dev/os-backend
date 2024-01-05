@@ -172,7 +172,8 @@ type FrontendProposalDetailRecord struct {
 	Comments     []*FrontendProposalCommentRecord `json:"comments"`
 
 	// Vote
-	Votes any `json:"votes"`
+	Votes    any                       `json:"votes"`
+	VoteGate *FrontendVoteGateResponse `json:"vote_gate"`
 
 	// Is current user voted for this proposal
 	IsVoted bool `json:"is_voted"`
@@ -291,6 +292,29 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 		}
 	}
 
+	// Fetch vote_gate info
+	// TODO: duplicated code in vote check logic, use function to replace it.
+	var proposalCategory *model.ProposalCategory
+	err := db.Model(&model.ProposalCategory{}).
+		Joins("ProposalVoteGate").
+		Where(model.ProposalCategory{ID: proposal.ProposalCategoryID}).First(&proposalCategory).Error
+	if err != nil {
+		log.Error().Msgf("fetch proposal category error: %+v", err)
+		return nil, err
+	}
+
+	var voteGate *FrontendVoteGateResponse
+	if proposalCategory.ProposalVoteGate != nil {
+		voteGate = &FrontendVoteGateResponse{
+			ID:        proposalCategory.ProposalVoteGate.ID,
+			Name:      proposalCategory.ProposalVoteGate.Name,
+			TokenAddr: proposalCategory.ProposalVoteGate.TokenAddress,
+			TokenId:   proposalCategory.ProposalVoteGate.TokenId,
+			TokenType: proposalCategory.ProposalVoteGate.TokenTypeName(),
+			ChainType: proposalCategory.ProposalVoteGate.ChainName(),
+		}
+	}
+
 	return &FrontendProposalDetailRecord{
 		ID:                      proposal.ID,
 		Title:                   proposal.Title,
@@ -311,6 +335,7 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 		Arweave:           proposal.ArweaveHash,
 		CommentCount:      commentCount,
 		Comments:          frontendCommentsRecords,
+		VoteGate:          voteGate,
 		Votes:             votes,
 		CreateTs:          proposal.CreateTs,
 		IsBasedOnTemplate: proposal.TemplateId != 0,
