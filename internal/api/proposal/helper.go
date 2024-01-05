@@ -225,7 +225,6 @@ func SaveProposalToMetaforo(db *gorm.DB, origProposalRecord *model.Proposal, met
 	voteEndTime := time.Now().UTC().Add(internal.DefaultVoteStartDelay + internal.DefaultVoteDuration)
 
 	if origProposalRecord.ProposalRecordId != "" {
-		log.Error().Msgf("TTT: DB Record has ProposalRecordId, update metaforo proposal")
 		// DB Record has ProposalRecordId, this is updating metaforo proposal action, which contains
 		// * Invoke metaforo.UpdateProposal to update metaforo proposal data
 		// * Save the new metaforo proposal data back to new created DB record
@@ -274,7 +273,6 @@ func SaveProposalToMetaforo(db *gorm.DB, origProposalRecord *model.Proposal, met
 
 		updatedProposalRecord.State = int(model.ProposalStateDraft)
 	} else {
-		log.Error().Msgf("TTT: DB Record has no ProposalRecordId, create metaforo proposal")
 		// DB Record has no ProposalRecordId, this is creating metaforo proposal action, which contains:
 		// * Invoke metaforo.CreateProposal to create metaforo proposal record
 		// * Generate vote record form bytes, and send to metaforo via API
@@ -434,13 +432,21 @@ func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcd *mod
 	proposalRecordId := model.BuildProposalRecordIdFromMetaforoThreadId(metaforoProposal.Thread.Id)
 	if dbProposalRcd.ProposalRecordId == proposalRecordId {
 		var dbProposals []*model.Proposal
-		db.Where(&model.Proposal{ProposalRecordId: dbProposalRcd.ProposalRecordId}).Order("version DESC").Find(&dbProposals)
-		for idx := 0; idx < metaforoProposal.Thread.EditHistory.Count; idx++ {
-			dbProposals[idx].ArweaveHash = metaforoProposal.Thread.EditHistory.Lists[idx].Arweave
-		}
-		err = db.Updates(dbProposals).Error
-		if err != nil {
-			log.Error().Msgf("update proposal arweave hash error: %+v", err)
+		err = db.Where(&model.Proposal{ProposalRecordId: dbProposalRcd.ProposalRecordId}).Order("version DESC").Find(&dbProposals).Error
+		if err == nil {
+			err = db.Transaction(func(tx *gorm.DB) error {
+				for idx := 0; idx < metaforoProposal.Thread.EditHistory.Count; idx++ {
+					dbProposals[idx].ArweaveHash = metaforoProposal.Thread.EditHistory.Lists[idx].Arweave
+					db.Save(&dbProposals[idx])
+				}
+				return nil
+			})
+			err = db.Updates(&dbProposals).Error
+			if err != nil {
+				log.Error().Msgf("update proposal arweave hash error: %+v", err)
+			}
+		} else {
+			log.Error().Msgf("fetch proposal data with recordId %s hash error: %+v", dbProposalRcd.ProposalRecordId, err)
 		}
 	}
 
