@@ -326,7 +326,6 @@ func SaveProposalToMetaforo(db *gorm.DB, origProposalRecord *model.Proposal, met
 
 	// Update vote data from metaforo response
 	for _, poll := range metaforoProposalResponse.Thread.Polls {
-		api.PrintStructAsJson(poll, "TTT: Poll data after creation:")
 		voteRecord := &model.ProposalVoteRecord{
 			Title:      poll.Title,
 			StartTs:    voteStartTime.Unix(),
@@ -409,7 +408,9 @@ func IsUserMetVoteGate(userSeepassData *sdk.SeepassResponse, proposalVoteGate *m
 		if strings.EqualFold(sbtInfo.ContractAddr, proposalVoteGate.TokenAddress) {
 			if strings.EqualFold(sbtInfo.ContractAddr, proposalVoteGate.TokenAddress) {
 				if proposalVoteGate.TokenTypeName() == "ERC1155" {
-					return strings.EqualFold(proposalVoteGate.TokenId, sbtInfo.TokenId)
+					if strings.EqualFold(proposalVoteGate.TokenId, sbtInfo.TokenId) {
+						return true
+					}
 				} else {
 					return true
 				}
