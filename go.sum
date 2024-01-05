@@ -55,8 +55,8 @@ github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578 h1:d+Bc7a5rLufV
 github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578/go.mod h1:uGdkoq3SwY9Y+13GIhn11/XLaGBb4BfwItxLd5jeuXE=
 github.com/StackExchange/wmi v1.2.1 h1:VIkavFPXSjcnS+O8yTq7NI32k0R5Aj+v39y29VYDOSA=
 github.com/StackExchange/wmi v1.2.1/go.mod h1:rcmrprowKIVzvc+NUiLncP2uuArMWLCbu9SBzvHz7e8=
-github.com/Taoist-Labs/see-auth-go v0.1.5 h1:2oIBKxYRRZ57zfRTzpBQuQBOdPIL/3j/a8dAJDrylro=
-github.com/Taoist-Labs/see-auth-go v0.1.5/go.mod h1:6NED0h2OkXMh07MgHo1z6o9aFY0/E2f4I7An3xXi4bU=
+github.com/Taoist-Labs/see-auth-go v0.1.7 h1:38kUs1e14LKE9LiAZXN2JIesBwJ7CnCVvnI7c11UjDw=
+github.com/Taoist-Labs/see-auth-go v0.1.7/go.mod h1:6NED0h2OkXMh07MgHo1z6o9aFY0/E2f4I7An3xXi4bU=
 github.com/VictoriaMetrics/fastcache v1.12.1 h1:i0mICQuojGDL3KblA7wUNlY5lOK6a4bwt3uRKnkZU40=
 github.com/agiledragon/gomonkey/v2 v2.2.0 h1:QJWqpdEhGV/JJy70sZ/LDnhbSlMrqHAWHcNOjz1kyuI=
 github.com/agnivade/levenshtein v1.1.1 h1:QY8M92nrzkmr798gCo3kmMyqXFzdQVpxLlGPRBij0P8=

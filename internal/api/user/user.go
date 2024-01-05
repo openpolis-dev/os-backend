@@ -333,6 +333,7 @@ func LoginWithSeeAuth(ctx *gin.Context) {
 	seeAuth, err := seeauth.Auth(&seeauth.SignatureParams{
 		WalletName: req.WalletName,
 		Wallet:     req.Wallet,
+		Domain:     req.Domain,
 		Nonce:      userNonce.Nonce,
 		Message:    req.Message,
 		Signature:  req.Signature,
