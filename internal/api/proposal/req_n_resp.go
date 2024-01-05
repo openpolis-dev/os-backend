@@ -136,6 +136,7 @@ type FrontendProposalCommentRecord struct {
 	ProposalTitle       string `json:"proposal_title"`
 	ProposalArweaveHash string `json:"proposal_arweave_hash"`
 	CreatedTs           int64  `json:"created_ts"`
+	Deleted             bool   `json:"deleted"`
 }
 
 type FrontendProposalDetailRecord struct {
