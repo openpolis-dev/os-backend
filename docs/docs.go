@@ -4358,6 +4358,9 @@ const docTemplate = `{
                 "submit_to_metaforo": {
                     "type": "boolean"
                 },
+                "template_id": {
+                    "type": "integer"
+                },
                 "title": {
                     "type": "string"
                 },
@@ -4513,6 +4516,9 @@ const docTemplate = `{
                 },
                 "id": {
                     "type": "integer"
+                },
+                "is_based_on_template": {
+                    "type": "boolean"
                 },
                 "is_rejected": {
                     "description": "Reject related data",

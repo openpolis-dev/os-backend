@@ -190,16 +190,6 @@ type Thread struct {
 	IsPin           int           `json:"is_pin"`
 	Pinned          []interface{} `json:"pinned"`
 
-	// Hots saves related post in detailed page
-	Hots []struct {
-		Id       int    `json:"id"`
-		Title    string `json:"title"`
-		UserId   int    `json:"user_id"`
-		Username string `json:"username"`
-		IsNft    int    `json:"is_nft"`
-		PhotoUrl string `json:"photo_url"`
-		Content  string `json:"content"`
-	} `json:"hots"`
 	EditHistory struct {
 		Count int                      `json:"count"`
 		Lists []*PostEditHistoryRecord `json:"lists"`
