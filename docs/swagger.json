@@ -1263,6 +1263,66 @@
                 }
             }
         },
+        "/proposal/mylist": {
+            "get": {
+                "tags": [
+                    "Proposal"
+                ],
+                "summary": "Returns proposals created by login user",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "which page",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "size of each page",
+                        "name": "size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "sort by which field",
+                        "name": "sort_field",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "order of sort",
+                        "name": "sort_order",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Return pending submit proposals or other state, only query PendingSubmit records when value is `1`",
+                        "name": "pending_submit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Reply"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/proposal.FrontendProposalDetailRecord"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/proposal_categories/list": {
             "get": {
                 "tags": [

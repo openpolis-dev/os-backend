@@ -2256,6 +2256,43 @@ paths:
       summary: list my projects
       tags:
       - Project
+  /proposal/mylist:
+    get:
+      parameters:
+      - description: which page
+        in: query
+        name: page
+        type: integer
+      - description: size of each page
+        in: query
+        name: size
+        type: integer
+      - description: sort by which field
+        in: query
+        name: sort_field
+        type: string
+      - description: order of sort
+        in: query
+        name: sort_order
+        type: string
+      - description: Return pending submit proposals or other state, only query PendingSubmit
+          records when value is `1`
+        in: query
+        name: pending_submit
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  $ref: '#/definitions/proposal.FrontendProposalDetailRecord'
+              type: object
+      summary: Returns proposals created by login user
+      tags:
+      - Proposal
   /proposal_categories/list:
     get:
       responses:

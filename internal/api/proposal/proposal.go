@@ -440,7 +440,7 @@ func Reject(ctx *gin.Context) {
 //	@param		size			query		int		false	"size of each page"
 //	@param		sort_field		query		string	false	"sort by which field"
 //	@param		sort_order		query		string	false	"order of sort"	Enum(asc desc)
-//	@param		pending_submit	query		string	"0"		"Return pengins submit proposals or other state, only query PendingSubmit records when value is `1`"
+//	@param		pending_submit	query		int	false		"Return pending submit proposals or other state, only query PendingSubmit records when value is `1`"
 //	@success	200				{object}	api.Reply{data=FrontendProposalDetailRecord}
 func MyList(ctx *gin.Context) {
 	user, _, db, _ := api.ForContext(ctx)
