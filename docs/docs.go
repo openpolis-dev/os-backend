@@ -4637,6 +4637,9 @@ const docTemplate = `{
         "proposal.FrontendProposalEditHistoryRecord": {
             "type": "object",
             "properties": {
+                "arweave": {
+                    "type": "string"
+                },
                 "create_ts": {
                     "type": "integer"
                 },

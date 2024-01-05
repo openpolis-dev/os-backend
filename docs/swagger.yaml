@@ -1094,6 +1094,8 @@ definitions:
     type: object
   proposal.FrontendProposalEditHistoryRecord:
     properties:
+      arweave:
+        type: string
       create_ts:
         type: integer
       os_username:
