@@ -5,7 +5,7 @@ go 1.20
 require (
 	github.com/99designs/gqlgen v0.17.41
 	github.com/OneSignal/onesignal-go-api v1.0.4
-	github.com/Taoist-Labs/see-auth-go v0.1.5
+	github.com/Taoist-Labs/see-auth-go v0.1.7
 	github.com/allegro/bigcache/v3 v3.1.0
 	github.com/aws/aws-sdk-go v1.45.25
 	github.com/bwmarrin/discordgo v0.27.1
