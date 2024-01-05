@@ -3,7 +3,6 @@ package proposal
 import (
 	"errors"
 	"net/http"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
@@ -37,29 +36,12 @@ func ListCategories(ctx *gin.Context) {
 	}
 
 	categoryResp := lo.Map(proposalCategories, func(r *model.ProposalCategory, index int) *FrontendProposalCategory {
-		userHasPerm := false
-		if userSeepassData != nil {
-			if r.ProposalVoteGateId != 0 {
-				for _, sbtInfo := range userSeepassData.Sbt {
-					if strings.EqualFold(sbtInfo.ContractAddr, r.ProposalVoteGate.TokenAddress) {
-						if r.ProposalVoteGate.TokenTypeName() == "ERC1155" {
-							userHasPerm = strings.EqualFold(r.ProposalVoteGate.TokenId, sbtInfo.TokenId)
-						} else {
-							userHasPerm = true
-						}
-					}
-				}
-			} else {
-				// No nft gate set, every one can create proposal
-				userHasPerm = true
-			}
-		}
 		return &FrontendProposalCategory{
 			ID:         r.ID,
 			ParentID:   r.ParentID,
 			Name:       r.Name,
 			MetaforoId: r.MetaforoId,
-			HasPerm:    userHasPerm,
+			HasPerm:    IsUserMetVoteGate(userSeepassData, r.ProposalVoteGate),
 		}
 	})
 

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -12,6 +13,7 @@ import (
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
+	"github.com/theseed-labs/os-backend/internal/sdk"
 	"github.com/theseed-labs/os-backend/internal/sdk/metaforo"
 	"gorm.io/gorm"
 )
@@ -390,4 +392,26 @@ func BuildMetaforoVoteFormDataBytes(voteRecords []*model.ProposalVoteRecord) ([]
 		return nil, err
 	}
 	return voteDataBytes, nil
+}
+
+func IsUserMetVoteGate(userSeepassData *sdk.SeepassResponse, proposalVoteGate *model.ProposalVoteGate) bool {
+	if userSeepassData == nil {
+		return false
+	}
+	if proposalVoteGate == nil {
+		return false
+	}
+
+	for _, sbtInfo := range userSeepassData.Sbt {
+		if strings.EqualFold(sbtInfo.ContractAddr, proposalVoteGate.TokenAddress) {
+			if strings.EqualFold(sbtInfo.ContractAddr, proposalVoteGate.TokenAddress) {
+				if proposalVoteGate.TokenTypeName() == "ERC1155" {
+					return strings.EqualFold(proposalVoteGate.TokenId, sbtInfo.TokenId)
+				} else {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }
