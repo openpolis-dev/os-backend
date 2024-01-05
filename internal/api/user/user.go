@@ -431,7 +431,7 @@ func Detail(ctx *gin.Context) {
 	user, db := api.ForContextUserAndDB(ctx)
 
 	sppClient := sdk.GetSppClient()
-	seepassResp, err := sppClient.GetSeepassData(user.Wallet)
+	seepassResp, err := api.GetCachedSeepassData(sppClient, user.Wallet, false)
 	if err == nil {
 		ctx.JSON(http.StatusOK, api.Success(seepassResp))
 		return
@@ -592,7 +592,7 @@ func Users(ctx *gin.Context) {
 
 	// TODO: Query SeePASS to get user SBT and SEED info
 	for _, user := range users {
-		seepassResp, err := sppClient.GetSeepassData(user.Wallet)
+		seepassResp, err := api.GetCachedSeepassData(sppClient, user.Wallet, false)
 		user.Wallet = common.ToFrontendWallet(user.Wallet)
 		if err != nil {
 			log.Warn().Msgf("query seepass data error, wallet: %s, error: %+v", user.Wallet, err)

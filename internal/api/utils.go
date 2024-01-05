@@ -10,7 +10,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/rs/zerolog/log"
+	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/sdk"
+	"github.com/theseed-labs/os-backend/internal/storage"
 )
 
 // PreSignedUrlForS3 generates a pre-signed URL for uploading a file to an S3 bucket.
@@ -57,4 +60,53 @@ func PrintStructAsJson(object any, prompt string) {
 	fmt.Println("=========================")
 	fmt.Printf("%s: %s\n", prompt, jsonStr)
 	fmt.Println("=========================")
+}
+
+func GetCachedSeepassData(sppClient *sdk.SppClient, wallet string, ignoreCache bool) (*sdk.SeepassResponse, error) {
+	_wallet := common.FormatUserWallet(wallet)
+	if ignoreCache {
+		return RefreshSeepassDataCache(sppClient, wallet)
+	} else {
+		seepassDataBytes, err := storage.GetCachedData(wallet)
+		if err != nil {
+			log.Warn().Msgf("get seepass data from cache error: %+v", err)
+			return RefreshSeepassDataCache(sppClient, wallet)
+		} else {
+			var seepassData *sdk.SeepassResponse
+			err = json.Unmarshal(seepassDataBytes, &seepassData)
+			if err != nil {
+				log.Warn().Msgf("unmarshal seepass data from cache error: %+v", err)
+			} else {
+				err = storage.StoreCachedData(storage.UserSeepassCacheKey(_wallet), seepassDataBytes)
+				if err != nil {
+					log.Warn().Msgf("write seepass data to cache error: %+v", err)
+				}
+			}
+			return seepassData, nil
+		}
+	}
+}
+
+// RefreshSeepassDataCache fetches seepass data from server and try to write back to cache
+// If fetching data error, nil and error message will be returned
+// If error occurred at marshal or store to cache part, a warning message will be shown and data will be returned with nil error
+func RefreshSeepassDataCache(sppClient *sdk.SppClient, wallet string) (*sdk.SeepassResponse, error) {
+	_wallet := common.FormatUserWallet(wallet)
+	seepassData, err := sppClient.GetSeepassData(_wallet)
+	if err != nil {
+		log.Error().Msgf("get seepass data from server error: %+v", err)
+		return nil, err
+	}
+
+	seepassDataBytes, err := json.Marshal(seepassData)
+	if err != nil {
+		log.Warn().Msgf("marshal seepass data to bytes error: %+v", err)
+		return seepassData, nil
+	}
+
+	err = storage.StoreCachedData(storage.UserSeepassCacheKey(_wallet), seepassDataBytes)
+	if err != nil {
+		log.Warn().Msgf("write seepass data to cache error: %+v", err)
+	}
+	return seepassData, nil
 }

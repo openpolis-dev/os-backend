@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/allegro/bigcache/v3"
+	"github.com/theseed-labs/os-backend/internal/common"
 )
 
 // CacheStorage provides a general k-v cache with common interface
@@ -36,4 +37,8 @@ func StoreCachedData(key string, value []byte) error {
 
 func MetaforoRewardCacheKey(seasonIdx uint) string {
 	return fmt.Sprintf("metaforo.reward.season.%d", seasonIdx)
+}
+
+func UserSeepassCacheKey(userWallet string) string {
+	return fmt.Sprintf("seepass.user.%s", common.FormatUserWallet(userWallet))
 }

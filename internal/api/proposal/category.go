@@ -23,7 +23,7 @@ func ListCategories(ctx *gin.Context) {
 	user, _, db, _ := api.ForContext(ctx)
 
 	sppClient := sdk.GetSppClient()
-	userSeepassData, err := sppClient.GetSeepassData(user.Wallet)
+	userSeepassData, err := api.GetCachedSeepassData(sppClient, user.Wallet, false)
 
 	var proposalCategories []*model.ProposalCategory
 	err = db.Model(&model.ProposalCategory{}).
