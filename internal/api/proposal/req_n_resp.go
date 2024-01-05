@@ -18,13 +18,14 @@ import (
 ///////////////////////
 
 type ListProposalQueryParams struct {
-	Page       int    `form:"page"`
-	Size       int    `form:"size"`
-	SortField  string `form:"sort_field"`
-	SortOrder  string `form:"sort_order"`
-	State      string `form:"state"`
-	CategoryId uint   `form:"category_id"`
-	Q          string `form:"q"`
+	Page          int    `form:"page"`
+	Size          int    `form:"size"`
+	SortField     string `form:"sort_field"`
+	SortOrder     string `form:"sort_order"`
+	State         string `form:"state"`
+	CategoryId    uint   `form:"category_id"`
+	PendingSubmit int    `form:"pending_submit"`
+	Q             string `form:"q"`
 }
 
 // ComponentRequestData represents a component request, which contains component name and associated data

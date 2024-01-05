@@ -18,6 +18,7 @@ import (
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk"
 	"github.com/theseed-labs/os-backend/internal/sdk/metaforo"
+	"github.com/xiaosongfu/gormfind"
 	"gorm.io/gorm"
 )
 
@@ -65,7 +66,7 @@ func List(ctx *gin.Context) {
 
 	querySql := ListProposalsSQL
 
-	// Execute query
+	// Build query
 	if queryParams.State != "" {
 		if stateVal, found := model.ProposalStateIdNameMapping[queryParams.State]; found {
 			querySql += fmt.Sprintf(" AND state = %d", stateVal)
@@ -85,35 +86,13 @@ func List(ctx *gin.Context) {
 		querySql += fmt.Sprintf(" AND title ilike '%%%s%%'", queryParams.Q)
 	}
 
-	var tmpRcd []*FrontendProposalListRecord
-	var countTx *gorm.DB
-	countTx = db.Raw(querySql).Scan(&tmpRcd)
-	if err := countTx.Error; err != nil {
-		log.Error().Msgf("get proposal count error: %+v", err)
-		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get proposal count error")))
-		return
-	}
-	total := countTx.RowsAffected
-
-	orderByClause := fmt.Sprintf("%s %s ", *page.SortField, *page.Order)
-	querySql += fmt.Sprintf("\nORDER BY %s ", orderByClause)
-	querySql += fmt.Sprintf("LIMIT %d OFFSET %d", page.Size, (page.Page-1)*page.Size)
-
-	var resultRows []*FrontendProposalListRecord
-	err := db.Raw(querySql).Find(&resultRows).Error
+	total, resultRows, err := generateFrontendProposalRecords(db, querySql, page)
 	if err != nil {
 		log.Error().Msgf("get proposal list error: query sql: %s, err: %+v", querySql, err)
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get proposal error")))
 		return
 	}
-
-	resultRows = lo.Map(resultRows, func(r *FrontendProposalListRecord, _ int) *FrontendProposalListRecord {
-		dup_r := r
-		dup_r.State = model.ProposalStateName[r.StateId]
-		return dup_r
-	})
 
 	ctx.JSON(http.StatusOK, api.Success(api.ListReplyData{
 		Page:  queryParams.Page,
@@ -451,6 +430,57 @@ func Reject(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, api.Success(nil))
 }
 
+// MyList returns proposals created by login user
+// TODO: Almost same with List, find way to merge them
+//
+//	@summary	Returns proposals created by login user
+//	@tags		Proposal
+//	@router		/proposal/mylist [get]
+//	@param		page			query		int		false	"which page"
+//	@param		size			query		int		false	"size of each page"
+//	@param		sort_field		query		string	false	"sort by which field"
+//	@param		sort_order		query		string	false	"order of sort"	Enum(asc desc)
+//	@param		pending_submit	query		string	"0"		"Return pengins submit proposals or other state, only query PendingSubmit records when value is `1`"
+//	@success	200				{object}	api.Reply{data=FrontendProposalDetailRecord}
+func MyList(ctx *gin.Context) {
+	user, _, db, _ := api.ForContext(ctx)
+	queryParams := ListProposalQueryParams{}
+	if err := ctx.Bind(&queryParams); err != nil {
+		ctx.JSON(http.StatusBadRequest, api.Reply{
+			Code: -1,
+			Msg:  fmt.Sprintf("query params error: %+v", err),
+		})
+		return
+	}
+
+	// Parse pagination
+	page := api.ParseAndConvertPageParam(ctx)
+
+	querySql := fmt.Sprintf("%s WHERE applicant = '%s'", ListProposalsSQL, common.FormatUserWallet(user.Wallet))
+
+	queryPendingSubmitFlag := ctx.Query("pending_submit")
+	if queryPendingSubmitFlag == "1" {
+		querySql += fmt.Sprintf(" AND state = %d", model.ProposalStatePendingSubmit)
+	} else {
+		querySql += fmt.Sprintf(" AND state != %d", model.ProposalStatePendingSubmit)
+	}
+
+	total, resultRows, err := generateFrontendProposalRecords(db, querySql, page)
+	if err != nil {
+		log.Error().Msgf("get proposal list error: query sql: %s, err: %+v", querySql, err)
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get proposal error")))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, api.Success(api.ListReplyData{
+		Page:  queryParams.Page,
+		Size:  queryParams.Size,
+		Total: total,
+		Rows:  resultRows,
+	}))
+}
+
 // Internal function to handle duplicated logic of updating proposal state
 func updateProposalState(db *gorm.DB, user *middleware.CurUser, proposalStrId string, newState model.ProposalState) (*model.Proposal, error) {
 	proposalRecord, err := GetProposalFromStringId(db, proposalStrId)
@@ -523,4 +553,34 @@ func updateProposalState(db *gorm.DB, user *middleware.CurUser, proposalStrId st
 		return nil, fmt.Errorf("changing proposal from state %s to %s is not approved", proposalRecord.StateName(), model.ProposalStateName[newState])
 	}
 	return proposalRecord, nil
+}
+
+func generateFrontendProposalRecords(db *gorm.DB, querySql string, page *gormfind.Page) (int64, []*FrontendProposalListRecord, error) {
+	var tmpRcd []*FrontendProposalListRecord
+	var countTx *gorm.DB
+	countTx = db.Raw(querySql).Scan(&tmpRcd)
+	if err := countTx.Error; err != nil {
+		log.Error().Msgf("get proposal count error: %+v", err)
+		return 0, nil, err
+	}
+	total := countTx.RowsAffected
+
+	orderByClause := fmt.Sprintf("%s %s ", *page.SortField, *page.Order)
+	querySql += fmt.Sprintf("\nORDER BY %s ", orderByClause)
+	querySql += fmt.Sprintf("LIMIT %d OFFSET %d", page.Size, (page.Page-1)*page.Size)
+
+	var resultRows []*FrontendProposalListRecord
+	err := db.Raw(querySql).Find(&resultRows).Error
+	if err != nil {
+		log.Error().Msgf("get proposal list error: query sql: %s, err: %+v", querySql, err)
+		return 0, nil, err
+	}
+
+	resultRows = lo.Map(resultRows, func(r *FrontendProposalListRecord, _ int) *FrontendProposalListRecord {
+		dup_r := r
+		dup_r.State = model.ProposalStateName[r.StateId]
+		return dup_r
+	})
+
+	return total, resultRows, nil
 }
