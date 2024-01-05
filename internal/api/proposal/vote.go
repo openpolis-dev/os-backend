@@ -1,7 +1,6 @@
 package proposal
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -14,12 +13,35 @@ import (
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk"
 	"github.com/theseed-labs/os-backend/internal/sdk/metaforo"
+	"gorm.io/gorm"
 )
 
 type VoterInfo struct {
 	MetaforoUserId int    `json:"metaforo_user_id"`
 	Wallet         string `json:"wallet"`
 	Avatar         string `json:"avatar"`
+}
+
+// CheckVotePermission checks whether current user can vote on this proposal
+//
+//	@summary	Check whether user has permission to vote in thread
+//	@tags		Proposal
+//	@router		/proposals/can_vote/:id [post]
+//	@param		id	query		number		true	"proposal ID"
+//	@success	200	{object}	api.Reply	"Success"
+//	@success	401	{object}	api.Reply	"Forbidden"
+func CheckVotePermission(ctx *gin.Context) {
+	user, _, db, _ := api.ForContext(ctx)
+
+	proposalIdString := ctx.Param("id")
+	userHasVotePermissionOnThread, err := canUserVoteOnThread(db, user.Wallet, proposalIdString)
+	if err != nil {
+		log.Error().Msgf("check user vote permission error: %+v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(fmt.Errorf("check user permission error")))
+		return
+	}
+	ctx.JSON(http.StatusOK, api.Success(userHasVotePermissionOnThread))
 }
 
 // CastVote handles the casting of votes.
@@ -34,33 +56,19 @@ func CastVote(ctx *gin.Context) {
 	user, _, db, _ := api.ForContext(ctx)
 
 	proposalIdString := ctx.Param("id")
-	proposal, err := GetProposalFromStringId(db, proposalIdString)
+	userHasVotePermissionOnThread, err := canUserVoteOnThread(db, user.Wallet, proposalIdString)
 	if err != nil {
-		log.Error().Msgf("get proposal error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusBadRequest, api.ServerError(errors.New("get proposal error")))
+		log.Error().Msgf("check user vote permission error: %+v", err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(fmt.Errorf("check user permission error")))
 		return
 	}
 
-	// Verify NFT gate
-	seepassData, err := api.GetCachedSeepassData(sdk.GetSppClient(), user.Wallet, false)
-	if err != nil {
-		log.Error().Msgf("get seepass data error: %+v", err)
-		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusBadRequest, api.ServerError(errors.New("get user data error")))
-		return
-	}
-
-	var proposalCategory *model.ProposalCategory
-	err = db.Model(&model.ProposalCategory{}).
-		Joins("ProposalVoteGate").
-		Where(model.ProposalCategory{ID: proposal.ProposalCategoryID}).First(&proposalCategory).Error
-
-	if !IsUserMetVoteGate(seepassData, proposalCategory.ProposalVoteGate) {
-		err := fmt.Errorf("user %s not met vote gate requirements: %+v, seepass data: %+v", user.Wallet, proposalCategory.ProposalVoteGate, seepassData)
+	if !userHasVotePermissionOnThread {
+		err := fmt.Errorf("user %s not met vote gate requirements", user.Wallet)
 		log.Err(err)
-		sdk.LogUserSideError(ctx, err)
-		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("user does not met vote gate requirements")))
+		sdk.LogForbiddenError(ctx, user.Wallet, fmt.Sprintf("vote in proposal %s", proposalIdString), "cast_vote")
+		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
 
@@ -163,4 +171,26 @@ func ShowVoteDetail(ctx *gin.Context) {
 	metaforoUserIds := lo.Map(voterList, func(item *metaforo.UserPollRecord, index int) int { return item.UserId })
 	userRecords, err := GetOsUserFromMetaforoUserId(db, metaforoUserIds)
 	ctx.JSON(http.StatusOK, api.Success(userRecords))
+}
+
+func canUserVoteOnThread(db *gorm.DB, userWallet string, proposalIdString string) (bool, error) {
+	proposal, err := GetProposalFromStringId(db, proposalIdString)
+	if err != nil {
+		log.Error().Msgf("get proposal error: %+v", err)
+		return false, err
+	}
+
+	// Verify NFT gate
+	seepassData, err := api.GetCachedSeepassData(sdk.GetSppClient(), userWallet, false)
+	if err != nil {
+		log.Error().Msgf("get seepass data error: %+v", err)
+		return false, err
+	}
+
+	var proposalCategory *model.ProposalCategory
+	err = db.Model(&model.ProposalCategory{}).
+		Joins("ProposalVoteGate").
+		Where(model.ProposalCategory{ID: proposal.ProposalCategoryID}).First(&proposalCategory).Error
+
+	return IsUserMetVoteGate(seepassData, proposalCategory.ProposalVoteGate), nil
 }

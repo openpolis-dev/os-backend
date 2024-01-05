@@ -1483,6 +1483,37 @@ const docTemplate = `{
                 }
             }
         },
+        "/proposals/can_vote/:id": {
+            "post": {
+                "tags": [
+                    "Proposal"
+                ],
+                "summary": "Check whether user has permission to vote in thread",
+                "parameters": [
+                    {
+                        "type": "number",
+                        "description": "proposal ID",
+                        "name": "id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "$ref": "#/definitions/api.Reply"
+                        }
+                    },
+                    "401": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/api.Reply"
+                        }
+                    }
+                }
+            }
+        },
         "/proposals/create": {
             "post": {
                 "tags": [

@@ -373,6 +373,7 @@ func main() {
 		proposalGroup.POST("/approve/:id", proposal.Approve)
 		proposalGroup.POST("/reject/:id", proposal.Reject)
 
+		proposalGroup.POST("/can_vote/:id", proposal.CheckVotePermission)
 		proposalGroup.POST("/vote/:id", proposal.CastVote)
 		proposalGroup.POST("/revoke_vote/:id", proposal.RevokeVote)
 

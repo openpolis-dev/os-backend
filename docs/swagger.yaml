@@ -2369,6 +2369,26 @@ paths:
         state after success. Only user has cityhall permission can do this
       tags:
       - Proposal
+  /proposals/can_vote/:id:
+    post:
+      parameters:
+      - description: proposal ID
+        in: query
+        name: id
+        required: true
+        type: number
+      responses:
+        "200":
+          description: Success
+          schema:
+            $ref: '#/definitions/api.Reply'
+        "401":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.Reply'
+      summary: Check whether user has permission to vote in thread
+      tags:
+      - Proposal
   /proposals/create:
     post:
       parameters:
