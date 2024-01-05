@@ -4302,15 +4302,15 @@ const docTemplate = `{
                 "auto_action": {
                     "type": "string"
                 },
-                "component_name": {
-                    "type": "string"
-                },
                 "data": {
                     "type": "object",
                     "additionalProperties": {}
                 },
                 "id": {
                     "type": "integer"
+                },
+                "name": {
+                    "type": "string"
                 }
             }
         },
@@ -4905,6 +4905,9 @@ const docTemplate = `{
         "seeauth.Signature": {
             "type": "object",
             "properties": {
+                "domain": {
+                    "type": "string"
+                },
                 "message": {
                     "type": "string"
                 },

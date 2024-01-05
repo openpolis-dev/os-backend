@@ -909,13 +909,13 @@ definitions:
     properties:
       auto_action:
         type: string
-      component_name:
-        type: string
       data:
         additionalProperties: {}
         type: object
       id:
         type: integer
+      name:
+        type: string
     type: object
   proposal.ComponentResponse:
     properties:
@@ -1312,6 +1312,8 @@ definitions:
     type: object
   seeauth.Signature:
     properties:
+      domain:
+        type: string
       message:
         type: string
       nonce:
