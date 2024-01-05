@@ -10,6 +10,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	"github.com/theseed-labs/os-backend/internal"
+	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk"
@@ -433,15 +434,24 @@ func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcd *mod
 	if dbProposalRcd.ProposalRecordId == proposalRecordId {
 		var dbProposals []*model.Proposal
 		err = db.Where(&model.Proposal{ProposalRecordId: dbProposalRcd.ProposalRecordId}).Order("version DESC").Find(&dbProposals).Error
-		if err == nil {
+		api.PrintStructAsJson(metaforoProposal.Thread.EditHistory, "TTT: edit histories: ")
+		if err == nil && len(dbProposals) > 0 {
 			err = db.Transaction(func(tx *gorm.DB) error {
 				for idx := 0; idx < metaforoProposal.Thread.EditHistory.Count; idx++ {
 					tx.Model(&dbProposals[idx]).Update("arweave_hash", metaforoProposal.Thread.EditHistory.Lists[idx].Arweave)
+					if idx == 0 {
+						// Save arwave hash data to record for setting it correctly in response
+						dbProposalRcd.ArweaveHash = metaforoProposal.Thread.EditHistory.Lists[idx].Arweave
+					}
 				}
 				return nil
 			})
 		} else {
-			log.Error().Msgf("fetch proposal data with recordId %s hash error: %+v", dbProposalRcd.ProposalRecordId, err)
+			if err != nil {
+				log.Error().Msgf("fetch proposal data with recordId %s hash error: %+v", dbProposalRcd.ProposalRecordId, err)
+			} else {
+				// Init state, no db proposal with given metaforoID found, do not update anything
+			}
 		}
 	}
 
