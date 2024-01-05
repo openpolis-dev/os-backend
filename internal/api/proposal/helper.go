@@ -10,7 +10,6 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	"github.com/theseed-labs/os-backend/internal"
-	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk"
@@ -263,11 +262,14 @@ func SaveProposalToMetaforo(db *gorm.DB, origProposalRecord *model.Proposal, met
 		}
 
 		metaforoProposalResponse, err = metaforo.GetProposal(metaforoThreadId, internal.MetaforoGroupName, "", 0)
-		api.PrintStructAsJson(metaforoProposalResponse, "TTT: metaforo proposal after getting detail")
-
 		if err != nil {
 			log.Error().Msgf("get metaforoProposal %d error: %+v", metaforoThreadId, err)
 			return err
+		}
+
+		err = UpdateDbRecordsFromMetaforoProposalResponse(db, updatedProposalRecord, metaforoProposalResponse)
+		if err != nil {
+			log.Error().Msgf("update db records from metaforoProposalResponse error: %+v", err)
 		}
 
 		updatedProposalRecord.State = int(model.ProposalStateDraft)
@@ -306,11 +308,14 @@ func SaveProposalToMetaforo(db *gorm.DB, origProposalRecord *model.Proposal, met
 		}
 
 		metaforoProposalResponse, err = metaforo.GetProposal(metaforoCreateProposalResponse.Thread.Id, internal.MetaforoGroupName, "", 0)
-		api.PrintStructAsJson(metaforoProposalResponse, "TTT: metaforo proposal after getting detail")
-
 		if err != nil {
 			log.Error().Msgf("get metaforoProposal %d error: %+v", metaforoCreateProposalResponse.Thread.Id, err)
 			return err
+		}
+
+		err = UpdateDbRecordsFromMetaforoProposalResponse(db, updatedProposalRecord, metaforoProposalResponse)
+		if err != nil {
+			log.Error().Msgf("update db records from metaforoProposalResponse error: %+v", err)
 		}
 
 		// This branch only invoked while changing proposal state from PendingSubmit to Draft
@@ -418,4 +423,42 @@ func IsUserMetVoteGate(userSeepassData *sdk.SeepassResponse, proposalVoteGate *m
 		}
 	}
 	return false
+}
+
+// UpdateDbRecordsFromMetaforoProposalResponse updates proposal data with db records. For now, it contains:
+// * Arweave hash: current and historical versions
+func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcd *model.Proposal, metaforoProposal *metaforo.ProposalResponse) error {
+	var err error
+
+	// Save all version proposal arweave hash
+	proposalRecordId := model.BuildProposalRecordIdFromMetaforoThreadId(metaforoProposal.Thread.Id)
+	if dbProposalRcd.ProposalRecordId == proposalRecordId {
+		var dbProposals []*model.Proposal
+		db.Where(&model.Proposal{ProposalRecordId: dbProposalRcd.ProposalRecordId}).Order("version DESC").Find(&dbProposals)
+		for idx := 0; idx < metaforoProposal.Thread.EditHistory.Count; idx++ {
+			dbProposals[idx].ArweaveHash = metaforoProposal.Thread.EditHistory.Lists[idx].Arweave
+		}
+		err = db.Updates(dbProposals).Error
+		if err != nil {
+			log.Error().Msgf("update proposal arweave hash error: %+v", err)
+		}
+	}
+
+	// Save user id and wallet from comments data
+	err = db.Transaction(func(tx *gorm.DB) error {
+		for _, metaforoComment := range metaforoProposal.Thread.Posts {
+			for _, pubKeyData := range metaforoComment.User.Web3PublicKeys {
+				metaforoUserRcd := &model.MetaforoUser{
+					MetaforoUserId: metaforoComment.UserId,
+					UserWallet:     common.FormatUserWallet(pubKeyData.Address),
+				}
+				err = tx.Where(&metaforoUserRcd).FirstOrCreate(&metaforoUserRcd).Error
+				if err != nil {
+					log.Warn().Msgf("create metaforo user record error: %+v, continue to next record", err)
+				}
+			}
+		}
+		return nil
+	})
+	return nil
 }

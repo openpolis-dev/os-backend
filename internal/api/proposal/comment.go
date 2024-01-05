@@ -44,7 +44,7 @@ func AddComment(ctx *gin.Context) {
 
 	user, _, db, _ := api.ForContext(ctx)
 	proposalIdStr := ctx.Param("id")
-	proposalRcd, proposalDetailRecord, err := GetMetaforoProposalByInternalId(db, proposalIdStr)
+	proposalRcd, proposalMetaforoData, err := GetMetaforoProposalByInternalId(db, proposalIdStr)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			log.Warn().Msgf("proposal %s not found", proposalIdStr)
@@ -58,7 +58,7 @@ func AddComment(ctx *gin.Context) {
 		}
 	}
 
-	replyId := proposalDetailRecord.Thread.FirstPostId
+	replyId := proposalMetaforoData.Thread.FirstPostId
 	if addComment.ReplyToMetaforoCommentId != 0 {
 		replyId = addComment.ReplyToMetaforoCommentId
 	}

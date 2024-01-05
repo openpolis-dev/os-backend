@@ -315,21 +315,3 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 		IsBasedOnTemplate: proposal.TemplateId != 0,
 	}, nil
 }
-
-// UpdateDbRecordsFromMetaforoProposalResponse updates proposal data with db records. For now, it contains:
-// * Arweave hash: current and historical versions
-func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcd *model.Proposal, metaforoProposal *metaforo.ProposalResponse) error {
-	var err error
-	// Save current version proposal arweave hash if not existing in current DB record
-	if metaforoProposal.Thread.EditHistory.Lists != nil && len(metaforoProposal.Thread.EditHistory.Lists) > 0 {
-		dbProposalRcd.ArweaveHash = metaforoProposal.Thread.EditHistory.Lists[0].Arweave
-		err = db.Save(&dbProposalRcd).Error
-		if err != nil {
-			return err
-		}
-	}
-
-	// TODO: Save historical version proposal arweave hash, and merge with save with current version
-	// TODO: Save user id and wallet from comments data
-	return nil
-}

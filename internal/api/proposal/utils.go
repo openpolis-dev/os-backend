@@ -50,6 +50,11 @@ func GetMetaforoProposalByInternalId(db *gorm.DB, proposalIdStr string) (*model.
 		return nil, nil, err
 	}
 
+	err = UpdateDbRecordsFromMetaforoProposalResponse(db, osProposalRcd, metaforoProposalRcd)
+	if err != nil {
+		log.Error().Msgf("update db records from metaforoProposalResponse error: %+v", err)
+	}
+
 	return osProposalRcd, metaforoProposalRcd, nil
 }
 
