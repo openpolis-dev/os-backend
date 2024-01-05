@@ -70,6 +70,11 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 		// Proposal is in PendingSubmit state, the data can be updated directory w/o bumping up version
 		proposalRcd.Title = reqData.Title
 		proposalRcd.ProposalCategoryID = reqData.ProposalCategoryId
+		err = db.Save(&proposalRcd).Error
+		if err != nil {
+			log.Error().Msgf("duplicate proposal error: %+v", err)
+			return nil, err
+		}
 
 		// Update proposal content blocks, includes update existing blocks and remove deleted blocks
 		if err := SaveProposalContentRecords(db, proposalRcd.ID, reqData.ContentBlocks); err != nil {

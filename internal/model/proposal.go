@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/rs/zerolog/log"
 	"gorm.io/datatypes"
@@ -128,49 +129,18 @@ func (p *Proposal) GetMetaforoThreadId() int {
 	return threadId
 }
 
-// BumpUpVersion creates a new proposal record with copied content_blocks, components, vote_records and bumps up proposal version.
+// BumpUpVersion creates a new proposal record with bumps up proposal version.
 // The ArweaveHash will be set to empty string since the file changed
+// The content_blocks and components will be cloned outside this function
 func (p *Proposal) BumpUpVersion(db *gorm.DB) (*Proposal, error) {
 	newRecord := p
 	newRecord.ID = 0
+	newRecord.CreateTs = time.Now().UTC().Unix()
 	newRecord.ArweaveHash = ""
 	newRecord.Version += 1
 	newRecord.State = int(ProposalStateDraft) // record with bumped up version should be in Draft state
 
 	if err := db.Create(&newRecord).Error; err != nil {
-		log.Error().Msgf("create proposal record with data %+v failed. error: %+v", newRecord, err)
-		return nil, err
-	}
-
-	// Duplicate content blocks and components
-	if err := db.Transaction(func(tx *gorm.DB) error {
-		for _, block := range p.ContentBlocks {
-			block.ID = 0
-			if err := tx.Create(&block).Error; err != nil {
-				log.Error().Msgf("create proposal content block with data %+v failed. error: %+v", block, err)
-				return err
-			}
-		}
-
-		for _, component := range p.Components {
-			component.ID = 0
-			if err := tx.Create(&component).Error; err != nil {
-				log.Error().Msgf("create proposal component block with data %+v failed. error: %+v", component, err)
-				return err
-			}
-		}
-
-		// voteRecords data contains metaforoID, so need to copy to new record, then it can be handled by updateVoteTime API
-		for _, voteRecord := range p.VoteRecords {
-			voteRecord.ID = 0
-			if err := tx.Create(&voteRecord).Error; err != nil {
-				log.Error().Msgf("create vote record with data %+v failed. error: %+v", voteRecord, err)
-				return err
-			}
-		}
-
-		return nil
-	}); err != nil {
 		log.Error().Msgf("create proposal record with data %+v failed. error: %+v", newRecord, err)
 		return nil, err
 	}
