@@ -135,6 +135,7 @@ func (p *Proposal) BumpUpVersion(db *gorm.DB) (*Proposal, error) {
 	newRecord.ID = 0
 	newRecord.ArweaveHash = ""
 	newRecord.Version += 1
+	newRecord.State = int(ProposalStateDraft) // record with bumped up version should be in Draft state
 
 	if err := db.Create(&newRecord).Error; err != nil {
 		log.Error().Msgf("create proposal record with data %+v failed. error: %+v", newRecord, err)
