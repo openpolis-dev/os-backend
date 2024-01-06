@@ -178,7 +178,8 @@ type FrontendProposalDetailRecord struct {
 	// Is current user voted for this proposal
 	IsVoted bool `json:"is_voted"`
 
-	IsBasedOnTemplate bool `json:"is_based_on_template"`
+	IsBasedOnTemplate bool   `json:"is_based_on_template"`
+	TemplateName      string `json:"template_name"`
 
 	// Timestamps
 	CreateTs int64 `json:"create_ts"`
@@ -315,6 +316,17 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 		}
 	}
 
+	templateName := ""
+	if proposal.TemplateId != 0 {
+		var template model.ProposalTemplate
+		err := db.Find(&template, proposal.TemplateId).Error
+		if err != nil {
+			log.Error().Msgf("fetch proposal template error: %+v", err)
+			return nil, err
+		}
+		templateName = template.Name
+	}
+
 	return &FrontendProposalDetailRecord{
 		ID:                      proposal.ID,
 		Title:                   proposal.Title,
@@ -339,5 +351,6 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 		Votes:             votes,
 		CreateTs:          proposal.CreateTs,
 		IsBasedOnTemplate: proposal.TemplateId != 0,
+		TemplateName:      templateName,
 	}, nil
 }
