@@ -8,10 +8,12 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/pkgerrors"
 	"github.com/theseed-labs/os-backend/internal"
+	"github.com/theseed-labs/os-backend/internal/api/cron_jobs"
 	"github.com/theseed-labs/os-backend/internal/api/proposal"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/graph/generated"
 	"github.com/theseed-labs/os-backend/internal/graph/resolver"
+	"github.com/theseed-labs/os-backend/internal/task_manager"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	swaggerFiles "github.com/swaggo/files"
@@ -146,6 +148,10 @@ func main() {
 	zerolog.MessageFieldName = "m"
 	log.Logger = log.With().Caller().Logger()
 
+	// setup task manager and start runner
+	task_manager.InitTaskManager(db, 2)
+	task_manager.GetTaskManager().StartRunner()
+
 	r := gin.Default()
 	r.Use(middleware.RequestMetricsRecord())
 	r.Use(middleware.ResponseMetricsRecord())
@@ -268,6 +274,10 @@ func main() {
 		// All proposal categories for non login users
 		proposalCategoryRouter := v1.Group("/proposal_categories")
 		proposalCategoryRouter.GET("/list", proposal.ListAllCategories)
+
+		// Schedule jobs routers
+		jobsRouter := v1.Group("/jobs")
+		jobsRouter.GET("/list", cron_jobs.List)
 
 		// foo routers
 	}

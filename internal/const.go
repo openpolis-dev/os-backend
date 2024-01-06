@@ -47,3 +47,5 @@ const AssetTypeScrId = 1
 const AssetTypeScrName = "SCR"
 const AssetTypeUsdtId = 2
 const AssetTypeUsdtName = "USDT"
+
+const DefaultTaskRunnerCheckIntervalSecond = 10
