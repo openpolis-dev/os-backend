@@ -1078,6 +1078,8 @@ definitions:
         type: string
       state:
         type: string
+      template_name:
+        type: string
       title:
         type: string
       vote_gate:

@@ -4612,6 +4612,9 @@ const docTemplate = `{
                 "state": {
                     "type": "string"
                 },
+                "template_name": {
+                    "type": "string"
+                },
                 "title": {
                     "type": "string"
                 },
