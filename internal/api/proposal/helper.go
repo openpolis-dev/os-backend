@@ -476,5 +476,7 @@ func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcd *mod
 		}
 		return nil
 	})
+
+	// TODO: Save proposal vote records
 	return nil
 }

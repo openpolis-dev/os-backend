@@ -515,15 +515,15 @@ func updateProposalState(db *gorm.DB, user *middleware.CurUser, proposalStrId st
 			err = tx.Save(&proposalRecord).Error
 			//  TODO: Get proposal category default duration
 			var voteRecords []*model.ProposalVoteRecord
-			err = db.Model(proposalRecord).Association("VoteRecords").Find(&voteRecords)
+			err = tx.Model(proposalRecord).Association("VoteRecords").Find(&voteRecords)
 			if err != nil {
 				log.Error().Msgf("get vote records error: %+v", err)
 				return err
 			}
 			log.Error().Msgf("TTT: Prepare to update votes, votes: %+v", voteRecords)
 
+			// TODO: Use metaforo response update proposal vote records
 			for _, record := range voteRecords {
-				log.Error().Msgf("TTT: vote record: %+v", record)
 				err := metaforo.UpdateVoteTime(internal.MetaforoAdminAccessToken,
 					internal.MetaforoGroupName,
 					record.MetaforoID,
@@ -535,6 +535,8 @@ func updateProposalState(db *gorm.DB, user *middleware.CurUser, proposalStrId st
 					return err
 				}
 			}
+			proposalRecord.State = int(model.ProposalStateVoting)
+			err = tx.Save(&proposalRecord).Error
 			if err != nil {
 				log.Error().Msgf("change proposal to approved error")
 				return err
