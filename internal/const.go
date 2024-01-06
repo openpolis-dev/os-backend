@@ -49,3 +49,5 @@ const AssetTypeUsdtId = 2
 const AssetTypeUsdtName = "USDT"
 
 const DefaultTaskRunnerCheckIntervalSecond = 10
+
+const TaskRefreshVotingProposalVoteInfo = "RefreshVotingProposalVoteInfo"

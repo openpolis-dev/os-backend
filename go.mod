@@ -1,12 +1,15 @@
 module github.com/theseed-labs/os-backend
 
-go 1.20
+go 1.21.4
+
+toolchain go1.21.5
 
 require (
 	github.com/99designs/gqlgen v0.17.41
 	github.com/OneSignal/onesignal-go-api v1.0.4
 	github.com/Taoist-Labs/see-auth-go v0.1.7
 	github.com/allegro/bigcache/v3 v3.1.0
+	github.com/aptible/supercronic v0.2.29
 	github.com/aws/aws-sdk-go v1.45.25
 	github.com/bwmarrin/discordgo v0.27.1
 	github.com/casbin/casbin/v2 v2.77.2
@@ -137,7 +140,6 @@ require (
 	github.com/tklauser/numcpus v0.6.1 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.2.11 // indirect
-	github.com/unipassid/unipass-sigverify-go v0.9.0 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/xuri/efp v0.0.0-20230802181842-ad255f2331ca // indirect
 	github.com/xuri/nfp v0.0.0-20230819163627-dc951e3ffe1a // indirect
