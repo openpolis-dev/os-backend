@@ -265,11 +265,17 @@ type ProposalAuditLog struct {
 // ProposalVoteRecord saves vote object and associated to specified Proposal
 type ProposalVoteRecord struct {
 	ID         uint `gorm:"primaryKey"`
-	GateID     uint
+	GateID     uint // Not using now, find way to get it from proposal category
 	Title      string
 	StartTs    int64 `gorm:"index"`
 	EndTs      int64 `gorm:"index"`
-	MetaforoID int
+	MetaforoID int   `gorm:"index"` // Poll id from metaforo
+
+	ApproveCount int
+	AbstainCount int
+	RejectCount  int
+
+	ArweaveHash string
 
 	ProposalID uint
 }
