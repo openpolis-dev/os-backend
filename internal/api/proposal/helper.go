@@ -507,9 +507,9 @@ func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcd *mod
 
 		if poll.Status == "close" {
 			if proposalVoteRecord.ApproveCount > proposalVoteRecord.RejectCount {
-				dbProposalRcd.State = int(model.ProposalStateApproved)
+				dbProposalRcd.State = int(model.ProposalStateVotePassed)
 			} else {
-				dbProposalRcd.State = int(model.ProposalStateRejected)
+				dbProposalRcd.State = int(model.ProposalStateVoteFailed)
 			}
 		}
 	}
