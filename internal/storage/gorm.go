@@ -77,6 +77,7 @@ func MigrateTables(db *gorm.DB) error {
 		&model.ProposalComponent{},
 		&model.ProposalComponentAction{},
 		&model.ProposalTemplate{},
+		&model.CronJob{},
 	)
 }
 

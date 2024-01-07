@@ -6,6 +6,7 @@ const (
 	CronJobStateActive CronJobState = iota
 	CronJobStatePaused
 	CronJobStateTerminated
+	CronJobStateRunning
 )
 
 // CronJob saves info for scheduler tasks.

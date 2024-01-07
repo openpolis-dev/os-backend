@@ -51,3 +51,4 @@ const AssetTypeUsdtName = "USDT"
 const DefaultTaskRunnerCheckIntervalSecond = 10
 
 const TaskRefreshVotingProposalVoteInfo = "RefreshVotingProposalVoteInfo"
+const TaskRefreshVotingProposalVoteInfoCronExpr = "0 * * * * * *" // Launch the job every minute

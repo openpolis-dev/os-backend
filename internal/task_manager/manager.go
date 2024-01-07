@@ -1,8 +1,10 @@
 package task_manager
 
 import (
+	"fmt"
 	"time"
 
+	"github.com/aptible/supercronic/cronexpr"
 	"github.com/go-co-op/gocron/v2"
 	"github.com/rs/zerolog/log"
 	"github.com/theseed-labs/os-backend/internal"
@@ -37,6 +39,22 @@ func InitTaskManager(db *gorm.DB, checkIntervalSecond int) {
 		TaskChannel:         make(chan *model.CronJob),
 	}
 
+	log.Error().Msgf("Next run time from now: %s", cronexpr.MustParse(internal.TaskRefreshVotingProposalVoteInfoCronExpr).Next(time.Now()))
+
+	// Init built-in tasks
+	// - RefreshProposalVoteState
+	refreshVoteStateJob := &model.CronJob{
+		HandlerName: internal.TaskRefreshVotingProposalVoteInfo,
+	}
+	if err := db.Where(&refreshVoteStateJob).Assign(model.CronJob{
+		State:      model.CronJobStateActive,
+		CronExp:    internal.TaskRefreshVotingProposalVoteInfoCronExpr,
+		CreateTs:   time.Now().UTC().Unix(),
+		NextExecTs: cronexpr.MustParse(internal.TaskRefreshVotingProposalVoteInfoCronExpr).Next(time.Now()).UTC().Unix(),
+		JobParams:  fmt.Sprintf(`{"group_name": "%s"}`, internal.MetaforoGroupName),
+	}).FirstOrCreate(&refreshVoteStateJob).Error; err != nil {
+		panic(err)
+	}
 }
 
 func GetTaskManager() *TaskManager {
@@ -56,6 +74,8 @@ func (t *TaskManager) StartRunner() {
 		panic(err)
 	}
 
+	go t.TaskDispatcher()
+
 	t.Scheduler.Start()
 }
 
@@ -74,7 +94,7 @@ func (t *TaskManager) ScanTaskPool() {
 
 	err := t.DatabaseClient.Model(&model.CronJob{}).
 		Where("state = ?", model.CronJobStateActive).
-		Where("next_run_ts >= ? AND next_run_ts < ?", startTime.Unix(), endTime.Unix()).Find(&tasksShouldBeExecuted).Error
+		Where("next_exec_ts >= ? AND next_exec_ts < ?", startTime.Unix(), endTime.Unix()).Find(&tasksShouldBeExecuted).Error
 
 	if err != nil {
 		log.Error().Msgf("scan task pool error: %+v", err)
@@ -85,17 +105,16 @@ func (t *TaskManager) ScanTaskPool() {
 		log.Debug().Msgf("dispatched job: %+v", job)
 		t.TaskChannel <- job
 	}
-
-	log.Error().Msgf("TTT: tasks: %+v", tasksShouldBeExecuted)
 }
 
 func (t *TaskManager) TaskDispatcher() {
-	// Please help to generate a code segment that get tasks from channel and process with task name
+	log.Debug().Msgf("task dispatcher started")
 	for {
 		task := <-t.TaskChannel
 		switch task.HandlerName {
 		case internal.TaskRefreshVotingProposalVoteInfo:
-			// Process task1
+			log.Error().Msgf("TTT: dispatched job handler name: %s", task.HandlerName)
+			go RefreshVotingProposalVoteInfoJob(t.DatabaseClient, task, task.JobParams)
 		default:
 			log.Warn().Msgf("unknown task name: %s task detail: %+v", task.HandlerName, task)
 			// Handle unknown task
