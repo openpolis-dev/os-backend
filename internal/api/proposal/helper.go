@@ -166,7 +166,15 @@ func SaveProposalContentRecords(db *gorm.DB, proposalRecordId uint, reqContentBl
 }
 
 func SaveProposalComponentRecords(db *gorm.DB, proposalId uint, reqComponentData map[string]*ComponentRequestData) error {
+	var existingComponentIds []uint
+	err := db.Model(&model.ProposalComponentRecord{}).Where(model.ProposalComponentRecord{ProposalID: proposalId}).Pluck("id", &existingComponentIds).Error
+	if err != nil {
+		log.Error().Msgf("get proposal content block ids error: %+v", err)
+		return err
+	}
+
 	return db.Transaction(func(tx *gorm.DB) error {
+		var updatedIds []uint
 		for _, componentData := range reqComponentData {
 			// Try to get component record from DB
 			componentRecord := model.ProposalComponent{
@@ -194,6 +202,20 @@ func SaveProposalComponentRecords(db *gorm.DB, proposalId uint, reqComponentData
 			}).Error; err != nil {
 				log.Error().Msgf("create proposal component error: %+v", err)
 				return err
+			}
+
+			if componentData.ID != 0 {
+				updatedIds = append(updatedIds, componentData.ID)
+			}
+		}
+
+		// Remove deleted blocks
+		for _, componentId := range existingComponentIds {
+			if !lo.Contains(updatedIds, componentId) {
+				if err := db.Delete(&model.ProposalComponentRecord{ID: componentId}).Error; err != nil {
+					log.Error().Msgf("delete proposal component error: %+v", err)
+					return err
+				}
 			}
 		}
 		return nil
