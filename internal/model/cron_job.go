@@ -32,4 +32,6 @@ type CronJob struct {
 	ProposalComponentRecordId int `gorm:"index:component_job"` // Indicates which component record launches this job, to avoid duplicated jobs
 
 	LastExecResult string // Saves last execution result, used for debug
+
+	LastExecutionFailed bool // Whether last execution failed
 }
