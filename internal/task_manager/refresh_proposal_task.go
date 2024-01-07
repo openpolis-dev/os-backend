@@ -30,10 +30,11 @@ func RefreshVotingProposalInfoJob(db *gorm.DB, job *model.CronJob, jobParams str
 		return
 	}
 
-	var params RefreshVotingProposalVoteInfoJobParams
-	err = json.Unmarshal([]byte(jobParams), &params)
 	execResult := ""
 	jobFailed := false
+
+	var params RefreshVotingProposalVoteInfoJobParams
+	err = json.Unmarshal([]byte(jobParams), &params)
 
 	if err != nil {
 		log.Warn().Msgf("refresh voting proposal vote info job params error: %+v", err)

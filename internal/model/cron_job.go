@@ -7,6 +7,7 @@ const (
 	CronJobStatePaused
 	CronJobStateTerminated
 	CronJobStateRunning
+	CronJobStateDone
 )
 
 // CronJob saves info for scheduler tasks.

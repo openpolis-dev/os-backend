@@ -94,7 +94,7 @@ func (t *TaskManager) ScanTaskPool() {
 
 	err := t.DatabaseClient.Model(&model.CronJob{}).
 		Where("state = ?", model.CronJobStateActive).
-		Where("next_exec_ts >= ? AND next_exec_ts < ?", startTime.Unix(), endTime.Unix()).Find(&tasksShouldBeExecuted).Error
+		Where("(next_exec_ts >= ? AND next_exec_ts < ?) OR last_exec_ts=0", startTime.Unix(), endTime.Unix()).Find(&tasksShouldBeExecuted).Error
 
 	if err != nil {
 		log.Error().Msgf("scan task pool error: %+v", err)
@@ -113,8 +113,16 @@ func (t *TaskManager) TaskDispatcher() {
 		task := <-t.TaskChannel
 		switch task.HandlerName {
 		case internal.TaskRefreshVotingProposalVoteInfo:
-			log.Error().Msgf("TTT: dispatched job handler name: %s", task.HandlerName)
-			go RefreshVotingProposalVoteInfoJob(t.DatabaseClient, task, task.JobParams)
+			go RefreshVotingProposalInfoJob(t.DatabaseClient, task, task.JobParams)
+		case internal.TaskCreateProject:
+			go CreateProjectTask(t.DatabaseClient, task, task.JobParams)
+		case internal.TaskCloseProject:
+			go CloseProjectTask(t.DatabaseClient, task, task.JobParams)
+		case internal.TaskCreateGuild:
+			go CreateGuildTask(t.DatabaseClient, task, task.JobParams)
+		case internal.TaskCloseGuild:
+			go CloseGuildTask(t.DatabaseClient, task, task.JobParams)
+		case internal.TaskRewardNewApplication:
 		default:
 			log.Warn().Msgf("unknown task name: %s task detail: %+v", task.HandlerName, task)
 			// Handle unknown task
