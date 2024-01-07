@@ -213,6 +213,8 @@ type ProposalCategory struct {
 	ProposalVoteGateId uint
 	ProposalVoteGate   *ProposalVoteGate
 
+	SecondDelayBeforeTaskExecution int64 // Second delay before execution of proposal component actions
+
 	IsActive bool
 }
 

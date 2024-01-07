@@ -19,7 +19,7 @@ type CronJob struct {
 	CreateTs int64
 	UpdateTs int64 `gorm:"index"`
 
-	HandlerName string // Handler name, used to launch correct function while being dispatched
+	HandlerName string `gorm:"index:component_job"` // Handler name, used to launch correct function while being dispatched
 
 	// Scheduler info
 	CronExp    string // Expression of cron job, the format syntax is `s m h dom mon dow`
@@ -28,6 +28,8 @@ type CronJob struct {
 
 	JobParams string       // Job parameters saves params used for job in json string format
 	State     CronJobState // Active, Paused, Terminated
+
+	ProposalComponentRecordId int `gorm:"index:component_job"` // Indicates which component record launches this job, to avoid duplicated jobs
 
 	LastExecResult string // Saves last execution result, used for debug
 }

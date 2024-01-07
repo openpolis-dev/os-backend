@@ -10,13 +10,19 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	"github.com/theseed-labs/os-backend/internal"
-	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk"
 	"github.com/theseed-labs/os-backend/internal/sdk/metaforo"
 	"gorm.io/gorm"
 )
+
+type proposalComponentActions struct {
+	ProposalComponentRecordId int    `json:"proposal_component_record_id"`
+	ComponentParams           string `json:"component_params"`
+	ApproveActionName         string `json:"approve_action_name"`
+	RejectActionName          string `json:"reject_action_name"`
+}
 
 func GetProposalFromStringId(db *gorm.DB, idStr string) (*model.Proposal, error) {
 	proposalId, err := strconv.Atoi(idStr)
@@ -441,14 +447,13 @@ func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcd *mod
 	if dbProposalRcd.ProposalRecordId == proposalRecordId {
 		var dbProposals []*model.Proposal
 		err = db.Where(&model.Proposal{ProposalRecordId: dbProposalRcd.ProposalRecordId}).Order("version DESC").Find(&dbProposals).Error
-		api.PrintStructAsJson(metaforoProposal.Thread.EditHistory, "TTT: edit histories: ")
 		if err == nil && len(dbProposals) > 0 {
 			err = db.Transaction(func(tx *gorm.DB) error {
 				for idx := 0; idx < metaforoProposal.Thread.EditHistory.Count; idx++ {
 					tx.Model(&dbProposals[idx]).Update("arweave_hash", metaforoProposal.Thread.EditHistory.Lists[idx].Arweave)
 					if idx == 0 {
 						// Save arwave hash data to record for setting it correctly in response
-						dbProposalRcd.ArweaveHash = metaforoProposal.Thread.EditHistory.Lists[idx].Arweave
+						tx.Where(&model.Proposal{ID: dbProposalRcd.ID}).Updates(model.Proposal{ArweaveHash: metaforoProposal.Thread.EditHistory.Lists[idx].Arweave})
 					}
 				}
 				return nil
@@ -507,12 +512,71 @@ func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcd *mod
 
 		if poll.Status == "close" {
 			if proposalVoteRecord.ApproveCount > proposalVoteRecord.RejectCount {
-				dbProposalRcd.State = int(model.ProposalStateVotePassed)
+				err = db.Where(&model.Proposal{ID: dbProposalRcd.ID}).Updates(model.Proposal{State: int(model.ProposalStateVotePassed)}).Error
+				if err != nil {
+					log.Error().Msgf("update proposal state error: %+v", err) // TODO: log
+				}
+				go createProposalFinTasks(db, dbProposalRcd, model.ProposalStateVotePassed)
 			} else {
-				dbProposalRcd.State = int(model.ProposalStateVoteFailed)
+				err = db.Where(&model.Proposal{ID: dbProposalRcd.ID}).Updates(model.Proposal{State: int(model.ProposalStateVoteFailed)}).Error
+				if err != nil {
+					log.Error().Msgf("update proposal state error: %+v", err) // TODO: log
+				}
+				go createProposalFinTasks(db, dbProposalRcd, model.ProposalStateVoteFailed)
 			}
 		}
 	}
 
-	return db.Save(dbProposalRcd).Error
+	return nil
+}
+
+func createProposalFinTasks(db *gorm.DB, proposal *model.Proposal, finState model.ProposalState) {
+	sqlQuery := QueryComponentActionNameBaseSQL + " WHERE proposal_id = ?"
+	var proposalComponentActions []*proposalComponentActions
+	err := db.Raw(sqlQuery, proposal.ID).Find(&proposalComponentActions).Error
+	if err != nil {
+		log.Error().Msgf("fetch proposal component actions error: %+v", err)
+		return
+	}
+
+	var proposalCategory *model.ProposalCategory
+	err = db.Find(&proposalCategory, proposal.ProposalCategoryID).Error
+	if err != nil {
+		log.Error().Msgf("fetch proposal category error: %+v", err)
+		return
+	}
+
+	for _, componentAction := range proposalComponentActions {
+		var actionName string
+		switch finState {
+		case model.ProposalStateVotePassed:
+			actionName = componentAction.ApproveActionName
+		case model.ProposalStateVoteFailed:
+			actionName = componentAction.RejectActionName
+		default:
+			log.Error().Msgf("unknown proposal state: %d", finState)
+			return
+		}
+
+		currentTs := time.Now().UTC().Unix()
+		finTask := &model.CronJob{
+			CreateTs:       currentTs,
+			UpdateTs:       currentTs,
+			HandlerName:    actionName,
+			LastExecTs:     0,
+			NextExecTs:     currentTs + proposalCategory.SecondDelayBeforeTaskExecution,
+			JobParams:      componentAction.ComponentParams,
+			State:          model.CronJobStateActive,
+			LastExecResult: "",
+		}
+		createTaskTx := db.Where(model.CronJob{HandlerName: actionName, ProposalComponentRecordId: componentAction.ProposalComponentRecordId}).
+			Assign(&finTask).FirstOrCreate(&finTask)
+
+		if createTaskTx.Error != nil {
+			log.Error().Msgf("create proposal fin task error: %+v", err)
+			return
+		} else if createTaskTx.RowsAffected == 0 {
+			log.Warn().Msgf("proposal fin task already exists: %+v", finTask)
+		}
+	}
 }

@@ -38,6 +38,16 @@ type JointMetaforoAndOsUser struct {
 	OsUserName string `json:"os_user_name"`
 }
 
+const QueryComponentActionNameBaseSQL = `
+select pcr.id as proposal_component_record_id,
+       pcr.data as component_params,
+       approve_pca.command as approve_action_name,
+       reject_pca.command  as reject_action_name
+from proposal_component_records pcr
+         join proposal_components pc on pcr.component_id = pc.id
+         join proposal_component_actions approve_pca on pc.approve_action_id = approve_pca.id
+         join proposal_component_actions reject_pca on pc.reject_action_id = reject_pca.id`
+
 func GetMetaforoProposalByInternalId(db *gorm.DB, proposalIdStr string) (*model.Proposal, *metaforo.ProposalResponse, error) {
 	osProposalRcd, err := GetProposalFromStringId(db, proposalIdStr)
 	if err != nil {
