@@ -470,8 +470,11 @@ func main() {
 		}
 		storage.InitGormDB(dbDsn, parsedURI.Scheme)
 	}
-	storage.MigrateTables()
 	db := storage.GetGormDB()
+	err := storage.MigrateTables(db)
+	if err != nil {
+		panic(err)
+	}
 	db.Logger = logger.Default.LogMode(logger.Silent)
 
 	if config.CreateSeasonFlag {

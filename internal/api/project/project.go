@@ -59,13 +59,12 @@ type (
 
 // Create `POST /projects`
 //
-//	@Summary		Create a project with passed in data
-//	@Description	This api create a project record with passed in data
-//	@Router			/projects [post]
-//	@Tags			Project
-//	@Param			request	body		CreateReq	true	"new project request data"
-//
-//	@Success		200		{object}	api.Reply
+//	@summary		Create a project with passed in data
+//	@description	This api create a project record with passed in data
+//	@router			/projects [post]
+//	@tags			Project
+//	@param			request	body		CreateReq	true	"new project request data"
+//	@success		200		{object}	api.Reply
 func Create(ctx *gin.Context) {
 	req := CreateReq{}
 	err := ctx.BindJSON(&req)
@@ -92,14 +91,14 @@ func Create(ctx *gin.Context) {
 
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
-	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), api.ObjProj, api.ActCreate)
+	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), internal.ObjProj, internal.ActCreate)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 		return
 	}
 	if !ok {
-		sdk.LogForbiddenError(ctx, user.Wallet, api.ObjProj, api.ActCreate)
+		sdk.LogForbiddenError(ctx, user.Wallet, internal.ObjProj, internal.ActCreate)
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
@@ -151,10 +150,10 @@ func Create(ctx *gin.Context) {
 		// p, proj_sponsor_1, proj_1, create_app
 		// p, proj_sponsor_1, proj_1, u_member
 		// p, proj_sponsor_1, proj_1, u_budget
-		{fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, proj.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, proj.ID), api.ActModify},
-		{fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, proj.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, proj.ID), api.ActCreateApplication},
-		{fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, proj.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, proj.ID), api.ActUpdateMember},
-		{fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, proj.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, proj.ID), api.ActUpdateBudget},
+		{fmt.Sprintf("%s%d", internal.RoleProjSponsorPrefix, proj.ID), fmt.Sprintf("%s%d", internal.ObjProjPrefix, proj.ID), internal.ActModify},
+		{fmt.Sprintf("%s%d", internal.RoleProjSponsorPrefix, proj.ID), fmt.Sprintf("%s%d", internal.ObjProjPrefix, proj.ID), internal.ActCreateApplication},
+		{fmt.Sprintf("%s%d", internal.RoleProjSponsorPrefix, proj.ID), fmt.Sprintf("%s%d", internal.ObjProjPrefix, proj.ID), internal.ActUpdateMember},
+		{fmt.Sprintf("%s%d", internal.RoleProjSponsorPrefix, proj.ID), fmt.Sprintf("%s%d", internal.ObjProjPrefix, proj.ID), internal.ActUpdateBudget},
 		//// p, proj_member_1, proj_1, modify
 		//// p, proj_member_1, proj_1, create_app
 		//{fmt.Sprintf("%s%d", api.RoleProjMemberPrefix, proj.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, proj.ID), api.ActModify},
@@ -169,7 +168,7 @@ func Create(ctx *gin.Context) {
 	// add roles
 	sponsorGroupingPolicies := lo.Map(req.Sponsors, func(sponsor string, _ int) []string {
 		// g, 0xc13..1283 proj_sponsor_1
-		return []string{common.FormatUserWallet(sponsor), fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, proj.ID)}
+		return []string{common.FormatUserWallet(sponsor), fmt.Sprintf("%s%d", internal.RoleProjSponsorPrefix, proj.ID)}
 	})
 	//memberGroupingPolicies := lo.Map(req.Members, func(member string, _ int) []string {
 	//	// g, 0xc13..1283 proj_member_1
@@ -207,14 +206,13 @@ func Create(ctx *gin.Context) {
 
 // Update `PUT /projects/:id`
 //
-//	@Summary		Update project information
-//	@Description	This api update a project record with passed in data
-//	@Router			/projects/:id [put]
-//	@Tags			Project
-//	@Param			id		path		string		true	"id of the project"
-//	@Param			request	body		UpdateReq	true	"update project info"
-//
-//	@Success		200		{object}	api.Reply
+//	@summary		Update project information
+//	@description	This api update a project record with passed in data
+//	@router			/projects/:id [put]
+//	@tags			Project
+//	@param			id		path		string		true	"id of the project"
+//	@param			request	body		UpdateReq	true	"update project info"
+//	@success		200		{object}	api.Reply
 func Update(ctx *gin.Context) {
 	idParam := ctx.Param("id")
 	id, err := strconv.Atoi(idParam)
@@ -233,14 +231,14 @@ func Update(ctx *gin.Context) {
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
 	permObject := buildProjectPermObject(id)
-	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), permObject, api.ActModify)
+	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), permObject, internal.ActModify)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 		return
 	}
 	if !ok {
-		sdk.LogForbiddenError(ctx, user.Wallet, permObject, api.ActModify)
+		sdk.LogForbiddenError(ctx, user.Wallet, permObject, internal.ActModify)
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
@@ -288,13 +286,12 @@ func Update(ctx *gin.Context) {
 // Close
 // POST /project/:id/close
 //
-//	@Summary		Close a project
-//	@Description	This api close specified project, admin permission is required for this operation
-//	@Router			/projects/:id/close [post]
-//	@Tags			Project
-//	@Param			id	path		number	true	"project ID"
-//
-//	@Success		200	{object}	api.Reply
+//	@summary		Close a project
+//	@description	This api close specified project, admin permission is required for this operation
+//	@router			/projects/:id/close [post]
+//	@tags			Project
+//	@param			id	path		number	true	"project ID"
+//	@success		200	{object}	api.Reply
 func Close(ctx *gin.Context) {
 	idParam := ctx.Param("id")
 	id, err := strconv.Atoi(idParam)
@@ -305,14 +302,14 @@ func Close(ctx *gin.Context) {
 
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
-	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), api.ObjProj, api.ActClose)
+	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), internal.ObjProj, internal.ActClose)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 		return
 	}
 	if !ok {
-		sdk.LogForbiddenError(ctx, user.Wallet, api.ObjProj, api.ActClose)
+		sdk.LogForbiddenError(ctx, user.Wallet, internal.ObjProj, internal.ActClose)
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
@@ -366,12 +363,11 @@ func Close(ctx *gin.Context) {
 
 // Detail `GET /project/:id`
 //
-//	@Summary	show detail of a project
-//	@Tags		Project
-//	@Param		id	path	int	true	"guild id"
-//	@Router		/projects/:id [get]
-//
-//	@Success	200	{object}	api.Reply{data=DetailReply}
+//	@summary	show detail of a project
+//	@tags		Project
+//	@param		id	path	int	true	"guild id"
+//	@router		/projects/:id [get]
+//	@success	200	{object}	api.Reply{data=DetailReply}
 func Detail(ctx *gin.Context) {
 	idParam := ctx.Param("id")
 	id, err := strconv.Atoi(idParam)
@@ -408,17 +404,16 @@ func Detail(ctx *gin.Context) {
 
 // List `GET /projects?status=open&page=1&size=10&sort_field=created_at&sort_order=desc`
 //
-//	@Summary		List all projects match the query params
-//	@Description	This api parses passed in pagination query params,
-//	@Router			/projects [get]
-//	@Tags			Project
-//	@Param			status		query		string	false	"status array, e.g. 'open,pending_close'"	Enum(open pending_close closed)
-//	@Param			page		query		string	false	"which page"
-//	@Param			size		query		string	false	"size of each page"
-//	@Param			sort_field	query		string	false	"sort by which field"
-//	@Param			sort_order	query		string	false	"order of sort"	Enum(asc desc)
-//
-//	@Success		200			{object}	api.Reply{data=api.ListReplyData{rows=model.Project}}
+//	@summary		List all projects match the query params
+//	@description	This api parses passed in pagination query params,
+//	@router			/projects [get]
+//	@tags			Project
+//	@param			status		query		string	false	"status array, e.g. 'open,pending_close'"	Enum(open pending_close closed)
+//	@param			page		query		string	false	"which page"
+//	@param			size		query		string	false	"size of each page"
+//	@param			sort_field	query		string	false	"sort by which field"
+//	@param			sort_order	query		string	false	"order of sort"	Enum(asc desc)
+//	@success		200			{object}	api.Reply{data=api.ListReplyData{rows=model.Project}}
 func List(ctx *gin.Context) {
 	db := api.ForContextOnlyDB(ctx)
 
@@ -449,16 +444,16 @@ func List(ctx *gin.Context) {
 //
 //	`GET /projects/my_projects?page=1&size=10&sort_field=created_at&sort_order=desc`
 //
-//	@Summary	list my projects
-//	@Tags		Project
-//	@Accept		json
-//	@Produce	json
-//	@Param		page		query		int		false	"page number, default: 1"
-//	@Param		size		query		int		false	"page size, default: 10"
-//	@Param		sort_field	query		string	false	"sort field, default: created_at"
-//	@Param		sort_order	query		string	false	"sort order, default: desc"
-//	@Success	200			{object}	api.Reply{data=api.ListReplyData{rows=model.Project}}
-//	@Router		/projects/my_projects [get]
+//	@summary	list my projects
+//	@tags		Project
+//	@accept		json
+//	@produce	json
+//	@param		page		query		int		false	"page number, default: 1"
+//	@param		size		query		int		false	"page size, default: 10"
+//	@param		sort_field	query		string	false	"sort field, default: created_at"
+//	@param		sort_order	query		string	false	"sort order, default: desc"
+//	@success	200			{object}	api.Reply{data=api.ListReplyData{rows=model.Project}}
+//	@router		/projects/my_projects [get]
 func MyProjects(ctx *gin.Context) {
 	user, db := api.ForContextUserAndDB(ctx)
 
@@ -489,14 +484,14 @@ type UpdateStaffsReq struct {
 
 // UpdateStaffs update project sponsors and members
 //
-//	@Summary	update project sponsors and members
-//	@Tags		Project
-//	@Accept		json
-//	@Produce	json
-//	@Param		id			path		int				true	"project id"
-//	@Param		JsonBody	body		UpdateStaffsReq	true	"request json body"
-//	@Success	200			{object}	api.Reply
-//	@Router		/projects/{id}/update_staffs [post]
+//	@summary	update project sponsors and members
+//	@tags		Project
+//	@accept		json
+//	@produce	json
+//	@param		id			path		int				true	"project id"
+//	@param		JsonBody	body		UpdateStaffsReq	true	"request json body"
+//	@success	200			{object}	api.Reply
+//	@router		/projects/{id}/update_staffs [post]
 func UpdateStaffs(ctx *gin.Context) {
 	idParam := ctx.Param("id")
 	id, err := strconv.Atoi(idParam)
@@ -516,28 +511,28 @@ func UpdateStaffs(ctx *gin.Context) {
 	//  check permission
 	if req.Sponsors != nil && len(req.Sponsors) != 0 {
 		permObject := buildProjectPermObject(id)
-		ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), permObject, api.ActUpdateSponsor)
+		ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), permObject, internal.ActUpdateSponsor)
 		if err != nil {
 			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 			return
 		}
 		if !ok {
-			sdk.LogForbiddenError(ctx, user.Wallet, permObject, api.ActUpdateSponsor)
+			sdk.LogForbiddenError(ctx, user.Wallet, permObject, internal.ActUpdateSponsor)
 			ctx.JSON(http.StatusForbidden, api.Forbidden())
 			return
 		}
 	}
 	if req.Members != nil && len(req.Members) != 0 {
 		permObject := buildProjectPermObject(id)
-		ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), permObject, api.ActUpdateMember)
+		ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), permObject, internal.ActUpdateMember)
 		if err != nil {
 			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 			return
 		}
 		if !ok {
-			sdk.LogForbiddenError(ctx, user.Wallet, permObject, api.ActUpdateMember)
+			sdk.LogForbiddenError(ctx, user.Wallet, permObject, internal.ActUpdateMember)
 			ctx.JSON(http.StatusForbidden, api.Forbidden())
 			return
 		}
@@ -594,7 +589,7 @@ func UpdateStaffs(ctx *gin.Context) {
 			// add roles for new sponsors
 			newSponsorGroupingPolicies := lo.Map(req.Sponsors, func(sponsor string, _ int) []string {
 				// g, 0xc13..1283 proj_sponsor_1
-				return []string{common.FormatUserWallet(sponsor), fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, proj.ID)}
+				return []string{common.FormatUserWallet(sponsor), fmt.Sprintf("%s%d", internal.RoleProjSponsorPrefix, proj.ID)}
 			})
 			_, err = enforcer.AddGroupingPolicies(newSponsorGroupingPolicies)
 			if err != nil {
@@ -676,7 +671,7 @@ func UpdateStaffs(ctx *gin.Context) {
 			// remove roles for old sponsors
 			oldSponsorGroupingPolicies := lo.Map(proj.Sponsors, func(sponsor string, _ int) []string {
 				// g, 0xc13..1283 proj_sponsor_1
-				return []string{sponsor, fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, proj.ID)}
+				return []string{sponsor, fmt.Sprintf("%s%d", internal.RoleProjSponsorPrefix, proj.ID)}
 			})
 			_, err = enforcer.RemoveGroupingPolicies(oldSponsorGroupingPolicies)
 			if err != nil {
@@ -748,14 +743,14 @@ func UpdateStaffs(ctx *gin.Context) {
 
 // UpdateBudget update project budget
 //
-//	@Summary	Update project budget
-//	@Tags		Project
-//	@Accept		json
-//	@Produce	json
-//	@Param		id			path		int				true	"project id"
-//	@Param		JsonBody	body		UpdateBudgetReq	true	"request json body"
-//	@Success	200			{object}	api.Reply
-//	@Router		/projects/{id}/update_budget [post]
+//	@summary	Update project budget
+//	@tags		Project
+//	@accept		json
+//	@produce	json
+//	@param		id			path		int				true	"project id"
+//	@param		JsonBody	body		UpdateBudgetReq	true	"request json body"
+//	@success	200			{object}	api.Reply
+//	@router		/projects/{id}/update_budget [post]
 func UpdateBudget(ctx *gin.Context) {
 	idParam := ctx.Param("id")
 	id, err := strconv.Atoi(idParam)
@@ -774,14 +769,14 @@ func UpdateBudget(ctx *gin.Context) {
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
 	permObject := buildProjectPermObject(id)
-	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), permObject, api.ActUpdateBudget)
+	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), permObject, internal.ActUpdateBudget)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 		return
 	}
 	if !ok {
-		sdk.LogForbiddenError(ctx, user.Wallet, permObject, api.ActUpdateBudget)
+		sdk.LogForbiddenError(ctx, user.Wallet, permObject, internal.ActUpdateBudget)
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
@@ -830,13 +825,12 @@ func UpdateBudget(ctx *gin.Context) {
 
 // AddRelatedProposal `POST /projects/:id/add_related_proposal?proposalIDs=1&proposalIDs=2`
 //
-//	@Summary	Add related proposals to the project
-//	@Router		/projects/:id/add_related_proposal [post]
-//	@Tags		Project
-//	@Param		id			path		number		true	"project ID"
-//	@Param		proposalIDs	query		[]string	true	"proposal ID list"
-//
-//	@Success	200			{object}	api.Reply
+//	@summary	Add related proposals to the project
+//	@router		/projects/:id/add_related_proposal [post]
+//	@tags		Project
+//	@param		id			path		number		true	"project ID"
+//	@param		proposalIDs	query		[]string	true	"proposal ID list"
+//	@success	200			{object}	api.Reply
 func AddRelatedProposal(ctx *gin.Context) {
 	idParam := ctx.Param("id")
 	id, err := strconv.Atoi(idParam)
@@ -849,14 +843,14 @@ func AddRelatedProposal(ctx *gin.Context) {
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
 	permObject := buildProjectPermObject(id)
-	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), permObject, api.ActModify)
+	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), permObject, internal.ActModify)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 		return
 	}
 	if !ok {
-		sdk.LogForbiddenError(ctx, user.Wallet, permObject, api.ActModify)
+		sdk.LogForbiddenError(ctx, user.Wallet, permObject, internal.ActModify)
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
@@ -894,7 +888,7 @@ func AddRelatedProposal(ctx *gin.Context) {
 }
 
 func buildProjectPermObject(projectId int) string {
-	return fmt.Sprintf("%s%d", api.ObjProjPrefix, projectId)
+	return fmt.Sprintf("%s%d", internal.ObjProjPrefix, projectId)
 }
 
 func NormalizeWalletAddrInProject(project *model.Project) *model.Project {

@@ -13,7 +13,6 @@ import (
 	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
 	"github.com/theseed-labs/os-backend/internal"
-	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/sdk"
 	"github.com/xiaosongfu/gormfind"
@@ -289,10 +288,10 @@ func completeApplication(tx *gorm.DB, operatorWallet string, application *Applic
 				// p, proj_sponsor_1, proj_1, create_app
 				// p, proj_sponsor_1, proj_1, u_member
 				// p, proj_sponsor_1, proj_1, u_budget
-				{fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, project.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, project.ID), api.ActModify},
-				{fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, project.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, project.ID), api.ActCreateApplication},
-				{fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, project.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, project.ID), api.ActUpdateMember},
-				{fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, project.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, project.ID), api.ActUpdateBudget},
+				{fmt.Sprintf("%s%d", internal.RoleProjSponsorPrefix, project.ID), fmt.Sprintf("%s%d", internal.ObjProjPrefix, project.ID), internal.ActModify},
+				{fmt.Sprintf("%s%d", internal.RoleProjSponsorPrefix, project.ID), fmt.Sprintf("%s%d", internal.ObjProjPrefix, project.ID), internal.ActCreateApplication},
+				{fmt.Sprintf("%s%d", internal.RoleProjSponsorPrefix, project.ID), fmt.Sprintf("%s%d", internal.ObjProjPrefix, project.ID), internal.ActUpdateMember},
+				{fmt.Sprintf("%s%d", internal.RoleProjSponsorPrefix, project.ID), fmt.Sprintf("%s%d", internal.ObjProjPrefix, project.ID), internal.ActUpdateBudget},
 				//// p, proj_member_1, proj_1, modify
 				//// p, proj_member_1, proj_1, create_app
 				//{fmt.Sprintf("%s%d", api.RoleProjMemberPrefix, project.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, project.ID), api.ActModify},
@@ -305,7 +304,7 @@ func completeApplication(tx *gorm.DB, operatorWallet string, application *Applic
 			// remove roles for sponsors
 			oldSponsorGroupingPolicies := lo.Map(project.Sponsors, func(sponsor string, _ int) []string {
 				// g, 0xc13..1283 proj_sponsor_1
-				return []string{sponsor, fmt.Sprintf("%s%d", api.RoleProjSponsorPrefix, project.ID)}
+				return []string{sponsor, fmt.Sprintf("%s%d", internal.RoleProjSponsorPrefix, project.ID)}
 			})
 			_, err = enforcer.RemoveGroupingPolicies(oldSponsorGroupingPolicies)
 			if err != nil {

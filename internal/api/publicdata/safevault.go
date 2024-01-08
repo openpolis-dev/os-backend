@@ -36,12 +36,12 @@ var vaultCache dataCache[http.Client, Vault]
 
 // SafeVault returns the data of the safe vault
 //
-//	@Summary	SafeVault returns the data of the safe vault
-//	@Tags		PublicData
-//	@Accept		json
-//	@Produce	json
-//	@Success	200	{object}	api.Reply{data=Vault}
-//	@Router		/public_data/safe_vault [get]
+//	@summary	SafeVault returns the data of the safe vault
+//	@tags		PublicData
+//	@accept		json
+//	@produce	json
+//	@success	200	{object}	api.Reply{data=Vault}
+//	@router		/public_data/safe_vault [get]
 func SafeVault(ctx *gin.Context) {
 	_, cfg := api.ForContextDBAndConfig(ctx)
 

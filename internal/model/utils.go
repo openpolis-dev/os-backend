@@ -265,7 +265,6 @@ func GenerateFrontendApplicationRecords(db *gorm.DB, queryParams *ListApplicatio
 	// Calculate total count
 	total := db.Raw(querySQL+whereClause, whereParams).Scan(&[]map[string]any{}).RowsAffected
 
-	// TODO: This is the mysql style, need to find way to get db schema here and implement pg way
 	whereClause += fmt.Sprintf("\nORDER BY %s ", orderByClause)
 	if pagedResult {
 		whereClause += "LIMIT @limit OFFSET @offset"

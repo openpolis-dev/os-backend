@@ -93,7 +93,7 @@ func (*projectModel) ListBySponsorOrMember(db *gorm.DB, wallet string, page *gor
 	//querySeg := db.Table("projects").Where("sponsors LIKE ?", w).Or("members LIKE ?", w)
 
 	// PgVersion
-	querySeg := db.Table("projects").Where("sponsors::text ILIKE ?", w).Or("members::text ILIKE ?", w)
+	querySeg := db.Table("projects").Where(fmt.Sprintf("sponsors::text ILIKE '%%%s%%'", w)).Or(fmt.Sprintf("members::text ILIKE '%%%s%%'", w))
 
 	total, err = gormfind.Count(querySeg)
 	if err != nil {
@@ -107,7 +107,7 @@ func (*projectModel) ListBySponsorOrMember(db *gorm.DB, wallet string, page *gor
 }
 
 func (*projectModel) ListBySponsor(db *gorm.DB, sponsor string, status string, page *gormfind.Page, showSpecialProjectFlag bool) (data []*Project, total int64, err error) {
-	querySeg := db.Table("projects").Where("sponsors LIKE ?", fmt.Sprintf("%%\"%s\"%%", sponsor)) // value is: `%"0x123"%`
+	querySeg := db.Table("projects").Where(fmt.Sprintf("sponsors ILIKE '%%%s%%'", sponsor)) // value is: `%"0x123"%`
 	if !showSpecialProjectFlag {
 		querySeg = querySeg.Where("is_special = false")
 	}
@@ -246,4 +246,21 @@ func createCityHallProject(db *gorm.DB, cityHallUsers []string) (*Project, error
 		return nil, err
 	}
 	return &project, nil
+}
+
+func (p *Project) GenerateCasbinPolicies() [][]string {
+	return [][]string{
+		// p, proj_sponsor_1, proj_1, modify
+		// p, proj_sponsor_1, proj_1, create_app
+		// p, proj_sponsor_1, proj_1, u_member
+		// p, proj_sponsor_1, proj_1, u_budget
+		{fmt.Sprintf("%s%d", internal.RoleProjSponsorPrefix, p.ID), fmt.Sprintf("%s%d", internal.ObjProjPrefix, p.ID), internal.ActModify},
+		{fmt.Sprintf("%s%d", internal.RoleProjSponsorPrefix, p.ID), fmt.Sprintf("%s%d", internal.ObjProjPrefix, p.ID), internal.ActCreateApplication},
+		{fmt.Sprintf("%s%d", internal.RoleProjSponsorPrefix, p.ID), fmt.Sprintf("%s%d", internal.ObjProjPrefix, p.ID), internal.ActUpdateMember},
+		{fmt.Sprintf("%s%d", internal.RoleProjSponsorPrefix, p.ID), fmt.Sprintf("%s%d", internal.ObjProjPrefix, p.ID), internal.ActUpdateBudget},
+		//// p, proj_member_1, proj_1, modify
+		//// p, proj_member_1, proj_1, create_app
+		//{fmt.Sprintf("%s%d", api.RoleProjMemberPrefix, proj.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, proj.ID), api.ActModify},
+		//{fmt.Sprintf("%s%d", api.RoleProjMemberPrefix, proj.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, proj.ID), api.ActCreateApplication},
+	}
 }

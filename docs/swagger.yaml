@@ -148,6 +148,21 @@ definitions:
           type: string
         type: array
     type: object
+  component.ComponentInstance:
+    properties:
+      component_id:
+        type: integer
+      create_ts:
+        type: integer
+      data:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      schema:
+        type: string
+    type: object
   data_srv.CreditDetail:
     properties:
       activity_credit:
@@ -176,6 +191,13 @@ definitions:
       season_name:
         type: string
       total:
+        type: string
+    type: object
+  data_srv.WidgetDataResponse:
+    properties:
+      id:
+        type: integer
+      name:
         type: string
     type: object
   guild.BudgetParam:
@@ -246,6 +268,10 @@ definitions:
         items:
           type: string
         type: array
+      status:
+        allOf:
+        - $ref: '#/definitions/model.ProjectStatus'
+        description: 'Status may have those values: open/pending_close/closed'
       update_ts:
         type: integer
     type: object
@@ -281,6 +307,122 @@ definitions:
       sponsors:
         items:
           type: string
+        type: array
+    type: object
+  metaforo.LoginResponse:
+    properties:
+      api_token:
+        type: string
+      user:
+        $ref: '#/definitions/metaforo.UserDetailResponse'
+    type: object
+  metaforo.UserDetailResponse:
+    properties:
+      activate:
+        type: integer
+      badge:
+        items: {}
+        type: array
+      bio: {}
+      cover_image: {}
+      created_at:
+        type: string
+      deleted:
+        type: integer
+      discord_id:
+        type: integer
+      discord_username:
+        type: string
+      email: {}
+      group_profiles:
+        items:
+          properties:
+            display_avatar:
+              type: string
+            display_name: {}
+            group_id:
+              type: integer
+            group_name:
+              type: string
+          type: object
+        type: array
+      id:
+        type: integer
+      is_nft:
+        type: integer
+      is_user_follow:
+        type: boolean
+      last_post_time:
+        type: string
+      last_seen:
+        type: string
+      likes:
+        type: integer
+      neuron_addresses:
+        items: {}
+        type: array
+      nfts:
+        items: {}
+        type: array
+      online:
+        type: boolean
+      only_follow_one:
+        type: boolean
+      photo_url:
+        type: string
+      poap_badge:
+        items: {}
+        type: array
+      posts:
+        type: integer
+      public_key: {}
+      stripe_cus_id:
+        type: string
+      title:
+        properties:
+          "4649":
+            items:
+              properties:
+                background:
+                  type: string
+                color:
+                  type: string
+                group_id:
+                  type: integer
+                group_name:
+                  type: string
+                icon:
+                  type: string
+                id:
+                  type: integer
+                logo:
+                  type: string
+                name:
+                  type: string
+                type:
+                  type: integer
+                unicode_emoji: {}
+                user_id:
+                  type: integer
+              type: object
+            type: array
+        type: object
+      updated_at:
+        type: string
+      username:
+        type: string
+      web3_public_key:
+        type: string
+      web3_public_keys:
+        items:
+          properties:
+            address:
+              type: string
+            type:
+              type: integer
+            user_id:
+              type: integer
+          type: object
         type: array
     type: object
   model.ApplicationState:
@@ -389,6 +531,10 @@ definitions:
         items:
           type: string
         type: array
+      status:
+        allOf:
+        - $ref: '#/definitions/model.ProjectStatus'
+        description: 'Status may have those values: open/pending_close/closed'
       update_ts:
         type: integer
     type: object
@@ -745,6 +891,323 @@ definitions:
           type: string
         type: array
     type: object
+  proposal.AddCommentData:
+    properties:
+      content:
+        type: string
+      editor_type:
+        type: integer
+      metaforo_access_token:
+        type: string
+      reply_id:
+        type: integer
+    type: object
+  proposal.CastVoteData:
+    properties:
+      metaforo_access_token:
+        type: string
+      options:
+        items:
+          type: integer
+        type: array
+      vote_id:
+        type: integer
+    type: object
+  proposal.ComponentRequestData:
+    properties:
+      auto_action:
+        type: string
+      data:
+        additionalProperties: {}
+        type: object
+      id:
+        type: integer
+      name:
+        type: string
+    type: object
+  proposal.ComponentResponse:
+    properties:
+      id:
+        type: integer
+      name:
+        type: string
+      schema:
+        type: string
+      screenshot_uri:
+        type: string
+    type: object
+  proposal.CreateOrUpdateProposalData:
+    properties:
+      components:
+        additionalProperties:
+          $ref: '#/definitions/proposal.ComponentRequestData'
+        type: object
+      content_blocks:
+        items:
+          $ref: '#/definitions/proposal.FrontendContentBlockRecord'
+        type: array
+      editor_type:
+        type: integer
+      metaforo_access_token:
+        type: string
+      proposal_category_id:
+        type: integer
+      submit_to_metaforo:
+        type: boolean
+      template_id:
+        type: integer
+      title:
+        type: string
+      vote_gate_id:
+        type: integer
+    type: object
+  proposal.DeleteCommentData:
+    properties:
+      metaforo_access_token:
+        type: string
+      post_id:
+        type: integer
+    type: object
+  proposal.EditCommentData:
+    properties:
+      content:
+        type: string
+      editor_type:
+        type: integer
+      metaforo_access_token:
+        type: string
+      post_id:
+        type: integer
+    type: object
+  proposal.FrontendContentBlockRecord:
+    properties:
+      content:
+        type: string
+      id:
+        type: integer
+      title:
+        type: string
+    type: object
+  proposal.FrontendProposalCategory:
+    properties:
+      has_perm:
+        description: Whether the requester has permission to create proposal in this
+          category
+        type: boolean
+      id:
+        description: Proposal Category ID
+        type: integer
+      metaforo_id:
+        description: Metaforo ID for the category
+        type: integer
+      name:
+        description: Name of the category
+        type: string
+      parent_id:
+        description: Parent ID of this category
+        type: integer
+    type: object
+  proposal.FrontendProposalCommentRecord:
+    properties:
+      avatar:
+        type: string
+      children:
+        items:
+          $ref: '#/definitions/proposal.FrontendProposalCommentRecord'
+        type: array
+      content:
+        type: string
+      created_ts:
+        type: integer
+      deleted:
+        type: boolean
+      metaforo_post_id:
+        type: integer
+      proposal_arweave_hash:
+        type: string
+      proposal_title:
+        type: string
+      proposal_ts:
+        type: integer
+      reply_metaforo_post_id:
+        type: integer
+      wallet:
+        type: string
+    type: object
+  proposal.FrontendProposalDetailRecord:
+    properties:
+      applicant:
+        description: Some user information
+        type: string
+      applicant_avatar:
+        type: string
+      arweave:
+        description: Arweave Hash
+        type: string
+      comment_count:
+        description: Comments
+        type: integer
+      comments:
+        items:
+          $ref: '#/definitions/proposal.FrontendProposalCommentRecord'
+        type: array
+      components:
+        items:
+          $ref: '#/definitions/component.ComponentInstance'
+        type: array
+      content_blocks:
+        items:
+          $ref: '#/definitions/proposal.FrontendContentBlockRecord'
+        type: array
+      create_ts:
+        description: Timestamps
+        type: integer
+      histories:
+        $ref: '#/definitions/proposal.FrontendProposalEditHistories'
+      id:
+        type: integer
+      is_based_on_template:
+        type: boolean
+      is_rejected:
+        description: Reject related data
+        type: boolean
+      is_voted:
+        description: Is current user voted for this proposal
+        type: boolean
+      proposal_category_id:
+        type: integer
+      reject_metaforo_comment_id:
+        type: integer
+      reject_reason:
+        type: string
+      reject_ts:
+        type: integer
+      reviewer:
+        type: string
+      reviewer_avatar:
+        type: string
+      state:
+        type: string
+      template_name:
+        type: string
+      title:
+        type: string
+      vote_gate:
+        $ref: '#/definitions/proposal.FrontendVoteGateResponse'
+      votes:
+        description: Vote
+    type: object
+  proposal.FrontendProposalEditHistories:
+    properties:
+      lists:
+        items:
+          $ref: '#/definitions/proposal.FrontendProposalEditHistoryRecord'
+        type: array
+      total_count:
+        type: integer
+    type: object
+  proposal.FrontendProposalEditHistoryRecord:
+    properties:
+      arweave:
+        type: string
+      create_ts:
+        type: integer
+      os_username:
+        type: string
+      title:
+        type: string
+      wallet:
+        type: string
+    type: object
+  proposal.FrontendProposalListRecord:
+    properties:
+      applicant:
+        type: string
+      applicant_avatar:
+        type: string
+      category_name:
+        type: string
+      create_ts:
+        type: integer
+      id:
+        type: integer
+      state:
+        type: string
+      title:
+        type: string
+      version:
+        type: integer
+    type: object
+  proposal.FrontendVoteGateResponse:
+    properties:
+      chain_type:
+        type: string
+      contract_addr:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      token_id:
+        type: string
+      token_type:
+        type: string
+    type: object
+  proposal.JointMetaforoAndOsUser:
+    properties:
+      metaforo_user_id:
+        type: integer
+      os_avatar:
+        type: string
+      os_user_id:
+        type: integer
+      os_user_name:
+        type: string
+      wallet:
+        type: string
+    type: object
+  proposal.RevokeVoteData:
+    properties:
+      metaforo_access_token:
+        type: string
+      vote_id:
+        type: integer
+    type: object
+  proposal.TemplateResponse:
+    properties:
+      components:
+        items:
+          $ref: '#/definitions/proposal.ComponentResponse'
+        type: array
+      id:
+        type: integer
+      name:
+        type: string
+      schema:
+        type: string
+      screenshot_uri:
+        type: string
+    type: object
+  publicdata.Vault:
+    properties:
+      wallets:
+        items:
+          $ref: '#/definitions/publicdata.Wallet'
+        type: array
+    type: object
+  publicdata.Wallet:
+    properties:
+      chainId:
+        type: integer
+      fiatTotal:
+        type: string
+      owners:
+        type: integer
+      threshold:
+        type: integer
+      wallet:
+        type: string
+    type: object
   publicdata.discord:
     properties:
       approximate_member_count:
@@ -853,6 +1316,48 @@ definitions:
       start_at:
         type: string
     type: object
+  seeauth.Proof:
+    properties:
+      proof:
+        type: string
+    type: object
+  seeauth.SeeAuth:
+    properties:
+      proof:
+        $ref: '#/definitions/seeauth.Proof'
+      signature:
+        $ref: '#/definitions/seeauth.Signature'
+      wallet:
+        type: string
+      walletName:
+        $ref: '#/definitions/seeauth.WalletName'
+    type: object
+  seeauth.Signature:
+    properties:
+      domain:
+        type: string
+      message:
+        type: string
+      nonce:
+        type: string
+      signature:
+        type: string
+    type: object
+  seeauth.WalletName:
+    enum:
+    - metamask
+    - joyid
+    type: string
+    x-enum-varnames:
+    - WalletNameMetamask
+    - WalletNameJoyid
+  user.JoinOrLeaveGroupReq:
+    properties:
+      group_name:
+        type: string
+      metaforo_access_token:
+        type: string
+    type: object
   user.LoginReply:
     properties:
       token:
@@ -887,6 +1392,38 @@ definitions:
     - wallet
     - wallet_type
     type: object
+  user.LoginWithSeeAuthReply:
+    properties:
+      see_auth:
+        $ref: '#/definitions/seeauth.SeeAuth'
+      token:
+        type: string
+      token_exp:
+        description: 'time unit: seconds'
+        type: integer
+      user:
+        $ref: '#/definitions/model.User'
+    type: object
+  user.MetaforoActivityRecord:
+    properties:
+      action_ts:
+        type: integer
+      metaforo_action:
+        type: string
+      metaforo_thread_id:
+        description: Metaforo thread id
+        type: integer
+      proposal_id:
+        type: integer
+      reply_to_wallet:
+        description: User this action is performed on
+        type: string
+      target_title:
+        description: Thread name this action is performed on
+        type: string
+      wallet:
+        type: string
+    type: object
   user.RefreshNonceReply:
     properties:
       nonce:
@@ -895,11 +1432,6 @@ definitions:
   user.RefreshNonceReq:
     properties:
       wallet:
-        type: string
-    type: object
-  user.RetrieveNonceReply:
-    properties:
-      nonce:
         type: string
     type: object
   user.UpdateReq:
@@ -921,6 +1453,43 @@ definitions:
       name:
         type: string
       twitter_profile:
+        type: string
+      wechat:
+        type: string
+    type: object
+  user.UserModelWithSomeSeepassData:
+    properties:
+      assets:
+        items:
+          $ref: '#/definitions/model.UserAssetRecord'
+        type: array
+      avatar:
+        type: string
+      bio:
+        type: string
+      create_ts:
+        type: integer
+      discord_profile:
+        type: string
+      email:
+        type: string
+      github_profile:
+        type: string
+      google_profile:
+        type: string
+      id:
+        type: integer
+      mirror:
+        type: string
+      name:
+        type: string
+      sp:
+        $ref: '#/definitions/sdk.SeepassResponse'
+      twitter_profile:
+        type: string
+      update_ts:
+        type: integer
+      wallet:
         type: string
       wechat:
         type: string
@@ -951,7 +1520,7 @@ paths:
             type: string
       summary: Approve app bundle and associated applications
       tags:
-      - app_bundle
+      - AppBundle
   /app_bundles:
     get:
       parameters:
@@ -998,7 +1567,7 @@ paths:
             $ref: '#/definitions/app_bundle.AppBundleResponseRecord'
       summary: List all application bundles match the query params
       tags:
-      - app_bundle
+      - AppBundle
     post:
       parameters:
       - description: New application bundle request
@@ -1014,7 +1583,7 @@ paths:
             type: string
       summary: Create app bundles based on request data
       tags:
-      - app_bundle
+      - AppBundle
   /app_bundles_reject:
     post:
       parameters:
@@ -1033,7 +1602,7 @@ paths:
             type: string
       summary: Reject app bundle and associated applications
       tags:
-      - app_bundle
+      - AppBundle
   /applications:
     get:
       responses:
@@ -1052,6 +1621,8 @@ paths:
                     type: object
               type: object
       summary: lists all applications based on query params and return in JSON format
+      tags:
+      - Application
     post:
       parameters:
       - description: new application request
@@ -1068,6 +1639,8 @@ paths:
           schema:
             type: string
       summary: create single application, for now only CLOSE_PROJECT type is allowed
+      tags:
+      - Application
   /apps_applicants:
     get:
       responses:
@@ -1076,6 +1649,8 @@ paths:
           schema:
             $ref: '#/definitions/application.ApplicantListResponse'
       summary: List all applicants existing in applications table for filter
+      tags:
+      - Application
   /available_projects_guilds:
     get:
       responses:
@@ -1090,7 +1665,7 @@ paths:
               type: object
       summary: List available projects and guilds for current user
       tags:
-      - app_bundle
+      - AppBundle
   /cityhall/batch_update_members:
     post:
       parameters:
@@ -1109,6 +1684,8 @@ paths:
             type: string
       summary: updates multiple group member info in single request, the logic is
         same with single update
+      tags:
+      - CityHall
   /cityhall/update_members:
     post:
       parameters:
@@ -1126,6 +1703,8 @@ paths:
       summary: updates cityhall member, if group name existing in the request, the
         grouped sponsors field will be updated, otherwise the sponsors field will
         be updated
+      tags:
+      - CityHall
   /data_srv/aggr_scr:
     get:
       responses:
@@ -1136,6 +1715,31 @@ paths:
               $ref: '#/definitions/data_srv.CreditDetail'
             type: array
       summary: returns aggregated credit score and node calculation result
+      tags:
+      - DataService
+  /data_srv/widget_data:
+    get:
+      parameters:
+      - description: data type
+        in: query
+        name: type
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/data_srv.WidgetDataResponse'
+                  type: array
+              type: object
+      summary: returns data required by widget.
+      tags:
+      - DataService
   /download_applications:
     get:
       responses:
@@ -1155,6 +1759,8 @@ paths:
               type: object
       summary: downloads all applications based on query params and sends Excel file
         for downloading
+      tags:
+      - Application
   /guilds:
     get:
       consumes:
@@ -1666,6 +2272,480 @@ paths:
       summary: list my projects
       tags:
       - Project
+  /proposal/mylist:
+    get:
+      parameters:
+      - description: which page
+        in: query
+        name: page
+        type: integer
+      - description: size of each page
+        in: query
+        name: size
+        type: integer
+      - description: sort by which field
+        in: query
+        name: sort_field
+        type: string
+      - description: order of sort
+        in: query
+        name: sort_order
+        type: string
+      - description: Return pending submit proposals or other state, only query PendingSubmit
+          records when value is `1`
+        in: query
+        name: pending_submit
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  $ref: '#/definitions/proposal.FrontendProposalDetailRecord'
+              type: object
+      summary: Returns proposals created by login user
+      tags:
+      - Proposal
+  /proposal_categories/list:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/proposal.FrontendProposalCategory'
+                  type: array
+              type: object
+      summary: list all proposal categories
+      tags:
+      - Proposal
+  /proposal_categories/list_with_perm:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/proposal.FrontendProposalCategory'
+                  type: array
+              type: object
+      summary: list all proposal categories with permission field
+      tags:
+      - Proposal
+  /proposal_components/:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/proposal.ComponentResponse'
+                  type: array
+              type: object
+      summary: list components from DB
+      tags:
+      - Proposal
+  /proposal_components/:id:
+    get:
+      parameters:
+      - description: component ID
+        in: path
+        name: id
+        required: true
+        type: number
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  $ref: '#/definitions/proposal.ComponentResponse'
+              type: object
+      summary: Get component detail from DB
+      tags:
+      - Proposal
+  /proposals/add_comment/:id:
+    post:
+      parameters:
+      - description: id of the proposal
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Comment data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/proposal.AddCommentData'
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  type: object
+              type: object
+      summary: Attach comment to specified proposal or comment
+      tags:
+      - Proposal
+  /proposals/approve/:id:
+    post:
+      parameters:
+      - description: proposal id
+        in: query
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  type: object
+              type: object
+      summary: approve proposal in Draft state, the proposal will be changed to approved
+        state after success. Only user has cityhall permission can do this
+      tags:
+      - Proposal
+  /proposals/can_vote/:id:
+    post:
+      parameters:
+      - description: proposal ID
+        in: query
+        name: id
+        required: true
+        type: number
+      responses:
+        "200":
+          description: Success
+          schema:
+            $ref: '#/definitions/api.Reply'
+        "401":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.Reply'
+      summary: Check whether user has permission to vote in thread
+      tags:
+      - Proposal
+  /proposals/create:
+    post:
+      parameters:
+      - description: request json body
+        in: body
+        name: JsonBody
+        required: true
+        schema:
+          $ref: '#/definitions/proposal.CreateOrUpdateProposalData'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.Reply'
+      summary: Create metaforo proposal and public to others
+      tags:
+      - Proposal
+  /proposals/delete_comment/:id:
+    post:
+      parameters:
+      - description: id of the proposal
+        in: query
+        name: id
+        required: true
+        type: string
+      - description: Delete Comment request data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/proposal.DeleteCommentData'
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  type: object
+              type: object
+      summary: delete comment from metaforo. The reject reason comment can't be deleted
+      tags:
+      - Proposal
+  /proposals/edit_comment/:id:
+    post:
+      parameters:
+      - description: id of the proposal
+        in: query
+        name: id
+        required: true
+        type: string
+      - description: Comment data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/proposal.EditCommentData'
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  type: object
+              type: object
+      summary: edit comment and save back to metaforo. If the comment is reject_comment,
+        the data saved in db will also be saved
+      tags:
+      - Proposal
+  /proposals/list:
+    get:
+      parameters:
+      - description: which page
+        in: query
+        name: page
+        type: integer
+      - description: size of each page
+        in: query
+        name: size
+        type: integer
+      - description: sort by which field
+        in: query
+        name: sort_field
+        type: string
+      - description: order of sort
+        in: query
+        name: sort_order
+        type: string
+      - description: state of proposal
+        in: query
+        name: state
+        type: string
+      - description: filter proposal records with specified category
+        in: query
+        name: category_id
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  allOf:
+                  - $ref: '#/definitions/api.ListReplyData'
+                  - properties:
+                      rows:
+                        $ref: '#/definitions/proposal.FrontendProposalListRecord'
+                    type: object
+              type: object
+      summary: lists all proposals based on query params and return in JSON format
+      tags:
+      - Proposal
+  /proposals/proposal_tmpl/:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/proposal.TemplateResponse'
+                  type: array
+              type: object
+      summary: list templates and return to frontend
+      tags:
+      - Proposal
+  /proposals/reject/:id:
+    post:
+      parameters:
+      - description: proposal id
+        in: query
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  type: object
+              type: object
+      summary: reject proposal in Draft state, the proposal will be changed to rejected
+        state after success. Only user has cityhall permission can do this
+      tags:
+      - Proposal
+  /proposals/revoke_vote/:id:
+    post:
+      parameters:
+      - description: proposal ID
+        in: query
+        name: id
+        required: true
+        type: number
+      - description: revoke vote data
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/proposal.RevokeVoteData'
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  type: object
+              type: object
+      summary: revoke vote on existing metaforo vote
+      tags:
+      - Proposal
+  /proposals/show/:id:
+    get:
+      parameters:
+      - description: start post ID
+        in: query
+        name: start_post_id
+        type: integer
+      - description: metaforo access token
+        in: query
+        name: access_token
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  $ref: '#/definitions/proposal.FrontendProposalDetailRecord'
+              type: object
+      summary: Show proposals with given ID
+      tags:
+      - Proposal
+  /proposals/update/:id:
+    post:
+      parameters:
+      - description: request json body
+        in: body
+        name: JsonBody
+        required: true
+        schema:
+          $ref: '#/definitions/proposal.CreateOrUpdateProposalData'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.Reply'
+      summary: Update proposals with passed in data
+      tags:
+      - Proposal
+  /proposals/vote/:id:
+    post:
+      parameters:
+      - description: proposal ID
+        in: query
+        name: id
+        required: true
+        type: number
+      - description: Vote data
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/proposal.CastVoteData'
+      responses:
+        "200":
+          description: Success
+          schema:
+            $ref: '#/definitions/api.Reply'
+      summary: Cast a vote
+      tags:
+      - Proposal
+  /proposals/vote_detail/:vote_option_id:
+    get:
+      parameters:
+      - description: Vote ID
+        in: path
+        name: vote_option_id
+        required: true
+        type: number
+      - description: page of the vote list
+        in: query
+        name: page
+        type: number
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/proposal.JointMetaforoAndOsUser'
+                  type: array
+              type: object
+      summary: revoke vote on existing metaforo vote
+      tags:
+      - Proposal
+  /proposals/withdraw/:id:
+    post:
+      parameters:
+      - description: proposal id
+        in: query
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  type: object
+              type: object
+      summary: withdraw proposal in Draft state, the proposal will be changed to withdrawn
+        state after success. Only proposal applicant can withdraw the proposal
+      tags:
+      - Proposal
   /public_data/discord_member_count:
     get:
       consumes:
@@ -1753,6 +2833,25 @@ paths:
       summary: NotionUser returns the detail of a notion user
       tags:
       - PublicData
+  /public_data/safe_vault:
+    get:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  $ref: '#/definitions/publicdata.Vault'
+              type: object
+      summary: SafeVault returns the data of the safe vault
+      tags:
+      - PublicData
   /push:
     get:
       consumes:
@@ -1828,6 +2927,8 @@ paths:
               $ref: '#/definitions/season.SeasonResponse'
             type: array
       summary: returns all seasons currently existing in database
+      tags:
+      - Season
   /seasons/curr:
     get:
       responses:
@@ -1836,6 +2937,87 @@ paths:
           schema:
             $ref: '#/definitions/season.SeasonResponse'
       summary: returns current season
+      tags:
+      - Season
+  /seeauth/login:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: request json body
+        in: body
+        name: JsonBody
+        required: true
+        schema:
+          $ref: '#/definitions/user.LoginReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  $ref: '#/definitions/user.LoginWithSeeAuthReply'
+              type: object
+      summary: Login
+      tags:
+      - SeeAuth
+  /seeauth/nonce/:wallet:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: request json body
+        in: path
+        name: wallet
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  $ref: '#/definitions/user.RefreshNonceReply'
+              type: object
+      summary: get nonce of SeeAuth
+      tags:
+      - SeeAuth
+  /url_for_uploading_s3:
+    get:
+      parameters:
+      - description: Name of the file
+        in: query
+        name: filename
+        required: true
+        type: string
+      - description: Type of the file
+        in: query
+        name: type
+        type: string
+      - description: S3 bucket name, should be created in advanced
+        in: query
+        name: bucket
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  type: string
+              type: object
+      summary: Get pre-signed URL for S3 upload
   /user/casbin:
     get:
       consumes:
@@ -1861,6 +3043,50 @@ paths:
       summary: Query frontend permission by user wallet
       tags:
       - Permission
+  /user/join_metaforo_group:
+    post:
+      parameters:
+      - description: Join group request body
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/user.JoinOrLeaveGroupReq'
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  type: object
+              type: object
+      summary: Join a Metaforo group
+      tags:
+      - Metaforo
+  /user/leave_metaforo_group:
+    post:
+      parameters:
+      - description: Join group request body
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/user.JoinOrLeaveGroupReq'
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  type: object
+              type: object
+      summary: Leave a Metaforo group
+      tags:
+      - Metaforo
   /user/login:
     post:
       consumes:
@@ -1940,6 +3166,59 @@ paths:
       summary: Update user info
       tags:
       - User
+  /user/metaforo_activities:
+    get:
+      parameters:
+      - description: Metaforo user id
+        in: query
+        name: userId
+        required: true
+        type: string
+      - description: Size of activities
+        in: query
+        name: size
+        required: true
+        type: integer
+      - description: params for next page
+        in: query
+        name: session
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  $ref: '#/definitions/user.MetaforoActivityRecord'
+              type: object
+      summary: Get metaforo activities
+      tags:
+      - Metaforo
+  /user/prepare_metaforo:
+    post:
+      parameters:
+      - description: metaforo response after login
+        in: body
+        name: JsonBody
+        required: true
+        schema:
+          $ref: '#/definitions/metaforo.LoginResponse'
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  type: object
+              type: object
+      summary: Upload metaforo user data to link with os user, and invoke join group
+      tags:
+      - User
+      - Metaforo
   /user/refresh_nonce:
     post:
       consumes:
@@ -1966,31 +3245,6 @@ paths:
       summary: Refresh nonce
       tags:
       - Auth
-  /user/retrieve_nonce:
-    get:
-      consumes:
-      - application/json
-      parameters:
-      - description: wallet address
-        in: query
-        name: wallet
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/api.Reply'
-            - properties:
-                data:
-                  $ref: '#/definitions/user.RetrieveNonceReply'
-              type: object
-      summary: Retrieve nonce
-      tags:
-      - Auth
   /user/users:
     get:
       consumes:
@@ -2015,7 +3269,7 @@ paths:
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/model.User'
+                    $ref: '#/definitions/user.UserModelWithSomeSeepassData'
                   type: array
               type: object
       summary: Query multiple users by wallet array on batch

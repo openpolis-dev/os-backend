@@ -36,25 +36,7 @@ var seasons = []*model.Season{
 }
 
 func autoMigrateDb(db *gorm.DB) error {
-	return db.AutoMigrate(
-		&model.User{},
-		&model.UserNonce{},
-		&model.UserAssetRecord{},
-		&model.Project{},
-		&model.ProjectBudget{},
-		&model.Guild{},
-		&model.GuildBudget{},
-		&model.AppBundle{},
-		&model.AppBundleAuditLog{},
-		&model.Season{},
-		&model.Application{},
-		&model.ApplicationAuditLog{},
-		&model.TreasuryAsset{},
-		&model.TreasuryDetailedRecord{},
-		&model.TreasuryAuditLog{},
-		&model.Event{},
-		&model.Push{},
-	)
+	return storage.MigrateTables(db)
 }
 
 func updateWallet(db *gorm.DB, tableName string, walletField string, whereClause string) error {

@@ -5,9 +5,15 @@ import (
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/pkgerrors"
+	"github.com/theseed-labs/os-backend/internal"
+	"github.com/theseed-labs/os-backend/internal/api/cron_jobs"
+	"github.com/theseed-labs/os-backend/internal/api/proposal"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/graph/generated"
 	"github.com/theseed-labs/os-backend/internal/graph/resolver"
+	"github.com/theseed-labs/os-backend/internal/task_manager"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	swaggerFiles "github.com/swaggo/files"
@@ -76,9 +82,9 @@ func main() {
 	}
 	// add default policies
 	defaultPolicies := [][]string{
-		{api.RoleHall, "*", "*"}, // `p, hall, *, *` hall can do anything
-		{api.RoleTreasuryManager, api.ObjTreasury, api.ActUpdateAssertBudget}, // `p, treasury_manager, treasury, u_assert_budget`
-		{api.RoleEventManager, api.ObjEvent, api.ActCreateEvent},              // `p, event_manager, event, create_event`
+		{internal.RoleHall, "*", "*"}, // `p, hall, *, *` hall can do anything
+		{internal.RoleTreasuryManager, internal.ObjTreasury, internal.ActUpdateAssertBudget}, // `p, treasury_manager, treasury, u_assert_budget`
+		{internal.RoleEventManager, internal.ObjEvent, internal.ActCreateEvent},              // `p, event_manager, event, create_event`
 	}
 	_, err = enforcer.AddPolicies(defaultPolicies)
 	if err != nil {
@@ -86,7 +92,7 @@ func main() {
 	}
 	// add default users
 	groupPolicies := lo.Map[string, []string](cfg.Casbin.SuperUsers, func(user string, _ int) []string {
-		return []string{common.FormatUserWallet(user), api.RoleHall}
+		return []string{common.FormatUserWallet(user), internal.RoleHall}
 	})
 	_, err = enforcer.AddGroupingPolicies(groupPolicies) // add default hall wallets
 	if err != nil {
@@ -105,12 +111,12 @@ func main() {
 
 	// setup database
 	storage.InitGormDB(cfg.DataSource.Dsn, cfg.Casbin.DriverName)
-	storage.MigrateTables()
-	storage.SeedDbRecords()
 	db := storage.GetGormDB()
+	//err = storage.MigrateTables(db)
 	if err != nil {
 		panic(err)
 	}
+	storage.SeedDbRecords()
 
 	// setup cache
 	// Currently the cache is only used by saving aggregated data, may be extended to other data in future
@@ -134,6 +140,18 @@ func main() {
 		panic(err)
 	}
 
+	// Setup zerolog
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+	zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
+	zerolog.TimestampFieldName = "t"
+	zerolog.LevelFieldName = "l"
+	zerolog.MessageFieldName = "m"
+	log.Logger = log.With().Caller().Logger()
+
+	// setup task manager and start runner
+	task_manager.InitTaskManager(db, 5)
+	task_manager.GetTaskManager().StartRunner()
+
 	r := gin.Default()
 	r.Use(middleware.RequestMetricsRecord())
 	r.Use(middleware.ResponseMetricsRecord())
@@ -149,6 +167,8 @@ func main() {
 	corsCfg.AllowAllOrigins = true
 	corsCfg.AllowHeaders = []string{"Origin", "Accept", "Content-Type", "Authorization"}
 	r.Use(cors.New(corsCfg))
+
+	storage.SetEnforcer(enforcer)
 
 	// setup basic middleware for database connection and config data
 	r.Use(func(ctx *gin.Context) {
@@ -172,6 +192,7 @@ func main() {
 		userGroup.POST("/login", user.Login)
 		userGroup.GET("/users", user.Users)
 		userGroup.GET("/casbin", user.GetFrontendPermission)
+		userGroup.GET("/metaforo_activities", user.MetaforoActivities)
 
 		// SeeAuth apis
 		seeAuth := v1.Group("/seeauth")
@@ -235,6 +256,31 @@ func main() {
 		dataSrv := v1.Group("/data_srv")
 		dataSrv.GET("/aggr_scr", data_srv.AggrScr)
 
+		// Proposal component routers
+		componentRouter := v1.Group("/proposal_components")
+		componentRouter.GET("/", proposal.ListComponents)
+		componentRouter.GET("/:id", proposal.GetComponent)
+
+		proposalTmplRouter := v1.Group("/proposal_tmpl")
+		proposalTmplRouter.GET("/", proposal.ListTemplates)
+
+		proposalPollGateRouter := v1.Group("/proposal_vote_gates")
+		proposalPollGateRouter.GET("/", proposal.ListVoteGates)
+
+		// Proposal routers
+		proposalGroup := v1.Group("/proposals")
+		proposalGroup.GET("/list", proposal.List)
+		proposalGroup.GET("/show/:id", proposal.Detail)
+		proposalGroup.GET("/vote_detail/:vote_option_id", proposal.ShowVoteDetail)
+
+		// All proposal categories for non login users
+		proposalCategoryRouter := v1.Group("/proposal_categories")
+		proposalCategoryRouter.GET("/list", proposal.ListAllCategories)
+
+		// Schedule jobs routers
+		jobsRouter := v1.Group("/jobs")
+		jobsRouter.GET("/list", cron_jobs.List)
+
 		// foo routers
 	}
 	// --> auth required
@@ -246,6 +292,9 @@ func main() {
 		userGroup.GET("/me", user.Detail)
 		userGroup.PUT("/me", user.Update)
 		userGroup.POST("/logout", user.Logout)
+		userGroup.POST("/join_metaforo_group", user.JoinMetaforoGroup)
+		userGroup.POST("/leave_metaforo_group", user.LeaveMetaforoGroup)
+		userGroup.POST("/prepare_metaforo", user.PrepareMetaforoData)
 
 		// project routers
 		projGroup := authorizedGroup.Group("/projects")
@@ -320,6 +369,34 @@ func main() {
 		rewardsGroup := authorizedGroup.Group("/rewards")
 		rewardsGroup.POST("/approve_mint_reward", rewards.ApproveMintReward)
 		rewardsGroup.POST("/snapshot_seed", rewards.SnapshotSeed)
+
+		// proposal routers
+		proposalGroup := authorizedGroup.Group("/proposals")
+		// Save or update proposal to Local DB. If submit flag in post data is true,
+		// the proposal will also be published to Metaforo and convert to Draft state
+		proposalGroup.POST("/create", proposal.Create)
+		proposalGroup.POST("/update/:id", proposal.Update)
+		proposalGroup.POST("/add_comment/:id", proposal.AddComment)
+		proposalGroup.POST("/edit_comment/:id", proposal.EditComment)
+		proposalGroup.POST("/delete_comment/:id", proposal.DeleteComment)
+		proposalGroup.GET("/my", proposal.MyList)
+
+		// State change actions for proposals
+		proposalGroup.POST("/withdraw/:id", proposal.Withdraw)
+		proposalGroup.POST("/approve/:id", proposal.Approve)
+		proposalGroup.POST("/reject/:id", proposal.Reject)
+
+		proposalGroup.POST("/can_vote/:id", proposal.CheckVotePermission)
+		proposalGroup.POST("/vote/:id", proposal.CastVote)
+		proposalGroup.POST("/revoke_vote/:id", proposal.RevokeVote)
+
+		// List proposal categories
+		proposalCategoryRouter := authorizedGroup.Group("/proposal_categories")
+		proposalCategoryRouter.GET("/list_with_perm", proposal.ListCategoriesWithPerm)
+
+		// Data services API
+		dataSrv := authorizedGroup.Group("/data_srv")
+		dataSrv.GET("/widget_data", data_srv.WidgetData)
 	}
 
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
