@@ -18,7 +18,10 @@ type CreateProjectParam struct {
 }
 
 type CloseProjectParam struct {
-	ProjectId uint `json:"project_id"`
+	ProjectInfo struct {
+		Id   int    `json:"id"`
+		Name string `json:"name"`
+	} `json:"project_info"`
 }
 
 func CreateProjectTask(db *gorm.DB, job *model.CronJob, jobParams string) {
@@ -121,7 +124,7 @@ func CloseProjectTask(db *gorm.DB, job *model.CronJob, jobParams string) {
 		execResult = err.Error()
 		jobFailed = true
 	} else {
-		err := db.Model(model.Project{}).Where("id = ?", params.ProjectId).Update("status", model.ProjectStatusClosed).Error
+		err := db.Model(model.Project{}).Where("id = ?", params.ProjectInfo.Id).Update("status", model.ProjectStatusClosed).Error
 		if err != nil {
 			log.Warn().Msgf("commit create project error: %+v", err)
 			execResult = err.Error()

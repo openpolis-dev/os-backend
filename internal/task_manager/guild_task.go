@@ -18,7 +18,10 @@ type CreateGuildParam struct {
 }
 
 type CloseGuildParam struct {
-	GuildId uint `json:"guild_id"`
+	GuildInfo struct {
+		Id   int    `json:"id"`
+		Name string `json:"name"`
+	} `json:"guild_info"`
 }
 
 func CreateGuildTask(db *gorm.DB, job *model.CronJob, jobParams string) {
@@ -122,7 +125,7 @@ func CloseGuildTask(db *gorm.DB, job *model.CronJob, jobParams string) {
 		jobFailed = true
 	} else {
 		err := db.Model(model.Guild{}).
-			Where("id = ?", params.GuildId).
+			Where("id = ?", params.GuildInfo.Id).
 			Update("status", model.ProjectStatusClosed).Error
 		if err != nil {
 			log.Warn().Msgf("close guild error: %+v", err)
