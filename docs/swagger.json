@@ -3393,6 +3393,14 @@
                         "type": "string"
                     }
                 },
+                "status": {
+                    "description": "Status may have those values: open/pending_close/closed",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.ProjectStatus"
+                        }
+                    ]
+                },
                 "update_ts": {
                     "type": "integer"
                 }
@@ -3775,6 +3783,14 @@
                     "items": {
                         "type": "string"
                     }
+                },
+                "status": {
+                    "description": "Status may have those values: open/pending_close/closed",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.ProjectStatus"
+                        }
+                    ]
                 },
                 "update_ts": {
                     "type": "integer"
@@ -4644,6 +4660,9 @@
                 },
                 "os_username": {
                     "type": "string"
+                },
+                "proposal_ts": {
+                    "type": "integer"
                 },
                 "title": {
                     "type": "string"

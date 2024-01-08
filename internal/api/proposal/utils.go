@@ -25,7 +25,8 @@ SELECT p.title AS title,
 u.wallet            AS wallet,
 u.name AS os_username,
 p.create_ts AS create_ts,
-p.arweave_hash as arweave
+p.arweave_hash as arweave,
+p.create_ts as proposal_ts
 FROM users u INNER JOIN proposals p ON u.wallet = p.applicant`
 
 type JointMetaforoAndOsUser struct {

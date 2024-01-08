@@ -3400,6 +3400,14 @@ const docTemplate = `{
                         "type": "string"
                     }
                 },
+                "status": {
+                    "description": "Status may have those values: open/pending_close/closed",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.ProjectStatus"
+                        }
+                    ]
+                },
                 "update_ts": {
                     "type": "integer"
                 }
@@ -3782,6 +3790,14 @@ const docTemplate = `{
                     "items": {
                         "type": "string"
                     }
+                },
+                "status": {
+                    "description": "Status may have those values: open/pending_close/closed",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.ProjectStatus"
+                        }
+                    ]
                 },
                 "update_ts": {
                     "type": "integer"
@@ -4651,6 +4667,9 @@ const docTemplate = `{
                 },
                 "os_username": {
                     "type": "string"
+                },
+                "proposal_ts": {
+                    "type": "integer"
                 },
                 "title": {
                     "type": "string"

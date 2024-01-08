@@ -268,6 +268,10 @@ definitions:
         items:
           type: string
         type: array
+      status:
+        allOf:
+        - $ref: '#/definitions/model.ProjectStatus'
+        description: 'Status may have those values: open/pending_close/closed'
       update_ts:
         type: integer
     type: object
@@ -527,6 +531,10 @@ definitions:
         items:
           type: string
         type: array
+      status:
+        allOf:
+        - $ref: '#/definitions/model.ProjectStatus'
+        description: 'Status may have those values: open/pending_close/closed'
       update_ts:
         type: integer
     type: object
@@ -1104,6 +1112,8 @@ definitions:
         type: integer
       os_username:
         type: string
+      proposal_ts:
+        type: integer
       title:
         type: string
       wallet:
