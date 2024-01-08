@@ -2,10 +2,13 @@ package task_manager
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/rs/zerolog/log"
+	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
+	"github.com/theseed-labs/os-backend/internal/storage"
 	"gorm.io/gorm"
 )
 
@@ -62,7 +65,34 @@ func CreateProjectTask(db *gorm.DB, job *model.CronJob, jobParams string) {
 			jobFailed = true
 		}
 
-		// TODO: update permission
+		// update permission
+		enforcer := storage.GetEnforcer()
+		policies := proj.GenerateCasbinPolicies()
+		_, err = enforcer.AddPolicies(policies)
+		if err != nil {
+			log.Warn().Msgf("create project error: %+v", err)
+			execResult = err.Error()
+			jobFailed = true
+		}
+
+		// add roles
+		sponsorGroupingPolicies := [][]string{
+			// g, 0xc13..1283 proj_sponsor_1
+			{common.FormatUserWallet(params.Applicant), fmt.Sprintf("%s%d", internal.RoleProjSponsorPrefix, proj.ID)},
+		}
+
+		_, err = enforcer.AddGroupingPolicies(sponsorGroupingPolicies)
+		if err != nil {
+			log.Warn().Msgf("create project error: %+v", err)
+			execResult = err.Error()
+			jobFailed = true
+		}
+		err = enforcer.SavePolicy()
+		if err != nil {
+			log.Warn().Msgf("create project error: %+v", err)
+			execResult = err.Error()
+			jobFailed = true
+		}
 	}
 
 	job.LastExecTs = model.GetCurrentUtcEpochSecond()

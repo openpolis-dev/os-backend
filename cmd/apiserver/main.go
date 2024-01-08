@@ -149,7 +149,7 @@ func main() {
 	log.Logger = log.With().Caller().Logger()
 
 	// setup task manager and start runner
-	task_manager.InitTaskManager(db, 2)
+	task_manager.InitTaskManager(db, 5)
 	task_manager.GetTaskManager().StartRunner()
 
 	r := gin.Default()
@@ -167,6 +167,8 @@ func main() {
 	corsCfg.AllowAllOrigins = true
 	corsCfg.AllowHeaders = []string{"Origin", "Accept", "Content-Type", "Authorization"}
 	r.Use(cors.New(corsCfg))
+
+	storage.SetEnforcer(enforcer)
 
 	// setup basic middleware for database connection and config data
 	r.Use(func(ctx *gin.Context) {
