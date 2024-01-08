@@ -52,6 +52,11 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 	//        * create blocks with new proposal.
 	//   4. In this case, the proposal must be updated to metaforo without checking the Submit flag
 
+	// Update title for testing
+	if !strings.HasPrefix(reqData.Title, internal.ProposalTitlePrefixForTesting) {
+		reqData.Title = internal.ProposalTitlePrefixForTesting + reqData.Title
+	}
+
 	if proposalIdStr != "" {
 		// Updating existing proposals
 		dbProposalRcd, err := GetProposalFromStringId(db, proposalIdStr)
@@ -59,7 +64,6 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 			log.Error().Msgf("get proposal error: %+v", err)
 			return nil, err
 		}
-
 		proposalRcd := dbProposalRcd
 		// Bump proposal version if it is not in PendingSubmit state
 		if dbProposalRcd.State != int(model.ProposalStatePendingSubmit) {
@@ -74,7 +78,7 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 
 		// Update fields
 		// Proposal is in PendingSubmit state, the data can be updated directory w/o bumping up version
-		proposalRcd.Title = internal.ProposalTitlePrefixForTesting + reqData.Title
+		proposalRcd.Title = reqData.Title
 		proposalRcd.ProposalCategoryID = reqData.ProposalCategoryId
 		err = db.Save(&proposalRcd).Error
 		if err != nil {
