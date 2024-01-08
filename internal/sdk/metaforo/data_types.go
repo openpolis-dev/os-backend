@@ -85,9 +85,9 @@ type Tag struct {
 }
 
 type UserData struct {
-	Id         int           `json:"id"`
-	PhotoUrl   string        `json:"photo_url"`
-	UserTitle  interface{}   `json:"user_title"`
+	Id       int    `json:"id"`
+	PhotoUrl string `json:"photo_url"`
+	//UserTitle  interface{}   `json:"user_title"`
 	Badges     []interface{} `json:"badges"`
 	Online     bool          `json:"online"`
 	Username   string        `json:"username"`
@@ -155,35 +155,35 @@ type PostData struct {
 			UserId  int    `json:"user_id"`
 		} `json:"web3_public_keys"`
 	} `json:"user"`
-	UserGroupLevel int           `json:"user_group_level"`
-	UserId         int           `json:"user_id"`
-	UserTitle      []interface{} `json:"user_title"`
-	Depth          int           `json:"depth"`
-	SignMsg        interface{}   `json:"sign_msg"`
+	UserGroupLevel int `json:"user_group_level"`
+	UserId         int `json:"user_id"`
+	//UserTitle      any         `json:"user_title"`
+	Depth   int         `json:"depth"`
+	SignMsg interface{} `json:"sign_msg"`
 }
 
 type Thread struct {
-	Id              int           `json:"id"`
-	Title           string        `json:"title"`
-	UserId          int           `json:"user_id"`
-	GroupId         int           `json:"group_id"`
-	FirstPostId     int           `json:"first_post_id"`
-	LastPostId      int           `json:"last_post_id"`
-	CreatedAt       time.Time     `json:"created_at"`
-	UpdatedAt       time.Time     `json:"updated_at"`
-	LikesCount      int           `json:"likes_count"`
-	PostsCount      int           `json:"posts_count"`
-	CategoryIndexId uint          `json:"category_index_id"`
-	CategoryId      uint          `json:"category_id"`
-	CategoryName    string        `json:"category_name"`
-	IsDelete        int           `json:"is_delete"`
-	GalleryId       int           `json:"gallery_id"`
-	LotteryId       int           `json:"lottery_id"`
-	CanReply        bool          `json:"can_reply"`
-	Slug            any           `json:"slug"`
-	Badge           []interface{} `json:"badge"`
-	UserTitle       []interface{} `json:"user_title"`
-	Posts           []PostData    `json:"posts"`
+	Id              int       `json:"id"`
+	Title           string    `json:"title"`
+	UserId          int       `json:"user_id"`
+	GroupId         int       `json:"group_id"`
+	FirstPostId     int       `json:"first_post_id"`
+	LastPostId      int       `json:"last_post_id"`
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
+	LikesCount      int       `json:"likes_count"`
+	PostsCount      int       `json:"posts_count"`
+	CategoryIndexId uint      `json:"category_index_id"`
+	CategoryId      uint      `json:"category_id"`
+	CategoryName    string    `json:"category_name"`
+	IsDelete        int       `json:"is_delete"`
+	GalleryId       int       `json:"gallery_id"`
+	LotteryId       int       `json:"lottery_id"`
+	CanReply        bool      `json:"can_reply"`
+	Slug            any       `json:"slug"`
+	//Badge           []interface{} `json:"badge"`
+	//UserTitle any        `json:"user_title"`
+	Posts []PostData `json:"posts"`
 	//PostsMap        []interface{} `json:"posts_map"` // map[string]int
 	FirstLevelCount int           `json:"first_level_count"`
 	IsSubscribe     bool          `json:"is_subscribe"`
@@ -534,7 +534,7 @@ type UserPollRecord struct {
 	Online                   bool                `json:"online"`
 	User                     *UserDetailResponse `json:"user"`
 	Badge                    []interface{}       `json:"badge"`
-	UserTitle                []interface{}       `json:"user_title"`
+	//UserTitle                []interface{}       `json:"user_title"`
 }
 
 type UserPollRecordResponse struct {
