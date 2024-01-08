@@ -4542,6 +4542,9 @@ const docTemplate = `{
                 "proposal_title": {
                     "type": "string"
                 },
+                "proposal_ts": {
+                    "type": "integer"
+                },
                 "reply_metaforo_post_id": {
                     "type": "integer"
                 },
