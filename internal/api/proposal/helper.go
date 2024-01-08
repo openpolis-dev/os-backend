@@ -117,7 +117,7 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 		}
 
 		// Create proposal components
-		if err := SaveProposalComponentRecords(db, proposalRecord.ID, "", reqData.Components); err != nil {
+		if err := SaveProposalComponentRecords(db, proposalRecord.ID, userWallet, reqData.Components); err != nil {
 			log.Error().Msgf("create proposal component blocks error: %+v", err)
 			return nil, err
 		}
