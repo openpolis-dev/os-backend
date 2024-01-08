@@ -4668,9 +4668,6 @@ const docTemplate = `{
                 "os_username": {
                     "type": "string"
                 },
-                "proposal_ts": {
-                    "type": "integer"
-                },
                 "title": {
                     "type": "string"
                 },
