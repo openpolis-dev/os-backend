@@ -105,8 +105,8 @@ func (t *TaskManager) ScanTaskPool() {
 	endTime := time.Now().Add(t.CheckDuration).UTC()
 
 	err := t.DatabaseClient.Model(&model.CronJob{}).
-		Where("state = ?", model.CronJobStateActive).
-		Where("(next_exec_ts >= ? AND next_exec_ts < ?) OR last_exec_ts=0", startTime.Unix(), endTime.Unix()).Find(&tasksShouldBeExecuted).Error
+		Where("state = ? AND ((next_exec_ts >= ? AND next_exec_ts < ?) OR last_exec_ts=0)",
+			model.CronJobStateActive, startTime.Unix(), endTime.Unix()).Find(&tasksShouldBeExecuted).Error
 
 	if err != nil {
 		log.Error().Msgf("scan task pool error: %+v", err)

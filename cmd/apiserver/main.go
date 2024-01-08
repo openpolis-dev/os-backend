@@ -76,7 +76,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	enforcer, err := casbin.NewEnforcer(*casbinModelConfPath, adapter)
+	enforcer, err := casbin.NewSyncedEnforcer(*casbinModelConfPath, adapter)
 	if err != nil {
 		panic(err)
 	}
