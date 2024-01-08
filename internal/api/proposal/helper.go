@@ -74,7 +74,7 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 
 		// Update fields
 		// Proposal is in PendingSubmit state, the data can be updated directory w/o bumping up version
-		proposalRcd.Title = reqData.Title
+		proposalRcd.Title = internal.ProposalTitlePrefixForTesting + reqData.Title
 		proposalRcd.ProposalCategoryID = reqData.ProposalCategoryId
 		err = db.Save(&proposalRcd).Error
 		if err != nil {
