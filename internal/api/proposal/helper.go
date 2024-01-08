@@ -89,7 +89,7 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 		}
 
 		// Create proposal components
-		if err := SaveProposalComponentRecords(db, proposalRcd.ID, reqData.Components); err != nil {
+		if err := SaveProposalComponentRecords(db, proposalRcd.ID, userWallet, reqData.Components); err != nil {
 			log.Error().Msgf("create proposal component blocks error: %+v", err)
 			return nil, err
 		}
@@ -117,7 +117,7 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 		}
 
 		// Create proposal components
-		if err := SaveProposalComponentRecords(db, proposalRecord.ID, reqData.Components); err != nil {
+		if err := SaveProposalComponentRecords(db, proposalRecord.ID, "", reqData.Components); err != nil {
 			log.Error().Msgf("create proposal component blocks error: %+v", err)
 			return nil, err
 		}
@@ -165,7 +165,7 @@ func SaveProposalContentRecords(db *gorm.DB, proposalRecordId uint, reqContentBl
 	})
 }
 
-func SaveProposalComponentRecords(db *gorm.DB, proposalId uint, reqComponentData map[string]*ComponentRequestData) error {
+func SaveProposalComponentRecords(db *gorm.DB, proposalId uint, applicantWallet string, reqComponentData map[string]*ComponentRequestData) error {
 	var existingComponentIds []uint
 	err := db.Model(&model.ProposalComponentRecord{}).Where(model.ProposalComponentRecord{ProposalID: proposalId}).Pluck("id", &existingComponentIds).Error
 	if err != nil {
@@ -185,6 +185,9 @@ func SaveProposalComponentRecords(db *gorm.DB, proposalId uint, reqComponentData
 				log.Error().Msgf("find proposal component %s error: %+v", componentData.Name, err)
 				return err
 			}
+
+			// Append applicant information
+			componentData.Data["applicant"] = common.FormatUserWallet(applicantWallet)
 
 			proposalDataStr, err := json.Marshal(componentData.Data)
 			if err != nil {

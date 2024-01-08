@@ -9,9 +9,9 @@ import (
 	"gorm.io/gorm"
 )
 
-type CreateProjectParam struct {
-	Name    string `json:"name"`
-	Sponsor string `json:"sponsor"`
+type CreateEntityParam struct {
+	Name      string `json:"name"`
+	Applicant string `json:"applicant"`
 }
 
 type CloseProjectParam struct {
@@ -29,7 +29,7 @@ func CreateProjectTask(db *gorm.DB, job *model.CronJob, jobParams string) {
 	execResult := ""
 	jobFailed := false
 
-	var params CreateProjectParam
+	var params CreateEntityParam
 	err = json.Unmarshal([]byte(jobParams), &params)
 
 	if err != nil {
@@ -42,8 +42,8 @@ func CreateProjectTask(db *gorm.DB, job *model.CronJob, jobParams string) {
 		proj := model.Project{
 			Name:     params.Name,
 			Status:   model.ProjectStatusOpen,
-			Sponsors: []string{params.Sponsor},
-			Creator:  common.FormatUserWallet(params.Sponsor),
+			Sponsors: []string{params.Applicant},
+			Creator:  common.FormatUserWallet(params.Applicant),
 			CreateTs: model.GetCurrentUtcEpochSecond(),
 			UpdateTs: model.GetCurrentUtcEpochSecond(),
 		}
@@ -72,4 +72,38 @@ func CreateProjectTask(db *gorm.DB, job *model.CronJob, jobParams string) {
 	db.Updates(&job)
 }
 
-func CloseProjectTask(db *gorm.DB, job *model.CronJob, jobParams string) {}
+func CloseProjectTask(db *gorm.DB, job *model.CronJob, jobParams string) {
+	log.Debug().Msgf("start close project task: %+v", job)
+	err := db.Model(&job).Updates(model.CronJob{State: model.CronJobStateRunning}).Error
+	if err != nil {
+		log.Warn().Msgf("update cron job error: %+v", err)
+		return
+	}
+
+	execResult := ""
+	jobFailed := false
+
+	var params CloseProjectParam
+	err = json.Unmarshal([]byte(jobParams), &params)
+
+	if err != nil {
+		log.Warn().Msgf("close project job params error: %+v", err)
+		execResult = err.Error()
+		jobFailed = true
+	} else {
+		err := db.Model(model.Project{}).Where("id = ?", params.ProjectId).Update("status", model.ProjectStatusClosed).Error
+		if err != nil {
+			log.Warn().Msgf("commit create project error: %+v", err)
+			execResult = err.Error()
+			jobFailed = true
+		}
+
+		// TODO: update permission
+	}
+
+	job.LastExecTs = model.GetCurrentUtcEpochSecond()
+	job.LastExecResult = execResult
+	job.LastExecutionFailed = jobFailed
+	job.State = model.CronJobStateDone
+	db.Updates(&job)
+}
