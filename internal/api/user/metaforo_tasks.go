@@ -135,7 +135,9 @@ func MetaforoActivities(ctx *gin.Context) {
 
 		action := "unknown"
 		if r.LikeId != 0 {
+			// Do not handle like action in OS side
 			action = "like"
+			continue
 		} else if r.FirstPostId == r.Id {
 			action = "create"
 		} else {
