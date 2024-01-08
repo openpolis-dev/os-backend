@@ -46,7 +46,7 @@ func InitTaskManager(db *gorm.DB, checkIntervalSecond int) {
 	refreshVoteStateJob := &model.CronJob{
 		HandlerName: internal.TaskRefreshVotingProposalVoteInfo,
 	}
-	if err := db.Where(&refreshVoteStateJob).Assign(model.CronJob{
+	if err := db.Where(&refreshVoteStateJob).Updates(model.CronJob{
 		State:      model.CronJobStateActive,
 		CronExp:    internal.TaskRefreshVotingProposalVoteInfoCronExpr,
 		CreateTs:   time.Now().UTC().Unix(),
