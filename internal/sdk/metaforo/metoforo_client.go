@@ -74,13 +74,13 @@ func doHttpRequest[T any](requestData *httpRequestData) (int, *T, error) {
 		req.Header.SetContentType(requestData.MultipartContentType)
 	}
 
-	log.Debug().Msgf("Request: %+v", req)
+	log.Trace().Msgf("Request: %+v", req)
 
 	if err := fasthttp.Do(req, resp); err != nil {
 		log.Error().Msgf("Send request error: %s, req: %+v, resp: %+v", err, req, resp)
 	}
 
-	log.Debug().Msgf("Response: %+v", resp)
+	log.Trace().Msgf("Response: %+v", resp)
 
 	// check status code
 	if resp.StatusCode() != http.StatusOK {
