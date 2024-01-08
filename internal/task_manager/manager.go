@@ -46,7 +46,7 @@ func InitTaskManager(db *gorm.DB, checkIntervalSecond int) {
 	refreshVoteStateJob := &model.CronJob{
 		HandlerName: internal.TaskRefreshVotingProposalVoteInfo,
 	}
-	if err := db.Where(&refreshVoteStateJob).Updates(model.CronJob{
+	if err := db.Where(&refreshVoteStateJob).Assign(model.CronJob{
 		State:      model.CronJobStateActive,
 		CronExp:    internal.TaskRefreshVotingProposalVoteInfoCronExpr,
 		CreateTs:   time.Now().UTC().Unix(),
@@ -70,6 +70,14 @@ func (t *TaskManager) StartRunner() {
 	t.RootJob, err = t.Scheduler.NewJob(
 		gocron.DurationJob(t.CheckDuration),
 		gocron.NewTask(t.ScanTaskPool))
+	if err != nil {
+		panic(err)
+	}
+
+	// Repeat refresh RefreshVoteStateJob every minute
+	_, err = t.Scheduler.NewJob(
+		gocron.DurationJob(time.Minute),
+		gocron.NewTask(t.ActivateRefreshVoteStateJobIfRequired))
 	if err != nil {
 		panic(err)
 	}
@@ -105,6 +113,24 @@ func (t *TaskManager) ScanTaskPool() {
 		log.Debug().Msgf("dispatched job: %+v", job)
 		t.TaskChannel <- job
 	}
+}
+
+func (t *TaskManager) ActivateRefreshVoteStateJobIfRequired() error {
+	log.Debug().Msgf("activate refresh vote state job")
+	refreshVoteStateJob := &model.CronJob{
+		HandlerName: internal.TaskRefreshVotingProposalVoteInfo,
+	}
+	if err := t.DatabaseClient.Where(&refreshVoteStateJob).Updates(model.CronJob{
+		State:      model.CronJobStateActive,
+		CronExp:    internal.TaskRefreshVotingProposalVoteInfoCronExpr,
+		CreateTs:   time.Now().UTC().Unix(),
+		NextExecTs: cronexpr.MustParse(internal.TaskRefreshVotingProposalVoteInfoCronExpr).Next(time.Now()).UTC().Unix(),
+		JobParams:  fmt.Sprintf(`{"group_name": "%s"}`, internal.MetaforoGroupName),
+	}).FirstOrCreate(&refreshVoteStateJob).Error; err != nil {
+		log.Error().Msgf("activate refresh vote state job error: %+v", err)
+		return err
+	}
+	return nil
 }
 
 func (t *TaskManager) TaskDispatcher() {
