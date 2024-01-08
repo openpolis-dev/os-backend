@@ -28,8 +28,8 @@ const SeedContractAddr = "0x30093266E34a816a53e302bE3e59a93B52792FD4"
 var CityhallGroupNames = map[string]bool{"G_GOVERNANCE": true, "G_BRANDING": true, "G_TECH": true}
 
 // TODO: Update to real seedao group
-const MetaforoGroupName = "testttt"
-const MetaforoGroupId = 10434
+const MetaforoGroupName = "seedao"
+const MetaforoGroupId = 4649
 
 var ProposalVoteOptions = []*metaforo.VoteOption{
 	{"同意", 0},
