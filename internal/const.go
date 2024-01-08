@@ -42,8 +42,7 @@ const DefaultVoteStartDelay = 14 * 24 * time.Hour
 // Proposal related const
 // TODO: move some to db records
 
-// const DefaultVoteDuration = 14 * 24 * time.Hour
-const DefaultVoteDuration = 2 * time.Minute
+const DefaultVoteDuration = 2 * 24 * time.Hour // Default vote time is 2 days
 const MetaforoAdminAccessToken = "21826|C16zyP8o10wY0easORsNiCa1KTxp0AZwICUAXp6W"
 
 const AssetTypeScrId = 1
