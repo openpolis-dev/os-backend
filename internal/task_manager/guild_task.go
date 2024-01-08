@@ -12,6 +12,11 @@ import (
 	"gorm.io/gorm"
 )
 
+type CreateGuildParam struct {
+	GuildName string `json:"guild_name"`
+	Applicant string `json:"applicant"`
+}
+
 type CloseGuildParam struct {
 	GuildId uint `json:"guild_id"`
 }
@@ -27,7 +32,7 @@ func CreateGuildTask(db *gorm.DB, job *model.CronJob, jobParams string) {
 	execResult := ""
 	jobFailed := false
 
-	var params CreateEntityParam
+	var params CreateGuildParam
 	err = json.Unmarshal([]byte(jobParams), &params)
 
 	if err != nil {
@@ -38,7 +43,7 @@ func CreateGuildTask(db *gorm.DB, job *model.CronJob, jobParams string) {
 		tx := db.Begin()
 		// create guild with sponsor
 		guild := model.Guild{
-			Name:     params.Name,
+			Name:     params.GuildName,
 			Sponsors: []string{params.Applicant},
 			Status:   model.ProjectStatusOpen,
 			Creator:  common.FormatUserWallet(params.Applicant),

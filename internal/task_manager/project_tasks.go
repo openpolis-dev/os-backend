@@ -12,9 +12,9 @@ import (
 	"gorm.io/gorm"
 )
 
-type CreateEntityParam struct {
-	Name      string `json:"name"`
-	Applicant string `json:"applicant"`
+type CreateProjectParam struct {
+	ProjectName string `json:"project_name"`
+	Applicant   string `json:"applicant"`
 }
 
 type CloseProjectParam struct {
@@ -32,7 +32,7 @@ func CreateProjectTask(db *gorm.DB, job *model.CronJob, jobParams string) {
 	execResult := ""
 	jobFailed := false
 
-	var params CreateEntityParam
+	var params CreateProjectParam
 	err = json.Unmarshal([]byte(jobParams), &params)
 
 	if err != nil {
@@ -43,7 +43,7 @@ func CreateProjectTask(db *gorm.DB, job *model.CronJob, jobParams string) {
 		tx := db.Begin()
 		// create project with sponsor
 		proj := model.Project{
-			Name:     params.Name,
+			Name:     params.ProjectName,
 			Status:   model.ProjectStatusOpen,
 			Sponsors: []string{params.Applicant},
 			Creator:  common.FormatUserWallet(params.Applicant),
