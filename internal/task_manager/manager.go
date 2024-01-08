@@ -159,6 +159,8 @@ func (t *TaskManager) TaskDispatcher() {
 			t.DatabaseClient.Updates(task)
 			log.Debug().Msgf("reward new application")
 		default:
+			task.State = model.CronJobStateTerminated
+			t.DatabaseClient.Updates(task)
 			log.Warn().Msgf("unknown task name: %s task detail: %+v", task.HandlerName, task)
 			// Handle unknown task
 		}
