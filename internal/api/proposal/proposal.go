@@ -527,7 +527,7 @@ func updateProposalState(db *gorm.DB, user *middleware.CurUser, proposalStrId st
 				err := metaforo.UpdateVoteTime(internal.MetaforoAdminAccessToken,
 					internal.MetaforoGroupName,
 					record.MetaforoID,
-					time.Now().UTC().Unix(),
+					time.Now().UTC().Add(-1*time.Minute).Unix(), // Set the start time 1 minute in advanced
 					time.Now().UTC().Add(internal.DefaultVoteDuration).Unix(),
 				)
 				if err != nil {
