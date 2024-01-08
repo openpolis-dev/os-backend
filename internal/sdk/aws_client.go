@@ -109,9 +109,9 @@ func (c *AwsClient) UploadUserAvatar(userWallet string, b64ImgSrcWithType string
 	return c.uploadB64Image(imageData, contentType, fileKey)
 }
 
-func (c *AwsClient) GetS3PreSignedURL(fileName string, contentType string) (string, error) {
+func (c *AwsClient) GetS3PreSignedURL(bucketName, fileName, contentType string) (string, error) {
 	req, _ := c.Svc.PutObjectRequest(&s3.PutObjectInput{
-		Bucket:      aws.String(c.BucketName),
+		Bucket:      aws.String(bucketName),
 		Key:         aws.String(fileName),
 		ContentType: aws.String(contentType),
 	})

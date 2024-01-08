@@ -21,11 +21,10 @@ type SeasonResponse struct {
 
 // List returns all seasons currently existing in database
 //
-//	@Summary	returns all seasons currently existing in database
-//	@Router		/seasons/ [get]
-//	@Tag		seasons
-//
-//	@Success	200	{object}	[]SeasonResponse
+//	@summary	returns all seasons currently existing in database
+//	@router		/seasons/ [get]
+//	@tags		Season
+//	@success	200	{object}	[]SeasonResponse
 func List(ctx *gin.Context) {
 	db := api.ForContextOnlyDB(ctx)
 	var seasonRcds []*model.Season
@@ -50,11 +49,10 @@ func List(ctx *gin.Context) {
 
 // Current returns the current season.
 //
-//	@Summary	returns current season
-//	@Router		/seasons/curr [get]
-//	@Tag		seasons
-//
-//	@Success	200	{object}	SeasonResponse
+//	@summary	returns current season
+//	@router		/seasons/curr [get]
+//	@tags		Season
+//	@success	200	{object}	SeasonResponse
 func Current(ctx *gin.Context) {
 	db := api.ForContextOnlyDB(ctx)
 	currSeason, err := model.GetCurrentSeason(db)

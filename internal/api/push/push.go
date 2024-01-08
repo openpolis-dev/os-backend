@@ -28,13 +28,13 @@ type CreateReq struct {
 
 // Create a push
 //
-//	@Summary	Create a push
-//	@Tags		Push
-//	@Accept		json
-//	@Produce	json
-//	@Param		push	body		CreateReq	true	"request json body"
-//	@Success	200		{object}	api.Reply
-//	@Router		/push [post]
+//	@summary	Create a push
+//	@tags		Push
+//	@accept		json
+//	@produce	json
+//	@param		push	body		CreateReq	true	"request json body"
+//	@success	200		{object}	api.Reply
+//	@router		/push [post]
 func Create(ctx *gin.Context) {
 	req := CreateReq{}
 	err := ctx.BindJSON(&req)
@@ -45,14 +45,14 @@ func Create(ctx *gin.Context) {
 
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
-	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), api.ObjPush, api.ActCreatePush)
+	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), internal.ObjPush, internal.ActCreatePush)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 		return
 	}
 	if !ok {
-		sdk.LogForbiddenError(ctx, user.Wallet, api.ObjPush, api.ActCreatePush)
+		sdk.LogForbiddenError(ctx, user.Wallet, internal.ObjPush, internal.ActCreatePush)
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
@@ -96,17 +96,17 @@ func Create(ctx *gin.Context) {
 //
 //	`GET /push?status=1&page=1&size=10&sort_field=created_at&sort_order=desc`
 //
-//	@Summary	list push
-//	@Tags		Push
-//	@Accept		json
-//	@Produce	json
-//	@Param		status		query		int		false	"status"
-//	@Param		page		query		int		false	"page"
-//	@Param		size		query		int		false	"size"
-//	@Param		sort_field	query		string	false	"sort_field"
-//	@Param		sort_order	query		string	false	"sort_order"
-//	@Success	200			{object}	api.Reply{data=api.ListReplyData{rows=model.Push}}
-//	@Router		/push [get]
+//	@summary	list push
+//	@tags		Push
+//	@accept		json
+//	@produce	json
+//	@param		status		query		int		false	"status"
+//	@param		page		query		int		false	"page"
+//	@param		size		query		int		false	"size"
+//	@param		sort_field	query		string	false	"sort_field"
+//	@param		sort_order	query		string	false	"sort_order"
+//	@success	200			{object}	api.Reply{data=api.ListReplyData{rows=model.Push}}
+//	@router		/push [get]
 func List(ctx *gin.Context) {
 	db := api.ForContextOnlyDB(ctx)
 

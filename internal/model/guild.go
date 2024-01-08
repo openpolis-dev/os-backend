@@ -5,19 +5,21 @@ import (
 	"time"
 
 	"github.com/shopspring/decimal"
+	"github.com/theseed-labs/os-backend/internal"
 	"github.com/xiaosongfu/gormfind"
 	"gorm.io/gorm"
 )
 
 type Guild struct {
-	ID        uint     `json:"id" gorm:"primaryKey"`
-	Logo      string   `json:"logo"`
-	Name      string   `json:"name"`
-	Intro     string   `json:"intro"`
-	Desc      string   `json:"desc"`
-	Sponsors  []string `json:"sponsors" gorm:"serializer:json"`
-	Members   []string `json:"members" gorm:"serializer:json"`
-	Proposals []string `json:"proposals" gorm:"serializer:json"`
+	ID        uint          `json:"id" gorm:"primaryKey"`
+	Logo      string        `json:"logo"`
+	Name      string        `json:"name"`
+	Intro     string        `json:"intro"`
+	Desc      string        `json:"desc"`
+	Status    ProjectStatus `json:"status" gorm:"index"` // Status may have those values: open/pending_close/closed
+	Sponsors  []string      `json:"sponsors" gorm:"serializer:json"`
+	Members   []string      `json:"members" gorm:"serializer:json"`
+	Proposals []string      `json:"proposals" gorm:"serializer:json"`
 
 	Creator string `json:"creator"`
 
@@ -42,7 +44,7 @@ func (*guildModel) Detail(db *gorm.DB, id uint) (*Guild, error) {
 }
 
 func (*guildModel) List(db *gorm.DB, page *gormfind.Page) (data []*Guild, total int64, err error) {
-	querySeg := db.Table("guilds")
+	querySeg := db.Table("guilds").Where("status = ?", ProjectStatusOpen)
 
 	total, err = gormfind.Count(querySeg)
 	if err != nil {
@@ -64,7 +66,7 @@ func (*guildModel) ListBySponsorOrMember(db *gorm.DB, wallet string, page *gormf
 	//querySeg := db.Table("guilds").Where("sponsors LIKE ?", w).Or("members LIKE ?", w)
 
 	// PgVersion
-	querySeg := db.Table("guilds").Where("sponsors::text ILIKE ?", w).Or("members::text ILIKE ?", w)
+	querySeg := db.Table("guilds").Where(fmt.Sprintf("sponsors::text ILIKE '%%%s%%'", w)).Or(fmt.Sprintf("members::text ILIKE '%%%s%%'", w))
 
 	total, err = gormfind.Count(querySeg)
 	if err != nil {
@@ -78,7 +80,7 @@ func (*guildModel) ListBySponsorOrMember(db *gorm.DB, wallet string, page *gormf
 }
 
 func (*guildModel) ListBySponsor(db *gorm.DB, sponsor string, page *gormfind.Page) (data []*Guild, total int64, err error) {
-	querySeg := db.Table("guilds").Where("sponsors LIKE ?", fmt.Sprintf("%%\"%s\"%%", sponsor)) // value is: `%"0x123"%`
+	querySeg := db.Table("guilds").Where(fmt.Sprintf("sponsors ILIKE '%%%s%%'", sponsor)) // value is: `%"0x123"%`
 
 	total, err = gormfind.Count(querySeg)
 	if err != nil {
@@ -155,4 +157,20 @@ func (*guildModel) DepositBudget(db *gorm.DB, guildId uint, assetName string, as
 			return tx.Save(budgetRcd).Error
 		}
 	})
+}
+func (g *Guild) GenerateCasbinPolicies() [][]string {
+	return [][]string{
+		// p, guild_sponsor_1, guild_1, modify
+		// p, guild_sponsor_1, guild_1, create_app
+		// p, guild_sponsor_1, guild_1, u_member
+		// p, guild_sponsor_1, guild_1, u_budget
+		{fmt.Sprintf("%s%d", internal.RoleGuildSponsorPrefix, g.ID), fmt.Sprintf("%s%d", internal.ObjGuildPrefix, g.ID), internal.ActModify},
+		{fmt.Sprintf("%s%d", internal.RoleGuildSponsorPrefix, g.ID), fmt.Sprintf("%s%d", internal.ObjGuildPrefix, g.ID), internal.ActCreateApplication},
+		{fmt.Sprintf("%s%d", internal.RoleGuildSponsorPrefix, g.ID), fmt.Sprintf("%s%d", internal.ObjGuildPrefix, g.ID), internal.ActUpdateMember},
+		{fmt.Sprintf("%s%d", internal.RoleGuildSponsorPrefix, g.ID), fmt.Sprintf("%s%d", internal.ObjGuildPrefix, g.ID), internal.ActUpdateBudget},
+		//// p, guild_member_1, guild_1, modify
+		//// p, guild_member_1, guild_1, create_app
+		//{fmt.Sprintf("%s%d", api.RoleGuildMemberPrefix, guild.ID), fmt.Sprintf("%s%d", api.ObjGuildPrefix, guild.ID), api.ActModify},
+		//{fmt.Sprintf("%s%d", api.RoleGuildMemberPrefix, guild.ID), fmt.Sprintf("%s%d", api.ObjGuildPrefix, guild.ID), api.ActCreateApplication},
+	}
 }

@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	seeauth "github.com/Taoist-Labs/see-auth-go"
+	"github.com/Taoist-Labs/see-auth-go/proof"
 	eth_common "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -45,13 +47,13 @@ type UserModelWithSomeSeepassData struct {
 
 // RefreshNonce refresh nonce
 //
-//	@Summary	Refresh nonce
-//	@Tags		Auth
-//	@Accept		json
-//	@Produce	json
-//	@Param		JsonBody	body		RefreshNonceReq	true	"request json body"
-//	@Success	200			{object}	api.Reply{data=RefreshNonceReply}
-//	@Router		/user/refresh_nonce [post]
+//	@summary	Refresh nonce
+//	@tags		Auth
+//	@accept		json
+//	@produce	json
+//	@param		JsonBody	body		RefreshNonceReq	true	"request json body"
+//	@success	200			{object}	api.Reply{data=RefreshNonceReply}
+//	@router		/user/refresh_nonce [post]
 func RefreshNonce(ctx *gin.Context) {
 	req := RefreshNonceReq{}
 	err := ctx.BindJSON(&req)
@@ -88,41 +90,6 @@ func RefreshNonce(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, api.Success(&RefreshNonceReply{Nonce: nonce}))
 }
 
-type RetrieveNonceReply struct {
-	Nonce string `json:"nonce"`
-}
-
-// RetrieveNonce  retrieve nonce
-//
-//	`GET /retrieve_nonce?wallet=0x123
-//
-//	@Summary	Retrieve nonce
-//	@Tags		Auth
-//	@Accept		json
-//	@Produce	json
-//	@Param		wallet	query		string	true	"wallet address"
-//	@Success	200		{object}	api.Reply{data=RetrieveNonceReply}
-//	@Router		/user/retrieve_nonce [get]
-func RetrieveNonce(ctx *gin.Context) {
-	wallet := ctx.Query("wallet")
-
-	db, cfg := api.ForContextDBAndConfig(ctx)
-
-	userNonce, err := model.UserNonceModel.RecentNonce(db, wallet, cfg.Auth.NonceLifespan)
-	if err != nil {
-		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("nonce not found")))
-		return
-	}
-
-	if userNonce == nil {
-		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("no-login-request-recently")))
-		return
-	}
-
-	ctx.JSON(http.StatusOK, api.Success(&RetrieveNonceReply{Nonce: userNonce.Nonce}))
-}
-
 type LoginReq struct {
 	Wallet         string `json:"wallet" binding:"required"`
 	WalletType     string `json:"wallet_type" binding:"required"`
@@ -142,13 +109,13 @@ type LoginReply struct {
 
 // Login user login
 //
-//	@Summary	Login
-//	@Tags		Auth
-//	@Accept		json
-//	@Produce	json
-//	@Param		JsonBody	body		LoginReq	true	"request json body"
-//	@Success	200			{object}	api.Reply{data=LoginReply}
-//	@Router		/user/login [post]
+//	@summary	Login
+//	@tags		Auth
+//	@accept		json
+//	@produce	json
+//	@param		JsonBody	body		LoginReq	true	"request json body"
+//	@success	200			{object}	api.Reply{data=LoginReply}
+//	@router		/user/login [post]
 func Login(ctx *gin.Context) {
 	req := LoginReq{}
 	err := ctx.BindJSON(&req)
@@ -271,14 +238,182 @@ func Login(ctx *gin.Context) {
 
 // Logout user logout
 //
-//	@Summary	Logout
-//	@Tags		Auth
-//	@Accept		json
-//	@Produce	json
-//	@Success	200	{object}	api.Reply
-//	@Router		/user/logout [post]
+//	@summary	Logout
+//	@tags		Auth
+//	@accept		json
+//	@produce	json
+//	@success	200	{object}	api.Reply
+//	@router		/user/logout [post]
 func Logout(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, api.Success(nil))
+}
+
+// ------ ------ ------ ------ ------ ------ ------ ------ ------
+// ------ SeeAuth ------ ------
+
+// SeeAuthNonce SeeAuth nonce
+//
+//	@Summary	get nonce of SeeAuth
+//	@Tags		SeeAuth
+//	@Accept		json
+//	@Produce	json
+//	@Param		wallet	path		string	true	"request json body"
+//	@Success	200		{object}	api.Reply{data=RefreshNonceReply}
+//	@Router		/seeauth/nonce/:wallet [get]
+func SeeAuthNonce(ctx *gin.Context) {
+	wallet := ctx.Param("wallet") // DIFFERENT with `RefreshNonce` api
+
+	db := api.ForContextOnlyDB(ctx)
+
+	userNonce, err := model.UserNonceModel.Detail(db, common.FormatUserWallet(wallet))
+	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("nonce not found")))
+		return
+	}
+
+	// new nonce and refreshAt
+	nonce := seeauth.GenerateNonce() // DIFFERENT with `RefreshNonce` api
+	refreshAt := time.Now().UnixMilli()
+	// update with new value
+	if userNonce == nil {
+		userNonce = &model.UserNonce{Wallet: common.FormatUserWallet(wallet)}
+	}
+	userNonce.Nonce = nonce
+	userNonce.RefreshAt = refreshAt
+	err = model.UserNonceModel.CreateOrUpdate(db, userNonce)
+	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("update nonce error")))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, api.Success(&RefreshNonceReply{Nonce: nonce}))
+}
+
+type LoginWithSeeAuthReply struct {
+	Token    string           `json:"token"`
+	TokenExp int64            `json:"token_exp"` // time unit: seconds
+	User     *model.User      `json:"user"`
+	SEEAuth  *seeauth.SeeAuth `json:"see_auth"`
+}
+
+// LoginWithSeeAuth user login
+//
+//	@Summary	Login
+//	@Tags		SeeAuth
+//	@Accept		json
+//	@Produce	json
+//	@Param		JsonBody	body		LoginReq	true	"request json body"
+//	@Success	200			{object}	api.Reply{data=LoginWithSeeAuthReply}
+//	@Router		/seeauth/login [post]
+func LoginWithSeeAuth(ctx *gin.Context) {
+	req := seeauth.SeeLogin{}
+	err := ctx.BindJSON(&req)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
+		return
+	}
+
+	_, _, db, cfg := api.ForContext(ctx)
+
+	// query nonce
+	userNonce, err := model.UserNonceModel.RecentNonce(db, common.FormatUserWallet(req.Wallet), cfg.Auth.NonceLifespan)
+	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("nonce not found")))
+		return
+	}
+	if userNonce == nil {
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("please refresh nonce firstly")))
+		return
+	}
+
+	// SEE-AUTH Logic
+	seeAuth, err := seeauth.Auth(&seeauth.SignatureParams{
+		WalletName: req.WalletName,
+		Wallet:     req.Wallet,
+		Domain:     req.Domain,
+		Nonce:      userNonce.Nonce,
+		Message:    req.Message,
+		Signature:  req.Signature,
+	}, &seeauth.ProofParams{
+		Recipient: "0x0000000000000000000000000000000000000000",
+		Schema: &proof.SchemaData{
+			Wallet: req.Wallet,
+			Vendor: "common",
+		},
+		PrivateKey: "59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d",
+	})
+	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		return
+	}
+
+	// query user
+	user, err := model.UserModel.Detail(db, common.FormatUserWallet(req.Wallet))
+	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("user not found")))
+		return
+	}
+	if user == nil {
+		user = &model.User{
+			Wallet: common.FormatUserWallet(req.Wallet),
+		}
+		err = model.UserModel.CreateOrUpdate(db, user)
+		if err != nil {
+			sdk.LogServerErrorToSentry(ctx, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("failed to create user")))
+			return
+		}
+	}
+
+	// generate jwt token
+	token, tokenExp, err := common.GenerateJwtToken[middleware.CurUser](
+		&middleware.CurUser{
+			Wallet: user.Wallet,
+		},
+		time.Duration(cfg.Jwt.Exp)*time.Hour,
+		cfg.Jwt.Secret,
+	)
+	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("failed to generate jwt token")))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, api.Success(&LoginWithSeeAuthReply{
+		Token:    token,
+		TokenExp: tokenExp,
+		User:     user,
+		SEEAuth:  seeAuth,
+	}))
+}
+
+// SeeAuthTestApi SeeAuth test api
+func SeeAuthTestApi(ctx *gin.Context) {
+	req := seeauth.SeeAuth{}
+	err := ctx.BindJSON(&req)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
+		return
+	}
+
+	wallet, err := seeauth.SeeDAOAuth("0x0000000000000000000000000000000000000000", &req)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, struct {
+		Wallet string `json:"wallet"`
+		Token  string `json:"token"`
+	}{
+		Wallet: wallet,
+		Token:  "test.jwt.token",
+	})
 }
 
 // ------ ------ ------ ------ ------ ------ ------ ------ ------
@@ -286,18 +421,18 @@ func Logout(ctx *gin.Context) {
 
 // Detail get user detail
 //
-//	@Summary	Get user detail
-//	@Tags		User
-//	@Accept		json
-//	@Produce	json
-//	@Success	200	{object}	api.Reply{data=sdk.SeepassResponse}
-//	@Router		/user/me [get]
+//	@summary	Get user detail
+//	@tags		User
+//	@accept		json
+//	@produce	json
+//	@success	200	{object}	api.Reply{data=sdk.SeepassResponse}
+//	@router		/user/me [get]
 func Detail(ctx *gin.Context) {
 	// TODO: Get data from seepass API, and return data from DB if seepass returns 404
 	user, db := api.ForContextUserAndDB(ctx)
 
 	sppClient := sdk.GetSppClient()
-	seepassResp, err := sppClient.GetSeepassData(user.Wallet)
+	seepassResp, err := api.GetCachedSeepassData(sppClient, user.Wallet, false)
 	if err == nil {
 		ctx.JSON(http.StatusOK, api.Success(seepassResp))
 		return
@@ -350,13 +485,13 @@ type UpdateReq struct {
 
 // Update `PUT /me`
 //
-//	@Summary	Update user info
-//	@Tags		User
-//	@Accept		json
-//	@Produce	json
-//	@Param		JsonBody	body		UpdateReq	true	"request json body"
-//	@Success	200			{object}	api.Reply
-//	@Router		/user/me [put]
+//	@summary	Update user info
+//	@tags		User
+//	@accept		json
+//	@produce	json
+//	@param		JsonBody	body		UpdateReq	true	"request json body"
+//	@success	200			{object}	api.Reply
+//	@router		/user/me [put]
 func Update(ctx *gin.Context) {
 	req := UpdateReq{}
 	err := ctx.BindJSON(&req)
@@ -419,13 +554,13 @@ func Update(ctx *gin.Context) {
 //
 //	`GET /users?wallets=0x1&wallets=0x2&wallets=0x3`
 //
-//	@Summary	Query multiple users by wallet array on batch
-//	@Tags		User
-//	@Accept		json
-//	@Produce	json
-//	@Param		wallets	query		[]string	true	"wallets"
-//	@Success	200		{object}	api.Reply{data=[]UserModelWithSomeSeepassData}
-//	@Router		/user/users [get]
+//	@summary	Query multiple users by wallet array on batch
+//	@tags		User
+//	@accept		json
+//	@produce	json
+//	@param		wallets	query		[]string	true	"wallets"
+//	@success	200		{object}	api.Reply{data=[]UserModelWithSomeSeepassData}
+//	@router		/user/users [get]
 func Users(ctx *gin.Context) {
 	wallets := ctx.QueryArray("wallets")
 	//// convert all wallet to lower case
@@ -458,7 +593,7 @@ func Users(ctx *gin.Context) {
 
 	// TODO: Query SeePASS to get user SBT and SEED info
 	for _, user := range users {
-		seepassResp, err := sppClient.GetSeepassData(user.Wallet)
+		seepassResp, err := api.GetCachedSeepassData(sppClient, user.Wallet, false)
 		user.Wallet = common.ToFrontendWallet(user.Wallet)
 		if err != nil {
 			log.Warn().Msgf("query seepass data error, wallet: %s, error: %+v", user.Wallet, err)
@@ -487,13 +622,13 @@ func Users(ctx *gin.Context) {
 //
 //	`GET /casbin?casbin_subject=0x1`
 //
-//	@Summary	Query frontend permission by user wallet
-//	@Tags		Permission
-//	@Accept		json
-//	@Produce	json
-//	@Param		casbin_subject	query		string	true	"casbin_subject"
-//	@Success	200				{object}	api.Reply{data=string}
-//	@Router		/user/casbin [get]
+//	@summary	Query frontend permission by user wallet
+//	@tags		Permission
+//	@accept		json
+//	@produce	json
+//	@param		casbin_subject	query		string	true	"casbin_subject"
+//	@success	200				{object}	api.Reply{data=string}
+//	@router		/user/casbin [get]
 func GetFrontendPermission(ctx *gin.Context) {
 	enforcer := api.ForContextOnlyEnforcer(ctx)
 

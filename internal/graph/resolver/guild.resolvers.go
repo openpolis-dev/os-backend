@@ -8,6 +8,7 @@ import (
 	"context"
 
 	"github.com/samber/lo"
+	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/graph/gmodel"
@@ -23,7 +24,7 @@ func (r *queryResolver) AvailableGuilds(ctx context.Context) ([]*gmodel.Guild, e
 
 	user, enforcer, db, _ := api.ForContext(ginCtx)
 
-	ok, err := enforcer.HasRoleForUser(common.FormatUserWallet(user.Wallet), api.RoleHall)
+	ok, err := enforcer.HasRoleForUser(common.FormatUserWallet(user.Wallet), internal.RoleHall)
 	if err != nil {
 		return nil, err
 	}

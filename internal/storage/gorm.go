@@ -44,9 +44,9 @@ func InitGormDB(dsn string, dbSchema string) {
 }
 
 // MigrateTables auto migrate models defined.
-func MigrateTables() {
+func MigrateTables(db *gorm.DB) error {
 	// Migrate the schema
-	err := gormDB.AutoMigrate(
+	return db.AutoMigrate(
 		&model.User{},
 		&model.UserNonce{},
 		&model.UserAssetRecord{},
@@ -64,10 +64,21 @@ func MigrateTables() {
 		&model.TreasuryAuditLog{},
 		&model.Event{},
 		&model.Push{},
+		&model.MetaforoUser{},
+		&model.Proposal{},
+		&model.ProposalCategory{},
+		&model.ProposalContentBlock{},
+		&model.ProposalAuditLog{},
+		&model.ProposalComment{},
+		&model.ProposalComponentRecord{},
+		&model.ProposalUserVoteRecord{},
+		&model.ProposalVoteGate{},
+		&model.ProposalVoteRecord{},
+		&model.ProposalComponent{},
+		&model.ProposalComponentAction{},
+		&model.ProposalTemplate{},
+		&model.CronJob{},
 	)
-	if err != nil {
-		panic("failed to migrate tables")
-	}
 }
 
 // SeedDbRecords inits some const data records to database if not existing

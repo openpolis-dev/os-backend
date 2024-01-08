@@ -135,6 +135,7 @@ func seasonCreditWeight(seasonIdx, currSeasonIdx uint) decimal.Decimal {
 //
 //	@router		/data_srv/aggr_scr [get]
 //	@summary	returns aggregated credit score and node calculation result
+//	@tags		DataService
 //	@success	200	{object}	[]CreditDetail
 func AggrScr(ctx *gin.Context) {
 	db := api.ForContextOnlyDB(ctx)

@@ -63,13 +63,13 @@ type (
 
 // Create a guild
 //
-//	@Summary	Create a guild
-//	@Tags		Guild
-//	@Accept		json
-//	@Produce	json
-//	@Param		JsonBody	body		CreateReq	true	"request json body"
-//	@Success	200			{object}	api.Reply
-//	@Router		/guilds [post]
+//	@summary	Create a guild
+//	@tags		Guild
+//	@accept		json
+//	@produce	json
+//	@param		JsonBody	body		CreateReq	true	"request json body"
+//	@success	200			{object}	api.Reply
+//	@router		/guilds [post]
 func Create(ctx *gin.Context) {
 	req := CreateReq{}
 	err := ctx.BindJSON(&req)
@@ -96,14 +96,14 @@ func Create(ctx *gin.Context) {
 
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
-	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), api.ObjGuild, api.ActCreate)
+	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), internal.ObjGuild, internal.ActCreate)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 		return
 	}
 	if !ok {
-		sdk.LogForbiddenError(ctx, user.Wallet, api.ObjGuild, api.ActCreate)
+		sdk.LogForbiddenError(ctx, user.Wallet, internal.ObjGuild, internal.ActCreate)
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
@@ -152,10 +152,10 @@ func Create(ctx *gin.Context) {
 		// p, guild_sponsor_1, guild_1, create_app
 		// p, guild_sponsor_1, guild_1, u_member
 		// p, guild_sponsor_1, guild_1, u_budget
-		{fmt.Sprintf("%s%d", api.RoleGuildSponsorPrefix, guild.ID), fmt.Sprintf("%s%d", api.ObjGuildPrefix, guild.ID), api.ActModify},
-		{fmt.Sprintf("%s%d", api.RoleGuildSponsorPrefix, guild.ID), fmt.Sprintf("%s%d", api.ObjGuildPrefix, guild.ID), api.ActCreateApplication},
-		{fmt.Sprintf("%s%d", api.RoleGuildSponsorPrefix, guild.ID), fmt.Sprintf("%s%d", api.ObjGuildPrefix, guild.ID), api.ActUpdateMember},
-		{fmt.Sprintf("%s%d", api.RoleGuildSponsorPrefix, guild.ID), fmt.Sprintf("%s%d", api.ObjGuildPrefix, guild.ID), api.ActUpdateBudget},
+		{fmt.Sprintf("%s%d", internal.RoleGuildSponsorPrefix, guild.ID), fmt.Sprintf("%s%d", internal.ObjGuildPrefix, guild.ID), internal.ActModify},
+		{fmt.Sprintf("%s%d", internal.RoleGuildSponsorPrefix, guild.ID), fmt.Sprintf("%s%d", internal.ObjGuildPrefix, guild.ID), internal.ActCreateApplication},
+		{fmt.Sprintf("%s%d", internal.RoleGuildSponsorPrefix, guild.ID), fmt.Sprintf("%s%d", internal.ObjGuildPrefix, guild.ID), internal.ActUpdateMember},
+		{fmt.Sprintf("%s%d", internal.RoleGuildSponsorPrefix, guild.ID), fmt.Sprintf("%s%d", internal.ObjGuildPrefix, guild.ID), internal.ActUpdateBudget},
 		//// p, guild_member_1, guild_1, modify
 		//// p, guild_member_1, guild_1, create_app
 		//{fmt.Sprintf("%s%d", api.RoleGuildMemberPrefix, guild.ID), fmt.Sprintf("%s%d", api.ObjGuildPrefix, guild.ID), api.ActModify},
@@ -170,7 +170,7 @@ func Create(ctx *gin.Context) {
 	// add roles
 	sponsorGroupingPolicies := lo.Map(req.Sponsors, func(sponsor string, _ int) []string {
 		// g, 0xc13..1283 guild_sponsor_1
-		return []string{common.FormatUserWallet(sponsor), fmt.Sprintf("%s%d", api.RoleGuildSponsorPrefix, guild.ID)}
+		return []string{common.FormatUserWallet(sponsor), fmt.Sprintf("%s%d", internal.RoleGuildSponsorPrefix, guild.ID)}
 	})
 	//memberGroupingPolicies := lo.Map(req.Members, func(member string, _ int) []string {
 	//	// g, 0xc13..1283 guild_member_1
@@ -208,14 +208,14 @@ func Create(ctx *gin.Context) {
 
 // Update a guild
 //
-//	@Summary	Update a guild
-//	@Tags		Guild
-//	@Accept		json
-//	@Produce	json
-//	@Param		id			path		int			true	"guild id"
-//	@Param		JsonBody	body		UpdateReq	true	"request json body"
-//	@Success	200			{object}	api.Reply
-//	@Router		/guilds/{id} [put]
+//	@summary	Update a guild
+//	@tags		Guild
+//	@accept		json
+//	@produce	json
+//	@param		id			path		int			true	"guild id"
+//	@param		JsonBody	body		UpdateReq	true	"request json body"
+//	@success	200			{object}	api.Reply
+//	@router		/guilds/{id} [put]
 func Update(ctx *gin.Context) {
 	idParam := ctx.Param("id")
 	id, err := strconv.Atoi(idParam)
@@ -234,14 +234,14 @@ func Update(ctx *gin.Context) {
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
 	permObject := buildGuildPermObject(id)
-	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), permObject, api.ActModify)
+	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), permObject, internal.ActModify)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 		return
 	}
 	if !ok {
-		sdk.LogForbiddenError(ctx, user.Wallet, permObject, api.ActModify)
+		sdk.LogForbiddenError(ctx, user.Wallet, permObject, internal.ActModify)
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
@@ -283,13 +283,13 @@ func Update(ctx *gin.Context) {
 
 // Detail get a guild detail
 //
-//	@Summary	Get a guild detail
-//	@Tags		Guild
-//	@Accept		json
-//	@Produce	json
-//	@Param		id	path		int	true	"guild id"
-//	@Success	200	{object}	api.Reply{data=DetailReply}
-//	@Router		/guilds/{id} [get]
+//	@summary	Get a guild detail
+//	@tags		Guild
+//	@accept		json
+//	@produce	json
+//	@param		id	path		int	true	"guild id"
+//	@success	200	{object}	api.Reply{data=DetailReply}
+//	@router		/guilds/{id} [get]
 func Detail(ctx *gin.Context) {
 	idParam := ctx.Param("id")
 	id, err := strconv.Atoi(idParam)
@@ -334,16 +334,16 @@ func Detail(ctx *gin.Context) {
 
 // List `GET /guilds?page=1&size=10&sort_field=create_ts&sort_order=desc`
 //
-//	@Summary	List guilds
-//	@Tags		Guild
-//	@Accept		json
-//	@Produce	json
-//	@Param		page		query		int		false	"page number, default: 1"
-//	@Param		size		query		int		false	"page size, default: 10"
-//	@Param		sort_field	query		string	false	"sort field, default: create_ts"
-//	@Param		sort_order	query		string	false	"sort order, default: desc"
-//	@Success	200			{object}	api.Reply{data=api.ListReplyData{rows=model.Guild}}
-//	@Router		/guilds [get]
+//	@summary	List guilds
+//	@tags		Guild
+//	@accept		json
+//	@produce	json
+//	@param		page		query		int		false	"page number, default: 1"
+//	@param		size		query		int		false	"page size, default: 10"
+//	@param		sort_field	query		string	false	"sort field, default: create_ts"
+//	@param		sort_order	query		string	false	"sort order, default: desc"
+//	@success	200			{object}	api.Reply{data=api.ListReplyData{rows=model.Guild}}
+//	@router		/guilds [get]
 func List(ctx *gin.Context) {
 	db := api.ForContextOnlyDB(ctx)
 
@@ -370,16 +370,16 @@ func List(ctx *gin.Context) {
 //
 //	`GET /guilds/my?page=1&size=10&sort_field=create_ts&sort_order=desc`
 //
-//	@Summary	list my guilds
-//	@Tags		Guild
-//	@Accept		json
-//	@Produce	json
-//	@Param		page		query		int		false	"page number, default: 1"
-//	@Param		size		query		int		false	"page size, default: 10"
-//	@Param		sort_field	query		string	false	"sort field, default: create_ts"
-//	@Param		sort_order	query		string	false	"sort order, default: desc"
-//	@Success	200			{object}	api.Reply{data=api.ListReplyData{rows=model.Guild}}
-//	@Router		/guilds/my_guilds [get]
+//	@summary	list my guilds
+//	@tags		Guild
+//	@accept		json
+//	@produce	json
+//	@param		page		query		int		false	"page number, default: 1"
+//	@param		size		query		int		false	"page size, default: 10"
+//	@param		sort_field	query		string	false	"sort field, default: create_ts"
+//	@param		sort_order	query		string	false	"sort order, default: desc"
+//	@success	200			{object}	api.Reply{data=api.ListReplyData{rows=model.Guild}}
+//	@router		/guilds/my_guilds [get]
 func MyGuilds(ctx *gin.Context) {
 	user, db := api.ForContextUserAndDB(ctx)
 
@@ -413,14 +413,14 @@ type UpdateStaffsReq struct {
 
 // UpdateStaffs update guild sponsors/members
 //
-//	@Summary	Update guild sponsors/members
-//	@Tags		Guild
-//	@Accept		json
-//	@Produce	json
-//	@Param		id			path		int				true	"guild id"
-//	@Param		JsonBody	body		UpdateStaffsReq	true	"request json body"
-//	@Success	200			{object}	api.Reply
-//	@Router		/guilds/{id}/update_staffs [post]
+//	@summary	Update guild sponsors/members
+//	@tags		Guild
+//	@accept		json
+//	@produce	json
+//	@param		id			path		int				true	"guild id"
+//	@param		JsonBody	body		UpdateStaffsReq	true	"request json body"
+//	@success	200			{object}	api.Reply
+//	@router		/guilds/{id}/update_staffs [post]
 func UpdateStaffs(ctx *gin.Context) {
 	idParam := ctx.Param("id")
 	id, err := strconv.Atoi(idParam)
@@ -440,28 +440,28 @@ func UpdateStaffs(ctx *gin.Context) {
 	//  check permission
 	if req.Sponsors != nil && len(req.Sponsors) != 0 {
 		permObject := buildGuildPermObject(id)
-		ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), permObject, api.ActUpdateSponsor)
+		ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), permObject, internal.ActUpdateSponsor)
 		if err != nil {
 			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("list guilds error")))
 			return
 		}
 		if !ok {
-			sdk.LogForbiddenError(ctx, user.Wallet, permObject, api.ActUpdateSponsor)
+			sdk.LogForbiddenError(ctx, user.Wallet, permObject, internal.ActUpdateSponsor)
 			ctx.JSON(http.StatusForbidden, api.Forbidden())
 			return
 		}
 	}
 	if req.Members != nil && len(req.Members) != 0 {
 		permObject := buildGuildPermObject(id)
-		ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), permObject, api.ActUpdateMember)
+		ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), permObject, internal.ActUpdateMember)
 		if err != nil {
 			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("list guilds error")))
 			return
 		}
 		if !ok {
-			sdk.LogForbiddenError(ctx, user.Wallet, permObject, api.ActUpdateMember)
+			sdk.LogForbiddenError(ctx, user.Wallet, permObject, internal.ActUpdateMember)
 			ctx.JSON(http.StatusForbidden, api.Forbidden())
 			return
 		}
@@ -512,7 +512,7 @@ func UpdateStaffs(ctx *gin.Context) {
 			// add roles for new sponsors
 			newSponsorGroupingPolicies := lo.Map(req.Sponsors, func(sponsor string, _ int) []string {
 				// g, 0xc13..1283 guild_sponsor_1
-				return []string{common.FormatUserWallet(sponsor), fmt.Sprintf("%s%d", api.RoleGuildSponsorPrefix, guild.ID)}
+				return []string{common.FormatUserWallet(sponsor), fmt.Sprintf("%s%d", internal.RoleGuildSponsorPrefix, guild.ID)}
 			})
 			_, err = enforcer.AddGroupingPolicies(newSponsorGroupingPolicies)
 			if err != nil {
@@ -596,7 +596,7 @@ func UpdateStaffs(ctx *gin.Context) {
 			// remove roles for old sponsors
 			oldSponsorGroupingPolicies := lo.Map(guild.Sponsors, func(sponsor string, _ int) []string {
 				// g, 0xc13..1283 guild_sponsor_1
-				return []string{sponsor, fmt.Sprintf("%s%d", api.RoleGuildSponsorPrefix, guild.ID)}
+				return []string{sponsor, fmt.Sprintf("%s%d", internal.RoleGuildSponsorPrefix, guild.ID)}
 			})
 			_, err = enforcer.RemoveGroupingPolicies(oldSponsorGroupingPolicies)
 			if err != nil {
@@ -668,14 +668,14 @@ func UpdateStaffs(ctx *gin.Context) {
 
 // UpdateBudget update guild budget
 //
-//	@Summary	Update guild budget
-//	@Tags		Guild
-//	@Accept		json
-//	@Produce	json
-//	@Param		id			path		int				true	"guild id"
-//	@Param		JsonBody	body		UpdateBudgetReq	true	"request json body"
-//	@Success	200			{object}	api.Reply
-//	@Router		/guilds/{id}/update_budget [post]
+//	@summary	Update guild budget
+//	@tags		Guild
+//	@accept		json
+//	@produce	json
+//	@param		id			path		int				true	"guild id"
+//	@param		JsonBody	body		UpdateBudgetReq	true	"request json body"
+//	@success	200			{object}	api.Reply
+//	@router		/guilds/{id}/update_budget [post]
 func UpdateBudget(ctx *gin.Context) {
 	idParam := ctx.Param("id")
 	id, err := strconv.Atoi(idParam)
@@ -694,14 +694,14 @@ func UpdateBudget(ctx *gin.Context) {
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
 	permObject := buildGuildPermObject(id)
-	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), permObject, api.ActUpdateBudget)
+	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), permObject, internal.ActUpdateBudget)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 		return
 	}
 	if !ok {
-		sdk.LogForbiddenError(ctx, user.Wallet, permObject, api.ActModify)
+		sdk.LogForbiddenError(ctx, user.Wallet, permObject, internal.ActModify)
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
@@ -731,14 +731,14 @@ func UpdateBudget(ctx *gin.Context) {
 //
 //	`POST /guilds/:id/add_related_proposal?proposalIDs=1&proposalIDs=2`
 //
-//	@Summary	Add related proposals to guild
-//	@Tags		Guild
-//	@Accept		json
-//	@Produce	json
-//	@Param		id			path		int		true	"guild id"
-//	@Param		proposalIDs	query		[]int	true	"proposal ids"
-//	@Success	200			{object}	api.Reply
-//	@Router		/guilds/{id}/add_related_proposal [post]
+//	@summary	Add related proposals to guild
+//	@tags		Guild
+//	@accept		json
+//	@produce	json
+//	@param		id			path		int		true	"guild id"
+//	@param		proposalIDs	query		[]int	true	"proposal ids"
+//	@success	200			{object}	api.Reply
+//	@router		/guilds/{id}/add_related_proposal [post]
 func AddRelatedProposal(ctx *gin.Context) {
 	idParam := ctx.Param("id")
 	id, err := strconv.Atoi(idParam)
@@ -751,14 +751,14 @@ func AddRelatedProposal(ctx *gin.Context) {
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
 	permObject := buildGuildPermObject(id)
-	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), permObject, api.ActModify)
+	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), permObject, internal.ActModify)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 		return
 	}
 	if !ok {
-		sdk.LogForbiddenError(ctx, user.Wallet, permObject, api.ActModify)
+		sdk.LogForbiddenError(ctx, user.Wallet, permObject, internal.ActModify)
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
@@ -790,7 +790,7 @@ func AddRelatedProposal(ctx *gin.Context) {
 }
 
 func buildGuildPermObject(guildId int) string {
-	return fmt.Sprintf("%s%d", api.ObjGuildPrefix, guildId)
+	return fmt.Sprintf("%s%d", internal.ObjGuildPrefix, guildId)
 }
 
 func NormalizeWalletAddrInGuild(guild *model.Guild) *model.Guild {

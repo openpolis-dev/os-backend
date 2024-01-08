@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
@@ -36,14 +37,14 @@ func GetOrCreateCurrentAssetRecords(ctx *gin.Context) {
 func UpdateAssets(ctx *gin.Context) {
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
-	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), api.ObjTreasury, api.ActUpdateAssertBudget)
+	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), internal.ObjTreasury, internal.ActUpdateAssertBudget)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 		return
 	}
 	if !ok {
-		sdk.LogForbiddenError(ctx, user.Wallet, api.ObjTreasury, api.ActUpdateAssertBudget)
+		sdk.LogForbiddenError(ctx, user.Wallet, internal.ObjTreasury, internal.ActUpdateAssertBudget)
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}

@@ -1,4 +1,4 @@
-package api
+package internal
 
 const (
 	RoleHall = "hall"

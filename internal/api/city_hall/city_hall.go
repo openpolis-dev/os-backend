@@ -40,7 +40,7 @@ type (
 
 // getOrCreateCityHallProject validate user's permission and then get or create cityhall project in DB
 func getOrCreateCityHallProject(db *gorm.DB, enforcer *casbin.Enforcer) (*model.Project, error) {
-	configuredCityHallUser, err := enforcer.GetUsersForRole(api.RoleHall)
+	configuredCityHallUser, err := enforcer.GetUsersForRole(internal.RoleHall)
 	if err != nil {
 		return nil, errors.New("get cityhall permission error")
 	}
@@ -62,8 +62,8 @@ func getOrCreateCityHallProject(db *gorm.DB, enforcer *casbin.Enforcer) (*model.
 // Info returns cityhall info
 //
 //	@summary	Return cityhall info
+//	@tags		CityHall
 //	@route		/cityhall/info [get]
-//
 //	@success	200	{object}	CityHallDetailReply
 func Info(ctx *gin.Context) {
 	_, enforcer, db, _ := api.ForContext(ctx)
@@ -91,10 +91,9 @@ func Info(ctx *gin.Context) {
 // UpdateBudget updates cityhall budget for current season
 //
 //	@summary	updates cityhall budget for current season
+//	@tags		CityHall
 //	@route		/cityhall/update_budget [post]
-//
 //	@param		JsonBody	body		CityHallUpdateBudgetReq	true	"update budget request"
-//
 //	@success	200			{string}	nil
 func UpdateBudget(ctx *gin.Context) {
 	user, enforcer, db, _ := api.ForContext(ctx)
@@ -115,7 +114,7 @@ func UpdateBudget(ctx *gin.Context) {
 	}
 
 	//  check permission
-	ok, err := enforcer.HasRoleForUser(formattedWallet, api.RoleHall)
+	ok, err := enforcer.HasRoleForUser(formattedWallet, internal.RoleHall)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall permission error")))
@@ -123,7 +122,7 @@ func UpdateBudget(ctx *gin.Context) {
 	}
 
 	if !ok {
-		sdk.LogForbiddenError(ctx, user.Wallet, api.RoleHall, "access")
+		sdk.LogForbiddenError(ctx, user.Wallet, internal.RoleHall, "access")
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
@@ -184,6 +183,7 @@ func UpdateBudget(ctx *gin.Context) {
 // UpdateMember updates cityhall member, if group name existing in the request, the grouped sponsors field will be updated, otherwise the sponsors field will be updated
 //
 //	@summary	updates cityhall member, if group name existing in the request, the grouped sponsors field will be updated, otherwise the sponsors field will be updated
+//	@tags		CityHall
 //	@router		/cityhall/update_members [post]
 //	@param		JsonBody	body		CityHallUpdateMemberReq	true	"member data"
 //	@success	200			{string}	nil
@@ -199,7 +199,7 @@ func UpdateMember(ctx *gin.Context) {
 	}
 
 	//  check permission
-	ok, err := enforcer.HasRoleForUser(formattedWallet, api.RoleHall)
+	ok, err := enforcer.HasRoleForUser(formattedWallet, internal.RoleHall)
 	if err != nil {
 		log.Error().Msgf("check permission error %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
@@ -209,7 +209,7 @@ func UpdateMember(ctx *gin.Context) {
 
 	if !ok {
 		log.Warn().Msgf("permission deny for user %s", formattedWallet)
-		sdk.LogForbiddenError(ctx, user.Wallet, api.RoleHall, "access")
+		sdk.LogForbiddenError(ctx, user.Wallet, internal.RoleHall, "access")
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
@@ -254,6 +254,7 @@ func UpdateMember(ctx *gin.Context) {
 // BatchUpdateMembers updates multiple group member info in single request, the logic is same with single update
 //
 //	@summary	updates multiple group member info in single request, the logic is same with single update
+//	@tags		CityHall
 //	@router		/cityhall/batch_update_members [post]
 //	@param		JsonBody	body		[]CityHallUpdateMemberReq	true	"member data"
 //	@success	200			{string}	nil
@@ -270,7 +271,7 @@ func BatchUpdateMembers(ctx *gin.Context) {
 	}
 
 	//  check permission
-	ok, err := enforcer.HasRoleForUser(formattedWallet, api.RoleHall)
+	ok, err := enforcer.HasRoleForUser(formattedWallet, internal.RoleHall)
 	if err != nil {
 		log.Error().Msgf("check permission error %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
@@ -280,7 +281,7 @@ func BatchUpdateMembers(ctx *gin.Context) {
 
 	if !ok {
 		log.Warn().Msgf("permission deny for user %s", formattedWallet)
-		sdk.LogForbiddenError(ctx, user.Wallet, api.RoleHall, "access")
+		sdk.LogForbiddenError(ctx, user.Wallet, internal.RoleHall, "access")
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
@@ -353,7 +354,7 @@ func updateGroupedMembers(cityHallProject *model.Project, req *CityHallUpdateMem
 	var addHallGroupingPolicy [][]string
 	for _, memberAddr := range req.AddMember {
 		sponsorsMap[common.FormatUserWallet(memberAddr)] = true
-		addHallGroupingPolicy = append(addHallGroupingPolicy, []string{common.FormatUserWallet(memberAddr), api.RoleHall})
+		addHallGroupingPolicy = append(addHallGroupingPolicy, []string{common.FormatUserWallet(memberAddr), internal.RoleHall})
 	}
 
 	// Add user to hall group
@@ -370,7 +371,7 @@ func updateGroupedMembers(cityHallProject *model.Project, req *CityHallUpdateMem
 	var removeHallGroupingPolicy [][]string
 	for _, memberAddr := range req.RemoveMember {
 		sponsorsMap[common.FormatUserWallet(memberAddr)] = false
-		removeHallGroupingPolicy = append(removeHallGroupingPolicy, []string{common.FormatUserWallet(memberAddr), api.RoleHall})
+		removeHallGroupingPolicy = append(removeHallGroupingPolicy, []string{common.FormatUserWallet(memberAddr), internal.RoleHall})
 	}
 
 	// Remove user from hall group
