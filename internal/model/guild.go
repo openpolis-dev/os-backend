@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/shopspring/decimal"
+	"github.com/theseed-labs/os-backend/internal"
 	"github.com/xiaosongfu/gormfind"
 	"gorm.io/gorm"
 )
@@ -156,4 +157,20 @@ func (*guildModel) DepositBudget(db *gorm.DB, guildId uint, assetName string, as
 			return tx.Save(budgetRcd).Error
 		}
 	})
+}
+func (g *Guild) GenerateCasbinPolicies() [][]string {
+	return [][]string{
+		// p, guild_sponsor_1, guild_1, modify
+		// p, guild_sponsor_1, guild_1, create_app
+		// p, guild_sponsor_1, guild_1, u_member
+		// p, guild_sponsor_1, guild_1, u_budget
+		{fmt.Sprintf("%s%d", internal.RoleGuildSponsorPrefix, g.ID), fmt.Sprintf("%s%d", internal.ObjGuildPrefix, g.ID), internal.ActModify},
+		{fmt.Sprintf("%s%d", internal.RoleGuildSponsorPrefix, g.ID), fmt.Sprintf("%s%d", internal.ObjGuildPrefix, g.ID), internal.ActCreateApplication},
+		{fmt.Sprintf("%s%d", internal.RoleGuildSponsorPrefix, g.ID), fmt.Sprintf("%s%d", internal.ObjGuildPrefix, g.ID), internal.ActUpdateMember},
+		{fmt.Sprintf("%s%d", internal.RoleGuildSponsorPrefix, g.ID), fmt.Sprintf("%s%d", internal.ObjGuildPrefix, g.ID), internal.ActUpdateBudget},
+		//// p, guild_member_1, guild_1, modify
+		//// p, guild_member_1, guild_1, create_app
+		//{fmt.Sprintf("%s%d", api.RoleGuildMemberPrefix, guild.ID), fmt.Sprintf("%s%d", api.ObjGuildPrefix, guild.ID), api.ActModify},
+		//{fmt.Sprintf("%s%d", api.RoleGuildMemberPrefix, guild.ID), fmt.Sprintf("%s%d", api.ObjGuildPrefix, guild.ID), api.ActCreateApplication},
+	}
 }
