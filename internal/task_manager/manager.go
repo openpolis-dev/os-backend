@@ -141,14 +141,23 @@ func (t *TaskManager) TaskDispatcher() {
 		case internal.TaskRefreshVotingProposalVoteInfo:
 			go RefreshVotingProposalInfoJob(t.DatabaseClient, task, task.JobParams)
 		case internal.TaskCreateProject:
-			go CreateProjectTask(t.DatabaseClient, task, task.JobParams)
+			//go CreateProjectTask(t.DatabaseClient, task, task.JobParams)
+			task.State = model.CronJobStateDone
+			t.DatabaseClient.Updates(task)
+			log.Debug().Msgf("create project")
 		case internal.TaskCloseProject:
 			go CloseProjectTask(t.DatabaseClient, task, task.JobParams)
 		case internal.TaskCreateGuild:
-			go CreateGuildTask(t.DatabaseClient, task, task.JobParams)
+			//go CreateGuildTask(t.DatabaseClient, task, task.JobParams)
+			task.State = model.CronJobStateDone
+			t.DatabaseClient.Updates(task)
+			log.Debug().Msgf("create guild")
 		case internal.TaskCloseGuild:
 			go CloseGuildTask(t.DatabaseClient, task, task.JobParams)
 		case internal.TaskRewardNewApplication:
+			task.State = model.CronJobStateDone
+			t.DatabaseClient.Updates(task)
+			log.Debug().Msgf("reward new application")
 		default:
 			log.Warn().Msgf("unknown task name: %s task detail: %+v", task.HandlerName, task)
 			// Handle unknown task
