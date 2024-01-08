@@ -102,6 +102,7 @@ func GetProposalCommentsWithOsUserData(db *gorm.DB, metaforoComments []metaforo.
 		}
 
 		proposalTitle := ""
+		proposalTs := int64(0)
 		proposalArweaveHash := ""
 		dbComment := model.ProposalComment{MetaforoCommentId: metaforoComment.Id}
 		err = db.Model(model.ProposalComment{}).Joins("Proposal").Where(dbComment).First(&dbComment).Error
@@ -113,6 +114,7 @@ func GetProposalCommentsWithOsUserData(db *gorm.DB, metaforoComments []metaforo.
 			}
 		} else {
 			proposalTitle = dbComment.Proposal.Title
+			proposalTs = dbComment.Proposal.CreateTs
 			proposalArweaveHash = dbComment.Proposal.ArweaveHash
 		}
 
@@ -145,6 +147,7 @@ func GetProposalCommentsWithOsUserData(db *gorm.DB, metaforoComments []metaforo.
 			Deleted:             metaforoComment.Deleted == 1,
 			Children:            childrenRecords,
 			ProposalTitle:       proposalTitle,
+			ProposalTs:          proposalTs,
 			ProposalArweaveHash: proposalArweaveHash,
 			CreatedTs:           metaforoComment.CreatedAt.UTC().Unix(),
 		})

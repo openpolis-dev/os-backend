@@ -136,6 +136,7 @@ type FrontendProposalCommentRecord struct {
 	Children            []*FrontendProposalCommentRecord `json:"children"`
 
 	ProposalTitle       string `json:"proposal_title"`
+	ProposalTs          int64  `json:"proposal_ts"`
 	ProposalArweaveHash string `json:"proposal_arweave_hash"`
 	CreatedTs           int64  `json:"created_ts"`
 	Deleted             bool   `json:"deleted"`
