@@ -39,7 +39,7 @@ func WidgetData(ctx *gin.Context) {
 		return
 	}
 
-	user, enforcer, db, _ := api.ForContext(ctx)
+	user, enforcer, db, cfg := api.ForContext(ctx)
 	allEntities, err := enforcer.HasRoleForUser(common.FormatUserWallet(user.Wallet), internal.RoleHall)
 	log.Error().Msgf("TTT: all entities: %+v", allEntities)
 	if err != nil {
@@ -92,9 +92,11 @@ func WidgetData(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, api.Success(lo.Union(projectRcds, guildRcds)))
 		return
 	case "asset_type":
-		ctx.JSON(http.StatusOK, api.Success([]*WidgetDataResponse{
-			{internal.AssetTypeScrId, internal.AssetTypeScrName}, {internal.AssetTypeUsdtId, internal.AssetTypeUsdtName},
-		}))
+		var assetResponse []*WidgetDataResponse
+		for _, asset := range cfg.MetaforoData.Assets {
+			assetResponse = append(assetResponse, &WidgetDataResponse{asset.ID, asset.Name})
+		}
+		ctx.JSON(http.StatusOK, api.Success(assetResponse))
 		return
 	default:
 		err := errors.New("invalid data type")

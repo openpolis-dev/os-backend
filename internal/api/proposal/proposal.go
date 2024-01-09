@@ -14,6 +14,7 @@ import (
 	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/common"
+	"github.com/theseed-labs/os-backend/internal/config"
 	"github.com/theseed-labs/os-backend/internal/middleware"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk"
@@ -161,7 +162,7 @@ func Detail(ctx *gin.Context) {
 //	@Param		JsonBody	body		CreateOrUpdateProposalData	true	"request json body"
 //	@success	200			{object}	api.Reply{}
 func Update(ctx *gin.Context) {
-	user, _, db, _ := api.ForContext(ctx)
+	user, _, db, cfg := api.ForContext(ctx)
 	proposalIdStr := ctx.Param("id")
 	proposalRcd, err := GetProposalFromStringId(db, proposalIdStr)
 	if err != nil {
@@ -195,7 +196,7 @@ func Update(ctx *gin.Context) {
 		return
 	}
 
-	proposalRecord, err := SaveProposalRecordToDB(db, &reqData, user.Wallet, ctx.Param("id"))
+	proposalRecord, err := SaveProposalRecordToDB(db, &reqData, user.Wallet, ctx.Param("id"), cfg)
 	if err != nil {
 		log.Error().Msgf("create proposal error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
@@ -243,10 +244,10 @@ func Create(ctx *gin.Context) {
 		return
 	}
 
-	user, _, db, _ := api.ForContext(ctx)
+	user, _, db, cfg := api.ForContext(ctx)
 	// TODO: Confirm whether permission is required here and add permission check if required
 
-	proposalRecord, err := SaveProposalRecordToDB(db, &reqData, user.Wallet, "")
+	proposalRecord, err := SaveProposalRecordToDB(db, &reqData, user.Wallet, "", cfg)
 	if err != nil {
 		log.Error().Msgf("create proposal error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
@@ -285,9 +286,9 @@ func Create(ctx *gin.Context) {
 //	@param		id	query		int	true	"proposal id"
 //	@success	200	{object}	api.Reply{data=nil}
 func Withdraw(ctx *gin.Context) {
-	user, _, db, _ := api.ForContext(ctx)
+	user, _, db, cfg := api.ForContext(ctx)
 	proposalIdStr := ctx.Param("id")
-	_, err := updateProposalState(db, user, proposalIdStr, model.ProposalStateWithdrawn)
+	_, err := updateProposalState(db, user, proposalIdStr, model.ProposalStateWithdrawn, cfg)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			log.Warn().Msgf("proposal %s not found", proposalIdStr)
@@ -311,7 +312,7 @@ func Withdraw(ctx *gin.Context) {
 //	@param		id	query		int	true	"proposal id"
 //	@success	200	{object}	api.Reply{data=nil}
 func Approve(ctx *gin.Context) {
-	user, enforcer, db, _ := api.ForContext(ctx)
+	user, enforcer, db, cfg := api.ForContext(ctx)
 	formattedWallet := common.FormatUserWallet(user.Wallet)
 
 	//  check permission
@@ -329,7 +330,7 @@ func Approve(ctx *gin.Context) {
 	}
 
 	proposalIdStr := ctx.Param("id")
-	_, err = updateProposalState(db, user, proposalIdStr, model.ProposalStateApproved)
+	_, err = updateProposalState(db, user, proposalIdStr, model.ProposalStateApproved, cfg)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			log.Warn().Msgf("proposal %s not found", proposalIdStr)
@@ -353,7 +354,7 @@ func Approve(ctx *gin.Context) {
 //	@param		id	query		int	true	"proposal id"
 //	@success	200	{object}	api.Reply{data=nil}
 func Reject(ctx *gin.Context) {
-	user, enforcer, db, _ := api.ForContext(ctx)
+	user, enforcer, db, cfg := api.ForContext(ctx)
 	formattedWallet := common.FormatUserWallet(user.Wallet)
 
 	//  check permission
@@ -386,7 +387,7 @@ func Reject(ctx *gin.Context) {
 	}
 
 	proposalIdStr := ctx.Param("id")
-	proposalRecord, err := updateProposalState(db, user, proposalIdStr, model.ProposalStateRejected)
+	proposalRecord, err := updateProposalState(db, user, proposalIdStr, model.ProposalStateRejected, cfg)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			log.Warn().Msgf("proposal %s not found", proposalIdStr)
@@ -482,7 +483,7 @@ func MyList(ctx *gin.Context) {
 }
 
 // Internal function to handle duplicated logic of updating proposal state
-func updateProposalState(db *gorm.DB, user *middleware.CurUser, proposalStrId string, newState model.ProposalState) (*model.Proposal, error) {
+func updateProposalState(db *gorm.DB, user *middleware.CurUser, proposalStrId string, newState model.ProposalState, cfg *config.Config) (*model.Proposal, error) {
 	proposalRecord, err := GetProposalFromStringId(db, proposalStrId)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -524,7 +525,7 @@ func updateProposalState(db *gorm.DB, user *middleware.CurUser, proposalStrId st
 
 			// TODO: Use metaforo response update proposal vote records
 			for _, record := range voteRecords {
-				err := metaforo.UpdateVoteTime(internal.MetaforoAdminAccessToken,
+				err := metaforo.UpdateVoteTime(cfg.MetaforoData.AccessToken,
 					internal.MetaforoGroupName,
 					record.MetaforoID,
 					time.Now().UTC().Add(-1*time.Minute).Unix(), // Set the start time 1 minute in advanced

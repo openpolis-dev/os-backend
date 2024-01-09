@@ -11,6 +11,7 @@ import (
 	"github.com/samber/lo"
 	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/common"
+	"github.com/theseed-labs/os-backend/internal/config"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk"
 	"github.com/theseed-labs/os-backend/internal/sdk/metaforo"
@@ -38,7 +39,7 @@ func GetProposalFromStringId(db *gorm.DB, idStr string) (*model.Proposal, error)
 	return &proposalRecord, nil
 }
 
-func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, userWallet string, proposalIdStr string) (*model.Proposal, error) {
+func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, userWallet string, proposalIdStr string, cfg *config.Config) (*model.Proposal, error) {
 	// If proposalIdStr is not empty string, this request should be an update action, otherwise it is a creation action.
 	// Create:
 	//   1. Create proposal record
@@ -53,8 +54,8 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 	//   4. In this case, the proposal must be updated to metaforo without checking the Submit flag
 
 	// Update title for testing
-	if !strings.HasPrefix(reqData.Title, internal.ProposalTitlePrefixForTesting) {
-		reqData.Title = internal.ProposalTitlePrefixForTesting + reqData.Title
+	if !strings.HasPrefix(reqData.Title, cfg.MetaforoData.ProposalPrefix) {
+		reqData.Title = cfg.MetaforoData.ProposalPrefix + reqData.Title
 	}
 
 	if proposalIdStr != "" {
