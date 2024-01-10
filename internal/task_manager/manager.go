@@ -141,7 +141,7 @@ func (t *TaskManager) TaskDispatcher() {
 		case internal.TaskRefreshVotingProposalVoteInfo:
 			go RefreshVotingProposalInfoJob(t.DatabaseClient, task, task.JobParams)
 		case internal.TaskCreateProject:
-			//go CreateProjectTask(t.DatabaseClient, task, task.JobParams)
+			go CreateProjectTask(t.DatabaseClient, task, task.JobParams)
 			task.State = model.CronJobStateDone
 			t.DatabaseClient.Updates(task)
 			log.Debug().Msgf("create project")
