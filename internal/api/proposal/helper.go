@@ -193,6 +193,7 @@ func SaveProposalComponentRecords(db *gorm.DB, proposalId uint, applicantWallet 
 
 			// Append applicant information
 			componentData.Data["applicant"] = common.FormatUserWallet(applicantWallet)
+			componentData.Data["proposal_id"] = fmt.Sprintf("%d", proposalId)
 
 			proposalDataStr, err := json.Marshal(componentData.Data)
 			if err != nil {
@@ -560,6 +561,7 @@ func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcd *mod
 	return nil
 }
 
+// createProposalFinTasks creates tasks after proposal finished (passed or failed)
 func createProposalFinTasks(db *gorm.DB, proposal *model.Proposal, finState model.ProposalState) {
 	sqlQuery := QueryComponentActionNameBaseSQL + " WHERE proposal_id = ?"
 	var proposalComponentActions []*proposalComponentActions
