@@ -199,7 +199,7 @@ func SaveProposalComponentRecords(db *gorm.DB, proposalId uint, applicantWallet 
 
 			// Append applicant information
 			componentData.Data["applicant"] = common.FormatUserWallet(applicantWallet)
-			componentData.Data["proposal_id"] = fmt.Sprintf("%d", proposalId)
+			componentData.Data["proposal_id"] = fmt.Sprintf("os-%d", proposalId)
 
 			proposalDataStr, err := json.Marshal(componentData.Data)
 			if err != nil {
