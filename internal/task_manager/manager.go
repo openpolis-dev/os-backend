@@ -141,11 +141,10 @@ func (t *TaskManager) TaskDispatcher() {
 		case internal.TaskRefreshVotingProposalVoteInfo:
 			go RefreshVotingProposalInfoJob(t.DatabaseClient, task, task.JobParams)
 		case internal.TaskCreateProject:
-			go CreateProjectTask(t.DatabaseClient, task, task.JobParams)
-			task.State = model.CronJobStateDone
-			t.DatabaseClient.Updates(task)
 			log.Debug().Msgf("create project")
+			go CreateProjectTask(t.DatabaseClient, task, task.JobParams)
 		case internal.TaskCloseProject:
+			log.Debug().Msgf("close project")
 			go CloseProjectTask(t.DatabaseClient, task, task.JobParams)
 		case internal.TaskCreateGuild:
 			//go CreateGuildTask(t.DatabaseClient, task, task.JobParams)
@@ -153,11 +152,11 @@ func (t *TaskManager) TaskDispatcher() {
 			t.DatabaseClient.Updates(task)
 			log.Debug().Msgf("create guild")
 		case internal.TaskCloseGuild:
+			log.Debug().Msgf("close guild")
 			go CloseGuildTask(t.DatabaseClient, task, task.JobParams)
 		case internal.TaskRewardNewApplication:
-			task.State = model.CronJobStateDone
-			t.DatabaseClient.Updates(task)
-			log.Debug().Msgf("reward new application")
+			log.Debug().Msgf("new application reward")
+			go CreateAppBundleTask(t.DatabaseClient, task, task.JobParams)
 		default:
 			task.State = model.CronJobStateTerminated
 			t.DatabaseClient.Updates(task)
