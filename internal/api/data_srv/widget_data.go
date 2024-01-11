@@ -18,6 +18,7 @@ import (
 type WidgetDataResponse struct {
 	ID   uint   `json:"id"`
 	Name string `json:"name"`
+	Type string `json:"type,omitempty"`
 }
 
 // TODO: Currently the data service is handled by RESTful API and query params, will be migrate to GraphQL in future
@@ -74,6 +75,10 @@ func WidgetData(ctx *gin.Context) {
 		return
 	case "entity_list":
 		projectRcds, err := getEntityListResponse(db, "project", allEntities, user.Wallet)
+		projectRcds = lo.Map(projectRcds, func(rcd *WidgetDataResponse, _ int) *WidgetDataResponse {
+			rcd.Type = "project"
+			return rcd
+		})
 
 		if err != nil {
 			log.Error().Err(err).Msg("query project list error")
@@ -83,6 +88,10 @@ func WidgetData(ctx *gin.Context) {
 		}
 
 		guildRcds, err := getEntityListResponse(db, "guild", allEntities, user.Wallet)
+		guildRcds = lo.Map(guildRcds, func(rcd *WidgetDataResponse, _ int) *WidgetDataResponse {
+			rcd.Type = "guild"
+			return rcd
+		})
 		if err != nil {
 			log.Error().Err(err).Msg("query guild list error")
 			sdk.LogServerErrorToSentry(ctx, err)
@@ -94,7 +103,7 @@ func WidgetData(ctx *gin.Context) {
 	case "asset_type":
 		var assetResponse []*WidgetDataResponse
 		for _, asset := range cfg.MetaforoData.Assets {
-			assetResponse = append(assetResponse, &WidgetDataResponse{asset.ID, asset.Name})
+			assetResponse = append(assetResponse, &WidgetDataResponse{ID: asset.ID, Name: asset.Name})
 		}
 		ctx.JSON(http.StatusOK, api.Success(assetResponse))
 		return
