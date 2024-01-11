@@ -1,146 +1,164 @@
 package task_manager
 
 import (
+	"encoding/json"
+	"time"
+
+	"github.com/rs/zerolog/log"
+	"github.com/samber/lo"
+	"github.com/shopspring/decimal"
+	"github.com/theseed-labs/os-backend/internal"
+	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"gorm.io/gorm"
 )
 
-type NewRewardTaskParam struct {
-	Applicant   string `json:"applicant"`
-	Description string `json:"description"`
-	EntityInfo  struct {
+type NewRewardDetail struct {
+	TargetUserWallet string `json:"address"`
+	Amount           string `json:"amount"`
+	DetailedType     string `json:"issue"`
+	Comment          string `json:"memo"`
+	AssetInfo        struct {
 		Id   int    `json:"id"`
 		Name string `json:"name"`
-	} `json:"entity_info"`
-	ProposalId string `json:"proposal_id"`
-	Records    []struct {
-		Amount    string `json:"amount"`
-		AssetName struct {
-			Id   int    `json:"id"`
-			Name string `json:"name"`
-		} `json:"asset_name"`
-		Comment          string `json:"comment"`
-		TargetUserWallet string `json:"target_user_wallet"`
-	} `json:"records"`
+	} `json:"type"`
+}
+
+type NewRewardTaskParam struct {
+	Applicant  string `json:"applicant"`
+	EntityInfo struct {
+		Id   uint   `json:"id"`
+		Name string `json:"name"`
+		Type string `json:"type"`
+	} `json:"budget"`
+	Description string             `json:"description"`
+	ProposalId  string             `json:"proposal_id"`
+	Records     []*NewRewardDetail `json:"receiverList"`
 }
 
 func CreateAppBundleTask(db *gorm.DB, job *model.CronJob, jobParams string) {
-	//// Update the job state to done so it will not be launched again
-	//log.Debug().Msgf("start create app bundle task: %+v", job)
-	//err := db.Model(&job).Updates(model.CronJob{State: model.CronJobStateRunning}).Error
-	//if err != nil {
-	//	log.Warn().Msgf("update cron job error: %+v", err)
-	//	return
-	//}
-	//
-	//execResult := ""
-	//jobFailed := false
-	//
-	//// Query entity type from
-	//
-	//var params NewRewardTaskParam
-	//err = json.Unmarshal([]byte(jobParams), &params)
-	//if err != nil {
-	//	log.Warn().Msgf("create app bundle job params error: %+v", err)
-	//	execResult = err.Error()
-	//	jobFailed = true
-	//} else {
-	//	// TODO: Duplicated code *NewAppBundleAndApplication*
-	//	// Create AppBundle
-	//	appBundle := model.AppBundle{
-	//		Comment:      params.Description,
-	//		Applicant:    common.FormatUserWallet(params.Applicant),
-	//		EntityType:   newAppBundleReq.Entity,
-	//		EntityId:     newAppBundleReq.EntityId,
-	//		SeasonId:     seasonRecord.ID,
-	//		Season:       *seasonRecord,
-	//		State:        model.ApplicationStateOpen,
-	//		ShadowRecord: false,
-	//		CreatedAt:    time.Now().In(internal.ProjectTimezone),
-	//		UpdatedAt:    time.Now().In(internal.ProjectTimezone),
-	//		CreateTs:     model.GetCurrentUtcEpochSecond(),
-	//		UpdateTs:     model.GetCurrentUtcEpochSecond(),
-	//		Type:         "NEW_REWARD",
-	//	}
-	//	err = db.Model(model.AppBundle{}).Create(&appBundle).Error
-	//	if err != nil {
-	//		log.Error().Msgf("Create app bundle records error: %+v", err)
-	//		sdk.LogServerErrorToSentry(ctx, err)
-	//		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create app bundle record error")))
-	//		return
-	//	}
-	//
-	//	// Create Applications inside the bundle
-	//	err = db.Transaction(func(tx *gorm.DB) error {
-	//		appBundle.AppRecords = lo.Map(newAppBundleReq.Records, func(appRcdRequest *model.NewApplicationRequest, index int) *model.Application {
-	//			return &model.Application{
-	//				Type:             model.ApplicationNewReward,
-	//				Applicant:        common.FormatUserWallet(user.Wallet),
-	//				State:            model.ApplicationStateOpen,
-	//				CreatedAt:        time.Now().In(internal.ProjectTimezone),
-	//				UpdatedAt:        time.Now().In(internal.ProjectTimezone),
-	//				CreateTs:         model.GetCurrentUtcEpochSecond(),
-	//				UpdateTs:         model.GetCurrentUtcEpochSecond(),
-	//				DetailedType:     appRcdRequest.DetailedType,
-	//				Comment:          appRcdRequest.Comment,
-	//				TargetUserWallet: appRcdRequest.TargetUserWallet,
-	//				AssetName:        appRcdRequest.AssetName,
-	//				AssetAmount:      appRcdRequest.Amount,
-	//				EntityType:       newAppBundleReq.Entity,
-	//				EntityId:         newAppBundleReq.EntityId,
-	//				SeasonId:         seasonRecord.ID,
-	//				Season:           seasonRecord,
-	//			}
-	//		})
-	//
-	//		err = tx.Save(&appBundle).Error
-	//		if err != nil {
-	//			log.Error().Msgf("update app_bundle record error: %+v", err)
-	//			return err
-	//		}
-	//
-	//		// Create application audit logs
-	//		appAuditLogs := lo.Map(appBundle.AppRecords, func(app *model.Application, _ int) *model.ApplicationAuditLog {
-	//			return &model.ApplicationAuditLog{
-	//				ApplicationID: app.ID,
-	//				LogTs:         model.GetCurrentUtcEpochSecond(),
-	//				Operation:     model.AuditActionNew,
-	//				Operator:      common.FormatUserWallet(user.Wallet),
-	//				PreState:      "",
-	//				PostState:     model.ApplicationStateOpen,
-	//			}
-	//		})
-	//		err = tx.Model(model.ApplicationAuditLog{}).Create(&appAuditLogs).Error
-	//		if err != nil {
-	//			log.Error().Msgf("Create application audit log records error: %+v", err)
-	//			return err
-	//		}
-	//
-	//		return tx.Model(model.AppBundleAuditLog{}).Create(&model.AppBundleAuditLog{
-	//			AppBundleId: appBundle.ID,
-	//			AppBundle:   appBundle,
-	//			LogTs:       model.GetCurrentUtcEpochSecond(),
-	//			Operation:   model.AuditActionNew,
-	//			Operator:    common.FormatUserWallet(user.Wallet),
-	//			PreState:    "",
-	//			PostState:   model.ApplicationStateOpen,
-	//			ExtraData:   "",
-	//		}).Error
-	//	})
-	//
-	//	if err != nil {
-	//		log.Error().Msgf("Transaction error: %+v", err)
-	//		sdk.LogServerErrorToSentry(ctx, err)
-	//		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create application error")))
-	//		return
-	//	}
-	//
-	//	// TODO: update permission
-	//}
-	//
-	//job.LastExecTs = model.GetCurrentUtcEpochSecond()
-	//job.LastExecResult = execResult
-	//job.LastExecutionFailed = jobFailed
-	//job.State = model.CronJobStateDone
-	//db.Updates(&job)
+	// Update the job state to done so it will not be launched again
+	log.Debug().Msgf("start create app bundle task: %+v", job)
+	err := db.Model(&job).Updates(model.CronJob{State: model.CronJobStateRunning}).Error
+	if err != nil {
+		log.Warn().Msgf("update cron job error: %+v", err)
+		return
+	}
+
+	execResult := ""
+	jobFailed := false
+
+	currentSeason, err := model.GetCurrentSeason(db)
+	if err != nil {
+		log.Warn().Msgf("get current season error: %+v", err)
+		execResult = err.Error()
+		jobFailed = true
+	} else {
+
+		var params NewRewardTaskParam
+		err = json.Unmarshal([]byte(jobParams), &params)
+		if err != nil {
+			log.Warn().Msgf("create app bundle job params error: %+v", err)
+			execResult = err.Error()
+			jobFailed = true
+		} else {
+			// TODO: Duplicated code *NewAppBundleAndApplication*
+			// Create AppBundle
+			appBundle := model.AppBundle{
+				Comment:      params.Description,
+				Applicant:    common.FormatUserWallet(params.Applicant),
+				EntityType:   params.EntityInfo.Type,
+				EntityId:     params.EntityInfo.Id,
+				SeasonId:     currentSeason.ID,
+				State:        model.ApplicationStateOpen,
+				ShadowRecord: false,
+				CreateTs:     model.GetCurrentUtcEpochSecond(),
+				UpdateTs:     model.GetCurrentUtcEpochSecond(),
+				Type:         "NEW_REWARD",
+			}
+			err = db.Model(model.AppBundle{}).Create(&appBundle).Error
+			if err != nil {
+				log.Error().Msgf("Create app bundle records error: %+v", err)
+				execResult = err.Error()
+				jobFailed = true
+			} else {
+				// Create Applications inside the bundle
+				err = db.Transaction(func(tx *gorm.DB) error {
+					appBundle.AppRecords = lo.Map(params.Records, func(appDetail *NewRewardDetail, index int) *model.Application {
+						assetAmount, err := decimal.NewFromString(appDetail.Amount)
+						if err != nil {
+							log.Warn().Msgf("parse asset amount error: %+v", err)
+							execResult = err.Error()
+							jobFailed = true
+							return nil
+						} else {
+							return &model.Application{
+								Type:             model.ApplicationNewReward,
+								Applicant:        common.FormatUserWallet(params.Applicant),
+								State:            model.ApplicationStateOpen,
+								CreatedAt:        time.Now().In(internal.ProjectTimezone),
+								UpdatedAt:        time.Now().In(internal.ProjectTimezone),
+								CreateTs:         model.GetCurrentUtcEpochSecond(),
+								UpdateTs:         model.GetCurrentUtcEpochSecond(),
+								DetailedType:     appDetail.DetailedType,
+								Comment:          appDetail.Comment,
+								TargetUserWallet: appDetail.TargetUserWallet,
+								AssetName:        appDetail.AssetInfo.Name,
+								AssetAmount:      assetAmount,
+								EntityType:       appBundle.EntityType,
+								EntityId:         appBundle.EntityId,
+								SeasonId:         currentSeason.ID,
+							}
+						}
+					})
+
+					err = tx.Save(&appBundle).Error
+					if err != nil {
+						log.Error().Msgf("update app_bundle record error: %+v", err)
+						return err
+					}
+
+					// Create application audit logs
+					appAuditLogs := lo.Map(appBundle.AppRecords, func(app *model.Application, _ int) *model.ApplicationAuditLog {
+						return &model.ApplicationAuditLog{
+							ApplicationID: app.ID,
+							LogTs:         model.GetCurrentUtcEpochSecond(),
+							Operation:     model.AuditActionNew,
+							Operator:      common.FormatUserWallet(params.Applicant),
+							PreState:      "",
+							PostState:     model.ApplicationStateOpen,
+						}
+					})
+					err = tx.Model(model.ApplicationAuditLog{}).Create(&appAuditLogs).Error
+					if err != nil {
+						log.Error().Msgf("Create application audit log records error: %+v", err)
+						return err
+					}
+
+					return tx.Model(model.AppBundleAuditLog{}).Create(&model.AppBundleAuditLog{
+						AppBundleId: appBundle.ID,
+						AppBundle:   appBundle,
+						LogTs:       model.GetCurrentUtcEpochSecond(),
+						Operation:   model.AuditActionNew,
+						Operator:    common.FormatUserWallet(params.Applicant),
+						PreState:    "",
+						PostState:   model.ApplicationStateOpen,
+						ExtraData:   "",
+					}).Error
+				})
+
+				if err != nil {
+					log.Error().Msgf("Transaction error: %+v", err)
+					execResult = err.Error()
+					jobFailed = true
+				}
+			}
+		}
+	}
+
+	job.LastExecTs = model.GetCurrentUtcEpochSecond()
+	job.LastExecResult = execResult
+	job.LastExecutionFailed = jobFailed
+	job.State = model.CronJobStateDone
+	db.Updates(&job)
 }
