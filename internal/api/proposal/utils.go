@@ -150,6 +150,7 @@ func GetProposalCommentsWithOsUserData(db *gorm.DB, metaforoComments []metaforo.
 			ProposalTs:          proposalTs,
 			ProposalArweaveHash: proposalArweaveHash,
 			CreatedTs:           metaforoComment.CreatedAt.UTC().Unix(),
+			IsRejected:          dbComment.IsRejectComment,
 		})
 	}
 

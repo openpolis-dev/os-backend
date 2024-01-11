@@ -140,6 +140,8 @@ type FrontendProposalCommentRecord struct {
 	ProposalArweaveHash string `json:"proposal_arweave_hash"`
 	CreatedTs           int64  `json:"created_ts"`
 	Deleted             bool   `json:"deleted"`
+
+	IsRejected bool `json:"is_rejected"` // indicate whether this comment is a rejected comment
 }
 
 type FrontendProposalDetailRecord struct {
