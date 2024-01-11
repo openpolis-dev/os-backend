@@ -23,23 +23,6 @@ import (
 	"gorm.io/gorm"
 )
 
-const ListProposalsSQL = `
-SELECT p.id,
-       p.title,
-       lower(p.applicant) as applicant,
-       u.avatar as applicant_avatar,
-       pc.name  as category_name,
-       p.create_ts,
-       p.version,
-       p.state as state_id
-FROM proposals p
-         JOIN (SELECT proposal_record_id, MAX(version) AS max_version
-               FROM proposals
-               GROUP BY proposal_record_id) t2
-              ON p.proposal_record_id = t2.proposal_record_id AND p.version = t2.max_version
-         JOIN proposal_categories pc ON p.proposal_category_id = pc.id
-         JOIN users u ON p.applicant = u.wallet`
-
 // List handles the HTTP request to list proposals.
 //
 //	@summary	lists all proposals based on query params and return in JSON format
