@@ -100,6 +100,11 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 		}
 		return proposalRcd, nil
 	} else {
+		var proposalCategory model.ProposalCategory
+		if err := db.Find(&proposalCategory, reqData.ProposalCategoryId).Error; err != nil {
+			log.Error().Msgf("get proposal category error: %+v", err)
+			return nil, err
+		}
 		// Init proposal record to get ID
 		proposalRecord := model.Proposal{
 			CreateTs:           time.Now().UTC().Unix(),
@@ -108,6 +113,7 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 			ProposalCategoryID: reqData.ProposalCategoryId,
 			Version:            1,
 			TemplateId:         reqData.TemplateId,
+			VoteDurationSecond: proposalCategory.VoteDurationSecond,
 		}
 
 		if err := db.Create(&proposalRecord).Error; err != nil {
@@ -265,7 +271,7 @@ func SaveProposalToMetaforo(db *gorm.DB, origProposalRecord *model.Proposal, met
 
 	// Vote start and end time, used for create and update proposal
 	voteStartTime := time.Now().UTC().Add(internal.DefaultVoteStartDelay)
-	voteEndTime := time.Now().UTC().Add(internal.DefaultVoteStartDelay + internal.DefaultVoteDuration)
+	voteEndTime := time.Now().UTC().Add(internal.DefaultVoteStartDelay + time.Duration(proposalCategory.VoteDurationSecond)*time.Second)
 
 	if origProposalRecord.ProposalRecordId != "" {
 		// DB Record has ProposalRecordId, this is updating metaforo proposal action, which contains

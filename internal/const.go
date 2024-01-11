@@ -48,8 +48,6 @@ const DefaultVoteStartDelay = 14 * 24 * time.Hour
 //const DefaultVoteDuration = 2 * 24 * time.Hour // Default vote time is 2 days
 // const MetaforoAdminAccessToken = "22974|rLxIV3A6DaaTrXAZ2v7UvLmo6fIwzYD4VkJCoq0N" // 3191
 
-const DefaultVoteDuration = 2 * time.Minute // Default vote time is 2 days
-
 const DefaultTaskRunnerCheckIntervalSecond = 10
 
 const TaskRefreshVotingProposalVoteInfo = "RefreshVotingProposalVoteInfo"

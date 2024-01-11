@@ -98,6 +98,8 @@ type Proposal struct {
 	IsHidden bool
 
 	TemplateId uint
+
+	VoteDurationSecond int64 // Indicate how long the vote will last in seconds
 }
 
 func (p *Proposal) StateName() string {
@@ -214,6 +216,8 @@ type ProposalCategory struct {
 	ProposalVoteGate   *ProposalVoteGate
 
 	SecondDelayBeforeTaskExecution int64 // Second delay before execution of proposal component actions
+
+	VoteDurationSecond int64 // Second last for the proposals under this category
 
 	IsActive bool
 }
