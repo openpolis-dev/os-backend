@@ -94,7 +94,7 @@ func MetaforoActivities(ctx *gin.Context) {
 		metaforoUserIds = append(metaforoUserIds, activity.ThreadPosterId)
 	}
 
-	db := api.ForContextOnlyDB(ctx)
+	db, cfg := api.ForContextDBAndConfig(ctx)
 	// Get proposalIds from metaforo thread id in activities
 	proposalRecordIds := lo.Map(activities, func(r *metaforo.UserActivity, _ int) string {
 		return model.BuildProposalRecordIdFromMetaforoThreadId(r.ThreadId)
@@ -110,8 +110,8 @@ func MetaforoActivities(ctx *gin.Context) {
 	}
 
 	metaforoThreadIdToProposalIdMapping := make(map[int]uint)
-	for _, proposal := range touchedProposals {
-		metaforoThreadIdToProposalIdMapping[proposal.GetMetaforoThreadId()] = proposal.ID
+	for _, p := range touchedProposals {
+		metaforoThreadIdToProposalIdMapping[p.GetMetaforoThreadId()] = p.ID
 	}
 
 	userRecords, err := proposal.GetOsUserFromMetaforoUserId(db, metaforoUserIds)
@@ -129,7 +129,7 @@ func MetaforoActivities(ctx *gin.Context) {
 	rsltRcds := make([]*MetaforoActivityRecord, 0)
 	for idx := range activities {
 		r := activities[idx]
-		if r.GroupId != internal.MetaforoGroupId {
+		if r.GroupId != cfg.MetaforoData.GroupID {
 			continue
 		}
 
@@ -253,7 +253,7 @@ func PrepareMetaforoData(ctx *gin.Context) {
 		return
 	}
 
-	user, _, db, _ := api.ForContext(ctx)
+	user, _, db, cfg := api.ForContext(ctx)
 	var metaforoUser model.MetaforoUser
 	err = db.Model(model.MetaforoUser{}).Where(model.MetaforoUser{
 		MetaforoUserId: req.User.Id,
@@ -269,7 +269,7 @@ func PrepareMetaforoData(ctx *gin.Context) {
 		return
 	}
 
-	err = metaforo.JoinGroup(req.ApiToken, internal.MetaforoGroupName)
+	err = metaforo.JoinGroup(req.ApiToken, cfg.MetaforoData.GroupName)
 	if err != nil {
 		log.Error().Msgf("join group error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)

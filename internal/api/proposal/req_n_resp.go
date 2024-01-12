@@ -5,7 +5,6 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
-	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api/component"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
@@ -216,7 +215,7 @@ type UpdateProposalCategoryReq struct {
 // Some converter functions
 ///////////////////////
 
-func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal, startPostId int, accessToken string) (*FrontendProposalDetailRecord, error) {
+func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal, startPostId int, accessToken string, metaforoGroupName string) (*FrontendProposalDetailRecord, error) {
 	var proposalBlocks []*model.ProposalContentBlock
 	if err := db.Where(&model.ProposalContentBlock{ProposalID: proposal.ID}).Find(&proposalBlocks).Error; err != nil {
 		return nil, err
@@ -263,7 +262,7 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 	commentCount := 0
 
 	if proposal.ProposalRecordId != "" {
-		metaforoProposal, err := metaforo.GetProposal(proposal.GetMetaforoThreadId(), internal.MetaforoGroupName, accessToken, startPostId)
+		metaforoProposal, err := metaforo.GetProposal(proposal.GetMetaforoThreadId(), metaforoGroupName, accessToken, startPostId)
 		if err != nil {
 			return nil, err
 		}
