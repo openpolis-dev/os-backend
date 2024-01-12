@@ -20,7 +20,13 @@ import (
 type WidgetDataResponse struct {
 	ID   uint   `json:"id"`
 	Name string `json:"name"`
+
+	// This field is used for entity_list widget
 	Type string `json:"type,omitempty"`
+
+	// Those two fields are used for associating proposal widget
+	CreateTs             int64  `json:"create_ts,omitempty"`
+	ProposalCategoryName string `json:"proposal_category_name,omitempty"`
 }
 
 type WidgetDataType string
@@ -192,8 +198,10 @@ func getPassedProposals(db *gorm.DB, userWallet string, allRecords bool) ([]*Wid
 
 	return lo.Map(rcds, func(r *proposal.FrontendProposalListRecord, _ int) *WidgetDataResponse {
 		return &WidgetDataResponse{
-			ID:   r.ID,
-			Name: r.Title,
+			ID:                   r.ID,
+			Name:                 r.Title,
+			ProposalCategoryName: r.CategoryName,
+			CreateTs:             r.CreateTs,
 		}
 	}), nil
 }
