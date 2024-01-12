@@ -8,7 +8,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
-	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk"
@@ -53,7 +52,7 @@ func CheckVotePermission(ctx *gin.Context) {
 //	@success	200		{object}	api.Reply		"Success"
 //	@router		/proposals/vote/:id [post]
 func CastVote(ctx *gin.Context) {
-	user, _, db, _ := api.ForContext(ctx)
+	user, _, db, cfg := api.ForContext(ctx)
 
 	proposalIdString := ctx.Param("id")
 	userHasVotePermissionOnThread, err := canUserVoteOnThread(db, user.Wallet, proposalIdString)
@@ -82,7 +81,7 @@ func CastVote(ctx *gin.Context) {
 
 	if err := metaforo.CastVote(
 		reqData.MetaforoAccessToken,
-		internal.MetaforoGroupName,
+		cfg.MetaforoData.GroupName,
 		reqData.MetaforoVoteId,
 		reqData.MetaforoVoteOptions,
 	); err != nil {
@@ -104,6 +103,7 @@ func CastVote(ctx *gin.Context) {
 //	@success	200		{object}	api.Reply{data=nil}	"Success"
 //	@router		/proposals/revoke_vote/:id [post]
 func RevokeVote(ctx *gin.Context) {
+	_, cfg := api.ForContextDBAndConfig(ctx)
 	reqData := RevokeVoteData{}
 	if err := ctx.BindJSON(&reqData); err != nil {
 		log.Error().Msgf("parse request data error: %+v", err)
@@ -114,7 +114,7 @@ func RevokeVote(ctx *gin.Context) {
 
 	if err := metaforo.RevokeVote(
 		reqData.MetaforoAccessToken,
-		internal.MetaforoGroupName,
+		cfg.MetaforoData.GroupName,
 		reqData.MetaforoVoteId,
 	); err != nil {
 		log.Error().Msgf("revoke vote error error: %+v", err)
@@ -158,15 +158,15 @@ func ShowVoteDetail(ctx *gin.Context) {
 		}
 	}
 
-	voterList, err := metaforo.GetVoterList(internal.MetaforoGroupName, voteId, page)
+	db, cfg := api.ForContextDBAndConfig(ctx)
+
+	voterList, err := metaforo.GetVoterList(cfg.MetaforoData.GroupName, voteId, page)
 	if err != nil {
 		log.Error().Msgf("get vote list error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(fmt.Errorf("get vote list error")))
 		return
 	}
-
-	db := api.ForContextOnlyDB(ctx)
 
 	metaforoUserIds := lo.Map(voterList, func(item *metaforo.UserPollRecord, index int) int { return item.UserId })
 	userRecords, err := GetOsUserFromMetaforoUserId(db, metaforoUserIds)

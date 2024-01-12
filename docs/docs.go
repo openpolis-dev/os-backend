@@ -3296,6 +3296,9 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string"
+                },
+                "type": {
+                    "type": "string"
                 }
             }
         },
@@ -4531,6 +4534,10 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "deleted": {
+                    "type": "boolean"
+                },
+                "is_rejected": {
+                    "description": "indicate whether this comment is a rejected comment",
                     "type": "boolean"
                 },
                 "metaforo_post_id": {

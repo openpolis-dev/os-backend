@@ -8,6 +8,7 @@ import (
 	"github.com/go-co-op/gocron/v2"
 	"github.com/rs/zerolog/log"
 	"github.com/theseed-labs/os-backend/internal"
+	"github.com/theseed-labs/os-backend/internal/config"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"gorm.io/gorm"
 )
@@ -22,13 +23,15 @@ type TaskManager struct {
 	RootJob gocron.Job
 
 	TaskChannel chan *model.CronJob
+
+	AppConfig *config.Config
 }
 
 var taskMgr *TaskManager
 
 var err error
 
-func InitTaskManager(db *gorm.DB, checkIntervalSecond int) {
+func InitTaskManager(db *gorm.DB, checkIntervalSecond int, cfg *config.Config) {
 	if checkIntervalSecond == 0 {
 		checkIntervalSecond = internal.DefaultTaskRunnerCheckIntervalSecond
 	}
@@ -37,6 +40,7 @@ func InitTaskManager(db *gorm.DB, checkIntervalSecond int) {
 		CheckIntervalSecond: checkIntervalSecond,
 		CheckDuration:       time.Duration(checkIntervalSecond) * time.Second,
 		TaskChannel:         make(chan *model.CronJob),
+		AppConfig:           cfg,
 	}
 
 	log.Error().Msgf("Next run time from now: %s", cronexpr.MustParse(internal.TaskRefreshVotingProposalVoteInfoCronExpr).Next(time.Now()))
@@ -51,7 +55,7 @@ func InitTaskManager(db *gorm.DB, checkIntervalSecond int) {
 		CronExp:    internal.TaskRefreshVotingProposalVoteInfoCronExpr,
 		CreateTs:   time.Now().UTC().Unix(),
 		NextExecTs: cronexpr.MustParse(internal.TaskRefreshVotingProposalVoteInfoCronExpr).Next(time.Now()).UTC().Unix(),
-		JobParams:  fmt.Sprintf(`{"group_name": "%s"}`, internal.MetaforoGroupName),
+		JobParams:  fmt.Sprintf(`{"group_name": "%s"}`, cfg.MetaforoData.GroupName),
 	}).FirstOrCreate(&refreshVoteStateJob).Error; err != nil {
 		panic(err)
 	}
@@ -125,7 +129,7 @@ func (t *TaskManager) ActivateRefreshVoteStateJobIfRequired() error {
 		CronExp:    internal.TaskRefreshVotingProposalVoteInfoCronExpr,
 		CreateTs:   time.Now().UTC().Unix(),
 		NextExecTs: cronexpr.MustParse(internal.TaskRefreshVotingProposalVoteInfoCronExpr).Next(time.Now()).UTC().Unix(),
-		JobParams:  fmt.Sprintf(`{"group_name": "%s"}`, internal.MetaforoGroupName),
+		JobParams:  fmt.Sprintf(`{"group_name": "%s"}`, t.AppConfig.MetaforoData.GroupName),
 	}).FirstOrCreate(&refreshVoteStateJob).Error; err != nil {
 		log.Error().Msgf("activate refresh vote state job error: %+v", err)
 		return err
@@ -141,11 +145,10 @@ func (t *TaskManager) TaskDispatcher() {
 		case internal.TaskRefreshVotingProposalVoteInfo:
 			go RefreshVotingProposalInfoJob(t.DatabaseClient, task, task.JobParams)
 		case internal.TaskCreateProject:
-			go CreateProjectTask(t.DatabaseClient, task, task.JobParams)
-			task.State = model.CronJobStateDone
-			t.DatabaseClient.Updates(task)
 			log.Debug().Msgf("create project")
+			go CreateProjectTask(t.DatabaseClient, task, task.JobParams)
 		case internal.TaskCloseProject:
+			log.Debug().Msgf("close project")
 			go CloseProjectTask(t.DatabaseClient, task, task.JobParams)
 		case internal.TaskCreateGuild:
 			//go CreateGuildTask(t.DatabaseClient, task, task.JobParams)
@@ -153,11 +156,11 @@ func (t *TaskManager) TaskDispatcher() {
 			t.DatabaseClient.Updates(task)
 			log.Debug().Msgf("create guild")
 		case internal.TaskCloseGuild:
+			log.Debug().Msgf("close guild")
 			go CloseGuildTask(t.DatabaseClient, task, task.JobParams)
 		case internal.TaskRewardNewApplication:
-			task.State = model.CronJobStateDone
-			t.DatabaseClient.Updates(task)
-			log.Debug().Msgf("reward new application")
+			log.Debug().Msgf("new application reward")
+			go CreateAppBundleTask(t.DatabaseClient, task, task.JobParams)
 		default:
 			task.State = model.CronJobStateTerminated
 			t.DatabaseClient.Updates(task)

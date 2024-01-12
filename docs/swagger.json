@@ -3289,6 +3289,9 @@
                 },
                 "name": {
                     "type": "string"
+                },
+                "type": {
+                    "type": "string"
                 }
             }
         },
@@ -4524,6 +4527,10 @@
                     "type": "integer"
                 },
                 "deleted": {
+                    "type": "boolean"
+                },
+                "is_rejected": {
+                    "description": "indicate whether this comment is a rejected comment",
                     "type": "boolean"
                 },
                 "metaforo_post_id": {
