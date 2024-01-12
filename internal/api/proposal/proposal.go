@@ -107,7 +107,7 @@ func Detail(ctx *gin.Context) {
 	}
 
 	proposalIdStr := ctx.Param("id")
-	db := api.ForContextOnlyDB(ctx)
+	db, cfg := api.ForContextDBAndConfig(ctx)
 	proposalRecord, err := GetProposalFromStringId(db, proposalIdStr)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -122,7 +122,7 @@ func Detail(ctx *gin.Context) {
 		}
 	}
 
-	responseData, err := ConvertProposalToFrontendDetailRecord(db, proposalRecord, startPostId, metaforoAccessToken)
+	responseData, err := ConvertProposalToFrontendDetailRecord(db, proposalRecord, startPostId, metaforoAccessToken, cfg.MetaforoData.GroupName)
 	if err != nil {
 		log.Error().Msgf("convert proposal to frontend format error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
@@ -190,7 +190,7 @@ func Update(ctx *gin.Context) {
 	// FIXME: refactor here: If not submitting to metaforo, a new version will be created in DB but no metaforo record.
 	// FIXME: Do we need to force passing the metaforo access token if not in pending submit state?
 	if reqData.SubmitToMetaforo {
-		if err := SaveProposalToMetaforo(db, proposalRecord, reqData.MetaforoAccessToken, reqData.EditorType); err != nil {
+		if err := SaveProposalToMetaforo(db, proposalRecord, reqData.MetaforoAccessToken, reqData.EditorType, cfg.MetaforoData.GroupName); err != nil {
 			log.Error().Msgf("create metaforo proposal error: %+v", err)
 			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
@@ -198,7 +198,7 @@ func Update(ctx *gin.Context) {
 		}
 	}
 
-	responseData, err := ConvertProposalToFrontendDetailRecord(db, proposalRecord, 0, reqData.MetaforoAccessToken)
+	responseData, err := ConvertProposalToFrontendDetailRecord(db, proposalRecord, 0, reqData.MetaforoAccessToken, cfg.MetaforoData.GroupName)
 	if err != nil {
 		log.Error().Msgf("convert proposal to frontend format error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
@@ -239,7 +239,7 @@ func Create(ctx *gin.Context) {
 	}
 
 	if reqData.SubmitToMetaforo {
-		if err := SaveProposalToMetaforo(db, proposalRecord, reqData.MetaforoAccessToken, reqData.EditorType); err != nil {
+		if err := SaveProposalToMetaforo(db, proposalRecord, reqData.MetaforoAccessToken, reqData.EditorType, ""); err != nil {
 			log.Error().Msgf("create metaforo proposal error: %+v", err)
 			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
@@ -247,7 +247,7 @@ func Create(ctx *gin.Context) {
 		}
 	}
 
-	responseData, err := ConvertProposalToFrontendDetailRecord(db, proposalRecord, 0, reqData.MetaforoAccessToken)
+	responseData, err := ConvertProposalToFrontendDetailRecord(db, proposalRecord, 0, reqData.MetaforoAccessToken, cfg.MetaforoData.GroupName)
 	if err != nil {
 		log.Error().Msgf("convert proposal to frontend format error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
@@ -396,7 +396,7 @@ func Reject(ctx *gin.Context) {
 	// Add reject comment
 	commentData, err := metaforo.AddComment(
 		rejectRequestData.MetaforoAccessToken,
-		internal.MetaforoGroupName,
+		cfg.MetaforoData.GroupName,
 		proposalRecord.GetMetaforoThreadId(),
 		rejectComment.Content,
 		"",
@@ -497,22 +497,19 @@ func updateProposalState(db *gorm.DB, user *middleware.CurUser, proposalStrId st
 		return nil, db.Transaction(func(tx *gorm.DB) error {
 			proposalRecord.State = int(model.ProposalStateApproved)
 			err = tx.Save(&proposalRecord).Error
-			//  TODO: Get proposal category default duration
 			var voteRecords []*model.ProposalVoteRecord
 			err = tx.Model(proposalRecord).Association("VoteRecords").Find(&voteRecords)
 			if err != nil {
 				log.Error().Msgf("get vote records error: %+v", err)
 				return err
 			}
-			log.Error().Msgf("TTT: Prepare to update votes, votes: %+v", voteRecords)
 
-			// TODO: Use metaforo response update proposal vote records
 			for _, record := range voteRecords {
 				err := metaforo.UpdateVoteTime(cfg.MetaforoData.AccessToken,
-					internal.MetaforoGroupName,
+					cfg.MetaforoData.GroupName,
 					record.MetaforoID,
 					time.Now().UTC().Add(-1*time.Minute).Unix(), // Set the start time 1 minute in advanced
-					time.Now().UTC().Add(internal.DefaultVoteDuration).Unix(),
+					time.Now().UTC().Add(proposalRecord.VoteDuration()).Unix(),
 				)
 				if err != nil {
 					log.Error().Msgf("update vote information error: %+v", err)

@@ -149,7 +149,7 @@ func main() {
 	log.Logger = log.With().Caller().Logger()
 
 	// setup task manager and start runner
-	task_manager.InitTaskManager(db, 5)
+	task_manager.InitTaskManager(db, 5, cfg)
 	task_manager.GetTaskManager().StartRunner()
 
 	r := gin.Default()

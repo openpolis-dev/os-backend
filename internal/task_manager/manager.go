@@ -8,6 +8,7 @@ import (
 	"github.com/go-co-op/gocron/v2"
 	"github.com/rs/zerolog/log"
 	"github.com/theseed-labs/os-backend/internal"
+	"github.com/theseed-labs/os-backend/internal/config"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"gorm.io/gorm"
 )
@@ -22,13 +23,15 @@ type TaskManager struct {
 	RootJob gocron.Job
 
 	TaskChannel chan *model.CronJob
+
+	AppConfig *config.Config
 }
 
 var taskMgr *TaskManager
 
 var err error
 
-func InitTaskManager(db *gorm.DB, checkIntervalSecond int) {
+func InitTaskManager(db *gorm.DB, checkIntervalSecond int, cfg *config.Config) {
 	if checkIntervalSecond == 0 {
 		checkIntervalSecond = internal.DefaultTaskRunnerCheckIntervalSecond
 	}
@@ -37,6 +40,7 @@ func InitTaskManager(db *gorm.DB, checkIntervalSecond int) {
 		CheckIntervalSecond: checkIntervalSecond,
 		CheckDuration:       time.Duration(checkIntervalSecond) * time.Second,
 		TaskChannel:         make(chan *model.CronJob),
+		AppConfig:           cfg,
 	}
 
 	log.Error().Msgf("Next run time from now: %s", cronexpr.MustParse(internal.TaskRefreshVotingProposalVoteInfoCronExpr).Next(time.Now()))
@@ -51,7 +55,7 @@ func InitTaskManager(db *gorm.DB, checkIntervalSecond int) {
 		CronExp:    internal.TaskRefreshVotingProposalVoteInfoCronExpr,
 		CreateTs:   time.Now().UTC().Unix(),
 		NextExecTs: cronexpr.MustParse(internal.TaskRefreshVotingProposalVoteInfoCronExpr).Next(time.Now()).UTC().Unix(),
-		JobParams:  fmt.Sprintf(`{"group_name": "%s"}`, internal.MetaforoGroupName),
+		JobParams:  fmt.Sprintf(`{"group_name": "%s"}`, cfg.MetaforoData.GroupName),
 	}).FirstOrCreate(&refreshVoteStateJob).Error; err != nil {
 		panic(err)
 	}
@@ -125,7 +129,7 @@ func (t *TaskManager) ActivateRefreshVoteStateJobIfRequired() error {
 		CronExp:    internal.TaskRefreshVotingProposalVoteInfoCronExpr,
 		CreateTs:   time.Now().UTC().Unix(),
 		NextExecTs: cronexpr.MustParse(internal.TaskRefreshVotingProposalVoteInfoCronExpr).Next(time.Now()).UTC().Unix(),
-		JobParams:  fmt.Sprintf(`{"group_name": "%s"}`, internal.MetaforoGroupName),
+		JobParams:  fmt.Sprintf(`{"group_name": "%s"}`, t.AppConfig.MetaforoData.GroupName),
 	}).FirstOrCreate(&refreshVoteStateJob).Error; err != nil {
 		log.Error().Msgf("activate refresh vote state job error: %+v", err)
 		return err

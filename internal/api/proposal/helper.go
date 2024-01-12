@@ -58,6 +58,13 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 		reqData.Title = cfg.MetaforoData.ProposalPrefix + reqData.Title
 	}
 
+	var pCategory model.ProposalCategory
+	err := db.Find(&pCategory, reqData.ProposalCategoryId).Error
+	if err != nil {
+		log.Error().Msgf("get proposal category error: %+v", err)
+		return nil, err
+	}
+
 	if proposalIdStr != "" {
 		// Updating existing proposals
 		dbProposalRcd, err := GetProposalFromStringId(db, proposalIdStr)
@@ -81,6 +88,8 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 		// Proposal is in PendingSubmit state, the data can be updated directory w/o bumping up version
 		proposalRcd.Title = reqData.Title
 		proposalRcd.ProposalCategoryID = reqData.ProposalCategoryId
+		proposalRcd.SecondDelayBeforeTaskExecution = pCategory.SecondDelayBeforeTaskExecution
+		proposalRcd.VoteDurationSecond = pCategory.VoteDurationSecond
 		err = db.Save(&proposalRcd).Error
 		if err != nil {
 			log.Error().Msgf("duplicate proposal error: %+v", err)
@@ -102,12 +111,14 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 	} else {
 		// Init proposal record to get ID
 		proposalRecord := model.Proposal{
-			CreateTs:           time.Now().UTC().Unix(),
-			Title:              reqData.Title,
-			Applicant:          common.FormatUserWallet(userWallet),
-			ProposalCategoryID: reqData.ProposalCategoryId,
-			Version:            1,
-			TemplateId:         reqData.TemplateId,
+			CreateTs:                       time.Now().UTC().Unix(),
+			Title:                          reqData.Title,
+			Applicant:                      common.FormatUserWallet(userWallet),
+			ProposalCategoryID:             reqData.ProposalCategoryId,
+			SecondDelayBeforeTaskExecution: pCategory.SecondDelayBeforeTaskExecution,
+			VoteDurationSecond:             pCategory.VoteDurationSecond,
+			Version:                        1,
+			TemplateId:                     reqData.TemplateId,
 		}
 
 		if err := db.Create(&proposalRecord).Error; err != nil {
@@ -237,7 +248,7 @@ func SaveProposalComponentRecords(db *gorm.DB, proposalId uint, applicantWallet 
 //
 // Otherwise, copy the proposal to new record with ver+1, update the metaforo data, and save back as a new record,
 // and the metaforo API invoked here is updateProposal.
-func SaveProposalToMetaforo(db *gorm.DB, origProposalRecord *model.Proposal, metaforoAccessToken string, EditorType int) error {
+func SaveProposalToMetaforo(db *gorm.DB, origProposalRecord *model.Proposal, metaforoAccessToken string, EditorType int, metaforoGroupName string) error {
 	var err error
 
 	// Load current proposal data
@@ -265,7 +276,7 @@ func SaveProposalToMetaforo(db *gorm.DB, origProposalRecord *model.Proposal, met
 
 	// Vote start and end time, used for create and update proposal
 	voteStartTime := time.Now().UTC().Add(internal.DefaultVoteStartDelay)
-	voteEndTime := time.Now().UTC().Add(internal.DefaultVoteStartDelay + internal.DefaultVoteDuration)
+	voteEndTime := time.Now().UTC().Add(internal.DefaultVoteStartDelay + origProposalRecord.VoteDuration())
 
 	if origProposalRecord.ProposalRecordId != "" {
 		// DB Record has ProposalRecordId, this is updating metaforo proposal action, which contains
@@ -278,7 +289,7 @@ func SaveProposalToMetaforo(db *gorm.DB, origProposalRecord *model.Proposal, met
 		// VoteFormData is empty since no update of vote is allowed in this API
 		_, err = metaforo.UpdateProposal(
 			metaforoAccessToken,
-			internal.MetaforoGroupName,
+			metaforoGroupName,
 			fmt.Sprintf("%d", proposalCategory.MetaforoId),
 			origProposalRecord.Title,
 			metaforoContent, nil, "", metaforoThreadId,
@@ -293,7 +304,7 @@ func SaveProposalToMetaforo(db *gorm.DB, origProposalRecord *model.Proposal, met
 		for _, record := range origProposalRecord.VoteRecords {
 			err = metaforo.UpdateVoteTime(
 				metaforoAccessToken,
-				internal.MetaforoGroupName,
+				metaforoGroupName,
 				record.MetaforoID,
 				voteStartTime.Unix(),
 				voteEndTime.Unix())
@@ -303,7 +314,7 @@ func SaveProposalToMetaforo(db *gorm.DB, origProposalRecord *model.Proposal, met
 			}
 		}
 
-		metaforoProposalResponse, err = metaforo.GetProposal(metaforoThreadId, internal.MetaforoGroupName, "", 0)
+		metaforoProposalResponse, err = metaforo.GetProposal(metaforoThreadId, metaforoGroupName, "", 0)
 		if err != nil {
 			log.Error().Msgf("get metaforoProposal %d error: %+v", metaforoThreadId, err)
 			return err
@@ -339,7 +350,7 @@ func SaveProposalToMetaforo(db *gorm.DB, origProposalRecord *model.Proposal, met
 
 		metaforoCreateProposalResponse, err := metaforo.CreateProposal(
 			metaforoAccessToken,
-			internal.MetaforoGroupName,
+			metaforoGroupName,
 			fmt.Sprintf("%d", proposalCategory.MetaforoId),
 			updatedProposalRecord.Title,
 			metaforoContent, nil, string(voteFormBytes))
@@ -348,7 +359,7 @@ func SaveProposalToMetaforo(db *gorm.DB, origProposalRecord *model.Proposal, met
 			return err
 		}
 
-		metaforoProposalResponse, err = metaforo.GetProposal(metaforoCreateProposalResponse.Thread.Id, internal.MetaforoGroupName, "", 0)
+		metaforoProposalResponse, err = metaforo.GetProposal(metaforoCreateProposalResponse.Thread.Id, metaforoGroupName, "", 0)
 		if err != nil {
 			log.Error().Msgf("get metaforoProposal %d error: %+v", metaforoCreateProposalResponse.Thread.Id, err)
 			return err
@@ -571,13 +582,6 @@ func createProposalFinTasks(db *gorm.DB, proposal *model.Proposal, finState mode
 		return
 	}
 
-	var proposalCategory *model.ProposalCategory
-	err = db.Find(&proposalCategory, proposal.ProposalCategoryID).Error
-	if err != nil {
-		log.Error().Msgf("fetch proposal category error: %+v", err)
-		return
-	}
-
 	for _, componentAction := range proposalComponentActions {
 		var actionName string
 		switch finState {
@@ -596,7 +600,7 @@ func createProposalFinTasks(db *gorm.DB, proposal *model.Proposal, finState mode
 			UpdateTs:       currentTs,
 			HandlerName:    actionName,
 			LastExecTs:     0,
-			NextExecTs:     currentTs + proposalCategory.SecondDelayBeforeTaskExecution,
+			NextExecTs:     currentTs + proposal.SecondDelayBeforeTaskExecution,
 			JobParams:      componentAction.ComponentParams,
 			State:          model.CronJobStateActive,
 			LastExecResult: "",

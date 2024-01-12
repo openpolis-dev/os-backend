@@ -98,10 +98,23 @@ type Proposal struct {
 	IsHidden bool
 
 	TemplateId uint
+
+	// VoteDurationSecond and SecondDelayBeforeTaskExecution are used for controlling voting last time and delay before task execution
+	// the values are copied from proposal category db record
+	VoteDurationSecond             int64
+	SecondDelayBeforeTaskExecution int64
 }
 
 func (p *Proposal) StateName() string {
 	return ProposalStateName[p.State]
+}
+
+func (p *Proposal) VoteDuration() time.Duration {
+	return time.Duration(p.VoteDurationSecond) * time.Second
+}
+
+func (p *Proposal) TaskStartDelay() time.Duration {
+	return time.Duration(p.SecondDelayBeforeTaskExecution) * time.Second
 }
 
 // StateIsUpdatable returns bool value indicates whether this proposal can be updated.
@@ -214,6 +227,8 @@ type ProposalCategory struct {
 	ProposalVoteGate   *ProposalVoteGate
 
 	SecondDelayBeforeTaskExecution int64 // Second delay before execution of proposal component actions
+
+	VoteDurationSecond int64 // Vote duration in second for this proposal category
 
 	IsActive bool
 }

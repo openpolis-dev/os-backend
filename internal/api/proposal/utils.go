@@ -4,7 +4,6 @@ import (
 	"errors"
 
 	"github.com/rs/zerolog/log"
-	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk/metaforo"
@@ -65,14 +64,14 @@ from proposal_component_records pcr
          join proposal_component_actions approve_pca on pc.approve_action_id = approve_pca.id
          join proposal_component_actions reject_pca on pc.reject_action_id = reject_pca.id`
 
-func GetMetaforoProposalByInternalId(db *gorm.DB, proposalIdStr string) (*model.Proposal, *metaforo.ProposalResponse, error) {
+func GetMetaforoProposalByInternalId(db *gorm.DB, proposalIdStr string, metaforoGroupName string) (*model.Proposal, *metaforo.ProposalResponse, error) {
 	osProposalRcd, err := GetProposalFromStringId(db, proposalIdStr)
 	if err != nil {
 		log.Error().Msgf("get db proposal id %s error: %+v", proposalIdStr, err)
 		return nil, nil, err
 	}
 
-	metaforoProposalRcd, err := metaforo.GetProposal(osProposalRcd.GetMetaforoThreadId(), internal.MetaforoGroupName, "", 0)
+	metaforoProposalRcd, err := metaforo.GetProposal(osProposalRcd.GetMetaforoThreadId(), metaforoGroupName, "", 0)
 	if err != nil {
 		log.Error().Msgf("get metaforo proposal error: %+v", err)
 		return nil, nil, err
