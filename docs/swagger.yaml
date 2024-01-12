@@ -199,6 +199,8 @@ definitions:
         type: integer
       name:
         type: string
+      type:
+        type: string
     type: object
   guild.BudgetParam:
     properties:
@@ -1020,6 +1022,9 @@ definitions:
       created_ts:
         type: integer
       deleted:
+        type: boolean
+      is_rejected:
+        description: indicate whether this comment is a rejected comment
         type: boolean
       metaforo_post_id:
         type: integer
