@@ -239,7 +239,7 @@ func Create(ctx *gin.Context) {
 	}
 
 	if reqData.SubmitToMetaforo {
-		if err := SaveProposalToMetaforo(db, proposalRecord, reqData.MetaforoAccessToken, reqData.EditorType, ""); err != nil {
+		if err := SaveProposalToMetaforo(db, proposalRecord, reqData.MetaforoAccessToken, reqData.EditorType, cfg.MetaforoData.GroupName); err != nil {
 			log.Error().Msgf("create metaforo proposal error: %+v", err)
 			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
