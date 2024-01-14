@@ -39,7 +39,7 @@ type (
 )
 
 // getOrCreateCityHallProject validate user's permission and then get or create cityhall project in DB
-func getOrCreateCityHallProject(db *gorm.DB, enforcer *casbin.Enforcer) (*model.Project, error) {
+func getOrCreateCityHallProject(db *gorm.DB, enforcer *casbin.SyncedEnforcer) (*model.Project, error) {
 	configuredCityHallUser, err := enforcer.GetUsersForRole(internal.RoleHall)
 	if err != nil {
 		return nil, errors.New("get cityhall permission error")
@@ -323,7 +323,7 @@ func BatchUpdateMembers(ctx *gin.Context) {
 }
 
 // updateGroupedMembers is used to parse CityHallUpdateMemberReq data and update city hall members
-func updateGroupedMembers(cityHallProject *model.Project, req *CityHallUpdateMemberReq, db *gorm.DB, enforcer *casbin.Enforcer) (int, error) {
+func updateGroupedMembers(cityHallProject *model.Project, req *CityHallUpdateMemberReq, db *gorm.DB, enforcer *casbin.SyncedEnforcer) (int, error) {
 	// TODO: All checking groupName is "" is workaround logic for non grouped request, will be changed to grouped version after FE updated
 	if req.GroupName != "" {
 		if _, found := internal.CityhallGroupNames[req.GroupName]; !found {
