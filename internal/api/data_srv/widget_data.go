@@ -128,9 +128,9 @@ func WidgetData(ctx *gin.Context) {
 	case WidgetDataTypePassedProposals:
 		rcds, err := getPassedProposals(db, user.Wallet, allEntities)
 		if err != nil {
-			log.Error().Err(err).Msg("query guild list error")
+			log.Error().Err(err).Msg("query passed proposal error")
 			sdk.LogServerErrorToSentry(ctx, err)
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("query guild list error")))
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("query passed proposal error")))
 			return
 		}
 		ctx.JSON(http.StatusOK, api.Success(rcds))
