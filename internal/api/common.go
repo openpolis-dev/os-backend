@@ -78,8 +78,8 @@ func ForContextOnlyUser(ctx *gin.Context) (user *middleware.CurUser) {
 }
 
 // ForContextOnlyEnforcer read `Enforcer` from `Context`
-func ForContextOnlyEnforcer(ctx *gin.Context) (enforcer *casbin.Enforcer) {
-	enforcer, _ = ctx.Value(middleware.EnforcerKey).(*casbin.Enforcer)
+func ForContextOnlyEnforcer(ctx *gin.Context) (enforcer *casbin.SyncedEnforcer) {
+	enforcer, _ = ctx.Value(middleware.EnforcerKey).(*casbin.SyncedEnforcer)
 
 	return
 }
