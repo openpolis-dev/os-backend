@@ -3291,13 +3291,30 @@ const docTemplate = `{
         "data_srv.WidgetDataResponse": {
             "type": "object",
             "properties": {
+                "applicant": {
+                    "type": "string"
+                },
+                "applicant_avatar": {
+                    "type": "string"
+                },
+                "create_ts": {
+                    "description": "Those two fields are used for associating proposal widget",
+                    "type": "integer"
+                },
                 "id": {
                     "type": "integer"
                 },
                 "name": {
                     "type": "string"
                 },
+                "proposal_category_name": {
+                    "type": "string"
+                },
+                "proposal_state": {
+                    "type": "string"
+                },
                 "type": {
+                    "description": "This field is used for entity_list widget",
                     "type": "string"
                 }
             }
