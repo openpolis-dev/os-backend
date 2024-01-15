@@ -186,14 +186,19 @@ func getPassedProposals(db *gorm.DB, userWallet string, allRecords bool) ([]*Wid
 	var rcds []*proposal.FrontendProposalListRecord
 	querySql := fmt.Sprintf("%s WHERE state = %d", proposal.ListProposalsSQL, model.ProposalStateVotePassed)
 	if !allRecords {
-		querySql += fmt.Sprintf(" AND applicant = %s", common.FormatUserWallet(userWallet))
+		querySql += fmt.Sprintf(" AND applicant = '%s'", common.FormatUserWallet(userWallet))
 	}
 	querySql += fmt.Sprintf(" ORDER BY id ASC")
 
 	err := db.Raw(querySql).Find(&rcds).Error
 	if err != nil {
-		log.Error().Err(err).Msg("query proposal list error")
-		return nil, err
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			log.Warn().Err(err).Msgf("no proposal found for user %s", userWallet)
+			return []*WidgetDataResponse{}, nil
+		} else {
+			log.Error().Err(err).Msg("query proposal list error")
+			return nil, err
+		}
 	}
 
 	return lo.Map(rcds, func(r *proposal.FrontendProposalListRecord, _ int) *WidgetDataResponse {
