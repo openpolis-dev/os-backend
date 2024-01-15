@@ -2,6 +2,7 @@ package data_srv
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -9,6 +10,7 @@ import (
 	"github.com/samber/lo"
 	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api"
+	"github.com/theseed-labs/os-backend/internal/api/proposal"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk"
@@ -18,7 +20,27 @@ import (
 type WidgetDataResponse struct {
 	ID   uint   `json:"id"`
 	Name string `json:"name"`
+
+	// This field is used for entity_list widget
+	Type string `json:"type,omitempty"`
+
+	// Those two fields are used for associating proposal widget
+	CreateTs             int64  `json:"create_ts,omitempty"`
+	ProposalCategoryName string `json:"proposal_category_name,omitempty"`
+	ProposalState        string `json:"proposal_state,omitempty"`
+	Applicant            string `json:"applicant,omitempty"`
+	ApplicantAvatar      string `json:"applicant_avatar,omitempty"`
 }
+
+type WidgetDataType string
+
+const (
+	WidgetDataTypeProjectList     WidgetDataType = "project_list"
+	WidgetDataTypeGuildList                      = "guild_list"
+	WidgetDataTypeEntityList                     = "entity_list"
+	WidgetDataTypeAssetType                      = "asset_type"
+	WidgetDataTypePassedProposals                = "passed_proposals"
+)
 
 // TODO: Currently the data service is handled by RESTful API and query params, will be migrate to GraphQL in future
 
@@ -39,7 +61,7 @@ func WidgetData(ctx *gin.Context) {
 		return
 	}
 
-	user, enforcer, db, _ := api.ForContext(ctx)
+	user, enforcer, db, cfg := api.ForContext(ctx)
 	allEntities, err := enforcer.HasRoleForUser(common.FormatUserWallet(user.Wallet), internal.RoleHall)
 	log.Error().Msgf("TTT: all entities: %+v", allEntities)
 	if err != nil {
@@ -49,8 +71,8 @@ func WidgetData(ctx *gin.Context) {
 		return
 	}
 
-	switch dataType {
-	case "project_list":
+	switch WidgetDataType(dataType) {
+	case WidgetDataTypeProjectList:
 		rcds, err := getEntityListResponse(db, "project", allEntities, user.Wallet)
 
 		if err != nil {
@@ -62,7 +84,7 @@ func WidgetData(ctx *gin.Context) {
 
 		ctx.JSON(http.StatusOK, api.Success(rcds))
 		return
-	case "guild_list":
+	case WidgetDataTypeGuildList:
 		rcds, err := getEntityListResponse(db, "guild", allEntities, user.Wallet)
 		if err != nil {
 			log.Error().Err(err).Msg("query guild list error")
@@ -72,8 +94,12 @@ func WidgetData(ctx *gin.Context) {
 		}
 		ctx.JSON(http.StatusOK, api.Success(rcds))
 		return
-	case "entity_list":
+	case WidgetDataTypeEntityList:
 		projectRcds, err := getEntityListResponse(db, "project", allEntities, user.Wallet)
+		projectRcds = lo.Map(projectRcds, func(rcd *WidgetDataResponse, _ int) *WidgetDataResponse {
+			rcd.Type = "project"
+			return rcd
+		})
 
 		if err != nil {
 			log.Error().Err(err).Msg("query project list error")
@@ -83,6 +109,10 @@ func WidgetData(ctx *gin.Context) {
 		}
 
 		guildRcds, err := getEntityListResponse(db, "guild", allEntities, user.Wallet)
+		guildRcds = lo.Map(guildRcds, func(rcd *WidgetDataResponse, _ int) *WidgetDataResponse {
+			rcd.Type = "guild"
+			return rcd
+		})
 		if err != nil {
 			log.Error().Err(err).Msg("query guild list error")
 			sdk.LogServerErrorToSentry(ctx, err)
@@ -91,10 +121,22 @@ func WidgetData(ctx *gin.Context) {
 		}
 		ctx.JSON(http.StatusOK, api.Success(lo.Union(projectRcds, guildRcds)))
 		return
-	case "asset_type":
-		ctx.JSON(http.StatusOK, api.Success([]*WidgetDataResponse{
-			{internal.AssetTypeScrId, internal.AssetTypeScrName}, {internal.AssetTypeUsdtId, internal.AssetTypeUsdtName},
-		}))
+	case WidgetDataTypeAssetType:
+		var assetResponse []*WidgetDataResponse
+		for _, asset := range cfg.MetaforoData.Assets {
+			assetResponse = append(assetResponse, &WidgetDataResponse{ID: asset.ID, Name: asset.Name})
+		}
+		ctx.JSON(http.StatusOK, api.Success(assetResponse))
+		return
+	case WidgetDataTypePassedProposals:
+		rcds, err := getPassedProposals(db, user.Wallet, allEntities)
+		if err != nil {
+			log.Error().Err(err).Msg("query passed proposal error")
+			sdk.LogServerErrorToSentry(ctx, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("query passed proposal error")))
+			return
+		}
+		ctx.JSON(http.StatusOK, api.Success(rcds))
 		return
 	default:
 		err := errors.New("invalid data type")
@@ -141,4 +183,36 @@ func getEntityListResponse(db *gorm.DB, entityType string, allRecords bool, user
 	default:
 		return nil, errors.New("invalid entity type")
 	}
+}
+
+func getPassedProposals(db *gorm.DB, userWallet string, allRecords bool) ([]*WidgetDataResponse, error) {
+	var rcds []*proposal.FrontendProposalListRecord
+	querySql := fmt.Sprintf("%s WHERE state = %d", proposal.ListProposalsSQL, model.ProposalStateVotePassed)
+	if !allRecords {
+		querySql += fmt.Sprintf(" AND applicant = '%s'", common.FormatUserWallet(userWallet))
+	}
+	querySql += fmt.Sprintf(" ORDER BY id ASC")
+
+	err := db.Raw(querySql).Find(&rcds).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			log.Warn().Err(err).Msgf("no proposal found for user %s", userWallet)
+			return []*WidgetDataResponse{}, nil
+		} else {
+			log.Error().Err(err).Msg("query proposal list error")
+			return nil, err
+		}
+	}
+
+	return lo.Map(rcds, func(r *proposal.FrontendProposalListRecord, _ int) *WidgetDataResponse {
+		return &WidgetDataResponse{
+			ID:                   r.ID,
+			Name:                 r.Title,
+			ProposalCategoryName: r.CategoryName,
+			ProposalState:        model.ProposalStateName[r.StateId],
+			Applicant:            r.Applicant,
+			ApplicantAvatar:      r.ApplicantAvatar,
+			CreateTs:             r.CreateTs,
+		}
+	}), nil
 }

@@ -76,7 +76,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	enforcer, err := casbin.NewEnforcer(*casbinModelConfPath, adapter)
+	enforcer, err := casbin.NewSyncedEnforcer(*casbinModelConfPath, adapter)
 	if err != nil {
 		panic(err)
 	}
@@ -149,7 +149,7 @@ func main() {
 	log.Logger = log.With().Caller().Logger()
 
 	// setup task manager and start runner
-	task_manager.InitTaskManager(db, 5)
+	task_manager.InitTaskManager(db, 5, cfg)
 	task_manager.GetTaskManager().StartRunner()
 
 	r := gin.Default()

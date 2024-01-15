@@ -7,7 +7,7 @@ toolchain go1.21.5
 require (
 	github.com/99designs/gqlgen v0.17.41
 	github.com/OneSignal/onesignal-go-api v1.0.4
-	github.com/Taoist-Labs/see-auth-go v0.1.7
+	github.com/Taoist-Labs/see-auth-go v0.1.8
 	github.com/allegro/bigcache/v3 v3.1.0
 	github.com/aptible/supercronic v0.2.29
 	github.com/aws/aws-sdk-go v1.45.25
@@ -120,6 +120,7 @@ require (
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826 // indirect
+	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
 	github.com/pelletier/go-toml/v2 v2.0.8 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/prometheus/client_model v0.4.1-0.20230718164431-9a2bf3000d16 // indirect

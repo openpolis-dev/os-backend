@@ -239,7 +239,6 @@ func CreateAppBundle(ctx *gin.Context) {
 		return
 	}
 
-	// TODO: Need confirm about season number for application bundles
 	seasonRecord, err := model.GetCurrentSeason(db)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
@@ -247,6 +246,7 @@ func CreateAppBundle(ctx *gin.Context) {
 		return
 	}
 
+	// TODO: Duplicated code *NewAppBundleAndApplication*
 	appBundle := model.AppBundle{
 		Comment:      newAppBundleReq.Comment,
 		Applicant:    common.FormatUserWallet(user.Wallet),

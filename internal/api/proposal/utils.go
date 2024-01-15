@@ -4,12 +4,28 @@ import (
 	"errors"
 
 	"github.com/rs/zerolog/log"
-	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk/metaforo"
 	"gorm.io/gorm"
 )
+
+const ListProposalsSQL = `
+SELECT p.id,
+       p.title,
+       lower(p.applicant) as applicant,
+       u.avatar as applicant_avatar,
+       pc.name  as category_name,
+       p.create_ts,
+       p.version,
+       p.state as state_id
+FROM proposals p
+         JOIN (SELECT proposal_record_id, MAX(version) AS max_version
+               FROM proposals
+               GROUP BY proposal_record_id) t2
+              ON p.proposal_record_id = t2.proposal_record_id AND p.version = t2.max_version
+         JOIN proposal_categories pc ON p.proposal_category_id = pc.id
+         JOIN users u ON p.applicant = u.wallet`
 
 const QueryMetaforoUserWithOsUserBaseSQL = `
 SELECT u.wallet            AS wallet,
@@ -48,14 +64,14 @@ from proposal_component_records pcr
          join proposal_component_actions approve_pca on pc.approve_action_id = approve_pca.id
          join proposal_component_actions reject_pca on pc.reject_action_id = reject_pca.id`
 
-func GetMetaforoProposalByInternalId(db *gorm.DB, proposalIdStr string) (*model.Proposal, *metaforo.ProposalResponse, error) {
+func GetMetaforoProposalByInternalId(db *gorm.DB, proposalIdStr string, metaforoGroupName string) (*model.Proposal, *metaforo.ProposalResponse, error) {
 	osProposalRcd, err := GetProposalFromStringId(db, proposalIdStr)
 	if err != nil {
 		log.Error().Msgf("get db proposal id %s error: %+v", proposalIdStr, err)
 		return nil, nil, err
 	}
 
-	metaforoProposalRcd, err := metaforo.GetProposal(osProposalRcd.GetMetaforoThreadId(), internal.MetaforoGroupName, "", 0)
+	metaforoProposalRcd, err := metaforo.GetProposal(osProposalRcd.GetMetaforoThreadId(), metaforoGroupName, "", 0)
 	if err != nil {
 		log.Error().Msgf("get metaforo proposal error: %+v", err)
 		return nil, nil, err
@@ -150,6 +166,7 @@ func GetProposalCommentsWithOsUserData(db *gorm.DB, metaforoComments []metaforo.
 			ProposalTs:          proposalTs,
 			ProposalArweaveHash: proposalArweaveHash,
 			CreatedTs:           metaforoComment.CreatedAt.UTC().Unix(),
+			IsRejected:          dbComment.IsRejectComment,
 		})
 	}
 

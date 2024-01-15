@@ -15,6 +15,7 @@ import (
 type CreateProjectParam struct {
 	ProjectName string `json:"project_name"`
 	Applicant   string `json:"applicant"`
+	ProposalId  string `json:"proposal_id"`
 }
 
 type CloseProjectParam struct {
@@ -46,12 +47,13 @@ func CreateProjectTask(db *gorm.DB, job *model.CronJob, jobParams string) {
 		tx := db.Begin()
 		// create project with sponsor
 		proj := model.Project{
-			Name:     params.ProjectName,
-			Status:   model.ProjectStatusOpen,
-			Sponsors: []string{params.Applicant},
-			Creator:  common.FormatUserWallet(params.Applicant),
-			CreateTs: model.GetCurrentUtcEpochSecond(),
-			UpdateTs: model.GetCurrentUtcEpochSecond(),
+			Name:      params.ProjectName,
+			Status:    model.ProjectStatusOpen,
+			Proposals: []string{params.ProposalId},
+			Sponsors:  []string{params.Applicant},
+			Creator:   common.FormatUserWallet(params.Applicant),
+			CreateTs:  model.GetCurrentUtcEpochSecond(),
+			UpdateTs:  model.GetCurrentUtcEpochSecond(),
 		}
 		err = model.ProjectModel.CreateOrUpdate(tx, &proj)
 		if err != nil {

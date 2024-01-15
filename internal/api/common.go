@@ -61,9 +61,9 @@ func Forbidden() *Reply {
 // ------ ------ ------ ------ ------ ------ ------ ------ ------
 
 // ForContext read `CurUser Enforcer DB Config` from `Context`
-func ForContext(ctx *gin.Context) (user *middleware.CurUser, enforcer *casbin.Enforcer, db *gorm.DB, cfg *config.Config) {
+func ForContext(ctx *gin.Context) (user *middleware.CurUser, enforcer *casbin.SyncedEnforcer, db *gorm.DB, cfg *config.Config) {
 	user, _ = ctx.Value(middleware.CurUserKey).(*middleware.CurUser)
-	enforcer, _ = ctx.Value(middleware.EnforcerKey).(*casbin.Enforcer)
+	enforcer, _ = ctx.Value(middleware.EnforcerKey).(*casbin.SyncedEnforcer)
 	db, _ = ctx.Value(middleware.DBKey).(*gorm.DB)
 	cfg, _ = ctx.Value(middleware.CfgKey).(*config.Config)
 
@@ -78,8 +78,8 @@ func ForContextOnlyUser(ctx *gin.Context) (user *middleware.CurUser) {
 }
 
 // ForContextOnlyEnforcer read `Enforcer` from `Context`
-func ForContextOnlyEnforcer(ctx *gin.Context) (enforcer *casbin.Enforcer) {
-	enforcer, _ = ctx.Value(middleware.EnforcerKey).(*casbin.Enforcer)
+func ForContextOnlyEnforcer(ctx *gin.Context) (enforcer *casbin.SyncedEnforcer) {
+	enforcer, _ = ctx.Value(middleware.EnforcerKey).(*casbin.SyncedEnforcer)
 
 	return
 }

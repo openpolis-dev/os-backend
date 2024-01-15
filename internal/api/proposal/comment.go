@@ -8,7 +8,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
-	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
@@ -42,9 +41,9 @@ func AddComment(ctx *gin.Context) {
 		return
 	}
 
-	user, _, db, _ := api.ForContext(ctx)
+	user, _, db, cfg := api.ForContext(ctx)
 	proposalIdStr := ctx.Param("id")
-	proposalRcd, proposalMetaforoData, err := GetMetaforoProposalByInternalId(db, proposalIdStr)
+	proposalRcd, proposalMetaforoData, err := GetMetaforoProposalByInternalId(db, proposalIdStr, cfg.MetaforoData.GroupName)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			log.Warn().Msgf("proposal %s not found", proposalIdStr)
@@ -65,7 +64,7 @@ func AddComment(ctx *gin.Context) {
 
 	metaforoCommentData, err := metaforo.AddComment(
 		addComment.MetaforoAccessToken,
-		internal.MetaforoGroupName,
+		cfg.MetaforoData.GroupName,
 		proposalRcd.GetMetaforoThreadId(),
 		addComment.Content,
 		fmt.Sprintf("%d", replyId),
@@ -145,7 +144,7 @@ func EditComment(ctx *gin.Context) {
 	}
 
 	// Check whether the comment modified is reject comment, if yes update the db content
-	db := api.ForContextOnlyDB(ctx)
+	db, cfg := api.ForContextDBAndConfig(ctx)
 	var rejectComment model.ProposalComment
 	err = db.Model(&model.ProposalComment{}).
 		Where("metaforo_comment_id = ? AND is_reject_comment = ?", fmt.Sprintf("%d", editComment.MetaforoCommentId), true).
@@ -159,7 +158,7 @@ func EditComment(ctx *gin.Context) {
 
 	err = metaforo.EditComment(
 		editComment.MetaforoAccessToken,
-		internal.MetaforoGroupName,
+		cfg.MetaforoData.GroupName,
 		fmt.Sprintf("%d", editComment.MetaforoCommentId),
 		editComment.Content,
 		editComment.EditorType,
@@ -212,7 +211,7 @@ func DeleteComment(ctx *gin.Context) {
 		return
 	}
 
-	user, _, db, _ := api.ForContext(ctx)
+	user, _, db, cfg := api.ForContext(ctx)
 	var rejectComment model.ProposalComment
 	err = db.Model(&model.ProposalComment{}).
 		Where("metaforo_comment_id = ? AND is_reject_comment = ?", fmt.Sprintf("%d", deleteComment.MetaforoCommentId), true).
@@ -222,7 +221,7 @@ func DeleteComment(ctx *gin.Context) {
 			// Reject comment not found, the comment can be deleted
 			err = metaforo.DeleteComment(
 				deleteComment.MetaforoAccessToken,
-				internal.MetaforoGroupName,
+				cfg.MetaforoData.GroupName,
 				fmt.Sprintf("%d", deleteComment.MetaforoCommentId),
 			)
 			if err != nil {
