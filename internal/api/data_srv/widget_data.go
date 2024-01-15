@@ -27,6 +27,9 @@ type WidgetDataResponse struct {
 	// Those two fields are used for associating proposal widget
 	CreateTs             int64  `json:"create_ts,omitempty"`
 	ProposalCategoryName string `json:"proposal_category_name,omitempty"`
+	ProposalState        string `json:"proposal_state,omitempty"`
+	Applicant            string `json:"applicant,omitempty"`
+	ApplicantAvatar      string `json:"applicant_avatar,omitempty"`
 }
 
 type WidgetDataType string
@@ -206,6 +209,9 @@ func getPassedProposals(db *gorm.DB, userWallet string, allRecords bool) ([]*Wid
 			ID:                   r.ID,
 			Name:                 r.Title,
 			ProposalCategoryName: r.CategoryName,
+			ProposalState:        model.ProposalStateName[r.StateId],
+			Applicant:            r.Applicant,
+			ApplicantAvatar:      r.ApplicantAvatar,
 			CreateTs:             r.CreateTs,
 		}
 	}), nil
