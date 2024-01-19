@@ -248,7 +248,7 @@ func SaveProposalComponentRecords(db *gorm.DB, proposalId uint, applicantWallet 
 //
 // Otherwise, copy the proposal to new record with ver+1, update the metaforo data, and save back as a new record,
 // and the metaforo API invoked here is updateProposal.
-func SaveProposalToMetaforo(db *gorm.DB, origProposalRecord *model.Proposal, metaforoAccessToken string, EditorType int, metaforoGroupName string) error {
+func SaveProposalToMetaforo(db *gorm.DB, origProposalRecord *model.Proposal, voteType int, metaforoAccessToken string, EditorType int, metaforoGroupName string) error {
 	var err error
 
 	// Load current proposal data
@@ -342,7 +342,7 @@ func SaveProposalToMetaforo(db *gorm.DB, origProposalRecord *model.Proposal, met
 				EndTs:   voteEndTime.Unix(),
 			},
 		}
-		voteFormBytes, err := BuildMetaforoVoteFormDataBytes(voteRecords)
+		voteFormBytes, err := BuildMetaforoVoteFormDataBytes(voteRecords, voteType)
 		if err != nil {
 			log.Error().Msgf("build metaforoProposal vote data error: %+v", err)
 			return err
@@ -418,10 +418,29 @@ func SaveProposalToMetaforo(db *gorm.DB, origProposalRecord *model.Proposal, met
 // Returns:
 // - []byte: The byte representation of the vote form data.
 // - error: An error if there was a problem generating the byte representation.
-func BuildMetaforoVoteFormDataBytes(voteRecords []*model.ProposalVoteRecord) ([]byte, error) {
+func BuildMetaforoVoteFormDataBytes(voteRecords []*model.ProposalVoteRecord, voteType int) ([]byte, error) {
+	var voteOptions []*metaforo.VoteOption
+	if voteType == model.ProposalVoteTypeNumeric {
+		voteOptions = lo.Map(internal.ProposalNumericVoteOptions, func(r []string, _ int) *metaforo.VoteOption {
+			return &metaforo.VoteOption{
+				Text: r[0],
+				Type: 0,
+			}
+		})
+	} else {
+		// The default option is decision vote
+		voteOptions = lo.Map(internal.ProposalDecisionVoteOptions, func(r string, _ int) *metaforo.VoteOption {
+			return &metaforo.VoteOption{
+				Text: r,
+				Type: 0,
+			}
+		})
+
+	}
+
 	voteData := lo.Map(voteRecords, func(r *model.ProposalVoteRecord, _ int) *metaforo.NewVoteFormRequest {
 		return &metaforo.NewVoteFormRequest{
-			Options:            internal.ProposalVoteOptions,
+			Options:            voteOptions,
 			Type:               "1",
 			Title:              r.Title,
 			ShowType:           "1",

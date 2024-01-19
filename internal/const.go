@@ -2,8 +2,6 @@ package internal
 
 import (
 	"time"
-
-	"github.com/theseed-labs/os-backend/internal/sdk/metaforo"
 )
 
 const DefaultPageSize = 10
@@ -29,10 +27,20 @@ var CityhallGroupNames = map[string]bool{"G_GOVERNANCE": true, "G_BRANDING": tru
 
 // Proposal related const data
 
-var ProposalVoteOptions = []*metaforo.VoteOption{
-	{"同意", 0},
-	{"反对", 1},
-	{"弃权", 2},
+// ProposalDecisionVoteOptions is used for proposal that requires a decision.
+// This type of options only defines label of the vote, and the result can be passed or failed
+var ProposalDecisionVoteOptions = []string{"同意", "反对", "弃权"}
+
+// ProposalNumericVoteOptions is used to get user's options about a proposal, and the default version is used to get complete ratio of proposal.
+// This type of options defines label and value of the vote, the value is used for automatically tasks after vote completed.
+// The vote should always pass
+var ProposalNumericVoteOptions = [][]string{
+	{"20%", "0.2"},
+	{"40%", "0.2"},
+	{"60%", "0.6"},
+	{"80%", "0.8"},
+	{"100%", "1"},
+	{"120%", "1.2"},
 }
 
 const DefaultVoteStartDelay = 14 * 24 * time.Hour

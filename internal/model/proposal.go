@@ -279,7 +279,14 @@ type ProposalAuditLog struct {
 	UpdateTs int64 `gorm:"index"`
 }
 
-// ProposalVoteRecord saves vote object and associated to specified Proposal
+var (
+	ProposalVoteTypeDecision int = 0
+	ProposalVoteTypeNumeric      = 1
+)
+
+// ProposalVoteRecord saves vote record and associated to specified Proposal
+// In metaforo, this record is mapped from its `poll` field
+// Regards the detailed vote option, only voter count data will be saved into the *Count fields
 type ProposalVoteRecord struct {
 	ID         uint `gorm:"primaryKey"`
 	GateID     uint // Not using now, find way to get it from proposal category
@@ -288,13 +295,33 @@ type ProposalVoteRecord struct {
 	EndTs      int64 `gorm:"index"`
 	MetaforoID int   `gorm:"index"` // Poll id from metaforo
 
+	// TODO: Change the calculation for vote result from vote option record data
 	ApproveCount int
 	AbstainCount int
 	RejectCount  int
 
+	OptionType int
+	Options    []*ProposalVoteOptionRecord
+
 	ArweaveHash string
 
 	ProposalID uint
+}
+
+// ProposalVoteOptionRecord saves option used in proposal vote record, it contains a
+type ProposalVoteOptionRecord struct {
+	ID uint `gorm:"primaryKey"`
+
+	// Foreign key
+	ProposalVoteRecordId uint
+
+	// Metaforo related data
+	// Text field is used to
+	Text       string
+	MetaforoID int
+
+	// Value is used in for automation tasks related to this
+	Value string
 }
 
 // ProposalUserVoteRecord saves user vote record
