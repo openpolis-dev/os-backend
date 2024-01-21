@@ -327,6 +327,8 @@ type ProposalVoteOptionRecord struct {
 
 	// Value is used in for automation tasks related to this
 	Value string
+
+	VoterCount int
 }
 
 // GetPredefinedVoteOptionValue returns the predefined value for vote option.

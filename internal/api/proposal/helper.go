@@ -565,6 +565,12 @@ func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcd *mod
 					log.Warn().Msgf("save DB proposal vote option error: %+v", err)
 					return err
 				}
+
+				err = tx.Model(&proposalVoteOptionRecord).Updates(&model.ProposalVoteOptionRecord{VoterCount: voteOpt.Voters}).Error
+				if err != nil {
+					log.Warn().Msgf("save DB proposal vote option error: %+v", err)
+					return err
+				}
 			}
 			return nil
 		})
