@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog/log"
+	"github.com/theseed-labs/os-backend/internal"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
@@ -303,6 +304,9 @@ type ProposalVoteRecord struct {
 	OptionType int
 	Options    []*ProposalVoteOptionRecord
 
+	// Indicates whether the vote has passed
+	IsVotePassed bool
+
 	ArweaveHash string
 
 	ProposalID uint
@@ -317,11 +321,22 @@ type ProposalVoteOptionRecord struct {
 
 	// Metaforo related data
 	// Text field is used to
-	Text       string
-	MetaforoID int
+	Text           string
+	MetaforoID     int
+	MetaforoVoteID int
 
 	// Value is used in for automation tasks related to this
 	Value string
+}
+
+// GetPredefinedVoteOptionValue returns the predefined value for vote option.
+// The logic for this function is check Text field from record and try to find it in predefined internal variables
+func GetPredefinedVoteOptionValue(optLabel string) string {
+	if value, found := internal.ProposalNumericVoteOptions[optLabel]; found {
+		return value
+	} else {
+		return "0"
+	}
 }
 
 // ProposalUserVoteRecord saves user vote record
