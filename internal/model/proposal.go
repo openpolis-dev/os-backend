@@ -94,6 +94,8 @@ type Proposal struct {
 
 	Applicant string `gorm:"index"`
 
+	// VoteType indicates the type of attached vote for this proposal, the available values are ProposalVoteTypeNumeric and ProposalVoteTypeDecision
+	VoteType    int
 	VoteRecords []*ProposalVoteRecord
 
 	IsHidden bool
@@ -310,6 +312,10 @@ type ProposalVoteRecord struct {
 	ArweaveHash string
 
 	ProposalID uint
+
+	// indicate type of this vote. For now there are decision and numeric vote.
+	// The value for this field is defined as const ProposalVoteTypeDecision and ProposalVoteTypeNumeric
+	VoteType int
 }
 
 // ProposalVoteOptionRecord saves option used in proposal vote record, it contains a

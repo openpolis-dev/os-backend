@@ -90,6 +90,7 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 		proposalRcd.ProposalCategoryID = reqData.ProposalCategoryId
 		proposalRcd.SecondDelayBeforeTaskExecution = pCategory.SecondDelayBeforeTaskExecution
 		proposalRcd.VoteDurationSecond = pCategory.VoteDurationSecond
+		proposalRcd.VoteType = dbProposalRcd.VoteType
 		err = db.Save(&proposalRcd).Error
 		if err != nil {
 			log.Error().Msgf("duplicate proposal error: %+v", err)
@@ -119,6 +120,7 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 			VoteDurationSecond:             pCategory.VoteDurationSecond,
 			Version:                        1,
 			TemplateId:                     reqData.TemplateId,
+			VoteType:                       reqData.VoteType,
 		}
 
 		if err := db.Create(&proposalRecord).Error; err != nil {
