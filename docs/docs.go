@@ -4462,6 +4462,9 @@ const docTemplate = `{
                 },
                 "vote_gate_id": {
                     "type": "integer"
+                },
+                "vote_type": {
+                    "type": "integer"
                 }
             }
         },
