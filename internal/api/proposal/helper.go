@@ -10,6 +10,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	"github.com/theseed-labs/os-backend/internal"
+	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/config"
 	"github.com/theseed-labs/os-backend/internal/model"
@@ -340,11 +341,13 @@ func SaveProposalToMetaforo(db *gorm.DB, origProposalRecord *model.Proposal, vot
 		// And the db records will be updated by data returned from Metaforo
 		voteRecords := []*model.ProposalVoteRecord{
 			{
-				GateID:  0,
-				StartTs: voteStartTime.Unix(),
-				EndTs:   voteEndTime.Unix(),
+				GateID:   0,
+				StartTs:  voteStartTime.Unix(),
+				EndTs:    voteEndTime.Unix(),
+				VoteType: updatedProposalRecord.VoteType,
 			},
 		}
+		api.PrintStructAsJson(voteRecords, "TTT: Test vote record")
 		voteFormBytes, err := BuildMetaforoVoteFormDataBytes(voteRecords, voteType)
 		if err != nil {
 			log.Error().Msgf("build metaforoProposal vote data error: %+v", err)
@@ -533,6 +536,7 @@ func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcd *mod
 			StartTs:    poll.PollStartAt.UTC().Unix(),
 			EndTs:      poll.CloseAt.UTC().Unix(),
 			ProposalID: dbProposalRcd.ID,
+			VoteType:   dbProposalRcd.VoteType,
 		}).FirstOrCreate(&proposalVoteRecord).Error
 		if err != nil {
 			log.Warn().Msgf("save DB proposal vote record error: %+v", err)
