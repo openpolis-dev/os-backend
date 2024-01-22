@@ -27,19 +27,36 @@ var CityhallGroupNames = map[string]bool{"G_GOVERNANCE": true, "G_BRANDING": tru
 
 // Proposal related const data
 
+const (
+	ProposalDecisionApprove string = "同意"
+	ProposalDecisionReject         = "反对"
+	ProposalDecisionAbstain        = "弃权"
+
+	ProposalNumeric0   = "0%"
+	ProposalNumeric30  = "30%"
+	ProposalNumeric80  = "80%"
+	ProposalNumeric100 = "100%"
+	ProposalNumeric120 = "120%"
+)
+
 // ProposalDecisionVoteOptions is used for proposal that requires a decision.
 // This type of options only defines label of the vote, and the result can be passed or failed
-var ProposalDecisionVoteOptions = []string{"同意", "反对", "弃权"}
+
+var ProposalDecisionVoteOptions = map[string]string{
+	ProposalDecisionApprove: "1",
+	ProposalDecisionReject:  "-1",
+	ProposalDecisionAbstain: "0",
+}
 
 // ProposalNumericVoteOptions is used to get user's options about a proposal, and the default version is used to calc ratio of rewards.
 // This type of options defines label and value of the vote, the value is used for automatically tasks after vote completed.
 // The vote should always pass
 var ProposalNumericVoteOptions = map[string]string{
-	"0%":   "0",
-	"30%":  "0.3",
-	"80%":  "0.8",
-	"100%": "1",
-	"120%": "1.2",
+	ProposalNumeric0:   "0",
+	ProposalNumeric30:  "0.3",
+	ProposalNumeric80:  "0.8",
+	ProposalNumeric100: "1",
+	ProposalNumeric120: "1.2",
 }
 
 const DefaultVoteStartDelay = 14 * 24 * time.Hour
