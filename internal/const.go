@@ -55,7 +55,7 @@ var ProposalDecisionVoteOptions = map[string]string{
 var ProposalNumericVoteOptions = map[string]string{
 	ProposalNumeric0:   "0",
 	ProposalNumeric30:  "0.3",
-	ProposalNumeric50:  "0.8",
+	ProposalNumeric50:  "0.5",
 	ProposalNumeric80:  "0.8",
 	ProposalNumeric100: "1",
 	ProposalNumeric120: "1.2",
