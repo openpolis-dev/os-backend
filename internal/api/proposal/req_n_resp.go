@@ -179,6 +179,8 @@ type FrontendProposalDetailRecord struct {
 	Votes    any                       `json:"votes"`
 	VoteGate *FrontendVoteGateResponse `json:"vote_gate"`
 
+	VoteType int
+
 	// Is current user voted for this proposal
 	IsVoted bool `json:"is_voted"`
 
@@ -404,6 +406,7 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 		Comments:          frontendCommentsRecords,
 		VoteGate:          voteGate,
 		Votes:             votes,
+		VoteType:          proposal.VoteType,
 		CreateTs:          proposal.CreateTs,
 		IsBasedOnTemplate: proposal.TemplateId != 0,
 		TemplateName:      templateName,
