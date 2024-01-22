@@ -34,6 +34,7 @@ const (
 
 	ProposalNumeric0   = "0%"
 	ProposalNumeric30  = "30%"
+	ProposalNumeric50  = "50%"
 	ProposalNumeric80  = "80%"
 	ProposalNumeric100 = "100%"
 	ProposalNumeric120 = "120%"
@@ -54,6 +55,7 @@ var ProposalDecisionVoteOptions = map[string]string{
 var ProposalNumericVoteOptions = map[string]string{
 	ProposalNumeric0:   "0",
 	ProposalNumeric30:  "0.3",
+	ProposalNumeric50:  "0.8",
 	ProposalNumeric80:  "0.8",
 	ProposalNumeric100: "1",
 	ProposalNumeric120: "1.2",
