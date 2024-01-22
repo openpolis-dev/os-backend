@@ -574,7 +574,7 @@ func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcd *mod
 			switch proposalVoteRecord.VoteType {
 			case model.ProposalVoteTypeDecision:
 				var voteOptRcds []*model.ProposalVoteOptionRecord
-				err = db.Where(&model.ProposalVoteOptionRecord{ProposalVoteRecordId: proposalVoteRecord.ID}).Find(&voteOptRcds).Error
+				err = db.Where(&model.ProposalVoteOptionRecord{ProposalVoteRecordId: proposalVoteRecord.ID}).Select("voter_count").Find(&voteOptRcds).Error
 				if err != nil {
 					log.Warn().Msgf("fetch vote options for proposal vote record: %+v error: %+v", proposalVoteRecord, err)
 					continue
@@ -601,6 +601,17 @@ func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcd *mod
 
 			case model.ProposalVoteTypeNumeric:
 				proposalFinalState = model.ProposalStateVotePassed
+
+				var voteOptRcds []*model.ProposalVoteOptionRecord
+				err = db.Where(&model.ProposalVoteOptionRecord{ProposalVoteRecordId: proposalVoteRecord.ID}).Select("voter_count").Find(&voteOptRcds).Error
+				if err != nil {
+					log.Warn().Msgf("fetch vote options for proposal vote record: %+v error: %+v", proposalVoteRecord, err)
+					continue
+				}
+				voteResultRecord := lo.MaxBy(voteOptRcds, func(a *model.ProposalVoteOptionRecord, b *model.ProposalVoteOptionRecord) bool {
+					return a.VoterCount > b.VoterCount
+				})
+				voteResult = voteResultRecord.Value
 			default:
 				log.Warn().Msgf("unknown proposal type, no logic to set the proposal state")
 				continue
