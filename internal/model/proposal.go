@@ -339,8 +339,19 @@ type ProposalVoteOptionRecord struct {
 
 // GetPredefinedVoteOptionValue returns the predefined value for vote option.
 // The logic for this function is check Text field from record and try to find it in predefined internal variables
-func GetPredefinedVoteOptionValue(optLabel string) string {
-	if value, found := internal.ProposalNumericVoteOptions[optLabel]; found {
+func GetPredefinedVoteOptionValue(optLabel string, voteType int) string {
+	var optBucket map[string]string
+	switch voteType {
+	case ProposalVoteTypeNumeric:
+		optBucket = internal.ProposalNumericVoteOptions
+	case ProposalVoteTypeDecision:
+		optBucket = internal.ProposalDecisionVoteOptions
+	default:
+		log.Warn().Msgf("unknown vote type: %d, request label is: %s", voteType, optLabel)
+		return "0"
+	}
+
+	if value, found := optBucket[optLabel]; found {
 		return value
 	} else {
 		return "0"
