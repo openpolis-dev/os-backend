@@ -145,11 +145,15 @@ func (t *TaskManager) TaskDispatcher() {
 		case internal.TaskRefreshVotingProposalVoteInfo:
 			go RefreshVotingProposalInfoJob(t.DatabaseClient, task, task.JobParams)
 		case internal.TaskCreateProject:
+			// Project related task is disabled for now
 			log.Debug().Msgf("create project")
-			go CreateProjectTask(t.DatabaseClient, task, task.JobParams)
+			//go CreateProjectTask(t.DatabaseClient, task, task.JobParams)
+			t.MarkTaskAsTerminated(task)
 		case internal.TaskCloseProject:
+			// Project related task is disabled for now
 			log.Debug().Msgf("close project")
-			go CloseProjectTask(t.DatabaseClient, task, task.JobParams)
+			//go CloseProjectTask(t.DatabaseClient, task, task.JobParams)
+			t.MarkTaskAsTerminated(task)
 		case internal.TaskCreateGuild:
 			//go CreateGuildTask(t.DatabaseClient, task, task.JobParams)
 			task.State = model.CronJobStateDone
@@ -160,12 +164,18 @@ func (t *TaskManager) TaskDispatcher() {
 			go CloseGuildTask(t.DatabaseClient, task, task.JobParams)
 		case internal.TaskRewardNewApplication:
 			log.Debug().Msgf("new application reward")
-			go CreateAppBundleTask(t.DatabaseClient, task, task.JobParams)
+			go CreateAppBundleTask(t.DatabaseClient, task, task.JobParams, task.VoteType, task.VoteResult)
 		default:
-			task.State = model.CronJobStateTerminated
-			t.DatabaseClient.Updates(task)
-			log.Warn().Msgf("unknown task name: %s task detail: %+v", task.HandlerName, task)
 			// Handle unknown task
+			log.Warn().Msgf("unknown task name: %s task detail: %+v", task.HandlerName, task)
+			t.MarkTaskAsTerminated(task)
 		}
 	}
+}
+
+func (t *TaskManager) MarkTaskAsTerminated(task *model.CronJob) {
+	task.State = model.CronJobStateTerminated
+	task.LastExecTs = model.GetCurrentUtcEpochSecond()
+	task.UpdateTs = model.GetCurrentUtcEpochSecond()
+	t.DatabaseClient.Updates(task)
 }

@@ -30,6 +30,9 @@ type CronJob struct {
 	JobParams string       // Job parameters saves params used for job in json string format
 	State     CronJobState // Active, Paused, Terminated
 
+	VoteType   int    // Vote type associated to this cronjob, primary used for numeric record for now
+	VoteResult string // Saves vote result, used to record numeric result and do calculation
+
 	ProposalComponentRecordId int `gorm:"index:component_job"` // Indicates which component record launches this job, to avoid duplicated jobs
 
 	LastExecResult string // Saves last execution result, used for debug

@@ -145,7 +145,7 @@ func Detail(ctx *gin.Context) {
 //	@Param		JsonBody	body		CreateOrUpdateProposalData	true	"request json body"
 //	@success	200			{object}	api.Reply{}
 func Update(ctx *gin.Context) {
-	user, _, db, cfg := api.ForContext(ctx)
+	user, enforcer, db, cfg := api.ForContext(ctx)
 	proposalIdStr := ctx.Param("id")
 	proposalRcd, err := GetProposalFromStringId(db, proposalIdStr)
 	if err != nil {
@@ -179,6 +179,22 @@ func Update(ctx *gin.Context) {
 		return
 	}
 
+	// Verify permission that only hall member can update proposal without template ID
+	if reqData.TemplateId == 0 {
+		ok, err := enforcer.HasRoleForUser(common.FormatUserWallet(user.Wallet), internal.RoleHall)
+		if err != nil {
+			sdk.LogServerErrorToSentry(ctx, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get permission error")))
+			return
+		}
+
+		if !ok {
+			sdk.LogForbiddenError(ctx, user.Wallet, internal.RoleHall, "access")
+			ctx.JSON(http.StatusForbidden, api.Forbidden())
+			return
+		}
+	}
+
 	proposalRecord, err := SaveProposalRecordToDB(db, &reqData, user.Wallet, ctx.Param("id"), cfg)
 	if err != nil {
 		log.Error().Msgf("create proposal error: %+v", err)
@@ -190,7 +206,7 @@ func Update(ctx *gin.Context) {
 	// FIXME: refactor here: If not submitting to metaforo, a new version will be created in DB but no metaforo record.
 	// FIXME: Do we need to force passing the metaforo access token if not in pending submit state?
 	if reqData.SubmitToMetaforo {
-		if err := SaveProposalToMetaforo(db, proposalRecord, reqData.MetaforoAccessToken, reqData.EditorType, cfg.MetaforoData.GroupName); err != nil {
+		if err := SaveProposalToMetaforo(db, proposalRecord, reqData.VoteType, reqData.MetaforoAccessToken, reqData.EditorType, cfg.MetaforoData.GroupName); err != nil {
 			log.Error().Msgf("create metaforo proposal error: %+v", err)
 			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
@@ -227,8 +243,21 @@ func Create(ctx *gin.Context) {
 		return
 	}
 
-	user, _, db, cfg := api.ForContext(ctx)
-	// TODO: Confirm whether permission is required here and add permission check if required
+	user, enforcer, db, cfg := api.ForContext(ctx)
+	if reqData.TemplateId == 0 {
+		ok, err := enforcer.HasRoleForUser(common.FormatUserWallet(user.Wallet), internal.RoleHall)
+		if err != nil {
+			sdk.LogServerErrorToSentry(ctx, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get permission error")))
+			return
+		}
+
+		if !ok {
+			sdk.LogForbiddenError(ctx, user.Wallet, internal.RoleHall, "access")
+			ctx.JSON(http.StatusForbidden, api.Forbidden())
+			return
+		}
+	}
 
 	proposalRecord, err := SaveProposalRecordToDB(db, &reqData, user.Wallet, "", cfg)
 	if err != nil {
@@ -239,7 +268,7 @@ func Create(ctx *gin.Context) {
 	}
 
 	if reqData.SubmitToMetaforo {
-		if err := SaveProposalToMetaforo(db, proposalRecord, reqData.MetaforoAccessToken, reqData.EditorType, cfg.MetaforoData.GroupName); err != nil {
+		if err := SaveProposalToMetaforo(db, proposalRecord, reqData.VoteType, reqData.MetaforoAccessToken, reqData.EditorType, cfg.MetaforoData.GroupName); err != nil {
 			log.Error().Msgf("create metaforo proposal error: %+v", err)
 			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))

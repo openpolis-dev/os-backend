@@ -74,6 +74,7 @@ func MigrateTables(db *gorm.DB) error {
 		&model.ProposalUserVoteRecord{},
 		&model.ProposalVoteGate{},
 		&model.ProposalVoteRecord{},
+		&model.ProposalVoteOptionRecord{},
 		&model.ProposalComponent{},
 		&model.ProposalComponentAction{},
 		&model.ProposalTemplate{},

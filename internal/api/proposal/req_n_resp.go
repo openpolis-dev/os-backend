@@ -1,6 +1,7 @@
 package proposal
 
 import (
+	"encoding/json"
 	"errors"
 
 	"github.com/rs/zerolog/log"
@@ -49,6 +50,7 @@ type CreateOrUpdateProposalData struct {
 	MetaforoAccessToken string                           `json:"metaforo_access_token"`
 	SubmitToMetaforo    bool                             `json:"submit_to_metaforo"`
 	EditorType          int                              `json:"editor_type"`
+	VoteType            int                              `json:"vote_type"`
 }
 
 type RejectProposalData struct {
@@ -177,6 +179,8 @@ type FrontendProposalDetailRecord struct {
 	Votes    any                       `json:"votes"`
 	VoteGate *FrontendVoteGateResponse `json:"vote_gate"`
 
+	VoteType int `json:"vote_type"`
+
 	// Is current user voted for this proposal
 	IsVoted bool `json:"is_voted"`
 
@@ -211,6 +215,24 @@ type UpdateProposalCategoryReq struct {
 	MetaforoId string `json:"metaforo_id"`
 }
 
+type associatedProposalData struct {
+	Applicant       string `json:"applicant"`
+	ApplicantAvatar string `json:"applicant_avatar"`
+	ProjectGuild    struct {
+		Id   int    `json:"id"`
+		Name string `json:"name"`
+		Type string `json:"type"`
+	} `json:"project_guild"`
+	Proposal struct {
+		CreateTs             int    `json:"create_ts"`
+		Id                   int    `json:"id"`
+		Name                 string `json:"name"`
+		ProposalCategoryName string `json:"proposal_category_name"`
+		State                string `json:"state,omitempty"`
+	} `json:"proposal"`
+	ProposalId string `json:"proposal_id"`
+}
+
 ///////////////////////
 // Some converter functions
 ///////////////////////
@@ -240,6 +262,39 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 		if err != nil {
 			log.Error().Msgf("fetch component %d from DB error: %+v", item.ComponentID, err)
 			return nil
+		}
+
+		// Special processing for `associate_proposal`
+		if componentRecord.Name == "associate_proposal" {
+			var parsedData associatedProposalData
+			err := json.Unmarshal([]byte(item.Data), &parsedData)
+
+			if err != nil {
+				log.Error().Msgf("unmarshal associate proposal data error: %+v", err)
+			} else {
+				var associatedProposalRecord model.Proposal
+				err = db.Find(&associatedProposalRecord, parsedData.Proposal.Id).Select("state").Error
+				if err != nil {
+					log.Error().Msgf("query associated proposal %d from DB error: %+v", parsedData.Proposal.Id, err)
+				} else {
+					parsedData.Proposal.State = model.ProposalStateName[associatedProposalRecord.State]
+				}
+
+				var associatedApplicantRecord model.User
+				err = db.Model(&model.User{}).Where("wallet = ?", common.FormatUserWallet(parsedData.Applicant)).Select("avatar").First(&associatedApplicantRecord).Error
+				if err != nil {
+					log.Error().Msgf("query associated applicant %s from DB error: %+v", parsedData.Applicant, err)
+				} else {
+					parsedData.ApplicantAvatar = associatedApplicantRecord.Avatar
+				}
+
+				dataBytes, err := json.Marshal(parsedData)
+				if err != nil {
+					log.Error().Msgf("marshal associate proposal data error: %+v", err)
+				}
+
+				item.Data = string(dataBytes)
+			}
 		}
 
 		return &component.ComponentInstance{
@@ -351,6 +406,7 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 		Comments:          frontendCommentsRecords,
 		VoteGate:          voteGate,
 		Votes:             votes,
+		VoteType:          proposal.VoteType,
 		CreateTs:          proposal.CreateTs,
 		IsBasedOnTemplate: proposal.TemplateId != 0,
 		TemplateName:      templateName,
