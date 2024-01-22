@@ -625,7 +625,7 @@ func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcd *mod
 			if err != nil {
 				log.Error().Msgf("update proposal state to %d error: %+v. DB proposal: %+v, metaforo proposa: %+v", proposalFinalState, err, dbProposalRcd, metaforoProposal)
 			}
-			go createProposalFinTasks(db, dbProposalRcd, model.ProposalStateVoteFailed, voteResult, dbProposalRcd.VoteType)
+			go createProposalFinTasks(db, dbProposalRcd, proposalFinalState, voteResult, dbProposalRcd.VoteType)
 		}
 	}
 
