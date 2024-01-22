@@ -179,7 +179,7 @@ type FrontendProposalDetailRecord struct {
 	Votes    any                       `json:"votes"`
 	VoteGate *FrontendVoteGateResponse `json:"vote_gate"`
 
-	VoteType int
+	VoteType int `json:"vote_type"`
 
 	// Is current user voted for this proposal
 	IsVoted bool `json:"is_voted"`
