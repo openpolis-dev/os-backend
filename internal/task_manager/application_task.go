@@ -36,7 +36,7 @@ type NewRewardTaskParam struct {
 	Records     []*NewRewardDetail `json:"receiverList"`
 }
 
-func CreateAppBundleTask(db *gorm.DB, job *model.CronJob, jobParams string) {
+func CreateAppBundleTask(db *gorm.DB, job *model.CronJob, jobParams string, voteType int, voteResult string) {
 	// Update the job state to done so it will not be launched again
 	log.Debug().Msgf("start create app bundle task: %+v", job)
 	err := db.Model(&job).Updates(model.CronJob{State: model.CronJobStateRunning}).Error
@@ -54,7 +54,6 @@ func CreateAppBundleTask(db *gorm.DB, job *model.CronJob, jobParams string) {
 		execResult = err.Error()
 		jobFailed = true
 	} else {
-
 		var params NewRewardTaskParam
 		err = json.Unmarshal([]byte(jobParams), &params)
 		if err != nil {
@@ -85,6 +84,13 @@ func CreateAppBundleTask(db *gorm.DB, job *model.CronJob, jobParams string) {
 				// Create Applications inside the bundle
 				err = db.Transaction(func(tx *gorm.DB) error {
 					appBundle.AppRecords = lo.Map(params.Records, func(appDetail *NewRewardDetail, index int) *model.Application {
+						ratio, _ := decimal.NewFromString("1")
+						if voteType == model.ProposalVoteTypeNumeric {
+							ratio, err = decimal.NewFromString(voteResult)
+							if err != nil {
+								log.Error().Msgf("parse value %s to decimal error: %+v", voteResult, err)
+							}
+						}
 						assetAmount, err := decimal.NewFromString(appDetail.Amount)
 						if err != nil {
 							log.Warn().Msgf("parse asset amount error: %+v", err)
@@ -104,7 +110,7 @@ func CreateAppBundleTask(db *gorm.DB, job *model.CronJob, jobParams string) {
 								Comment:          appDetail.Comment,
 								TargetUserWallet: appDetail.TargetUserWallet,
 								AssetName:        appDetail.AssetInfo.Name,
-								AssetAmount:      assetAmount,
+								AssetAmount:      assetAmount.Mul(ratio),
 								EntityType:       appBundle.EntityType,
 								EntityId:         appBundle.EntityId,
 								SeasonId:         currentSeason.ID,

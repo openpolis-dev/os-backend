@@ -974,6 +974,8 @@ definitions:
         type: string
       vote_gate_id:
         type: integer
+      vote_type:
+        type: integer
     type: object
   proposal.DeleteCommentData:
     properties:

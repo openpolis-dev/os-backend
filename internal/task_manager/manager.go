@@ -164,7 +164,7 @@ func (t *TaskManager) TaskDispatcher() {
 			go CloseGuildTask(t.DatabaseClient, task, task.JobParams)
 		case internal.TaskRewardNewApplication:
 			log.Debug().Msgf("new application reward")
-			go CreateAppBundleTask(t.DatabaseClient, task, task.JobParams)
+			go CreateAppBundleTask(t.DatabaseClient, task, task.JobParams, task.VoteType, task.VoteResult)
 		default:
 			// Handle unknown task
 			log.Warn().Msgf("unknown task name: %s task detail: %+v", task.HandlerName, task)

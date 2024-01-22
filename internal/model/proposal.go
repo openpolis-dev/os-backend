@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog/log"
+	"github.com/theseed-labs/os-backend/internal"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
@@ -93,6 +94,8 @@ type Proposal struct {
 
 	Applicant string `gorm:"index"`
 
+	// VoteType indicates the type of attached vote for this proposal, the available values are ProposalVoteTypeNumeric and ProposalVoteTypeDecision
+	VoteType    int
 	VoteRecords []*ProposalVoteRecord
 
 	IsHidden bool
@@ -279,7 +282,14 @@ type ProposalAuditLog struct {
 	UpdateTs int64 `gorm:"index"`
 }
 
-// ProposalVoteRecord saves vote object and associated to specified Proposal
+var (
+	ProposalVoteTypeDecision int = 0
+	ProposalVoteTypeNumeric      = 1
+)
+
+// ProposalVoteRecord saves vote record and associated to specified Proposal
+// In metaforo, this record is mapped from its `poll` field
+// Regards the detailed vote option, only voter count data will be saved into the *Count fields
 type ProposalVoteRecord struct {
 	ID         uint `gorm:"primaryKey"`
 	GateID     uint // Not using now, find way to get it from proposal category
@@ -288,13 +298,64 @@ type ProposalVoteRecord struct {
 	EndTs      int64 `gorm:"index"`
 	MetaforoID int   `gorm:"index"` // Poll id from metaforo
 
+	// TODO: Change the calculation for vote result from vote option record data
 	ApproveCount int
 	AbstainCount int
 	RejectCount  int
 
+	OptionType int
+	Options    []*ProposalVoteOptionRecord
+
+	// Indicates whether the vote has passed
+	IsVotePassed bool
+
 	ArweaveHash string
 
 	ProposalID uint
+
+	// indicate type of this vote. For now there are decision and numeric vote.
+	// The value for this field is defined as const ProposalVoteTypeDecision and ProposalVoteTypeNumeric
+	VoteType int
+}
+
+// ProposalVoteOptionRecord saves option used in proposal vote record, it contains a
+type ProposalVoteOptionRecord struct {
+	ID uint `gorm:"primaryKey"`
+
+	// Foreign key
+	ProposalVoteRecordId uint
+
+	// Metaforo related data
+	// Text field is used to
+	Text           string
+	MetaforoID     int
+	MetaforoVoteID int
+
+	// Value is used in for automation tasks related to this
+	Value string
+
+	VoterCount int
+}
+
+// GetPredefinedVoteOptionValue returns the predefined value for vote option.
+// The logic for this function is check Text field from record and try to find it in predefined internal variables
+func GetPredefinedVoteOptionValue(optLabel string, voteType int) string {
+	var optBucket map[string]string
+	switch voteType {
+	case ProposalVoteTypeNumeric:
+		optBucket = internal.ProposalNumericVoteOptionsMap
+	case ProposalVoteTypeDecision:
+		optBucket = internal.ProposalDecisionVoteOptionsMap
+	default:
+		log.Warn().Msgf("unknown vote type: %d, request label is: %s", voteType, optLabel)
+		return "0"
+	}
+
+	if value, found := optBucket[optLabel]; found {
+		return value
+	} else {
+		return "0"
+	}
 }
 
 // ProposalUserVoteRecord saves user vote record
