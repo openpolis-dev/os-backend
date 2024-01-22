@@ -570,6 +570,7 @@ func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcd *mod
 
 		if poll.Status == "close" {
 			var proposalFinalState model.ProposalState
+			var voteResult string
 			switch proposalVoteRecord.VoteType {
 			case model.ProposalVoteTypeDecision:
 				var voteOptRcds []*model.ProposalVoteOptionRecord
@@ -579,21 +580,23 @@ func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcd *mod
 					continue
 				}
 
-				approverCount := 0
-				rejecterCounter := 0
+				approvedCount := 0
+				rejectedCounter := 0
 				for _, r := range voteOptRcds {
 					switch r.Text {
 					case internal.ProposalDecisionApprove:
-						approverCount = r.VoterCount
+						approvedCount = r.VoterCount
 					case internal.ProposalDecisionReject:
-						rejecterCounter = r.VoterCount
+						rejectedCounter = r.VoterCount
 					}
 				}
 
-				if approverCount > rejecterCounter {
+				if approvedCount > rejectedCounter {
 					proposalFinalState = model.ProposalStateVotePassed
+					voteResult = "1"
 				} else {
 					proposalFinalState = model.ProposalStateVoteFailed
+					voteResult = "0"
 				}
 
 			case model.ProposalVoteTypeNumeric:
@@ -607,7 +610,7 @@ func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcd *mod
 			if err != nil {
 				log.Error().Msgf("update proposal state to %d error: %+v. DB proposal: %+v, metaforo proposa: %+v", proposalFinalState, err, dbProposalRcd, metaforoProposal)
 			}
-
+			go createProposalFinTasks(db, dbProposalRcd, model.ProposalStateVoteFailed, voteResult, dbProposalRcd.VoteType)
 		}
 	}
 
@@ -615,7 +618,7 @@ func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcd *mod
 }
 
 // createProposalFinTasks creates tasks after proposal finished (passed or failed)
-func createProposalFinTasks(db *gorm.DB, proposal *model.Proposal, finState model.ProposalState) {
+func createProposalFinTasks(db *gorm.DB, proposal *model.Proposal, finState model.ProposalState, voteResult string, voteType int) {
 	sqlQuery := QueryComponentActionNameBaseSQL + " WHERE proposal_id = ?"
 	var proposalComponentActions []*proposalComponentActions
 	err := db.Raw(sqlQuery, proposal.ID).Find(&proposalComponentActions).Error
@@ -644,6 +647,8 @@ func createProposalFinTasks(db *gorm.DB, proposal *model.Proposal, finState mode
 			LastExecTs:     0,
 			NextExecTs:     currentTs + proposal.SecondDelayBeforeTaskExecution,
 			JobParams:      componentAction.ComponentParams,
+			VoteResult:     voteResult,
+			VoteType:       voteType,
 			State:          model.CronJobStateActive,
 			LastExecResult: "",
 		}
