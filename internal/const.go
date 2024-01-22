@@ -2,6 +2,8 @@ package internal
 
 import (
 	"time"
+
+	"github.com/samber/lo"
 )
 
 const DefaultPageSize = 10
@@ -43,23 +45,31 @@ const (
 // ProposalDecisionVoteOptions is used for proposal that requires a decision.
 // This type of options only defines label of the vote, and the result can be passed or failed
 
-var ProposalDecisionVoteOptions = map[string]string{
-	ProposalDecisionApprove: "1",
-	ProposalDecisionReject:  "-1",
-	ProposalDecisionAbstain: "0",
+// ProposalDecisionVoteOptions saves default vote options for decision vote
+var ProposalDecisionVoteOptions = [][]string{
+	{ProposalDecisionApprove, "1"},
+	{ProposalDecisionReject, "-1"},
+	{ProposalDecisionAbstain, "0"},
 }
+var ProposalDecisionVoteOptionsMap = lo.Associate(ProposalDecisionVoteOptions, func(r []string) (string, string) {
+	return r[0], r[1]
+})
 
 // ProposalNumericVoteOptions is used to get user's options about a proposal, and the default version is used to calc ratio of rewards.
 // This type of options defines label and value of the vote, the value is used for automatically tasks after vote completed.
 // The vote should always pass
-var ProposalNumericVoteOptions = map[string]string{
-	ProposalNumeric0:   "0",
-	ProposalNumeric30:  "0.3",
-	ProposalNumeric50:  "0.5",
-	ProposalNumeric80:  "0.8",
-	ProposalNumeric100: "1",
-	ProposalNumeric120: "1.2",
+var ProposalNumericVoteOptions = [][]string{
+	{ProposalNumeric0, "0"},
+	{ProposalNumeric30, "0.3"},
+	{ProposalNumeric50, "0.5"},
+	{ProposalNumeric80, "0.8"},
+	{ProposalNumeric100, "1"},
+	{ProposalNumeric120, "1.2"},
 }
+
+var ProposalNumericVoteOptionsMap = lo.Associate(ProposalNumericVoteOptions, func(r []string) (string, string) {
+	return r[0], r[1]
+})
 
 const DefaultVoteStartDelay = 14 * 24 * time.Hour
 

@@ -407,10 +407,10 @@ func BuildMetaforoVoteFormDataBytes(voteRecords []*model.ProposalVoteRecord, vot
 	var voteOptions []*metaforo.VoteOption
 	var predefinedVoteOpts []string
 	if voteType == model.ProposalVoteTypeNumeric {
-		predefinedVoteOpts = lo.Keys[string, string](internal.ProposalNumericVoteOptions)
+		predefinedVoteOpts = lo.Map(internal.ProposalNumericVoteOptions, func(r []string, _ int) string { return r[0] })
 	} else {
 		// The default option is decision vote
-		predefinedVoteOpts = lo.Keys[string, string](internal.ProposalDecisionVoteOptions)
+		predefinedVoteOpts = lo.Map(internal.ProposalDecisionVoteOptions, func(r []string, _ int) string { return r[0] })
 	}
 
 	// Generate metaforo vote options

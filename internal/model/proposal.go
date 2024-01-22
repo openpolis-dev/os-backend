@@ -343,9 +343,9 @@ func GetPredefinedVoteOptionValue(optLabel string, voteType int) string {
 	var optBucket map[string]string
 	switch voteType {
 	case ProposalVoteTypeNumeric:
-		optBucket = internal.ProposalNumericVoteOptions
+		optBucket = internal.ProposalNumericVoteOptionsMap
 	case ProposalVoteTypeDecision:
-		optBucket = internal.ProposalDecisionVoteOptions
+		optBucket = internal.ProposalDecisionVoteOptionsMap
 	default:
 		log.Warn().Msgf("unknown vote type: %d, request label is: %s", voteType, optLabel)
 		return "0"
