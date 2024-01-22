@@ -1,6 +1,7 @@
 package task_manager
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -123,16 +124,19 @@ func (t *TaskManager) ActivateRefreshVoteStateJobIfRequired() error {
 	log.Debug().Msgf("activate refresh vote state job")
 	refreshVoteStateJob := &model.CronJob{
 		HandlerName: internal.TaskRefreshVotingProposalVoteInfo,
+		State:       model.CronJobStateActive,
+		CronExp:     internal.TaskRefreshVotingProposalVoteInfoCronExpr,
+		CreateTs:    time.Now().UTC().Unix(),
+		NextExecTs:  cronexpr.MustParse(internal.TaskRefreshVotingProposalVoteInfoCronExpr).Next(time.Now()).UTC().Unix(),
+		JobParams:   fmt.Sprintf(`{"group_name": "%s"}`, t.AppConfig.MetaforoData.GroupName),
 	}
-	if err := t.DatabaseClient.Where(&refreshVoteStateJob).Updates(model.CronJob{
-		State:      model.CronJobStateActive,
-		CronExp:    internal.TaskRefreshVotingProposalVoteInfoCronExpr,
-		CreateTs:   time.Now().UTC().Unix(),
-		NextExecTs: cronexpr.MustParse(internal.TaskRefreshVotingProposalVoteInfoCronExpr).Next(time.Now()).UTC().Unix(),
-		JobParams:  fmt.Sprintf(`{"group_name": "%s"}`, t.AppConfig.MetaforoData.GroupName),
-	}).FirstOrCreate(&refreshVoteStateJob).Error; err != nil {
-		log.Error().Msgf("activate refresh vote state job error: %+v", err)
-		return err
+
+	if err := t.DatabaseClient.Model(&refreshVoteStateJob).Where("handler_name = ?", internal.TaskRefreshVotingProposalVoteInfo).Updates(&refreshVoteStateJob).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return t.DatabaseClient.Create(&refreshVoteStateJob).Error
+		} else {
+			return err
+		}
 	}
 	return nil
 }

@@ -45,7 +45,7 @@ func RefreshVotingProposalInfoJob(db *gorm.DB, job *model.CronJob, jobParams str
 		err = db.Model(&model.Proposal{}).
 			Where("state = ?", model.ProposalStateVoting).
 			Distinct("proposal_record_id").
-			Select("id, proposal_record_id").
+			Select("id, proposal_record_id, vote_type").
 			Find(&proposals).Error
 		if err != nil {
 			log.Warn().Msgf("get proposal list error: %+v", err)
