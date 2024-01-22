@@ -607,7 +607,7 @@ func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcd *mod
 				proposalFinalState = model.ProposalStateVotePassed
 
 				var voteOptRcds []*model.ProposalVoteOptionRecord
-				err = db.Where(&model.ProposalVoteOptionRecord{ProposalVoteRecordId: proposalVoteRecord.ID}).Select("voter_count").Find(&voteOptRcds).Error
+				err = db.Where(&model.ProposalVoteOptionRecord{ProposalVoteRecordId: proposalVoteRecord.ID}).Select("id, value, voter_count").Find(&voteOptRcds).Error
 				if err != nil {
 					log.Warn().Msgf("fetch vote options for proposal vote record: %+v error: %+v", proposalVoteRecord, err)
 					continue
