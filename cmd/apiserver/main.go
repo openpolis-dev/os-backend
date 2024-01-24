@@ -403,6 +403,11 @@ func main() {
 		dataSrv := authorizedGroup.Group("/data_srv")
 		dataSrv.GET("/widget_data", data_srv.WidgetData)
 	}
+	{
+		adminGroup := r.Group("/admin", middleware.AdminPermissionRequired)
+		proposalTmplAdminRouter := adminGroup.Group("/proposal_tmpl")
+		proposalTmplAdminRouter.POST("/update", proposal.UpdateTemplate)
+	}
 
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 

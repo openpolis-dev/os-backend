@@ -38,3 +38,14 @@ func AuthRequired(ctx *gin.Context) {
 	ctx.Next()
 	// --> after
 }
+
+func AdminPermissionRequired(ctx *gin.Context) {
+	cfg := ctx.Value(CfgKey).(*config.Config)
+	authHeader := ctx.GetHeader("AdminAuth")
+	if authHeader != cfg.Admin.AuthToken {
+		ctx.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+
+	ctx.Next()
+}

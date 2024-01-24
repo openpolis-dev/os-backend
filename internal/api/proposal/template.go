@@ -2,6 +2,7 @@ package proposal
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -10,6 +11,7 @@ import (
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk"
+	"gorm.io/gorm"
 )
 
 type TemplateResponse struct {
@@ -20,6 +22,12 @@ type TemplateResponse struct {
 	CategoryName  string               `json:"-"`
 	HasPerm       bool                 `json:"has_perm"`
 	Components    []*ComponentResponse `json:"components"`
+}
+
+type updateTmplRequest struct {
+	Name          string `json:"name"`
+	Schema        string `json:"schema"`
+	ScreenshotUri string `json:"screenshot_uri"`
 }
 
 // ListTemplates list templates and return to frontend
@@ -119,4 +127,45 @@ func ListTemplatesWithPerm(ctx *gin.Context) {
 	})
 
 	ctx.JSON(200, api.Success(respRcds))
+}
+
+func UpdateTemplate(ctx *gin.Context) {
+	db := api.ForContextOnlyDB(ctx)
+	reqData := updateTmplRequest{}
+	if err := ctx.BindJSON(&reqData); err != nil {
+		log.Error().Msgf("parse request data error: %+v", err)
+		sdk.LogUserSideError(ctx, err)
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("parse request data error: %+v", err)))
+		return
+	}
+
+	tmplRcd := model.ProposalTemplate{
+		Name:          reqData.Name,
+		ContentSchema: reqData.Schema,
+		ScreenshotUri: reqData.ScreenshotUri,
+	}
+
+	if err := db.Model(&tmplRcd).Where("name = ?", reqData.Name).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			err = db.Model(&tmplRcd).Create(&tmplRcd).Error
+			if err != nil {
+				log.Error().Msgf("create proposal template error: %+v", err)
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+				return
+			}
+		} else {
+			log.Error().Msgf("create proposal template error: %+v", err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+			return
+		}
+	} else {
+		err = db.Save(&tmplRcd).Error
+		if err != nil {
+			log.Error().Msgf("update proposal template error: %+v", err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+			return
+		}
+	}
+
+	ctx.JSON(200, api.Success(tmplRcd))
 }

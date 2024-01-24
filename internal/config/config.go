@@ -22,6 +22,7 @@ type Config struct {
 	ExternalServices externalService `json:"externalServices" yaml:"externalServices"`
 	PublicData       publicData      `json:"publicData" yaml:"publicData"`
 	MetaforoData     metaforoData    `json:"metaforoData" yaml:"metaforoData"`
+	Admin            adminData       `json:"admin" yaml:"admin"`
 }
 
 type (
@@ -89,6 +90,10 @@ type (
 
 		// ProposalPrefix adds a prefix to all proposals created in OS system
 		ProposalPrefix string `json:"proposalPrefix" yaml:"proposalPrefix"`
+	}
+
+	adminData struct {
+		AuthToken string `json:"authToken" yaml:"authToken"`
 	}
 )
 
