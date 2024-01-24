@@ -3,6 +3,7 @@ package proposal
 import (
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -10,7 +11,6 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	"github.com/theseed-labs/os-backend/internal"
-	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/config"
 	"github.com/theseed-labs/os-backend/internal/model"
@@ -57,6 +57,10 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 	// Update title for testing
 	if !strings.HasPrefix(reqData.Title, cfg.MetaforoData.ProposalPrefix) {
 		reqData.Title = cfg.MetaforoData.ProposalPrefix + reqData.Title
+	}
+
+	if reqData.VoteOptions != nil {
+		reqData.VoteType = model.ProposalVoteTypeCustomerDefined
 	}
 
 	var pCategory model.ProposalCategory
@@ -251,7 +255,7 @@ func SaveProposalComponentRecords(db *gorm.DB, proposalId uint, applicantWallet 
 //
 // Otherwise, copy the proposal to new record with ver+1, update the metaforo data, and save back as a new record,
 // and the metaforo API invoked here is updateProposal.
-func SaveProposalToMetaforo(db *gorm.DB, origProposalRecord *model.Proposal, voteType int, metaforoAccessToken string, EditorType int, metaforoGroupName string) error {
+func SaveProposalToMetaforo(db *gorm.DB, origProposalRecord *model.Proposal, voteType int, customVoteOptions []string, metaforoAccessToken string, EditorType int, metaforoGroupName string) error {
 	var err error
 
 	// Load current proposal data
@@ -347,8 +351,8 @@ func SaveProposalToMetaforo(db *gorm.DB, origProposalRecord *model.Proposal, vot
 				VoteType: updatedProposalRecord.VoteType,
 			},
 		}
-		api.PrintStructAsJson(voteRecords, "TTT: Test vote record")
-		voteFormBytes, err := BuildMetaforoVoteFormDataBytes(voteRecords, voteType)
+		osVoteOptions := prepareOsVoteOptions(voteType, customVoteOptions)
+		voteFormBytes, err := BuildMetaforoVoteFormDataBytes(voteRecords, osVoteOptions)
 		if err != nil {
 			log.Error().Msgf("build metaforoProposal vote data error: %+v", err)
 			return err
@@ -396,28 +400,28 @@ func SaveProposalToMetaforo(db *gorm.DB, origProposalRecord *model.Proposal, vot
 	return nil
 }
 
+func prepareOsVoteOptions(voteType int, customVoteOptions []string) []string {
+	if customVoteOptions != nil {
+		return customVoteOptions
+	} else if voteType == model.ProposalVoteTypeNumeric {
+		return lo.Map(internal.ProposalNumericVoteOptions, func(r []string, _ int) string { return r[0] })
+	} else if voteType == model.ProposalVoteTypeDecision {
+		// The default option is decision vote
+		return lo.Map(internal.ProposalDecisionVoteOptions, func(r []string, _ int) string { return r[0] })
+	} else {
+		log.Warn().Msgf("unknown vote type, no vote options will be generated")
+		return []string{}
+	}
+}
+
 // BuildMetaforoVoteFormDataBytes generates the byte representation of the Metaforo vote form data.
-//
-// Parameters:
-// - voteTitle: The title of the vote.
-// - startTime: The start time of the vote.
-// - endTime: The end time of the vote.
 //
 // Returns:
 // - []byte: The byte representation of the vote form data.
 // - error: An error if there was a problem generating the byte representation.
-func BuildMetaforoVoteFormDataBytes(voteRecords []*model.ProposalVoteRecord, voteType int) ([]byte, error) {
-	var voteOptions []*metaforo.VoteOption
-	var predefinedVoteOpts []string
-	if voteType == model.ProposalVoteTypeNumeric {
-		predefinedVoteOpts = lo.Map(internal.ProposalNumericVoteOptions, func(r []string, _ int) string { return r[0] })
-	} else {
-		// The default option is decision vote
-		predefinedVoteOpts = lo.Map(internal.ProposalDecisionVoteOptions, func(r []string, _ int) string { return r[0] })
-	}
-
+func BuildMetaforoVoteFormDataBytes(voteRecords []*model.ProposalVoteRecord, osVoteOptions []string) ([]byte, error) {
 	// Generate metaforo vote options
-	voteOptions = lo.Map(predefinedVoteOpts, func(r string, idx int) *metaforo.VoteOption {
+	voteOptions := lo.Map(osVoteOptions, func(r string, idx int) *metaforo.VoteOption {
 		return &metaforo.VoteOption{Text: r, Type: idx}
 	})
 
@@ -549,7 +553,13 @@ func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcd *mod
 					MetaforoVoteID:       proposalVoteRecord.MetaforoID,
 					ProposalVoteRecordId: proposalVoteRecord.ID,
 				}
-				optLabel := voteOpt.Html.(string)
+				var optLabel string
+				switch reflect.TypeOf(voteOpt.Html).Kind() {
+				case reflect.Float64:
+					optLabel = fmt.Sprintf("%f", voteOpt.Html.(float64))
+				default:
+					optLabel = voteOpt.Html.(string)
+				}
 				err = tx.Where(&proposalVoteOptionRecord).Assign(&model.ProposalVoteOptionRecord{
 					Text:  optLabel,
 					Value: model.GetPredefinedVoteOptionValue(optLabel, dbProposalRcd.VoteType),

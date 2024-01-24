@@ -33,7 +33,6 @@ func main() {
 
 	// vote related
 	voteAccessToken := voteCommand.String("access-token", "", "Access token")
-	voteType := voteCommand.Int("type", 0, "Vote type, 0 for decision, while 1 for numeric")
 	voteGroup := voteCommand.String("group", "testttt", "Group name")
 	voteId := voteCommand.Int("id", 0, "Vote id")
 	voteStartTime := voteCommand.String("start", time.Now().UTC().Format(time.RFC3339), "Vote start time, default is now")
@@ -68,7 +67,7 @@ func main() {
 				EndTs:   time.Now().UTC().Add(14 * 24 * time.Hour).Unix(),
 			},
 		}
-		pollData, err := proposal.BuildMetaforoVoteFormDataBytes(votesData, *voteType)
+		pollData, err := proposal.BuildMetaforoVoteFormDataBytes(votesData, []string{"a", "b", "c"})
 		if err != nil {
 			panic(err)
 		}

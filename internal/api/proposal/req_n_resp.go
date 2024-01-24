@@ -51,6 +51,7 @@ type CreateOrUpdateProposalData struct {
 	SubmitToMetaforo    bool                             `json:"submit_to_metaforo"`
 	EditorType          int                              `json:"editor_type"`
 	VoteType            int                              `json:"vote_type"`
+	VoteOptions         []string                         `json:"vote_options"`
 }
 
 type RejectProposalData struct {

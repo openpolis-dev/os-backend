@@ -294,8 +294,9 @@ type ProposalAuditLog struct {
 }
 
 var (
-	ProposalVoteTypeDecision int = 0
-	ProposalVoteTypeNumeric      = 1
+	ProposalVoteTypeDecision        int = 0
+	ProposalVoteTypeNumeric             = 1
+	ProposalVoteTypeCustomerDefined     = 99
 )
 
 // ProposalVoteRecord saves vote record and associated to specified Proposal
