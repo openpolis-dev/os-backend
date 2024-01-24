@@ -1200,9 +1200,15 @@ definitions:
         items:
           $ref: '#/definitions/proposal.ComponentResponse'
         type: array
+      has_perm_to_use:
+        type: boolean
       id:
         type: integer
+      is_instant_vote:
+        type: boolean
       name:
+        type: string
+      rule_description:
         type: string
       schema:
         type: string
@@ -2588,7 +2594,24 @@ paths:
       summary: lists all proposals based on query params and return in JSON format
       tags:
       - Proposal
-  /proposals/proposal_tmpl/:
+  /proposals/proposal_tmpl/list:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/proposal.TemplateResponse'
+                  type: array
+              type: object
+      summary: list templates and return to frontend
+      tags:
+      - Proposal
+  /proposals/proposal_tmpl/list_with_perm:
     get:
       responses:
         "200":

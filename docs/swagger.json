@@ -1764,7 +1764,38 @@
                 }
             }
         },
-        "/proposals/proposal_tmpl/": {
+        "/proposals/proposal_tmpl/list": {
+            "get": {
+                "tags": [
+                    "Proposal"
+                ],
+                "summary": "list templates and return to frontend",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Reply"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/proposal.TemplateResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/proposals/proposal_tmpl/list_with_perm": {
             "get": {
                 "tags": [
                     "Proposal"
@@ -4794,10 +4825,19 @@
                         "$ref": "#/definitions/proposal.ComponentResponse"
                     }
                 },
+                "has_perm_to_use": {
+                    "type": "boolean"
+                },
                 "id": {
                     "type": "integer"
                 },
+                "is_instant_vote": {
+                    "type": "boolean"
+                },
                 "name": {
+                    "type": "string"
+                },
+                "rule_description": {
                     "type": "string"
                 },
                 "schema": {
