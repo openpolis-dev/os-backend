@@ -24,17 +24,22 @@ const (
 	ProposalStateVoting
 	ProposalStateVotePassed
 	ProposalStateVoteFailed
+
+	ProposalStatePendingExecution
+	ProposalStateExecuted
 )
 
 var ProposalStateIdNameMapping = map[string]ProposalState{
-	"pending_submit": ProposalStatePendingSubmit,
-	"draft":          ProposalStateDraft,
-	"withdrawn":      ProposalStateWithdrawn,
-	"rejected":       ProposalStateRejected,
-	"approved":       ProposalStateApproved,
-	"voting":         ProposalStateVoting,
-	"vote_passed":    ProposalStateVotePassed,
-	"vote_failed":    ProposalStateVoteFailed,
+	"pending_submit":    ProposalStatePendingSubmit,
+	"draft":             ProposalStateDraft,
+	"withdrawn":         ProposalStateWithdrawn,
+	"rejected":          ProposalStateRejected,
+	"approved":          ProposalStateApproved,
+	"voting":            ProposalStateVoting,
+	"vote_passed":       ProposalStateVotePassed,
+	"vote_failed":       ProposalStateVoteFailed,
+	"pending_execution": ProposalStatePendingExecution,
+	"executed":          ProposalStateExecuted,
 }
 
 var ProposalStateName = []string{
@@ -46,6 +51,8 @@ var ProposalStateName = []string{
 	"voting",
 	"vote_passed",
 	"vote_failed",
+	"pending_execution",
+	"executed",
 }
 
 // MetaforoUser saves user mapping between OS and metaforo
