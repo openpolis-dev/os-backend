@@ -97,7 +97,14 @@ type Proposal struct {
 
 	IsHidden bool
 
+	// If proposal is created from template, this value will be set
 	TemplateId uint
+	Template   *ProposalTemplate
+
+	// Proposal category, this field is used for template created w/o template,
+	// while for proposal created with template, the category data wil be updated by value in template record
+	ProposalCategoryID uint `gorm:"index"`
+	ProposalCategory   ProposalCategory
 
 	// VoteDurationSecond and SecondDelayBeforeTaskExecution are used for controlling voting last time and delay before task execution
 	// the values are copied from proposal category db record
@@ -245,8 +252,8 @@ type ProposalVoteGate struct {
 	Name string // Name of the vote gate
 }
 
-func (ppg *ProposalVoteGate) TokenTypeName() string {
-	switch ppg.TokenType {
+func (pvg *ProposalVoteGate) TokenTypeName() string {
+	switch pvg.TokenType {
 	case 0:
 		return "ERC20"
 	case 1:
@@ -258,8 +265,8 @@ func (ppg *ProposalVoteGate) TokenTypeName() string {
 	}
 }
 
-func (ppg *ProposalVoteGate) ChainName() string {
-	switch ppg.ChainType {
+func (pvg *ProposalVoteGate) ChainName() string {
+	switch pvg.ChainType {
 	case 1:
 		return "Polygon"
 	case 8:
@@ -414,5 +421,5 @@ type ProposalTemplate struct {
 	ProposalCategory   ProposalCategory
 
 	// Vote gate records
-	ProposalVoteGates []*ProposalVoteGate
+	ProposalVoteGates []*ProposalVoteGate `gorm:"many2many:template_gates;"`
 }

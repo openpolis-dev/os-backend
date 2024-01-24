@@ -274,6 +274,10 @@ func main() {
 		proposalCategoryRouter := v1.Group("/proposal_categories")
 		proposalCategoryRouter.GET("/list", proposal.ListAllCategories)
 
+		// Proposal templates router
+		proposalTmplRouter := v1.Group("/proposal_tmpl")
+		proposalTmplRouter.GET("/list", proposal.ListTemplates)
+
 		// Schedule jobs routers
 		jobsRouter := v1.Group("/jobs")
 		jobsRouter.GET("/list", cron_jobs.List)
@@ -389,7 +393,7 @@ func main() {
 
 		// Proposal templates router
 		proposalTmplRouter := authorizedGroup.Group("/proposal_tmpl")
-		proposalTmplRouter.GET("/", proposal.ListTemplates)
+		proposalTmplRouter.GET("/list_with_perm", proposal.ListTemplatesWithPerm)
 
 		// List proposal categories
 		proposalCategoryRouter := authorizedGroup.Group("/proposal_categories")
