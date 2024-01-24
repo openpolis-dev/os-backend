@@ -98,8 +98,8 @@ type Proposal struct {
 	IsHidden bool
 
 	// If proposal is created from template, this value will be set
-	TemplateId uint
-	Template   *ProposalTemplate
+	ProposalTemplateID uint `gorm:"index"`
+	ProposalTemplate   *ProposalTemplate
 
 	// Proposal category, this field is used for template created w/o template,
 	// while for proposal created with template, the category data wil be updated by value in template record
@@ -408,6 +408,9 @@ type ProposalTemplate struct {
 
 	Name string `gorm:"uniqueIndex"`
 
+	// RuleDesc saves a description for template rule
+	RuleDesc string
+
 	ScreenshotUri string
 
 	// ContentSchema saves content blocks used for this template, each block contains one title and one content field
@@ -420,6 +423,12 @@ type ProposalTemplate struct {
 	ProposalCategoryID uint `gorm:"index"`
 	ProposalCategory   ProposalCategory
 
-	// Vote gate records
-	ProposalVoteGates []*ProposalVoteGate `gorm:"many2many:template_gates;"`
+	// UseTemplateGates saves gate for creating proposal based on this template
+	UseTemplateGates []*ProposalVoteGate `gorm:"many2many:template_usage_gates;"`
+
+	//////////
+	// Vote related information
+	//////////
+	// VoteGates saves gate info of voting on proposal created by this template
+	VoteGates []*ProposalVoteGate `gorm:"many2many:proposal_voting_gates;"`
 }

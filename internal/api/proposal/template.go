@@ -15,13 +15,15 @@ import (
 )
 
 type TemplateResponse struct {
-	ID            uint                 `json:"id"`
-	Name          string               `json:"name"`
-	ScreenshotUri string               `json:"screenshot_uri"`
-	ContentSchema string               `json:"schema"`
-	CategoryName  string               `json:"-"`
-	HasPerm       bool                 `json:"has_perm"`
-	Components    []*ComponentResponse `json:"components"`
+	ID              uint                 `json:"id"`
+	Name            string               `json:"name"`
+	ScreenshotUri   string               `json:"screenshot_uri"`
+	ContentSchema   string               `json:"schema"`
+	CategoryName    string               `json:"-"`
+	HasPermToUse    bool                 `json:"has_perm_to_use"`
+	RuleDescription string               `json:"rule_description"`
+	IsInstantVote   bool                 `json:"is_instant_vote"`
+	Components      []*ComponentResponse `json:"components"`
 }
 
 type updateTmplRequest struct {
@@ -86,7 +88,7 @@ func ListTemplatesWithPerm(ctx *gin.Context) {
 
 	var dbRcds []*model.ProposalTemplate
 	if err := db.Model(&model.ProposalTemplate{}).
-		Preload("ProposalVoteGates").
+		Preload("UseTemplateGates").
 		Preload("ProposalCategory").
 		Preload("Components").Find(&dbRcds).Error; err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
@@ -96,11 +98,11 @@ func ListTemplatesWithPerm(ctx *gin.Context) {
 
 	tmplRecords := lo.Map(dbRcds, func(r *model.ProposalTemplate, _ int) *TemplateResponse {
 		// TODO: Validate permissions of vote gate
-		permArray := lo.Map(r.ProposalVoteGates, func(r *model.ProposalVoteGate, _ int) bool {
+		permArray := lo.Map(r.UseTemplateGates, func(r *model.ProposalVoteGate, _ int) bool {
 			return IsUserMetVoteGate(userSeepassData, r)
 		})
 
-		hasPerm := lo.Reduce(permArray, func(rslt bool, r bool, _ int) bool {
+		hasPermToUse := lo.Reduce(permArray, func(rslt bool, r bool, _ int) bool {
 			return rslt && r
 		}, true)
 
@@ -110,7 +112,7 @@ func ListTemplatesWithPerm(ctx *gin.Context) {
 			ContentSchema: r.ContentSchema,
 			ScreenshotUri: r.ScreenshotUri,
 			CategoryName:  r.ProposalCategory.Name,
-			HasPerm:       hasPerm,
+			HasPermToUse:  hasPermToUse,
 			Components: lo.Map(r.Components, func(c *model.ProposalComponent, _ int) *ComponentResponse {
 				return &ComponentResponse{
 					ID:            c.ID,
@@ -129,6 +131,7 @@ func ListTemplatesWithPerm(ctx *gin.Context) {
 	ctx.JSON(200, api.Success(respRcds))
 }
 
+// UpdateTemplate requires to be invoked with Admin perm
 func UpdateTemplate(ctx *gin.Context) {
 	db := api.ForContextOnlyDB(ctx)
 	reqData := updateTmplRequest{}

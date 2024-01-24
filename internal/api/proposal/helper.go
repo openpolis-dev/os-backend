@@ -120,7 +120,7 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 			SecondDelayBeforeTaskExecution: pCategory.SecondDelayBeforeTaskExecution,
 			VoteDurationSecond:             pCategory.VoteDurationSecond,
 			Version:                        1,
-			TemplateId:                     reqData.TemplateId,
+			ProposalTemplateID:             reqData.TemplateId,
 			VoteType:                       reqData.VoteType,
 		}
 

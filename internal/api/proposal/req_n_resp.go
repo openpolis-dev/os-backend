@@ -374,9 +374,9 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 	}
 
 	templateName := ""
-	if proposal.TemplateId != 0 {
+	if proposal.ProposalTemplateID != 0 {
 		var template model.ProposalTemplate
-		err := db.Find(&template, proposal.TemplateId).Error
+		err := db.Find(&template, proposal.ProposalTemplateID).Error
 		if err != nil {
 			log.Error().Msgf("fetch proposal template error: %+v", err)
 			return nil, err
@@ -408,7 +408,7 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 		Votes:             votes,
 		VoteType:          proposal.VoteType,
 		CreateTs:          proposal.CreateTs,
-		IsBasedOnTemplate: proposal.TemplateId != 0,
+		IsBasedOnTemplate: proposal.ProposalTemplateID != 0,
 		TemplateName:      templateName,
 	}, nil
 }
