@@ -80,9 +80,6 @@ type Proposal struct {
 
 	Components []*ProposalComponentRecord
 
-	ProposalCategoryID uint `gorm:"index"`
-	ProposalCategory   ProposalCategory
-
 	//  Fields for versioned proposals
 	// ProposalRecordId is built from metaforo thread ID, which should be kept same in various versions
 	ProposalRecordId string `gorm:"index:proposalVer"`
@@ -411,4 +408,11 @@ type ProposalTemplate struct {
 
 	// Components saves component used in this template,
 	Components []*ProposalComponent `gorm:"many2many:template_components;"`
+
+	// Proposal category
+	ProposalCategoryID uint `gorm:"index"`
+	ProposalCategory   ProposalCategory
+
+	// Vote gate records
+	ProposalVoteGates []*ProposalVoteGate
 }

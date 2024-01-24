@@ -261,9 +261,6 @@ func main() {
 		componentRouter.GET("/", proposal.ListComponents)
 		componentRouter.GET("/:id", proposal.GetComponent)
 
-		proposalTmplRouter := v1.Group("/proposal_tmpl")
-		proposalTmplRouter.GET("/", proposal.ListTemplates)
-
 		proposalPollGateRouter := v1.Group("/proposal_vote_gates")
 		proposalPollGateRouter.GET("/", proposal.ListVoteGates)
 
@@ -389,6 +386,10 @@ func main() {
 		proposalGroup.POST("/can_vote/:id", proposal.CheckVotePermission)
 		proposalGroup.POST("/vote/:id", proposal.CastVote)
 		proposalGroup.POST("/revoke_vote/:id", proposal.RevokeVote)
+
+		// Proposal templates router
+		proposalTmplRouter := authorizedGroup.Group("/proposal_tmpl")
+		proposalTmplRouter.GET("/", proposal.ListTemplates)
 
 		// List proposal categories
 		proposalCategoryRouter := authorizedGroup.Group("/proposal_categories")
