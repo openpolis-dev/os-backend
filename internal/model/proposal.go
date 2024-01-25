@@ -126,6 +126,10 @@ func (p *Proposal) StateName() string {
 	return ProposalStateName[p.State]
 }
 
+func (p *Proposal) PublicityDuration() time.Duration {
+	return time.Duration(p.PublicitySecond) * time.Second
+}
+
 func (p *Proposal) VoteDuration() time.Duration {
 	return time.Duration(p.VoteDurationSecond) * time.Second
 }

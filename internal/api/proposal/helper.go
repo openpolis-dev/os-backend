@@ -63,11 +63,30 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 		reqData.VoteType = model.ProposalVoteTypeCustomerDefined
 	}
 
-	var pCategory model.ProposalCategory
-	err := db.Find(&pCategory, reqData.ProposalCategoryId).Error
-	if err != nil {
-		log.Error().Msgf("get proposal category error: %+v", err)
-		return nil, err
+	var voteTimeProps model.VoteTimeProperties
+
+	if reqData.TemplateId != 0 {
+		var pTemplate model.ProposalTemplate
+		err := db.Find(&pTemplate, reqData.TemplateId).Error
+		if err != nil {
+			log.Error().Msgf("get proposal template error: %+v", err)
+			return nil, err
+		}
+
+		voteTimeProps.PublicitySecond = pTemplate.PublicitySecond
+		voteTimeProps.VoteDurationSecond = pTemplate.VoteDurationSecond
+		voteTimeProps.PendingExecutionSecond = pTemplate.PendingExecutionSecond
+	} else {
+		var pCategory model.ProposalCategory
+		err := db.Find(&pCategory, reqData.ProposalCategoryId).Error
+		if err != nil {
+			log.Error().Msgf("get proposal category error: %+v", err)
+			return nil, err
+		}
+
+		voteTimeProps.PublicitySecond = pCategory.PublicitySecond
+		voteTimeProps.VoteDurationSecond = pCategory.VoteDurationSecond
+		voteTimeProps.PendingExecutionSecond = pCategory.PendingExecutionSecond
 	}
 
 	if proposalIdStr != "" {
@@ -93,8 +112,9 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 		// Proposal is in PendingSubmit state, the data can be updated directory w/o bumping up version
 		proposalRcd.Title = reqData.Title
 		proposalRcd.ProposalCategoryID = reqData.ProposalCategoryId
-		proposalRcd.PendingExecutionSecond = pCategory.PendingExecutionSecond
-		proposalRcd.VoteDurationSecond = pCategory.VoteDurationSecond
+		proposalRcd.PublicitySecond = voteTimeProps.PublicitySecond
+		proposalRcd.PendingExecutionSecond = voteTimeProps.PendingExecutionSecond
+		proposalRcd.VoteDurationSecond = voteTimeProps.VoteDurationSecond
 		proposalRcd.VoteType = dbProposalRcd.VoteType
 		err = db.Save(&proposalRcd).Error
 		if err != nil {
@@ -124,8 +144,9 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 			Version:            1,
 			VoteType:           reqData.VoteType,
 		}
-		proposalRecord.PendingExecutionSecond = pCategory.PendingExecutionSecond
-		proposalRecord.VoteDurationSecond = pCategory.VoteDurationSecond
+		proposalRecord.PublicitySecond = voteTimeProps.PublicitySecond
+		proposalRecord.PendingExecutionSecond = voteTimeProps.PendingExecutionSecond
+		proposalRecord.VoteDurationSecond = voteTimeProps.VoteDurationSecond
 
 		if reqData.TemplateId != 0 {
 			proposalRecord.ProposalTemplateID = &reqData.TemplateId
@@ -286,8 +307,8 @@ func SaveProposalToMetaforo(db *gorm.DB, origProposalRecord *model.Proposal, vot
 
 	// Vote start and end time, used for create and update proposal
 	// TODO: The default vote start delay should be saved into proposal category record
-	voteStartTime := time.Now().UTC().Add(internal.DefaultVoteStartDelay)
-	voteEndTime := time.Now().UTC().Add(internal.DefaultVoteStartDelay + origProposalRecord.VoteDuration())
+	voteStartTime := time.Now().UTC().Add(origProposalRecord.PublicityDuration())
+	voteEndTime := time.Now().UTC().Add(origProposalRecord.PublicityDuration() + origProposalRecord.VoteDuration())
 
 	if origProposalRecord.ProposalRecordId != "" {
 		// DB Record has ProposalRecordId, this is updating metaforo proposal action, which contains
