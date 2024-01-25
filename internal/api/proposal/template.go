@@ -20,6 +20,7 @@ type TemplateResponse struct {
 	ScreenshotUri   string               `json:"screenshot_uri"`
 	ContentSchema   string               `json:"schema"`
 	CategoryName    string               `json:"-"`
+	CategoryId      uint                 `json:"-"`
 	HasPermToUse    bool                 `json:"has_perm_to_use"`
 	RuleDescription string               `json:"rule_description"`
 	IsInstantVote   bool                 `json:"is_instant_vote"`
@@ -27,6 +28,7 @@ type TemplateResponse struct {
 }
 
 type TmplWithCategoryNameRecord struct {
+	CategoryId   uint                `json:"category_id"`
 	CategoryName string              `json:"category_name"`
 	Templates    []*TemplateResponse `json:"templates"`
 }
@@ -117,6 +119,7 @@ func ListTemplatesWithPerm(ctx *gin.Context) {
 			ContentSchema: r.ContentSchema,
 			ScreenshotUri: r.ScreenshotUri,
 			CategoryName:  r.ProposalCategory.Name,
+			CategoryId:    r.ProposalCategoryID,
 			HasPermToUse:  hasPermToUse,
 			Components: lo.Map(r.Components, func(c *model.ProposalComponent, _ int) *ComponentResponse {
 				return &ComponentResponse{
@@ -129,11 +132,14 @@ func ListTemplatesWithPerm(ctx *gin.Context) {
 		}
 	})
 
-	respRcdMap := lo.GroupBy(tmplRecords, func(r *TemplateResponse) string {
-		return r.CategoryName
+	respRcdMap := lo.GroupBy(tmplRecords, func(r *TemplateResponse) lo.Tuple2[uint, string] {
+		return lo.T2[uint, string](r.CategoryId, r.CategoryName)
 	})
-	respRcds := lo.MapToSlice(respRcdMap, func(categoryName string, tmplRcds []*TemplateResponse) *TmplWithCategoryNameRecord {
+
+	respRcds := lo.MapToSlice(respRcdMap, func(categoryIdName lo.Tuple2[uint, string], tmplRcds []*TemplateResponse) *TmplWithCategoryNameRecord {
+		categoryId, categoryName := lo.Unpack2(categoryIdName)
 		return &TmplWithCategoryNameRecord{
+			CategoryId:   categoryId,
 			CategoryName: categoryName,
 			Templates:    tmplRcds,
 		}
