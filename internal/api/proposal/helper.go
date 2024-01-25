@@ -93,7 +93,7 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 		// Proposal is in PendingSubmit state, the data can be updated directory w/o bumping up version
 		proposalRcd.Title = reqData.Title
 		proposalRcd.ProposalCategoryID = reqData.ProposalCategoryId
-		proposalRcd.SecondDelayBeforeTaskExecution = pCategory.SecondDelayBeforeTaskExecution
+		proposalRcd.PendingExecutionSecond = pCategory.PendingExecutionSecond
 		proposalRcd.VoteDurationSecond = pCategory.VoteDurationSecond
 		proposalRcd.VoteType = dbProposalRcd.VoteType
 		err = db.Save(&proposalRcd).Error
@@ -117,15 +117,16 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 	} else {
 		// Init proposal record to get ID
 		proposalRecord := model.Proposal{
-			CreateTs:                       time.Now().UTC().Unix(),
-			Title:                          reqData.Title,
-			Applicant:                      common.FormatUserWallet(userWallet),
-			ProposalCategoryID:             reqData.ProposalCategoryId,
-			SecondDelayBeforeTaskExecution: pCategory.SecondDelayBeforeTaskExecution,
-			VoteDurationSecond:             pCategory.VoteDurationSecond,
-			Version:                        1,
-			VoteType:                       reqData.VoteType,
+			CreateTs:           time.Now().UTC().Unix(),
+			Title:              reqData.Title,
+			Applicant:          common.FormatUserWallet(userWallet),
+			ProposalCategoryID: reqData.ProposalCategoryId,
+			Version:            1,
+			VoteType:           reqData.VoteType,
 		}
+		proposalRecord.PendingExecutionSecond = pCategory.PendingExecutionSecond
+		proposalRecord.VoteDurationSecond = pCategory.VoteDurationSecond
+
 		if reqData.TemplateId != 0 {
 			proposalRecord.ProposalTemplateID = &reqData.TemplateId
 		}
@@ -672,7 +673,7 @@ func createProposalFinTasks(db *gorm.DB, proposal *model.Proposal, finState mode
 			UpdateTs:       currentTs,
 			HandlerName:    actionName,
 			LastExecTs:     0,
-			NextExecTs:     currentTs + proposal.SecondDelayBeforeTaskExecution,
+			NextExecTs:     currentTs + proposal.PendingExecutionSecond,
 			JobParams:      componentAction.ComponentParams,
 			VoteResult:     voteResult,
 			VoteType:       voteType,

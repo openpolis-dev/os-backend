@@ -69,6 +69,12 @@ type MetaforoUser struct {
 	Groups datatypes.JSON
 }
 
+type VoteTimeProperties struct {
+	PublicitySecond        int64
+	VoteDurationSecond     int64
+	PendingExecutionSecond int64
+}
+
 type Proposal struct {
 	ID uint `gorm:"primaryKey"`
 
@@ -113,10 +119,7 @@ type Proposal struct {
 	ProposalCategoryID uint `gorm:"index"`
 	ProposalCategory   ProposalCategory
 
-	// VoteDurationSecond and SecondDelayBeforeTaskExecution are used for controlling voting last time and delay before task execution
-	// the values are copied from proposal category db record
-	VoteDurationSecond             int64
-	SecondDelayBeforeTaskExecution int64
+	VoteTimeProperties
 }
 
 func (p *Proposal) StateName() string {
@@ -128,7 +131,7 @@ func (p *Proposal) VoteDuration() time.Duration {
 }
 
 func (p *Proposal) TaskStartDelay() time.Duration {
-	return time.Duration(p.SecondDelayBeforeTaskExecution) * time.Second
+	return time.Duration(p.PendingExecutionSecond) * time.Second
 }
 
 // StateIsUpdatable returns bool value indicates whether this proposal can be updated.
@@ -240,11 +243,9 @@ type ProposalCategory struct {
 	ProposalVoteGateId uint
 	ProposalVoteGate   *ProposalVoteGate
 
-	SecondDelayBeforeTaskExecution int64 // Second delay before execution of proposal component actions
-
-	VoteDurationSecond int64 // Vote duration in second for this proposal category
-
 	IsActive bool
+
+	VoteTimeProperties
 }
 
 // ProposalVoteGate saves the token requirements to vote
@@ -429,7 +430,7 @@ type ProposalTemplate struct {
 
 	// Proposal category
 	ProposalCategoryID uint `gorm:"index"`
-	ProposalCategory   ProposalCategory
+	ProposalCategory   *ProposalCategory
 
 	// UseTemplateGates saves gate for creating proposal based on this template
 	UseTemplateGates []*ProposalVoteGate `gorm:"many2many:template_usage_gates;"`
@@ -439,4 +440,6 @@ type ProposalTemplate struct {
 	//////////
 	// VoteGates saves gate info of voting on proposal created by this template
 	VoteGates []*ProposalVoteGate `gorm:"many2many:proposal_voting_gates;"`
+
+	VoteTimeProperties
 }
