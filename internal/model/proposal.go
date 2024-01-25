@@ -105,7 +105,7 @@ type Proposal struct {
 	IsHidden bool
 
 	// If proposal is created from template, this value will be set
-	ProposalTemplateID uint `gorm:"index"`
+	ProposalTemplateID *uint `gorm:"index"`
 	ProposalTemplate   *ProposalTemplate
 
 	// Proposal category, this field is used for template created w/o template,
