@@ -4494,6 +4494,12 @@ const docTemplate = `{
                 "vote_gate_id": {
                     "type": "integer"
                 },
+                "vote_options": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "vote_type": {
                     "type": "integer"
                 }

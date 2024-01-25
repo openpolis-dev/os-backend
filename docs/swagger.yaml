@@ -974,6 +974,10 @@ definitions:
         type: string
       vote_gate_id:
         type: integer
+      vote_options:
+        items:
+          type: string
+        type: array
       vote_type:
         type: integer
     type: object
