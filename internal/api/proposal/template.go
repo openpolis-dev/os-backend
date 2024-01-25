@@ -26,6 +26,11 @@ type TemplateResponse struct {
 	Components      []*ComponentResponse `json:"components"`
 }
 
+type TmplWithCategoryNameRecord struct {
+	CategoryName string              `json:"category_name"`
+	Templates    []*TemplateResponse `json:"templates"`
+}
+
 type updateTmplRequest struct {
 	Name          string `json:"name"`
 	Schema        string `json:"schema"`
@@ -90,7 +95,7 @@ func ListTemplatesWithPerm(ctx *gin.Context) {
 	if err := db.Model(&model.ProposalTemplate{}).
 		Preload("UseTemplateGates").
 		Preload("ProposalCategory").
-		Preload("Components").Find(&dbRcds).Error; err != nil {
+		Preload("Components").Order("proposal_category_id").Find(&dbRcds).Error; err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("list templates failed")))
 		return
@@ -124,8 +129,14 @@ func ListTemplatesWithPerm(ctx *gin.Context) {
 		}
 	})
 
-	respRcds := lo.GroupBy(tmplRecords, func(r *TemplateResponse) string {
+	respRcdMap := lo.GroupBy(tmplRecords, func(r *TemplateResponse) string {
 		return r.CategoryName
+	})
+	respRcds := lo.MapToSlice(respRcdMap, func(categoryName string, tmplRcds []*TemplateResponse) *TmplWithCategoryNameRecord {
+		return &TmplWithCategoryNameRecord{
+			CategoryName: categoryName,
+			Templates:    tmplRcds,
+		}
 	})
 
 	ctx.JSON(200, api.Success(respRcds))
