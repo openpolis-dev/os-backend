@@ -40,10 +40,17 @@ type ComponentRequestData struct {
 	Data       map[string]any `json:"data"`
 }
 
+type BlockData struct {
+	Type string `json:"type"`
+	FrontendContentBlockRecord
+	ComponentRequestData
+}
+
 type CreateOrUpdateProposalData struct {
 	TemplateId          uint                             `json:"template_id"`
 	Title               string                           `json:"title"`
 	ProposalCategoryId  uint                             `json:"proposal_category_id"`
+	Blocks              []*BlockData                     `json:"blocks"`
 	ContentBlocks       []*FrontendContentBlockRecord    `json:"content_blocks"`
 	Components          map[string]*ComponentRequestData `json:"components"`
 	VoteGateId          uint                             `json:"vote_gate_id"`

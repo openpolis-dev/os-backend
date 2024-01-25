@@ -83,6 +83,8 @@ type Proposal struct {
 
 	Title string
 
+	BlocksIdMapping []string
+
 	ContentBlocks []*ProposalContentBlock
 
 	Components []*ProposalComponentRecord
@@ -398,7 +400,7 @@ type ProposalComponent struct {
 }
 
 // ProposalComponentAction saves automate actions will be executed
-// The Command field currently saves predefined command name that can be recognized by code and launch pre defined automate action.
+// The Command field currently saves predefined command name that can be recognized by code and launch predefined automate action.
 type ProposalComponentAction struct {
 	ID       uint  `gorm:"primaryKey"`
 	CreateTs int64 `gorm:"index"`
@@ -423,6 +425,10 @@ type ProposalTemplate struct {
 
 	// ContentSchema saves content blocks used for this template, each block contains one title and one content field
 	ContentSchema string
+
+	// MixedBlocksSchema saves blocks mixed of content and component. This field is a serialized JSON array.
+	// Each element contains a `type` field, which can be content or component, and the other data are defined by the
+	MixedBlocksSchema string
 
 	// Components saves component used in this template,
 	Components []*ProposalComponent `gorm:"many2many:template_components;"`
