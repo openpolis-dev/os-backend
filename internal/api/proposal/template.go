@@ -25,7 +25,6 @@ type TemplateResponse struct {
 	RuleDescription string               `json:"rule_description"`
 	IsInstantVote   bool                 `json:"is_instant_vote"`
 	Components      []*ComponentResponse `json:"components"`
-	Blocks          []string             `json:"blocks"`
 }
 
 type TmplWithCategoryNameRecord struct {
