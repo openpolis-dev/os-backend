@@ -63,7 +63,6 @@ func WidgetData(ctx *gin.Context) {
 
 	user, enforcer, db, cfg := api.ForContext(ctx)
 	allEntities, err := enforcer.HasRoleForUser(common.FormatUserWallet(user.Wallet), internal.RoleHall)
-	log.Error().Msgf("TTT: all entities: %+v", allEntities)
 	if err != nil {
 		log.Error().Err(err).Msg("casbin error")
 		sdk.LogServerErrorToSentry(ctx, err)
