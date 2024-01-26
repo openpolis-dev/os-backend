@@ -161,7 +161,7 @@ func UpdateTemplate(ctx *gin.Context) {
 		return
 	}
 
-	tmplRcd := model.ProposalTemplate{
+	newTmplRcd := model.ProposalTemplate{
 		Name:               reqData.Name,
 		ContentSchema:      reqData.Schema,
 		ScreenshotUri:      reqData.ScreenshotUri,
@@ -171,7 +171,7 @@ func UpdateTemplate(ctx *gin.Context) {
 	var components []*model.ProposalComponent
 	for _, compName := range reqData.Components {
 		compRcd := model.ProposalComponent{Name: compName}
-		if err := db.Model(&compRcd).Where(&compRcd).First(&compRcd).Error; err != nil {
+		if err := db.Model(&compRcd).Where("name = ?", compName).First(&compRcd).Error; err != nil {
 			log.Error().Msgf("parse request data error: %+v", err)
 			sdk.LogUserSideError(ctx, err)
 			ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("parse request data error: %+v", err)))
@@ -181,11 +181,12 @@ func UpdateTemplate(ctx *gin.Context) {
 		components = append(components, &compRcd)
 	}
 
-	tmplRcd.Components = components
+	newTmplRcd.Components = components
 
-	if err := db.Model(&tmplRcd).Where("name = ?", reqData.Name).Error; err != nil {
+	var tmplRcd model.ProposalTemplate
+	if err := db.Model(&tmplRcd).Where("name = ?", reqData.Name).First(&tmplRcd).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			err = db.Model(&tmplRcd).Create(&tmplRcd).Error
+			err = db.Model(&newTmplRcd).Create(&newTmplRcd).Error
 			if err != nil {
 				log.Error().Msgf("create proposal template error: %+v", err)
 				ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
@@ -197,7 +198,16 @@ func UpdateTemplate(ctx *gin.Context) {
 			return
 		}
 	} else {
-		err = db.Save(&tmplRcd).Error
+		// Update existing data
+		newTmplRcd.ID = tmplRcd.ID
+		// Clear existing m2m components
+		err := db.Model(&tmplRcd).Association("Components").Clear()
+		if err != nil {
+			log.Error().Msgf("update proposal template error: %+v", err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+			return
+		}
+		err = db.Save(&newTmplRcd).Error
 		if err != nil {
 			log.Error().Msgf("update proposal template error: %+v", err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
@@ -205,5 +215,5 @@ func UpdateTemplate(ctx *gin.Context) {
 		}
 	}
 
-	ctx.JSON(200, api.Success(tmplRcd))
+	ctx.JSON(200, api.Success(newTmplRcd))
 }
