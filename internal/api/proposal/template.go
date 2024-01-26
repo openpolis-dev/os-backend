@@ -15,16 +15,17 @@ import (
 )
 
 type TemplateResponse struct {
-	ID              uint                 `json:"id"`
-	Name            string               `json:"name"`
-	ScreenshotUri   string               `json:"screenshot_uri"`
-	ContentSchema   string               `json:"schema"`
-	CategoryName    string               `json:"-"`
-	CategoryId      uint                 `json:"-"`
-	HasPermToUse    bool                 `json:"has_perm_to_use"`
-	RuleDescription string               `json:"rule_description"`
-	IsInstantVote   bool                 `json:"is_instant_vote"`
-	Components      []*ComponentResponse `json:"components"`
+	ID               uint                 `json:"id"`
+	Name             string               `json:"name"`
+	ScreenshotUri    string               `json:"screenshot_uri"`
+	ContentSchema    string               `json:"schema"`
+	CategoryName     string               `json:"-"`
+	CategoryId       uint                 `json:"-"`
+	HasPermToUse     bool                 `json:"has_perm_to_use"`
+	RuleDescription  string               `json:"rule_description"`
+	IsInstantVote    bool                 `json:"is_instant_vote"`
+	IsClosingProject bool                 `json:"is_closing_project"`
+	Components       []*ComponentResponse `json:"components"`
 }
 
 type TmplWithCategoryNameRecord struct {
