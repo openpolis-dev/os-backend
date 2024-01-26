@@ -34,9 +34,11 @@ type TmplWithCategoryNameRecord struct {
 }
 
 type updateTmplRequest struct {
-	Name          string `json:"name"`
-	Schema        string `json:"schema"`
-	ScreenshotUri string `json:"screenshot_uri"`
+	Name          string   `json:"name"`
+	CategoryId    uint     `json:"category_id"`
+	Schema        string   `json:"schema"`
+	ScreenshotUri string   `json:"screenshot_uri"`
+	Components    []string `json:"components"`
 }
 
 // ListTemplates list templates and return to frontend
@@ -160,10 +162,26 @@ func UpdateTemplate(ctx *gin.Context) {
 	}
 
 	tmplRcd := model.ProposalTemplate{
-		Name:          reqData.Name,
-		ContentSchema: reqData.Schema,
-		ScreenshotUri: reqData.ScreenshotUri,
+		Name:               reqData.Name,
+		ContentSchema:      reqData.Schema,
+		ScreenshotUri:      reqData.ScreenshotUri,
+		ProposalCategoryID: reqData.CategoryId,
 	}
+
+	var components []*model.ProposalComponent
+	for _, compName := range reqData.Components {
+		compRcd := model.ProposalComponent{Name: compName}
+		if err := db.Model(&compRcd).Where(&compRcd).First(&compRcd).Error; err != nil {
+			log.Error().Msgf("parse request data error: %+v", err)
+			sdk.LogUserSideError(ctx, err)
+			ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("parse request data error: %+v", err)))
+			return
+		}
+
+		components = append(components, &compRcd)
+	}
+
+	tmplRcd.Components = components
 
 	if err := db.Model(&tmplRcd).Where("name = ?", reqData.Name).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
