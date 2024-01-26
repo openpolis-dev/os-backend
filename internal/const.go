@@ -71,8 +71,6 @@ var ProposalNumericVoteOptionsMap = lo.Associate(ProposalNumericVoteOptions, fun
 	return r[0], r[1]
 })
 
-const DefaultVoteStartDelay = 14 * 24 * time.Hour
-
 // Proposal related values
 
 const DefaultTaskRunnerCheckIntervalSecond = 10
