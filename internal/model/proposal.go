@@ -25,8 +25,17 @@ const (
 	ProposalStateVotePassed
 	ProposalStateVoteFailed
 
+	// ProposalStatePendingExecution indicates vote has passed, and the execution command has been added into cronjob table
+	// In this state, the proposal should have execution_ts field settled, which can be fetched from cronjob table.
 	ProposalStatePendingExecution
 	ProposalStateExecuted
+
+	// ProposalStateExecutionFailed indicates the execution of cronjob failed, need to handle it manually
+	ProposalStateExecutionFailed
+
+	// ProposalStateVetoed indicates the proposal has been voted by city hall proposal.
+	// TODO: In this case, there should be some field to reflect this relationship
+	ProposalStateVetoed
 )
 
 var ProposalStateIdNameMapping = map[string]ProposalState{
@@ -40,6 +49,8 @@ var ProposalStateIdNameMapping = map[string]ProposalState{
 	"vote_failed":       ProposalStateVoteFailed,
 	"pending_execution": ProposalStatePendingExecution,
 	"executed":          ProposalStateExecuted,
+	"execution_failed":  ProposalStateExecutionFailed,
+	"vetoed":            ProposalStateVetoed,
 }
 
 var ProposalStateName = []string{
@@ -53,6 +64,8 @@ var ProposalStateName = []string{
 	"vote_failed",
 	"pending_execution",
 	"executed",
+	"execution_failed",
+	"vetoed",
 }
 
 // MetaforoUser saves user mapping between OS and metaforo
@@ -136,6 +149,10 @@ func (p *Proposal) VoteDuration() time.Duration {
 
 func (p *Proposal) TaskStartDelay() time.Duration {
 	return time.Duration(p.PendingExecutionSecond) * time.Second
+}
+
+func (p *Proposal) CanBeVetoed() bool {
+	return p.PendingExecutionSecond == 0
 }
 
 // StateIsUpdatable returns bool value indicates whether this proposal can be updated.
