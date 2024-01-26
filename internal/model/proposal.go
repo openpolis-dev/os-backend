@@ -204,15 +204,18 @@ func BuildProposalRecordIdFromMetaforoThreadId(threadId int) string {
 }
 
 // ProposalContentBlock saves blocks in proposal.
-// In proposal the content is built by blocks, each block contains a title and content.
-// The content are saved in order in proposal records.
+// The block contains brief text block and components block.
+// The brief text block contains title and content.
+// The component block can contain multiple components, with a title field
 type ProposalContentBlock struct {
 	ID       uint  `gorm:"primaryKey"`
 	CreateTs int64 `gorm:"index"`
 
-	Title      string
-	Content    string
-	ProposalID uint
+	Title         string
+	Content       string
+	ProposalID    uint
+	Type          string
+	ComponentList []string
 }
 
 // ProposalComponentRecord saves components in proposal.

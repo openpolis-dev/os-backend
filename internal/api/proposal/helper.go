@@ -186,11 +186,13 @@ func SaveProposalContentRecords(db *gorm.DB, proposalRecordId uint, reqContentBl
 		var updatedIds []uint
 		for _, block := range reqContentBlockData {
 			if err := db.Save(&model.ProposalContentBlock{
-				ID:         block.ID,
-				ProposalID: proposalRecordId,
-				Title:      block.Title,
-				Content:    block.Content,
-				CreateTs:   time.Now().UTC().Unix(),
+				ID:            block.ID,
+				ProposalID:    proposalRecordId,
+				Title:         block.Title,
+				Content:       block.Content,
+				Type:          block.Type,
+				ComponentList: block.ComponentList,
+				CreateTs:      time.Now().UTC().Unix(),
 			}).Error; err != nil {
 				log.Error().Msgf("create proposal block error: %+v, block data: %+v", err, block)
 				return err

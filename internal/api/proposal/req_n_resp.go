@@ -111,9 +111,11 @@ type FrontendProposalListRecord struct {
 }
 
 type FrontendContentBlockRecord struct {
-	ID      uint   `json:"id"`
-	Title   string `json:"title"`
-	Content string `json:"content"`
+	ID            uint     `json:"id"`
+	Title         string   `json:"title"`
+	Content       string   `json:"content"`
+	Type          string   `json:"type"`
+	ComponentList []string `json:"name"`
 }
 
 type FrontendProposalEditHistories struct {
@@ -251,9 +253,11 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 
 	proposalContentResponse := lo.Map(proposalBlocks, func(item *model.ProposalContentBlock, _ int) *FrontendContentBlockRecord {
 		return &FrontendContentBlockRecord{
-			ID:      item.ID,
-			Title:   item.Title,
-			Content: item.Content,
+			ID:            item.ID,
+			Title:         item.Title,
+			Content:       item.Content,
+			Type:          item.Type,
+			ComponentList: item.ComponentList,
 		}
 	})
 
