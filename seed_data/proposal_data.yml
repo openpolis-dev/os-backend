@@ -10,9 +10,3 @@ proposal_components:
       schema: '{"type":"budget","title":"激励申请表","content":[{"type":"table","name":"budgetList","desc":"如果此项目有预付部分，请在以下表格中分配中剔除已预付的部分。","style":{"width":[20,20,20,40],"tHeader":["接收人","资产类型","资产数量","备注"]},"rows":[{"type":"input","inputType":"address","value":"","name":"amount","properties":[{"name":"title","value":"接收人"},{"name":"size","value":"md"},{"name":"validate","value":{"required":true}}]},{"type":"select","dataList":"datasrv/asset_type","value":"","name":"typeTest","properties":[{"name":"title","value":"资产类型"},{"name":"size","value":"md"},{"name":"validate","value":{"required":true}}]},{"type":"input","inputType":"text","value":"","name":"amount","properties":[{"name":"title","value":"资产数量"},{"name":"size","value":"md"},{"name":"validate","value":{"required":true}}]},{"type":"input","inputType":"text","value":"","name":"description","properties":[{"name":"title","value":"备注"},{"name":"size","value":"md"},{"name":"validate","value":{"required":true}}]}]}]}'
 
 proposal_templates:
-  records:
-    - name: 立项申请
-      schema: '[{"title":"提案背景","content":"","hint":"Background of the proposal"},{"title": "立项信息", "type": "component", "name": ["budgets", "deliverables"]}, {"title":"提案内容","content":"","hint":"Content of the proposal"}]'
-      components:
-        - budgets
-        - deliverables
