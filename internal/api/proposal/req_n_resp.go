@@ -111,11 +111,11 @@ type FrontendProposalListRecord struct {
 }
 
 type FrontendContentBlockRecord struct {
-	ID            uint     `json:"id"`
-	Title         string   `json:"title"`
-	Content       string   `json:"content"`
-	Type          string   `json:"type"`
-	ComponentList []string `json:"name"`
+	ID            uint   `json:"id"`
+	Title         string `json:"title"`
+	Content       string `json:"content"`
+	Type          string `json:"type"`
+	ComponentList string `json:"name"`
 }
 
 type FrontendProposalEditHistories struct {

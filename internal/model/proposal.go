@@ -215,7 +215,7 @@ type ProposalContentBlock struct {
 	Content       string
 	ProposalID    uint
 	Type          string
-	ComponentList []string
+	ComponentList string
 }
 
 // ProposalComponentRecord saves components in proposal.

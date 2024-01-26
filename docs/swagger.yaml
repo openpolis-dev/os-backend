@@ -1005,7 +1005,11 @@ definitions:
         type: string
       id:
         type: integer
+      name:
+        type: string
       title:
+        type: string
+      type:
         type: string
     type: object
   proposal.FrontendProposalCategory:
