@@ -1,0 +1,18 @@
+proposal_components:
+  records:
+    - name: budget
+      schema: '{"type":"budget","title":"预算申请","content":[{"type":"table","name":"budgetList","desc":"P2 提案可申请不超过 50000 SCR 、不超过 1000 USDT 的激励。目前预付只能选择U，且需要说明预付的具体使用途径。","style":{"width":[20,20,20,40],"tHeader":["申请数额","资产类型","预付比例(0-50%)","预付需求说明"]},"rows":[{"type":"input","inputType":"text","value":"","name":"amount","properties":[{"name":"title","value":"申请数额"},{"name":"size","value":"md"},{"name":"validate","value":{"required":true}}]},{"type":"select","dataList":"datasrv/asset_type","value":"","name":"typeTest","properties":[{"name":"title","value":"资产类型"},{"name":"size","value":"md"},{"name":"validate","value":{"required":true}}]},{"type":"input","inputType":"text","value":"","name":"proportion","properties":[{"name":"title","value":"预付比例"},{"name":"size","value":"md"},{"name":"validate","value":{"required":true}}]},{"type":"input","inputType":"text","value":"","name":"description","properties":[{"name":"title","value":"预付需求说明"},{"name":"size","value":"md"},{"name":"validate","value":{"required":true}}]}]}]}'
+    - name: deliverables
+      schema: '{"type":"Deliverables","title":"交付物","content":[{"type":"richText","value":"","name":"description","properties":[{"name":"title","value":"交付物"},{"name":"size","value":"lg"},{"name":"validate","value":{"required":true}}]}]}'
+    - name: deadline
+      schema: '{"type":"deadline","title":"计划完成时限","content":[{"type":"datepicker","value":"","name":"description","properties":[{"name":"title","value":"日期选择"},{"name":"size","value":"lg"},{"name":"validate","value":{"required":true}}]}]}'
+    - name: motivation
+      schema: '{"type":"budget","title":"激励申请表","content":[{"type":"table","name":"budgetList","desc":"如果此项目有预付部分，请在以下表格中分配中剔除已预付的部分。","style":{"width":[20,20,20,40],"tHeader":["接收人","资产类型","资产数量","备注"]},"rows":[{"type":"input","inputType":"address","value":"","name":"amount","properties":[{"name":"title","value":"接收人"},{"name":"size","value":"md"},{"name":"validate","value":{"required":true}}]},{"type":"select","dataList":"datasrv/asset_type","value":"","name":"typeTest","properties":[{"name":"title","value":"资产类型"},{"name":"size","value":"md"},{"name":"validate","value":{"required":true}}]},{"type":"input","inputType":"text","value":"","name":"amount","properties":[{"name":"title","value":"资产数量"},{"name":"size","value":"md"},{"name":"validate","value":{"required":true}}]},{"type":"input","inputType":"text","value":"","name":"description","properties":[{"name":"title","value":"备注"},{"name":"size","value":"md"},{"name":"validate","value":{"required":true}}]}]}]}'
+
+proposal_templates:
+  records:
+    - name: 立项申请
+      schema: '[{"title":"提案背景","content":"","hint":"Background of the proposal"},{"title": "立项信息", "type": "component", "name": ["budgets", "deliverables"]}, {"title":"提案内容","content":"","hint":"Content of the proposal"}]'
+      components:
+        - budgets
+        - deliverables
