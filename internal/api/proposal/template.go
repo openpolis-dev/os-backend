@@ -58,10 +58,12 @@ func ListTemplates(ctx *gin.Context) {
 
 	respRcds := lo.Map(dbRcds, func(r *model.ProposalTemplate, _ int) *TemplateResponse {
 		return &TemplateResponse{
-			ID:            r.ID,
-			Name:          r.Name,
-			ContentSchema: r.ContentSchema,
-			ScreenshotUri: r.ScreenshotUri,
+			ID:              r.ID,
+			Name:            r.Name,
+			ContentSchema:   r.ContentSchema,
+			ScreenshotUri:   r.ScreenshotUri,
+			RuleDescription: r.RuleDesc,
+			IsInstantVote:   r.PublicitySecond == 0,
 			Components: lo.Map(r.Components, func(c *model.ProposalComponent, _ int) *ComponentResponse {
 				return &ComponentResponse{
 					ID:            c.ID,
@@ -116,13 +118,15 @@ func ListTemplatesWithPerm(ctx *gin.Context) {
 		}, true)
 
 		return &TemplateResponse{
-			ID:            r.ID,
-			Name:          r.Name,
-			ContentSchema: r.ContentSchema,
-			ScreenshotUri: r.ScreenshotUri,
-			CategoryName:  r.ProposalCategory.Name,
-			CategoryId:    r.ProposalCategoryID,
-			HasPermToUse:  hasPermToUse,
+			ID:              r.ID,
+			Name:            r.Name,
+			ContentSchema:   r.ContentSchema,
+			ScreenshotUri:   r.ScreenshotUri,
+			CategoryName:    r.ProposalCategory.Name,
+			CategoryId:      r.ProposalCategoryID,
+			HasPermToUse:    hasPermToUse,
+			RuleDescription: r.RuleDesc,
+			IsInstantVote:   r.PublicitySecond == 0,
 			Components: lo.Map(r.Components, func(c *model.ProposalComponent, _ int) *ComponentResponse {
 				return &ComponentResponse{
 					ID:            c.ID,
