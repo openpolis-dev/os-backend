@@ -212,6 +212,18 @@ func Update(ctx *gin.Context) {
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
 			return
 		}
+
+		// If the publicity second is 0, update the db proposal to voting state
+		if proposalRecord.PublicitySecond == 0 {
+			log.Error().Msgf("TTT: update proposal state to voting")
+			proposalRecord.State = int(model.ProposalStateVoting)
+			if err := db.Save(&proposalRecord).Error; err != nil {
+				log.Error().Msgf("update proposal to voting state error: %+v", err)
+				sdk.LogServerErrorToSentry(ctx, err)
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
+				return
+			}
+		}
 	}
 
 	responseData, err := ConvertProposalToFrontendDetailRecord(db, proposalRecord, 0, reqData.MetaforoAccessToken, cfg.MetaforoData.GroupName)
@@ -273,6 +285,18 @@ func Create(ctx *gin.Context) {
 			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
 			return
+		}
+
+		// If the publicity second is 0, update the db proposal to voting state
+		if proposalRecord.PublicitySecond == 0 {
+			log.Error().Msgf("TTT: update proposal state to voting")
+			proposalRecord.State = int(model.ProposalStateVoting)
+			if err := db.Save(&proposalRecord).Error; err != nil {
+				log.Error().Msgf("update proposal to voting state error: %+v", err)
+				sdk.LogServerErrorToSentry(ctx, err)
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
+				return
+			}
 		}
 	}
 
