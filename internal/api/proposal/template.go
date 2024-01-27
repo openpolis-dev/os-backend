@@ -4,10 +4,12 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
+	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk"
@@ -60,13 +62,14 @@ func ListTemplates(ctx *gin.Context) {
 
 	respRcds := lo.Map(dbRcds, func(r *model.ProposalTemplate, _ int) *TemplateResponse {
 		return &TemplateResponse{
-			ID:              r.ID,
-			Name:            r.Name,
-			ContentSchema:   r.ContentSchema,
-			ScreenshotUri:   r.ScreenshotUri,
-			RuleDescription: r.RuleDesc,
-			IsInstantVote:   r.PublicitySecond == 0,
-			VoteType:        r.VoteType,
+			ID:               r.ID,
+			Name:             r.Name,
+			ContentSchema:    r.ContentSchema,
+			ScreenshotUri:    r.ScreenshotUri,
+			RuleDescription:  r.RuleDesc,
+			IsInstantVote:    r.PublicitySecond == 0,
+			IsClosingProject: strings.Contains(r.Name, internal.ClosingProjectTemplateMagicWord),
+			VoteType:         r.VoteType,
 			Components: lo.Map(r.Components, func(c *model.ProposalComponent, _ int) *ComponentResponse {
 				return &ComponentResponse{
 					ID:            c.ID,
@@ -121,16 +124,17 @@ func ListTemplatesWithPerm(ctx *gin.Context) {
 		}, true)
 
 		return &TemplateResponse{
-			ID:              r.ID,
-			Name:            r.Name,
-			ContentSchema:   r.ContentSchema,
-			ScreenshotUri:   r.ScreenshotUri,
-			CategoryName:    r.ProposalCategory.Name,
-			CategoryId:      r.ProposalCategoryID,
-			HasPermToUse:    hasPermToUse,
-			RuleDescription: r.RuleDesc,
-			IsInstantVote:   r.PublicitySecond == 0,
-			VoteType:        r.VoteType,
+			ID:               r.ID,
+			Name:             r.Name,
+			ContentSchema:    r.ContentSchema,
+			ScreenshotUri:    r.ScreenshotUri,
+			CategoryName:     r.ProposalCategory.Name,
+			CategoryId:       r.ProposalCategoryID,
+			HasPermToUse:     hasPermToUse,
+			RuleDescription:  r.RuleDesc,
+			IsInstantVote:    r.PublicitySecond == 0,
+			IsClosingProject: strings.Contains(r.Name, internal.ClosingProjectTemplateMagicWord),
+			VoteType:         r.VoteType,
 			Components: lo.Map(r.Components, func(c *model.ProposalComponent, _ int) *ComponentResponse {
 				return &ComponentResponse{
 					ID:            c.ID,
