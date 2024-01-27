@@ -117,7 +117,11 @@ type Proposal struct {
 
 	Applicant string `gorm:"index"`
 
-	// VoteType indicates the type of attached vote for this proposal, the available values are ProposalVoteTypeNumeric and ProposalVoteTypeDecision
+	// VoteType indicates the type of attached vote for this proposal, the available values are:
+	// - ProposalVoteTypeNone
+	// - ProposalVoteTypeNumeric
+	// - ProposalVoteTypeDecision
+	// - ProposalVoteTypeCustomerDefined
 	VoteType    int
 	VoteRecords []*ProposalVoteRecord
 
@@ -319,8 +323,9 @@ type ProposalAuditLog struct {
 }
 
 var (
-	ProposalVoteTypeDecision        int = 0
-	ProposalVoteTypeNumeric             = 1
+	ProposalVoteTypeNone            int = 0
+	ProposalVoteTypeDecision            = 1
+	ProposalVoteTypeNumeric             = 2
 	ProposalVoteTypeCustomerDefined     = 99
 )
 
@@ -350,8 +355,11 @@ type ProposalVoteRecord struct {
 
 	ProposalID uint
 
-	// indicate type of this vote. For now there are decision and numeric vote.
-	// The value for this field is defined as const ProposalVoteTypeDecision and ProposalVoteTypeNumeric
+	// VoteType indicates the type of attached vote for this proposal, the available values are:
+	// - ProposalVoteTypeNone
+	// - ProposalVoteTypeNumeric
+	// - ProposalVoteTypeDecision
+	// - ProposalVoteTypeCustomerDefined
 	VoteType int
 }
 
@@ -443,6 +451,13 @@ type ProposalTemplate struct {
 
 	// RuleDesc saves a description for template rule
 	RuleDesc string
+
+	// VoteType indicates the type of attached vote for this proposal, the available values are:
+	// - ProposalVoteTypeNone
+	// - ProposalVoteTypeNumeric
+	// - ProposalVoteTypeDecision
+	// - ProposalVoteTypeCustomerDefined
+	VoteType int
 
 	ScreenshotUri string
 

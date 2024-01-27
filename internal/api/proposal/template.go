@@ -25,6 +25,7 @@ type TemplateResponse struct {
 	RuleDescription  string               `json:"rule_description"`
 	IsInstantVote    bool                 `json:"is_instant_vote"`
 	IsClosingProject bool                 `json:"is_closing_project"`
+	VoteType         int                  `json:"vote_type"`
 	Components       []*ComponentResponse `json:"components"`
 }
 
@@ -65,6 +66,7 @@ func ListTemplates(ctx *gin.Context) {
 			ScreenshotUri:   r.ScreenshotUri,
 			RuleDescription: r.RuleDesc,
 			IsInstantVote:   r.PublicitySecond == 0,
+			VoteType:        r.VoteType,
 			Components: lo.Map(r.Components, func(c *model.ProposalComponent, _ int) *ComponentResponse {
 				return &ComponentResponse{
 					ID:            c.ID,
@@ -128,6 +130,7 @@ func ListTemplatesWithPerm(ctx *gin.Context) {
 			HasPermToUse:    hasPermToUse,
 			RuleDescription: r.RuleDesc,
 			IsInstantVote:   r.PublicitySecond == 0,
+			VoteType:        r.VoteType,
 			Components: lo.Map(r.Components, func(c *model.ProposalComponent, _ int) *ComponentResponse {
 				return &ComponentResponse{
 					ID:            c.ID,
