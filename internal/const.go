@@ -83,5 +83,3 @@ const TaskCloseProject = "project/close"
 const TaskCreateGuild = "guild/create"
 const TaskCloseGuild = "guild/close"
 const TaskRewardNewApplication = "reward/new_application"
-
-const ClosingProjectTemplateMagicWord = "结项"

@@ -13,6 +13,7 @@ import (
 )
 
 type ProposalState int
+type ProposalTemplateType int
 
 const (
 	ProposalStatePendingSubmit ProposalState = iota // PendingSubmit means the proposal is still in personal box, no one else can view it.
@@ -36,6 +37,11 @@ const (
 	// ProposalStateVetoed indicates the proposal has been voted by city hall proposal.
 	// TODO: In this case, there should be some field to reflect this relationship
 	ProposalStateVetoed
+)
+
+const (
+	ProposalTemplateTypeNewProject ProposalTemplateType = iota
+	ProposalTemplateTypeCloseProject
 )
 
 var ProposalStateIdNameMapping = map[string]ProposalState{
@@ -458,6 +464,9 @@ type ProposalTemplate struct {
 	// - ProposalVoteTypeDecision
 	// - ProposalVoteTypeCustomerDefined
 	VoteType int
+
+	// Type is used to filter proposal template, this field is not set to all templates, but only specified template records are required
+	Type ProposalTemplateType
 
 	ScreenshotUri string
 

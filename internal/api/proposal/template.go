@@ -4,12 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
-	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk"
@@ -68,7 +66,7 @@ func ListTemplates(ctx *gin.Context) {
 			ScreenshotUri:    r.ScreenshotUri,
 			RuleDescription:  r.RuleDesc,
 			IsInstantVote:    r.PublicitySecond == 0,
-			IsClosingProject: strings.Contains(r.Name, internal.ClosingProjectTemplateMagicWord),
+			IsClosingProject: r.Type == model.ProposalTemplateTypeCloseProject,
 			VoteType:         r.VoteType,
 			Components: lo.Map(r.Components, func(c *model.ProposalComponent, _ int) *ComponentResponse {
 				return &ComponentResponse{
@@ -133,7 +131,7 @@ func ListTemplatesWithPerm(ctx *gin.Context) {
 			HasPermToUse:     hasPermToUse,
 			RuleDescription:  r.RuleDesc,
 			IsInstantVote:    r.PublicitySecond == 0,
-			IsClosingProject: strings.Contains(r.Name, internal.ClosingProjectTemplateMagicWord),
+			IsClosingProject: r.Type == model.ProposalTemplateTypeCloseProject,
 			VoteType:         r.VoteType,
 			Components: lo.Map(r.Components, func(c *model.ProposalComponent, _ int) *ComponentResponse {
 				return &ComponentResponse{
