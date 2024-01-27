@@ -14,6 +14,7 @@ import (
 	"github.com/theseed-labs/os-backend/internal/graph/generated"
 	"github.com/theseed-labs/os-backend/internal/graph/resolver"
 	"github.com/theseed-labs/os-backend/internal/task_manager"
+	"gorm.io/gorm"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	swaggerFiles "github.com/swaggo/files"
@@ -152,6 +153,11 @@ func main() {
 	task_manager.InitTaskManager(db, 5, cfg)
 	task_manager.GetTaskManager().StartRunner()
 
+	r := setupRouter(cfg, db, enforcer, pushSDK)
+	_ = r.Run()
+}
+
+func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforcer, pushSDK []sdk.Pusher) *gin.Engine {
 	r := gin.Default()
 	r.Use(middleware.RequestMetricsRecord())
 	r.Use(middleware.ResponseMetricsRecord())
@@ -415,7 +421,7 @@ func main() {
 	r.POST("/graphql/query", middleware.GqlAuth, middleware.GinContextToContextMiddleware, graphqlHandler())
 	r.GET("/graphql", middleware.GqlAuth, middleware.GinContextToContextMiddleware, playgroundHandler())
 
-	_ = r.Run()
+	return r
 }
 
 // defining the Graphql handler
