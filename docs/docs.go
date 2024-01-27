@@ -4663,6 +4663,9 @@ const docTemplate = `{
                     "description": "Timestamps",
                     "type": "integer"
                 },
+                "execution_ts": {
+                    "type": "integer"
+                },
                 "histories": {
                     "$ref": "#/definitions/proposal.FrontendProposalEditHistories"
                 },
@@ -4670,6 +4673,9 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "is_based_on_template": {
+                    "type": "boolean"
+                },
+                "is_instant_execution": {
                     "type": "boolean"
                 },
                 "is_rejected": {
@@ -4850,6 +4856,9 @@ const docTemplate = `{
                 "id": {
                     "type": "integer"
                 },
+                "is_closing_project": {
+                    "type": "boolean"
+                },
                 "is_instant_vote": {
                     "type": "boolean"
                 },
@@ -4864,6 +4873,9 @@ const docTemplate = `{
                 },
                 "screenshot_uri": {
                     "type": "string"
+                },
+                "vote_type": {
+                    "type": "integer"
                 }
             }
         },

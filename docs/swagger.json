@@ -4656,6 +4656,9 @@
                     "description": "Timestamps",
                     "type": "integer"
                 },
+                "execution_ts": {
+                    "type": "integer"
+                },
                 "histories": {
                     "$ref": "#/definitions/proposal.FrontendProposalEditHistories"
                 },
@@ -4663,6 +4666,9 @@
                     "type": "integer"
                 },
                 "is_based_on_template": {
+                    "type": "boolean"
+                },
+                "is_instant_execution": {
                     "type": "boolean"
                 },
                 "is_rejected": {
@@ -4843,6 +4849,9 @@
                 "id": {
                     "type": "integer"
                 },
+                "is_closing_project": {
+                    "type": "boolean"
+                },
                 "is_instant_vote": {
                     "type": "boolean"
                 },
@@ -4857,6 +4866,9 @@
                 },
                 "screenshot_uri": {
                     "type": "string"
+                },
+                "vote_type": {
+                    "type": "integer"
                 }
             }
         },

@@ -1089,11 +1089,15 @@ definitions:
       create_ts:
         description: Timestamps
         type: integer
+      execution_ts:
+        type: integer
       histories:
         $ref: '#/definitions/proposal.FrontendProposalEditHistories'
       id:
         type: integer
       is_based_on_template:
+        type: boolean
+      is_instant_execution:
         type: boolean
       is_rejected:
         description: Reject related data
@@ -1212,6 +1216,8 @@ definitions:
         type: boolean
       id:
         type: integer
+      is_closing_project:
+        type: boolean
       is_instant_vote:
         type: boolean
       name:
@@ -1222,6 +1228,8 @@ definitions:
         type: string
       screenshot_uri:
         type: string
+      vote_type:
+        type: integer
     type: object
   publicdata.Vault:
     properties:
