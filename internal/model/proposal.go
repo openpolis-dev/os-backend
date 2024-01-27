@@ -432,6 +432,8 @@ type ProposalComponent struct {
 	Thumbnail     string
 	ScreenshotUri string
 
+	IsHidden bool
+
 	ApproveActionId uint // ApproveActionId indicates the action will be executed when the component is approved
 	RejectActionId  uint // RejectActionId indicates the action will be executed when the component is rejected
 }

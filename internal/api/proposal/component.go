@@ -28,7 +28,7 @@ type ComponentResponse struct {
 func ListComponents(ctx *gin.Context) {
 	db := api.ForContextOnlyDB(ctx)
 	var records []*ComponentResponse
-	err := db.Model(&model.ProposalComponent{}).Find(&records).Error
+	err := db.Model(&model.ProposalComponent{}).Where(model.ProposalComponent{IsHidden: false}).Find(&records).Error
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(500, api.ServerError(errors.New("list components failed")))
