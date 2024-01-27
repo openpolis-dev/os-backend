@@ -472,7 +472,7 @@ func Reject(ctx *gin.Context) {
 //
 //	@summary	Returns proposals created by login user
 //	@tags		Proposal
-//	@router		/proposal/mylist [get]
+//	@router		/proposals/my [get]
 //	@param		page			query		int		false	"which page"
 //	@param		size			query		int		false	"size of each page"
 //	@param		sort_field		query		string	false	"sort by which field"
@@ -522,7 +522,7 @@ func MyList(ctx *gin.Context) {
 //
 //	@summary	Returns creating project and executed proposals created by login user, if category_id is not specified, all proposals for opening project will be returned
 //	@tags		Proposal
-//	@router		/proposal/creating_project_proposals [get]
+//	@router		/proposals/creating_project_proposals [get]
 //	@param		category_id	query		int	false	"Limit the category of creating project proposal"
 //	@success	200			{object}	api.Reply{data=FrontendProposalDetailRecord}
 func CreatingProjectProposals(ctx *gin.Context) {

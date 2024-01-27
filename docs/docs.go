@@ -1270,102 +1270,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/proposal/creating_project_proposals": {
-            "get": {
-                "tags": [
-                    "Proposal"
-                ],
-                "summary": "Returns creating project and executed proposals created by login user, if category_id is not specified, all proposals for opening project will be returned",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Limit the category of creating project proposal",
-                        "name": "category_id",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/api.Reply"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/proposal.FrontendProposalDetailRecord"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            }
-        },
-        "/proposal/mylist": {
-            "get": {
-                "tags": [
-                    "Proposal"
-                ],
-                "summary": "Returns proposals created by login user",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "which page",
-                        "name": "page",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "size of each page",
-                        "name": "size",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "sort by which field",
-                        "name": "sort_field",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "order of sort",
-                        "name": "sort_order",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Return pending submit proposals or other state, only query PendingSubmit records when value is ` + "`" + `1` + "`" + `",
-                        "name": "pending_submit",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/api.Reply"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/proposal.FrontendProposalDetailRecord"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            }
-        },
         "/proposal_categories/list": {
             "get": {
                 "tags": [
@@ -1637,6 +1541,42 @@ const docTemplate = `{
                 }
             }
         },
+        "/proposals/creating_project_proposals": {
+            "get": {
+                "tags": [
+                    "Proposal"
+                ],
+                "summary": "Returns creating project and executed proposals created by login user, if category_id is not specified, all proposals for opening project will be returned",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Limit the category of creating project proposal",
+                        "name": "category_id",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Reply"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/proposal.FrontendProposalDetailRecord"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/proposals/delete_comment/:id": {
             "post": {
                 "tags": [
@@ -1798,6 +1738,66 @@ const docTemplate = `{
                                                     }
                                                 }
                                             ]
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/proposals/my": {
+            "get": {
+                "tags": [
+                    "Proposal"
+                ],
+                "summary": "Returns proposals created by login user",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "which page",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "size of each page",
+                        "name": "size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "sort by which field",
+                        "name": "sort_field",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "order of sort",
+                        "name": "sort_order",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Return pending submit proposals or other state, only query PendingSubmit records when value is ` + "`" + `1` + "`" + `",
+                        "name": "pending_submit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Reply"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/proposal.FrontendProposalDetailRecord"
                                         }
                                     }
                                 }
