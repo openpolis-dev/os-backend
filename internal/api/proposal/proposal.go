@@ -477,7 +477,7 @@ func Reject(ctx *gin.Context) {
 //	@param		size			query		int		false	"size of each page"
 //	@param		sort_field		query		string	false	"sort by which field"
 //	@param		sort_order		query		string	false	"order of sort"	Enum(asc desc)
-//	@param		pending_submit	query		int	false		"Return pending submit proposals or other state, only query PendingSubmit records when value is `1`"
+//	@param		pending_submit	query		int		false	"Return pending submit proposals or other state, only query PendingSubmit records when value is `1`"
 //	@success	200				{object}	api.Reply{data=FrontendProposalDetailRecord}
 func MyList(ctx *gin.Context) {
 	user, _, db, _ := api.ForContext(ctx)
@@ -519,6 +519,12 @@ func MyList(ctx *gin.Context) {
 }
 
 // CreatingProjectProposals returns proposals that is created by request user and from creating proposal template
+//
+//	@summary	Returns creating project and executed proposals created by login user, if category_id is not specified, all proposals for opening project will be returned
+//	@tags		Proposal
+//	@router		/proposal/creating_project_proposals [get]
+//	@param		category_id	query		int	false	"Limit the category of creating project proposal"
+//	@success	200			{object}	api.Reply{data=FrontendProposalDetailRecord}
 func CreatingProjectProposals(ctx *gin.Context) {
 	user, _, db, _ := api.ForContext(ctx)
 	categoryIdStr := ctx.Query("category_id")
@@ -553,7 +559,7 @@ func CreatingProjectProposals(ctx *gin.Context) {
 		strings.Join(lo.Map(newProjectTemplateId, func(tmpId uint, _ int) string {
 			return fmt.Sprintf("%d", tmpId)
 		}), ","),
-		model.ProposalStateVotePassed,
+		model.ProposalStateExecuted,
 	)
 
 	_, resultRows, err := generateFrontendProposalRecords(db, querySql, nil)

@@ -2315,6 +2315,28 @@ paths:
       summary: list my projects
       tags:
       - Project
+  /proposal/creating_project_proposals:
+    get:
+      parameters:
+      - description: Limit the category of creating project proposal
+        in: query
+        name: category_id
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  $ref: '#/definitions/proposal.FrontendProposalDetailRecord'
+              type: object
+      summary: Returns creating project and executed proposals created by login user,
+        if category_id is not specified, all proposals for opening project will be
+        returned
+      tags:
+      - Proposal
   /proposal/mylist:
     get:
       parameters:

@@ -1270,6 +1270,42 @@ const docTemplate = `{
                 }
             }
         },
+        "/proposal/creating_project_proposals": {
+            "get": {
+                "tags": [
+                    "Proposal"
+                ],
+                "summary": "Returns creating project and executed proposals created by login user, if category_id is not specified, all proposals for opening project will be returned",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Limit the category of creating project proposal",
+                        "name": "category_id",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Reply"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/proposal.FrontendProposalDetailRecord"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/proposal/mylist": {
             "get": {
                 "tags": [
