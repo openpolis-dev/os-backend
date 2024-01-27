@@ -76,6 +76,7 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 		voteTimeProps.PublicitySecond = pTemplate.PublicitySecond
 		voteTimeProps.VoteDurationSecond = pTemplate.VoteDurationSecond
 		voteTimeProps.PendingExecutionSecond = pTemplate.PendingExecutionSecond
+		reqData.VoteType = pTemplate.VoteType
 	} else {
 		var pCategory model.ProposalCategory
 		err := db.Find(&pCategory, reqData.ProposalCategoryId).Error
