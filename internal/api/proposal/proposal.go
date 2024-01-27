@@ -518,6 +518,55 @@ func MyList(ctx *gin.Context) {
 	}))
 }
 
+// CreatingProjectProposals returns proposals that is created by request user and from creating proposal template
+func CreatingProjectProposals(ctx *gin.Context) {
+	user, _, db, _ := api.ForContext(ctx)
+	categoryIdStr := ctx.Query("category_id")
+
+	// Get template id which match the
+	var newProjectTemplateId []uint
+	tmplQueryParams := model.ProposalTemplate{
+		Type: model.ProposalTemplateTypeNewProject,
+	}
+	if categoryIdStr != "" {
+		categoryId, err := strconv.Atoi(categoryIdStr)
+		if err != nil {
+			log.Error().Msgf("parse category ID %s to int error: %+v", categoryIdStr, err)
+			sdk.LogUserSideError(ctx, err)
+			ctx.JSON(http.StatusBadRequest, api.ServerError(fmt.Errorf("parse category ID %s to int error: %+v", categoryIdStr, err)))
+			return
+		}
+		tmplQueryParams.ProposalCategoryID = uint(categoryId)
+	}
+
+	err := db.Model(&model.ProposalTemplate{}).Where(tmplQueryParams).Pluck("id", &newProjectTemplateId).Error
+	if err != nil {
+		log.Error().Msgf("get create project template id error: err: %+v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get proposal error")))
+		return
+	}
+
+	querySql := fmt.Sprintf("%s WHERE applicant = '%s' AND proposal_template_id IN (%s) AND state = %d",
+		ListProposalsSQL,
+		common.FormatUserWallet(user.Wallet),
+		strings.Join(lo.Map(newProjectTemplateId, func(tmpId uint, _ int) string {
+			return fmt.Sprintf("%d", tmpId)
+		}), ","),
+		model.ProposalStateVotePassed,
+	)
+
+	_, resultRows, err := generateFrontendProposalRecords(db, querySql, nil)
+	if err != nil {
+		log.Error().Msgf("get proposal list error: query sql: %s, err: %+v", querySql, err)
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get proposal error")))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, api.Success(resultRows))
+}
+
 // Internal function to handle duplicated logic of updating proposal state
 func updateProposalState(db *gorm.DB, user *middleware.CurUser, proposalStrId string, newState model.ProposalState, cfg *config.Config) (*model.Proposal, error) {
 	proposalRecord, err := GetProposalFromStringId(db, proposalStrId)
@@ -601,9 +650,11 @@ func generateFrontendProposalRecords(db *gorm.DB, querySql string, page *gormfin
 	}
 	total := countTx.RowsAffected
 
-	orderByClause := fmt.Sprintf("%s %s ", *page.SortField, *page.Order)
-	querySql += fmt.Sprintf("\nORDER BY %s ", orderByClause)
-	querySql += fmt.Sprintf("LIMIT %d OFFSET %d", page.Size, (page.Page-1)*page.Size)
+	if page != nil {
+		orderByClause := fmt.Sprintf("%s %s ", *page.SortField, *page.Order)
+		querySql += fmt.Sprintf("\nORDER BY %s ", orderByClause)
+		querySql += fmt.Sprintf("LIMIT %d OFFSET %d", page.Size, (page.Page-1)*page.Size)
+	}
 
 	var resultRows []*FrontendProposalListRecord
 	err := db.Raw(querySql).Find(&resultRows).Error
