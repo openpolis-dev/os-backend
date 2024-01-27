@@ -518,14 +518,14 @@ func MyList(ctx *gin.Context) {
 	}))
 }
 
-// CreatingProjectProposals returns proposals that is created by request user and from creating proposal template
+// GetProposalsUsedForCreatingProjects returns proposals that is created by request user and from creating proposal template
 //
 //	@summary	Returns creating project and executed proposals created by login user, if category_id is not specified, all proposals for opening project will be returned
 //	@tags		Proposal
 //	@router		/proposals/creating_project_proposals [get]
 //	@param		category_id	query		int	false	"Limit the category of creating project proposal"
 //	@success	200			{object}	api.Reply{data=FrontendProposalDetailRecord}
-func CreatingProjectProposals(ctx *gin.Context) {
+func GetProposalsUsedForCreatingProjects(ctx *gin.Context) {
 	user, _, db, _ := api.ForContext(ctx)
 	categoryIdStr := ctx.Query("category_id")
 

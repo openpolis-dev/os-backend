@@ -387,7 +387,7 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		proposalGroup.POST("/edit_comment/:id", proposal.EditComment)
 		proposalGroup.POST("/delete_comment/:id", proposal.DeleteComment)
 		proposalGroup.GET("/my", proposal.MyList)
-		proposalGroup.GET("/creating_project_proposals", proposal.CreatingProjectProposals)
+		proposalGroup.GET("/creating_project_proposals", proposal.GetProposalsUsedForCreatingProjects)
 
 		// State change actions for proposals
 		proposalGroup.POST("/withdraw/:id", proposal.Withdraw)
