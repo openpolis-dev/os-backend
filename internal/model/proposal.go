@@ -283,12 +283,14 @@ type ProposalCategory struct {
 }
 
 // ProposalVoteGate saves the token requirements to vote
+// TODO: Add logic to the record and check
 type ProposalVoteGate struct {
 	ID           uint   `gorm:"primaryKey"`
 	ChainType    int    `gorm:"index:assetAttr"`
 	TokenType    int    `gorm:"index:assetAttr"`
 	TokenAddress string `gorm:"index"`
 	TokenId      string
+	Amount       string // Amount for specified gate
 	MetaforoId   uint
 
 	Name string // Name of the vote gate
