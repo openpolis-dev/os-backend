@@ -40,8 +40,9 @@ const (
 )
 
 const (
-	ProposalTemplateTypeNewProject   ProposalTemplateType = 10
-	ProposalTemplateTypeCloseProject                      = 11
+	ProposalTemplateTypeNewProject     ProposalTemplateType = 10
+	ProposalTemplateTypeCloseProject                        = 11
+	ProposalTemplateTypeRejectProposal                      = 20
 )
 
 var ProposalStateIdNameMapping = map[string]ProposalState{
