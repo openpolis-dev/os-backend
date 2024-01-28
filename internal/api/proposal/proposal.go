@@ -530,7 +530,7 @@ func GetProposalsUsedForCreatingProjects(ctx *gin.Context) {
 	categoryIdStr := ctx.Query("category_id")
 
 	// Get template id which match the
-	var newProjectTemplateId []uint
+	var newProjectTemplateIds []uint
 	tmplQueryParams := model.ProposalTemplate{
 		Type: model.ProposalTemplateTypeNewProject,
 	}
@@ -545,7 +545,7 @@ func GetProposalsUsedForCreatingProjects(ctx *gin.Context) {
 		tmplQueryParams.ProposalCategoryID = uint(categoryId)
 	}
 
-	err := db.Model(&model.ProposalTemplate{}).Where(tmplQueryParams).Pluck("id", &newProjectTemplateId).Error
+	err := db.Model(&model.ProposalTemplate{}).Where(tmplQueryParams).Pluck("id", &newProjectTemplateIds).Error
 	if err != nil {
 		log.Error().Msgf("get create project template id error: err: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
@@ -553,10 +553,16 @@ func GetProposalsUsedForCreatingProjects(ctx *gin.Context) {
 		return
 	}
 
+	if len(newProjectTemplateIds) == 0 {
+		log.Warn().Msgf("no opening project template found for category: %s", categoryIdStr)
+		ctx.JSON(http.StatusOK, api.Success([]*FrontendProposalListRecord{}))
+		return
+	}
+
 	querySql := fmt.Sprintf("%s WHERE applicant = '%s' AND proposal_template_id IN (%s) AND state = %d",
 		ListProposalsSQL,
 		common.FormatUserWallet(user.Wallet),
-		strings.Join(lo.Map(newProjectTemplateId, func(tmpId uint, _ int) string {
+		strings.Join(lo.Map(newProjectTemplateIds, func(tmpId uint, _ int) string {
 			return fmt.Sprintf("%d", tmpId)
 		}), ","),
 		model.ProposalStateExecuted,
