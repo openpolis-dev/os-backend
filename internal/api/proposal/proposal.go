@@ -618,20 +618,24 @@ func updateProposalState(db *gorm.DB, user *middleware.CurUser, proposalStrId st
 				return err
 			}
 
-			for _, record := range voteRecords {
-				err := metaforo.UpdateVoteTime(cfg.MetaforoData.AccessToken,
-					cfg.MetaforoData.GroupName,
-					record.MetaforoID,
-					time.Now().UTC().Add(-1*time.Minute).Unix(), // Set the start time 1 minute in advanced
-					time.Now().UTC().Add(proposalRecord.VoteDuration()).Unix(),
-				)
-				if err != nil {
-					log.Error().Msgf("update vote information error: %+v", err)
-					return err
+			if proposalRecord.VoteType == model.ProposalVoteTypeNone {
+				proposalRecord.State = int(model.ProposalStateVotePassed)
+			} else {
+				for _, record := range voteRecords {
+					err := metaforo.UpdateVoteTime(cfg.MetaforoData.AccessToken,
+						cfg.MetaforoData.GroupName,
+						record.MetaforoID,
+						time.Now().UTC().Add(-1*time.Minute).Unix(), // Set the start time 1 minute in advanced
+						time.Now().UTC().Add(proposalRecord.VoteDuration()).Unix(),
+					)
+					if err != nil {
+						log.Error().Msgf("update vote information error: %+v", err)
+						return err
+					}
 				}
+				proposalRecord.State = int(model.ProposalStateVoting)
 			}
-			proposalRecord.State = int(model.ProposalStateVoting)
-			err = tx.Save(&proposalRecord).Error
+			err = tx.Updates(&proposalRecord).Error
 			if err != nil {
 				log.Error().Msgf("change proposal to approved error")
 				return err
