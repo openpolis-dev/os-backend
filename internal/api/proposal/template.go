@@ -101,6 +101,7 @@ func ListTemplatesWithPerm(ctx *gin.Context) {
 		return
 	}
 
+	// TODO: Change to manual SQL with JOIN
 	var dbRcds []*model.ProposalTemplate
 	if err := db.Model(&model.ProposalTemplate{}).
 		Preload("UseTemplateGates").

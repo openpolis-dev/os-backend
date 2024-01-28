@@ -274,6 +274,9 @@ type ProposalCategory struct {
 	Name       string
 	MetaforoId uint
 
+	// Specify the display index while returning to frontend
+	DisplayIndex int `gorm:"index"`
+
 	ProposalVoteGateId *uint
 	ProposalVoteGate   *ProposalVoteGate
 

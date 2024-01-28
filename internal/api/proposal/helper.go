@@ -573,7 +573,7 @@ func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcd *mod
 			log.Warn().Msgf("save DB proposal vote record error: %+v", err)
 		}
 
-		db.Transaction(func(tx *gorm.DB) error {
+		err = db.Transaction(func(tx *gorm.DB) error {
 			for _, voteOpt := range poll.Options {
 				proposalVoteOptionRecord := model.ProposalVoteOptionRecord{
 					MetaforoID:           voteOpt.Id,
@@ -604,6 +604,10 @@ func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcd *mod
 			}
 			return nil
 		})
+		if err != nil {
+			log.Warn().Msgf("update proposal vote DB record error: %+v", err)
+		}
+
 		err = db.Save(&proposalVoteRecord).Error
 		if err != nil {
 			log.Warn().Msgf("update proposal vote DB record error: %+v", err)
