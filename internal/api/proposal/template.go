@@ -218,7 +218,7 @@ func UpdateTemplate(ctx *gin.Context) {
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
 			return
 		}
-		err = db.Save(&newTmplRcd).Error
+		err = db.Updates(&newTmplRcd).Error
 		if err != nil {
 			log.Error().Msgf("update proposal template error: %+v", err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
