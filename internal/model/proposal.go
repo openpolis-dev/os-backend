@@ -126,7 +126,7 @@ type Proposal struct {
 
 	// VoteType indicates the type of attached vote for this proposal, the available values are:
 	// - ProposalVoteTypeNone
-	// - ProposalVoteTypeNumeric
+	// - ProposalVoteTypeNumericAvg
 	// - ProposalVoteTypeDecision
 	// - ProposalVoteTypeCustomerDefined
 	VoteType    int
@@ -337,7 +337,8 @@ type ProposalAuditLog struct {
 var (
 	ProposalVoteTypeNone            int = 0
 	ProposalVoteTypeDecision            = 1
-	ProposalVoteTypeNumeric             = 2
+	ProposalVoteTypeNumericAvg          = 2 // This means if the result contains same vote value, use the average for result
+	ProposalVoteTypeNumericSingle       = 3 // This means if the result contains same vote value, mark vote as failed
 	ProposalVoteTypeCustomerDefined     = 99
 )
 
@@ -352,11 +353,6 @@ type ProposalVoteRecord struct {
 	EndTs      int64 `gorm:"index"`
 	MetaforoID int   `gorm:"index"` // Poll id from metaforo
 
-	// TODO: Change the calculation for vote result from vote option record data
-	ApproveCount int
-	AbstainCount int
-	RejectCount  int
-
 	OptionType int
 	Options    []*ProposalVoteOptionRecord
 
@@ -369,7 +365,7 @@ type ProposalVoteRecord struct {
 
 	// VoteType indicates the type of attached vote for this proposal, the available values are:
 	// - ProposalVoteTypeNone
-	// - ProposalVoteTypeNumeric
+	// - ProposalVoteTypeNumericAvg
 	// - ProposalVoteTypeDecision
 	// - ProposalVoteTypeCustomerDefined
 	VoteType int
@@ -399,7 +395,7 @@ type ProposalVoteOptionRecord struct {
 func GetPredefinedVoteOptionValue(optLabel string, voteType int) string {
 	var optBucket map[string]string
 	switch voteType {
-	case ProposalVoteTypeNumeric:
+	case ProposalVoteTypeNumericAvg:
 		optBucket = internal.ProposalNumericVoteOptionsMap
 	case ProposalVoteTypeDecision:
 		optBucket = internal.ProposalDecisionVoteOptionsMap
@@ -468,7 +464,7 @@ type ProposalTemplate struct {
 
 	// VoteType indicates the type of attached vote for this proposal, the available values are:
 	// - ProposalVoteTypeNone
-	// - ProposalVoteTypeNumeric
+	// - ProposalVoteTypeNumericAvg
 	// - ProposalVoteTypeDecision
 	// - ProposalVoteTypeCustomerDefined
 	VoteType int

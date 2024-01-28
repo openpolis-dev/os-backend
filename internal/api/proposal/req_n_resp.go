@@ -392,6 +392,16 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 		templateName = template.Name
 	}
 
+	proposalExecTs := int64(0)
+	if len(proposal.Components) > 1 {
+		proposalCronJob := model.CronJob{ProposalComponentRecordId: int(proposal.Components[0].ID)}
+		if err = db.Where(proposalCronJob).First(&proposalCronJob).Error; err != nil {
+			log.Error().Msgf("get proposal cronjob error: %+v", err)
+		} else {
+			proposalExecTs = proposalCronJob.NextExecTs
+		}
+	}
+
 	return &FrontendProposalDetailRecord{
 		ID:                      proposal.ID,
 		Title:                   proposal.Title,
@@ -419,5 +429,6 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 		IsBasedOnTemplate:  proposal.ProposalTemplateID != nil,
 		TemplateName:       templateName,
 		IsInstantExecution: proposal.PendingExecutionSecond == 0,
+		ExecutionTs:        proposalExecTs,
 	}, nil
 }

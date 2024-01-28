@@ -430,7 +430,7 @@ func SaveProposalToMetaforo(db *gorm.DB, origProposalRecord *model.Proposal, vot
 func prepareOsVoteOptions(voteType int, customVoteOptions []string) []string {
 	if customVoteOptions != nil {
 		return customVoteOptions
-	} else if voteType == model.ProposalVoteTypeNumeric {
+	} else if voteType == model.ProposalVoteTypeNumericAvg {
 		return lo.Map(internal.ProposalNumericVoteOptions, func(r []string, _ int) string { return r[0] })
 	} else if voteType == model.ProposalVoteTypeDecision {
 		// The default option is decision vote
@@ -614,9 +614,13 @@ func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcd *mod
 		}
 
 		if poll.Status == "close" {
+			// Check Whether vote passed
+
 			var proposalFinalState model.ProposalState
 			var voteResult string
 			switch proposalVoteRecord.VoteType {
+			case model.ProposalVoteTypeNone:
+				proposalFinalState = model.ProposalStateVotePassed
 			case model.ProposalVoteTypeDecision:
 				var voteOptRcds []*model.ProposalVoteOptionRecord
 				err = db.Where(&model.ProposalVoteOptionRecord{ProposalVoteRecordId: proposalVoteRecord.ID}).Select("voter_count").Find(&voteOptRcds).Error
@@ -644,7 +648,7 @@ func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcd *mod
 					voteResult = "0"
 				}
 
-			case model.ProposalVoteTypeNumeric:
+			case model.ProposalVoteTypeNumericAvg:
 				proposalFinalState = model.ProposalStateVotePassed
 
 				var voteOptRcds []*model.ProposalVoteOptionRecord
@@ -653,10 +657,15 @@ func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcd *mod
 					log.Warn().Msgf("fetch vote options for proposal vote record: %+v error: %+v", proposalVoteRecord, err)
 					continue
 				}
+
 				voteResultRecord := lo.MaxBy(voteOptRcds, func(a *model.ProposalVoteOptionRecord, b *model.ProposalVoteOptionRecord) bool {
 					return a.VoterCount > b.VoterCount
 				})
 				voteResult = voteResultRecord.Value
+			case model.ProposalVoteTypeNumericSingle:
+				// TODO: Get the max value and check whether there is only one record has this value
+				log.Warn().Msgf("not implemented yet")
+
 			default:
 				log.Warn().Msgf("unknown proposal type, no logic to set the proposal state")
 				continue
@@ -690,18 +699,22 @@ func createProposalFinTasks(db *gorm.DB, proposal *model.Proposal, finState mode
 			actionName = componentAction.ApproveActionName
 		case model.ProposalStateVoteFailed:
 			actionName = componentAction.RejectActionName
+			log.Warn().Msgf("no cronjob generated for failed proposal")
+			continue
 		default:
 			log.Error().Msgf("unknown proposal state: %d", finState)
 			return
 		}
 
 		currentTs := time.Now().UTC().Unix()
+		proposalExecutionTs := currentTs + proposal.PendingExecutionSecond
+
 		finTask := &model.CronJob{
 			CreateTs:       currentTs,
 			UpdateTs:       currentTs,
 			HandlerName:    actionName,
 			LastExecTs:     0,
-			NextExecTs:     currentTs + proposal.PendingExecutionSecond,
+			NextExecTs:     proposalExecutionTs,
 			JobParams:      componentAction.ComponentParams,
 			VoteResult:     voteResult,
 			VoteType:       voteType,
@@ -717,5 +730,12 @@ func createProposalFinTasks(db *gorm.DB, proposal *model.Proposal, finState mode
 		} else if createTaskTx.RowsAffected == 0 {
 			log.Warn().Msgf("proposal fin task already exists: %+v", finTask)
 		}
+	}
+
+	proposal.State = int(model.ProposalStatePendingExecution)
+
+	err = db.Updates(&proposal).Error
+	if err != nil {
+		log.Error().Msgf("")
 	}
 }
