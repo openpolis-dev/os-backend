@@ -14,6 +14,10 @@ import (
 	"gorm.io/gorm"
 )
 
+const listTemplateWithPermSQL = `
+
+`
+
 type TemplateResponse struct {
 	ID               uint                 `json:"id"`
 	Name             string               `json:"name"`
