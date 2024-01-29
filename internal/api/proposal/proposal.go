@@ -31,8 +31,8 @@ import (
 //	@Param		page		query		int		false	"which page"
 //	@Param		size		query		int		false	"size of each page"
 //	@Param		sort_field	query		string	false	"sort by which field"
-//	@Param		sort_order	query		string	false	"order of sort"		Enum(asc desc)
-//	@Param		state		query		string	false	"state of proposal"	Enum(draft withdrawn voting passed failed rejected)
+//	@Param		sort_order	query		string	false	"order of sort"	Enum(asc desc)
+//	@Param		state		query		string	false	"state of proposal, for multiple states, use comma as separator"
 //	@Param		category_id	query		int		false	"filter proposal records with specified category"
 //	@success	200			{object}	api.Reply{data=api.ListReplyData{rows=FrontendProposalListRecord}}
 func List(ctx *gin.Context) {
@@ -52,12 +52,18 @@ func List(ctx *gin.Context) {
 
 	// Build query
 	if queryParams.State != "" {
-		if stateVal, found := model.ProposalStateIdNameMapping[queryParams.State]; found {
-			querySql += fmt.Sprintf(" AND state = %d", stateVal)
-		} else {
-			sdk.LogUserSideError(ctx, fmt.Errorf("query proposal state %s error", queryParams.State))
-			log.Warn().Msgf("query proposal state %s error", queryParams.State)
+		stateList := strings.Split(queryParams.State, ",")
+		var stateVals []string
+		for _, stateName := range stateList {
+			if stateVal, found := model.ProposalStateIdNameMapping[stateName]; found {
+				stateVals = append(stateVals, fmt.Sprintf("%d", stateVal))
+			} else {
+				sdk.LogUserSideError(ctx, fmt.Errorf("query proposal state %s error", queryParams.State))
+				log.Warn().Msgf("query proposal state %s error", queryParams.State)
+			}
 		}
+
+		querySql += fmt.Sprintf(" AND state IN (%s)", strings.Join(stateVals, ","))
 	} else {
 		querySql += fmt.Sprintf(" AND state != %d", model.ProposalStatePendingSubmit)
 	}

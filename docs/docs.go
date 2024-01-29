@@ -1748,7 +1748,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "state of proposal",
+                        "description": "state of proposal, for multiple states, use comma as separator",
                         "name": "state",
                         "in": "query"
                     },
