@@ -64,7 +64,7 @@ func TestAddComment(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if _, err := AddComment(tt.args.accessToken, tt.args.groupName, tt.args.proposalId, tt.args.content[0].Insert, *tt.args.replyId); !errors.Is(err, tt.wantErr) {
+			if _, err := AddComment(tt.args.accessToken, tt.args.groupName, tt.args.proposalId, tt.args.content[0].Insert, *tt.args.replyId, 1); !errors.Is(err, tt.wantErr) {
 				t.Errorf("[%s] AddComment() error = %v, wantErr = %v", tt.name, err, tt.wantErr)
 			}
 		})
@@ -96,7 +96,7 @@ func TestEditComment(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := EditComment(tt.args.accessToken, tt.args.groupName, tt.args.postId, commentContent.Insert); !errors.Is(err, tt.wantErr) {
+			if err := EditComment(tt.args.accessToken, tt.args.groupName, tt.args.postId, commentContent.Insert, 1); !errors.Is(err, tt.wantErr) {
 				t.Errorf("EditComment() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

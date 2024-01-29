@@ -33,7 +33,7 @@ func TestUserActivities(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		got, err := UserActivities(tt.args.userId, tt.args.filter, tt.args.perPage, tt.args.session)
+		got, _, err := UserActivities(tt.args.userId, tt.args.filter, tt.args.perPage, tt.args.session)
 		if !errors.Is(err, tt.wantErr) {
 			t.Errorf("[%s] UserActivities() error = %v, wantErr = %v", tt.name, err, tt.wantErr)
 		}
