@@ -157,3 +157,46 @@ func GetVoterList(groupName string, OptionId int, page int) ([]*UserPollRecord, 
 
 	return body.List, nil
 }
+
+// CloseVote close the specified poll
+//
+// curl --location 'https://metaforo.io/api/poll/close' \
+// --header 'api_key: metaforo_website' \
+// --header 'authorization: Bearer 21831|uLLroQDhdvk2OWKRHTP1wPR5vZX7vu1FmffgnBks' \
+// --header 'Content-Type: application/json' \
+//
+//	--data '{
+//	   "poll_id": {
+//	       "poll_id": 1734
+//	   },
+//	   "group_name": "xs12"
+//	}'
+func CloseVote(accessToken, groupName string, voteId int) error {
+	apiPath := "/api/poll/close"
+
+	// prepare headers
+	formHeader := AuthHeader(accessToken)
+
+	// prepare json body
+	payload := map[string]any{
+		"poll_id": map[string]int{
+			"poll_id": voteId,
+		},
+		"group_name": groupName,
+	}
+	body, err := json.Marshal(payload)
+	if err != nil {
+		log.Error().Msgf("Prepare Json body error: %s", err)
+		return err
+	}
+
+	// send request
+	_, _, err = doHttpRequest[struct{}](&httpRequestData{
+		ApiUri:        apiBase + apiPath,
+		HttpMethod:    http.MethodPost,
+		JsonBodyBytes: body,
+		Header:        formHeader,
+	})
+
+	return err
+}

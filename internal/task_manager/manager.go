@@ -152,7 +152,8 @@ func (t *TaskManager) TaskDispatcher() {
 			log.Debug().Msgf("new application reward")
 			go CreateAppBundleTask(t.DatabaseClient, task, task.JobParams, task.VoteType, task.VoteResult)
 		case internal.TaskVetoedProposal:
-			log.Debug().Msgf("new application reward")
+			log.Debug().Msgf("veto proposal task")
+			go CreateVetoProposalTask(t.DatabaseClient, task, task.JobParams)
 		case internal.TaskCloseGuild:
 		case internal.TaskCreateGuild:
 		case internal.TaskCloseProject:

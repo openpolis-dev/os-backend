@@ -16,6 +16,7 @@ type ComponentResponse struct {
 	Name          string `json:"name"`
 	Schema        string `json:"schema"`
 	ScreenshotUri string `json:"screenshot_uri"`
+	IsHidden      bool   `json:"is_hidden"`
 }
 
 // ListComponents returns component list from database

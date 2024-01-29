@@ -51,6 +51,7 @@ type CreateOrUpdateProposalData struct {
 	SubmitToMetaforo    bool                             `json:"submit_to_metaforo"`
 	EditorType          int                              `json:"editor_type"`
 	VoteType            int                              `json:"vote_type"`
+	VoteOptions         []string                         `json:"vote_options"`
 }
 
 type RejectProposalData struct {
@@ -88,6 +89,11 @@ type RevokeVoteData struct {
 	MetaforoAccessToken string `json:"metaforo_access_token"`
 }
 
+type CloseVoteRequest struct {
+	MetaforoVoteId      int    `json:"vote_id"`
+	MetaforoAccessToken string `json:"metaforo_access_token"`
+}
+
 ///////////////////////
 // Response data definitions
 ///////////////////////
@@ -110,9 +116,11 @@ type FrontendProposalListRecord struct {
 }
 
 type FrontendContentBlockRecord struct {
-	ID      uint   `json:"id"`
-	Title   string `json:"title"`
-	Content string `json:"content"`
+	ID            uint   `json:"id"`
+	Title         string `json:"title"`
+	Content       string `json:"content"`
+	Type          string `json:"type"`
+	ComponentList string `json:"name"`
 }
 
 type FrontendProposalEditHistories struct {
@@ -187,6 +195,9 @@ type FrontendProposalDetailRecord struct {
 	IsBasedOnTemplate bool   `json:"is_based_on_template"`
 	TemplateName      string `json:"template_name"`
 
+	IsInstantExecution bool  `json:"is_instant_execution"`
+	ExecutionTs        int64 `json:"execution_ts"`
+
 	// Timestamps
 	CreateTs int64 `json:"create_ts"`
 }
@@ -250,9 +261,11 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 
 	proposalContentResponse := lo.Map(proposalBlocks, func(item *model.ProposalContentBlock, _ int) *FrontendContentBlockRecord {
 		return &FrontendContentBlockRecord{
-			ID:      item.ID,
-			Title:   item.Title,
-			Content: item.Content,
+			ID:            item.ID,
+			Title:         item.Title,
+			Content:       item.Content,
+			Type:          item.Type,
+			ComponentList: item.ComponentList,
 		}
 	})
 
@@ -374,14 +387,24 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 	}
 
 	templateName := ""
-	if proposal.TemplateId != 0 {
+	if proposal.ProposalTemplateID != nil {
 		var template model.ProposalTemplate
-		err := db.Find(&template, proposal.TemplateId).Error
+		err := db.Find(&template, *proposal.ProposalTemplateID).Error
 		if err != nil {
 			log.Error().Msgf("fetch proposal template error: %+v", err)
 			return nil, err
 		}
 		templateName = template.Name
+	}
+
+	proposalExecTs := int64(0)
+	if len(proposal.Components) > 1 {
+		proposalCronJob := model.CronJob{ProposalComponentRecordId: int(proposal.Components[0].ID)}
+		if err = db.Where(proposalCronJob).First(&proposalCronJob).Error; err != nil {
+			log.Error().Msgf("get proposal cronjob error: %+v", err)
+		} else {
+			proposalExecTs = proposalCronJob.NextExecTs
+		}
 	}
 
 	return &FrontendProposalDetailRecord{
@@ -401,14 +424,16 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 			TotalCount: len(editHistoryRecords),
 			Lists:      editHistoryRecords,
 		},
-		Arweave:           proposal.ArweaveHash,
-		CommentCount:      commentCount,
-		Comments:          frontendCommentsRecords,
-		VoteGate:          voteGate,
-		Votes:             votes,
-		VoteType:          proposal.VoteType,
-		CreateTs:          proposal.CreateTs,
-		IsBasedOnTemplate: proposal.TemplateId != 0,
-		TemplateName:      templateName,
+		Arweave:            proposal.ArweaveHash,
+		CommentCount:       commentCount,
+		Comments:           frontendCommentsRecords,
+		VoteGate:           voteGate,
+		Votes:              votes,
+		VoteType:           proposal.VoteType,
+		CreateTs:           proposal.CreateTs,
+		IsBasedOnTemplate:  proposal.ProposalTemplateID != nil,
+		TemplateName:       templateName,
+		IsInstantExecution: proposal.PendingExecutionSecond == 0,
+		ExecutionTs:        proposalExecTs,
 	}, nil
 }
