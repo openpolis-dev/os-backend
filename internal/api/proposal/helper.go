@@ -618,124 +618,138 @@ func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcd *mod
 
 		// TODO: Update the check logic of vote result with voter user limitations
 		if poll.Status == "close" {
-			// Check Whether vote passed
+			// In current logic, only one vote can be existing in proposal, so if got one close state vote, exit the loop
+			// If poll closed in proposal, only process this one and exit
 
-			var proposalFinalState model.ProposalState
-			var voteResult string
-			switch proposalVoteRecord.VoteType {
-			case model.ProposalVoteTypeNone:
-				proposalFinalState = model.ProposalStateExecuted
-			case model.ProposalVoteTypeDecision:
-				var voteOptRcds []*model.ProposalVoteOptionRecord
-				err = db.Where(&model.ProposalVoteOptionRecord{ProposalVoteRecordId: proposalVoteRecord.ID}).Select("voter_count").Find(&voteOptRcds).Error
-				if err != nil {
-					log.Warn().Msgf("fetch vote options for proposal vote record: %+v error: %+v", proposalVoteRecord, err)
-					continue
-				}
-
-				approvedCount := 0
-				rejectedCounter := 0
-				for _, r := range voteOptRcds {
-					switch r.Text {
-					case internal.ProposalDecisionApprove:
-						approvedCount = r.VoterCount
-					case internal.ProposalDecisionReject:
-						rejectedCounter = r.VoterCount
-					}
-				}
-
-				if approvedCount > rejectedCounter {
-					proposalFinalState = model.ProposalStateVotePassed
-					voteResult = "1"
-				} else {
-					proposalFinalState = model.ProposalStateVoteFailed
-					voteResult = "0"
-				}
-
-			case model.ProposalVoteTypeNumericAvg:
-				proposalFinalState = model.ProposalStateVotePassed
-
-				var voteOptRcds []*model.ProposalVoteOptionRecord
-				err = db.Where(&model.ProposalVoteOptionRecord{ProposalVoteRecordId: proposalVoteRecord.ID}).Select("id, value, voter_count").Find(&voteOptRcds).Error
-				if err != nil {
-					log.Warn().Msgf("fetch vote options for proposal vote record: %+v error: %+v", proposalVoteRecord, err)
-					continue
-				}
-
-				// Sort the vote option records in desc order
-				slices.SortFunc(voteOptRcds, func(a, b *model.ProposalVoteOptionRecord) int {
-					return cmp.Compare(b.VoterCount, a.VoterCount)
-				})
-
-				// Save records used for calc result into additional array,
-				// then go through the sorted vote options to find records with duplicated voter count
-				recordsForCalcResults := []*model.ProposalVoteOptionRecord{voteOptRcds[0]}
-				maxVoterCount := voteOptRcds[0].VoterCount
-				for _, rcd := range voteOptRcds {
-					if rcd.VoterCount < maxVoterCount {
-						// The record's voter count is less than max value, break out and do calc with saved records
-						break
-					}
-					recordsForCalcResults = append(recordsForCalcResults, rcd)
-				}
-
-				if len(recordsForCalcResults) > 1 {
-					var decimalVals []decimal.Decimal
-					for i := range recordsForCalcResults {
-						optRcd := recordsForCalcResults[i]
-						decimalVal, err := decimal.NewFromString(optRcd.Value)
-						if err != nil {
-							log.Error().Msgf("parse vote option value error: %+v, vote option: %+v", err, optRcd)
-							continue
-						}
-						decimalVals = append(decimalVals, decimalVal)
-					}
-
-					voteResult = decimal.Avg(decimalVals[0], decimalVals[1:]...).String()
-				} else {
-					voteResult = recordsForCalcResults[0].Value
-				}
-			case model.ProposalVoteTypeNumericSingle:
-				var voteOptRcds []*model.ProposalVoteOptionRecord
-				err = db.Where(&model.ProposalVoteOptionRecord{ProposalVoteRecordId: proposalVoteRecord.ID}).Select("id, value, voter_count").Find(&voteOptRcds).Error
-				if err != nil {
-					log.Warn().Msgf("fetch vote options for proposal vote record: %+v error: %+v", proposalVoteRecord, err)
-					continue
-				}
-
-				if len(voteOptRcds) > 1 {
-					// Sort the vote option records in desc order
-					slices.SortFunc(voteOptRcds, func(a, b *model.ProposalVoteOptionRecord) int {
-						return cmp.Compare(b.VoterCount, a.VoterCount)
-					})
-
-					if voteOptRcds[0].VoterCount == voteOptRcds[1].VoterCount {
-						log.Warn().Msgf("vote result has same voter count, mark as failed")
-						proposalFinalState = model.ProposalStateVoteFailed
-					} else {
-						proposalFinalState = model.ProposalStateVotePassed
-						voteResult = voteOptRcds[0].Value
-					}
-				} else if len(voteOptRcds) == 1 {
-					proposalFinalState = model.ProposalStateVotePassed
-					voteResult = voteOptRcds[0].Value
-				} else {
-					log.Error().Msgf("vote option count error, set proposal to failed")
-					proposalFinalState = model.ProposalStateVoteFailed
-				}
-			default:
-				log.Warn().Msgf("unknown proposal type, no logic to set the proposal state")
+			err := DoProposalPostJob(db, &proposalVoteRecord, dbProposalRcd)
+			if err != nil {
+				log.Warn().Msgf("process proposal state error: %+v", err)
 				continue
 			}
 
-			err = db.Where(&model.Proposal{ID: dbProposalRcd.ID}).Updates(model.Proposal{State: int(proposalFinalState)}).Error
-			if err != nil {
-				log.Error().Msgf("update proposal state to %d error: %+v. DB proposal: %+v, metaforo proposa: %+v", proposalFinalState, err, dbProposalRcd, metaforoProposal)
-			}
-			go createProposalFinTasks(db, dbProposalRcd, proposalFinalState, voteResult, dbProposalRcd.VoteType)
+			break
 		}
 	}
 
+	return nil
+}
+
+func DoProposalPostJob(db *gorm.DB, proposalVoteRecord *model.ProposalVoteRecord, dbProposalRcd *model.Proposal) error {
+	var err error
+	var proposalFinalState model.ProposalState
+	var voteResult string
+	switch proposalVoteRecord.VoteType {
+	case model.ProposalVoteTypeNone:
+		proposalFinalState = model.ProposalStateExecuted
+	case model.ProposalVoteTypeDecision:
+		var voteOptRcds []*model.ProposalVoteOptionRecord
+		err = db.Where(&model.ProposalVoteOptionRecord{ProposalVoteRecordId: proposalVoteRecord.ID}).Select("voter_count").Find(&voteOptRcds).Error
+		if err != nil {
+			log.Warn().Msgf("fetch vote options for proposal vote record: %+v error: %+v", proposalVoteRecord, err)
+			return err
+		}
+
+		approvedCount := 0
+		rejectedCounter := 0
+		for _, r := range voteOptRcds {
+			switch r.Text {
+			case internal.ProposalDecisionApprove:
+				approvedCount = r.VoterCount
+			case internal.ProposalDecisionReject:
+				rejectedCounter = r.VoterCount
+			}
+		}
+
+		if approvedCount > rejectedCounter {
+			proposalFinalState = model.ProposalStateVotePassed
+			voteResult = "1"
+		} else {
+			proposalFinalState = model.ProposalStateVoteFailed
+			voteResult = "0"
+		}
+
+	case model.ProposalVoteTypeNumericAvg:
+		proposalFinalState = model.ProposalStateVotePassed
+
+		var voteOptRcds []*model.ProposalVoteOptionRecord
+		err = db.Where(&model.ProposalVoteOptionRecord{ProposalVoteRecordId: proposalVoteRecord.ID}).Select("id, value, voter_count").Find(&voteOptRcds).Error
+		if err != nil {
+			log.Warn().Msgf("fetch vote options for proposal vote record: %+v error: %+v", proposalVoteRecord, err)
+			return err
+		}
+
+		// Sort the vote option records in desc order
+		slices.SortFunc(voteOptRcds, func(a, b *model.ProposalVoteOptionRecord) int {
+			return cmp.Compare(b.VoterCount, a.VoterCount)
+		})
+
+		// Save records used for calc result into additional array,
+		// then go through the sorted vote options to find records with duplicated voter count
+		recordsForCalcResults := []*model.ProposalVoteOptionRecord{voteOptRcds[0]}
+		maxVoterCount := voteOptRcds[0].VoterCount
+		for _, rcd := range voteOptRcds {
+			if rcd.VoterCount < maxVoterCount {
+				// The record's voter count is less than max value, break out and do calc with saved records
+				break
+			}
+			recordsForCalcResults = append(recordsForCalcResults, rcd)
+		}
+
+		if len(recordsForCalcResults) > 1 {
+			var decimalVals []decimal.Decimal
+			for i := range recordsForCalcResults {
+				optRcd := recordsForCalcResults[i]
+				decimalVal, err := decimal.NewFromString(optRcd.Value)
+				if err != nil {
+					log.Error().Msgf("parse vote option value error: %+v, vote option: %+v", err, optRcd)
+					continue
+				}
+				decimalVals = append(decimalVals, decimalVal)
+			}
+
+			voteResult = decimal.Avg(decimalVals[0], decimalVals[1:]...).String()
+		} else {
+			voteResult = recordsForCalcResults[0].Value
+		}
+	case model.ProposalVoteTypeNumericSingle:
+		var voteOptRcds []*model.ProposalVoteOptionRecord
+		err = db.Where(&model.ProposalVoteOptionRecord{ProposalVoteRecordId: proposalVoteRecord.ID}).Select("id, value, voter_count").Find(&voteOptRcds).Error
+		if err != nil {
+			log.Warn().Msgf("fetch vote options for proposal vote record: %+v error: %+v", proposalVoteRecord, err)
+			return err
+		}
+
+		if len(voteOptRcds) > 1 {
+			// Sort the vote option records in desc order
+			slices.SortFunc(voteOptRcds, func(a, b *model.ProposalVoteOptionRecord) int {
+				return cmp.Compare(b.VoterCount, a.VoterCount)
+			})
+
+			if voteOptRcds[0].VoterCount == voteOptRcds[1].VoterCount {
+				log.Warn().Msgf("vote result has same voter count, mark as failed")
+				proposalFinalState = model.ProposalStateVoteFailed
+			} else {
+				proposalFinalState = model.ProposalStateVotePassed
+				voteResult = voteOptRcds[0].Value
+			}
+		} else if len(voteOptRcds) == 1 {
+			proposalFinalState = model.ProposalStateVotePassed
+			voteResult = voteOptRcds[0].Value
+		} else {
+			log.Error().Msgf("vote option count error, set proposal to failed")
+			proposalFinalState = model.ProposalStateVoteFailed
+		}
+	default:
+		log.Warn().Msgf("unknown proposal type, no logic to set the proposal state")
+		return err
+	}
+
+	err = db.Where(&model.Proposal{ID: dbProposalRcd.ID}).Updates(model.Proposal{State: int(proposalFinalState)}).Error
+	if err != nil {
+		log.Error().Msgf("update proposal state to %d error: %+v. DB proposal: %+v", proposalFinalState, err, dbProposalRcd)
+		return err
+	}
+	go createProposalFinTasks(db, dbProposalRcd, proposalFinalState, voteResult, dbProposalRcd.VoteType)
 	return nil
 }
 

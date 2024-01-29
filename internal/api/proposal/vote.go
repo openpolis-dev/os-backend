@@ -135,7 +135,8 @@ func RevokeVote(ctx *gin.Context) {
 //	@success	200		{object}	api.Reply{data=nil}	"Success"
 //	@router		/proposals/close_vote/:id [post]
 func CloseVote(ctx *gin.Context) {
-	_, cfg := api.ForContextDBAndConfig(ctx)
+	db, cfg := api.ForContextDBAndConfig(ctx)
+	proposalIdStr := ctx.Param("id")
 	reqData := CloseVoteRequest{}
 	if err := ctx.BindJSON(&reqData); err != nil {
 		log.Error().Msgf("parse request data error: %+v", err)
@@ -149,12 +150,30 @@ func CloseVote(ctx *gin.Context) {
 		cfg.MetaforoData.GroupName,
 		reqData.MetaforoVoteId,
 	); err != nil {
-		log.Error().Msgf("revoke vote error error: %+v", err)
+		log.Error().Msgf("close vote error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(fmt.Errorf("revoke vote error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(fmt.Errorf("close vote error")))
 		return
-
 	}
+
+	// update proposal state after getting the vote result
+	dbProposal, err := GetProposalFromStringId(db, proposalIdStr)
+	if err != nil {
+		log.Error().Msgf("fetch db proposal record error: %+v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(fmt.Errorf("fetch db proposal error")))
+		return
+	}
+
+	metaforoProposalResponse, err := metaforo.GetProposal(dbProposal.GetMetaforoThreadId(), cfg.MetaforoData.GroupName, "", 0)
+	err = UpdateDbRecordsFromMetaforoProposalResponse(db, dbProposal, metaforoProposalResponse)
+	if err != nil {
+		log.Error().Msgf("update db proposal by response error: %+v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(fmt.Errorf("update proposal info error")))
+		return
+	}
+
 	ctx.JSON(http.StatusOK, api.Success(nil))
 }
 
