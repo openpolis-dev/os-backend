@@ -396,6 +396,7 @@ func GetPredefinedVoteOptionValue(optLabel string, voteType int) string {
 	var optBucket map[string]string
 	switch voteType {
 	case ProposalVoteTypeNumericAvg:
+	case ProposalVoteTypeNumericSingle:
 		optBucket = internal.ProposalNumericVoteOptionsMap
 	case ProposalVoteTypeDecision:
 		optBucket = internal.ProposalDecisionVoteOptionsMap

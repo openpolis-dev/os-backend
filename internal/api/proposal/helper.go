@@ -1,15 +1,18 @@
 package proposal
 
 import (
+	"cmp"
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
+	"github.com/shopspring/decimal"
 	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/config"
@@ -430,7 +433,7 @@ func SaveProposalToMetaforo(db *gorm.DB, origProposalRecord *model.Proposal, vot
 func prepareOsVoteOptions(voteType int, customVoteOptions []string) []string {
 	if customVoteOptions != nil {
 		return customVoteOptions
-	} else if voteType == model.ProposalVoteTypeNumericAvg {
+	} else if (voteType == model.ProposalVoteTypeNumericAvg) || (voteType == model.ProposalVoteTypeNumericSingle) {
 		return lo.Map(internal.ProposalNumericVoteOptions, func(r []string, _ int) string { return r[0] })
 	} else if voteType == model.ProposalVoteTypeDecision {
 		// The default option is decision vote
@@ -613,6 +616,7 @@ func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcd *mod
 			log.Warn().Msgf("update proposal vote DB record error: %+v", err)
 		}
 
+		// TODO: Update the check logic of vote result with voter user limitations
 		if poll.Status == "close" {
 			// Check Whether vote passed
 
@@ -658,10 +662,39 @@ func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcd *mod
 					continue
 				}
 
-				voteResultRecord := lo.MaxBy(voteOptRcds, func(a *model.ProposalVoteOptionRecord, b *model.ProposalVoteOptionRecord) bool {
-					return a.VoterCount > b.VoterCount
+				// Sort the vote option records in desc order
+				slices.SortFunc(voteOptRcds, func(a, b *model.ProposalVoteOptionRecord) int {
+					return cmp.Compare(b.VoterCount, a.VoterCount)
 				})
-				voteResult = voteResultRecord.Value
+
+				// Save records used for calc result into additional array,
+				// then go through the sorted vote options to find records with duplicated voter count
+				recordsForCalcResults := []*model.ProposalVoteOptionRecord{voteOptRcds[0]}
+				maxVoterCount := voteOptRcds[0].VoterCount
+				for _, rcd := range voteOptRcds {
+					if rcd.VoterCount < maxVoterCount {
+						// The record's voter count is less than max value, break out and do calc with saved records
+						break
+					}
+					recordsForCalcResults = append(recordsForCalcResults, rcd)
+				}
+
+				if len(recordsForCalcResults) > 1 {
+					var decimalVals []decimal.Decimal
+					for i := range recordsForCalcResults {
+						optRcd := recordsForCalcResults[i]
+						decimalVal, err := decimal.NewFromString(optRcd.Value)
+						if err != nil {
+							log.Error().Msgf("parse vote option value error: %+v, vote option: %+v", err, optRcd)
+							continue
+						}
+						decimalVals = append(decimalVals, decimalVal)
+					}
+
+					voteResult = decimal.Avg(decimalVals[0], decimalVals[1:]...).String()
+				} else {
+					voteResult = recordsForCalcResults[0].Value
+				}
 			case model.ProposalVoteTypeNumericSingle:
 				// TODO: Get the max value and check whether there is only one record has this value
 				log.Warn().Msgf("not implemented yet")
