@@ -625,7 +625,12 @@ func updateProposalState(db *gorm.DB, user *middleware.CurUser, proposalStrId st
 			}
 
 			if proposalRecord.VoteType == model.ProposalVoteTypeNone {
-				proposalRecord.State = int(model.ProposalStateExecuted)
+				if proposalRecord.PendingExecutionSecond == 0 {
+					proposalRecord.State = int(model.ProposalStateExecuted)
+				} else {
+					proposalRecord.State = int(model.ProposalStatePendingExecution)
+					// TODO: Add cronjob to update the proposal state
+				}
 			} else {
 				for _, record := range voteRecords {
 					err := metaforo.UpdateVoteTime(cfg.MetaforoData.AccessToken,
