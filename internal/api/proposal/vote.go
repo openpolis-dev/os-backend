@@ -146,7 +146,7 @@ func CloseVote(ctx *gin.Context) {
 	}
 
 	if err := metaforo.CloseVote(
-		reqData.MetaforoAccessToken,
+		cfg.MetaforoData.AccessToken,
 		cfg.MetaforoData.GroupName,
 		reqData.MetaforoVoteId,
 	); err != nil {
