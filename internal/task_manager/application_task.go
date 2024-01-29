@@ -85,7 +85,7 @@ func CreateAppBundleTask(db *gorm.DB, job *model.CronJob, jobParams string, vote
 				err = db.Transaction(func(tx *gorm.DB) error {
 					appBundle.AppRecords = lo.Map(params.Records, func(appDetail *NewRewardDetail, index int) *model.Application {
 						ratio, _ := decimal.NewFromString("1")
-						if voteType == model.ProposalVoteTypeNumeric {
+						if (voteType == model.ProposalVoteTypeNumericAvg) || (voteType == model.ProposalVoteTypeNumericSingle) {
 							ratio, err = decimal.NewFromString(voteResult)
 							if err != nil {
 								log.Error().Msgf("parse value %s to decimal error: %+v", voteResult, err)

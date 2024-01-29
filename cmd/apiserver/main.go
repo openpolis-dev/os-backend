@@ -14,6 +14,7 @@ import (
 	"github.com/theseed-labs/os-backend/internal/graph/generated"
 	"github.com/theseed-labs/os-backend/internal/graph/resolver"
 	"github.com/theseed-labs/os-backend/internal/task_manager"
+	"gorm.io/gorm"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	swaggerFiles "github.com/swaggo/files"
@@ -152,6 +153,11 @@ func main() {
 	task_manager.InitTaskManager(db, 5, cfg)
 	task_manager.GetTaskManager().StartRunner()
 
+	r := setupRouter(cfg, db, enforcer, pushSDK)
+	_ = r.Run()
+}
+
+func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforcer, pushSDK []sdk.Pusher) *gin.Engine {
 	r := gin.Default()
 	r.Use(middleware.RequestMetricsRecord())
 	r.Use(middleware.ResponseMetricsRecord())
@@ -261,9 +267,6 @@ func main() {
 		componentRouter.GET("/", proposal.ListComponents)
 		componentRouter.GET("/:id", proposal.GetComponent)
 
-		proposalTmplRouter := v1.Group("/proposal_tmpl")
-		proposalTmplRouter.GET("/", proposal.ListTemplates)
-
 		proposalPollGateRouter := v1.Group("/proposal_vote_gates")
 		proposalPollGateRouter.GET("/", proposal.ListVoteGates)
 
@@ -276,6 +279,10 @@ func main() {
 		// All proposal categories for non login users
 		proposalCategoryRouter := v1.Group("/proposal_categories")
 		proposalCategoryRouter.GET("/list", proposal.ListAllCategories)
+
+		// Proposal templates router
+		proposalTmplRouter := v1.Group("/proposal_tmpl")
+		proposalTmplRouter.GET("/list", proposal.ListTemplates)
 
 		// Schedule jobs routers
 		jobsRouter := v1.Group("/jobs")
@@ -380,6 +387,7 @@ func main() {
 		proposalGroup.POST("/edit_comment/:id", proposal.EditComment)
 		proposalGroup.POST("/delete_comment/:id", proposal.DeleteComment)
 		proposalGroup.GET("/my", proposal.MyList)
+		proposalGroup.GET("/creating_project_proposals", proposal.GetProposalsUsedForCreatingProjects)
 
 		// State change actions for proposals
 		proposalGroup.POST("/withdraw/:id", proposal.Withdraw)
@@ -389,6 +397,11 @@ func main() {
 		proposalGroup.POST("/can_vote/:id", proposal.CheckVotePermission)
 		proposalGroup.POST("/vote/:id", proposal.CastVote)
 		proposalGroup.POST("/revoke_vote/:id", proposal.RevokeVote)
+		proposalGroup.POST("/close_vote/:id", proposal.CloseVote)
+
+		// Proposal templates router
+		proposalTmplRouter := authorizedGroup.Group("/proposal_tmpl")
+		proposalTmplRouter.GET("/list_with_perm", proposal.ListTemplatesWithPerm)
 
 		// List proposal categories
 		proposalCategoryRouter := authorizedGroup.Group("/proposal_categories")
@@ -398,13 +411,18 @@ func main() {
 		dataSrv := authorizedGroup.Group("/data_srv")
 		dataSrv.GET("/widget_data", data_srv.WidgetData)
 	}
+	{
+		adminGroup := r.Group("/admin", middleware.AdminPermissionRequired)
+		proposalTmplAdminRouter := adminGroup.Group("/proposal_tmpl")
+		proposalTmplAdminRouter.POST("/update", proposal.UpdateTemplate)
+	}
 
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	r.POST("/graphql/query", middleware.GqlAuth, middleware.GinContextToContextMiddleware, graphqlHandler())
 	r.GET("/graphql", middleware.GqlAuth, middleware.GinContextToContextMiddleware, playgroundHandler())
 
-	_ = r.Run()
+	return r
 }
 
 // defining the Graphql handler

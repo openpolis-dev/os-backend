@@ -31,8 +31,8 @@ import (
 //	@Param		page		query		int		false	"which page"
 //	@Param		size		query		int		false	"size of each page"
 //	@Param		sort_field	query		string	false	"sort by which field"
-//	@Param		sort_order	query		string	false	"order of sort"		Enum(asc desc)
-//	@Param		state		query		string	false	"state of proposal"	Enum(draft withdrawn voting passed failed rejected)
+//	@Param		sort_order	query		string	false	"order of sort"	Enum(asc desc)
+//	@Param		state		query		string	false	"state of proposal, for multiple states, use comma as separator"
 //	@Param		category_id	query		int		false	"filter proposal records with specified category"
 //	@success	200			{object}	api.Reply{data=api.ListReplyData{rows=FrontendProposalListRecord}}
 func List(ctx *gin.Context) {
@@ -52,12 +52,18 @@ func List(ctx *gin.Context) {
 
 	// Build query
 	if queryParams.State != "" {
-		if stateVal, found := model.ProposalStateIdNameMapping[queryParams.State]; found {
-			querySql += fmt.Sprintf(" AND state = %d", stateVal)
-		} else {
-			sdk.LogUserSideError(ctx, fmt.Errorf("query proposal state %s error", queryParams.State))
-			log.Warn().Msgf("query proposal state %s error", queryParams.State)
+		stateList := strings.Split(queryParams.State, ",")
+		var stateVals []string
+		for _, stateName := range stateList {
+			if stateVal, found := model.ProposalStateIdNameMapping[stateName]; found {
+				stateVals = append(stateVals, fmt.Sprintf("%d", stateVal))
+			} else {
+				sdk.LogUserSideError(ctx, fmt.Errorf("query proposal state %s error", queryParams.State))
+				log.Warn().Msgf("query proposal state %s error", queryParams.State)
+			}
 		}
+
+		querySql += fmt.Sprintf(" AND state IN (%s)", strings.Join(stateVals, ","))
 	} else {
 		querySql += fmt.Sprintf(" AND state != %d", model.ProposalStatePendingSubmit)
 	}
@@ -206,11 +212,23 @@ func Update(ctx *gin.Context) {
 	// FIXME: refactor here: If not submitting to metaforo, a new version will be created in DB but no metaforo record.
 	// FIXME: Do we need to force passing the metaforo access token if not in pending submit state?
 	if reqData.SubmitToMetaforo {
-		if err := SaveProposalToMetaforo(db, proposalRecord, reqData.VoteType, reqData.MetaforoAccessToken, reqData.EditorType, cfg.MetaforoData.GroupName); err != nil {
+		if err := SaveProposalToMetaforo(db, proposalRecord, reqData.VoteType, reqData.VoteOptions, reqData.MetaforoAccessToken, reqData.EditorType, cfg.MetaforoData.GroupName); err != nil {
 			log.Error().Msgf("create metaforo proposal error: %+v", err)
 			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
 			return
+		}
+
+		// If the publicity second is 0, update the db proposal to voting state
+		if proposalRecord.PublicitySecond == 0 {
+			log.Error().Msgf("TTT: update proposal state to voting")
+			proposalRecord.State = int(model.ProposalStateVoting)
+			if err := db.Save(&proposalRecord).Error; err != nil {
+				log.Error().Msgf("update proposal to voting state error: %+v", err)
+				sdk.LogServerErrorToSentry(ctx, err)
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
+				return
+			}
 		}
 	}
 
@@ -268,11 +286,23 @@ func Create(ctx *gin.Context) {
 	}
 
 	if reqData.SubmitToMetaforo {
-		if err := SaveProposalToMetaforo(db, proposalRecord, reqData.VoteType, reqData.MetaforoAccessToken, reqData.EditorType, cfg.MetaforoData.GroupName); err != nil {
+		if err := SaveProposalToMetaforo(db, proposalRecord, reqData.VoteType, reqData.VoteOptions, reqData.MetaforoAccessToken, reqData.EditorType, cfg.MetaforoData.GroupName); err != nil {
 			log.Error().Msgf("create metaforo proposal error: %+v", err)
 			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
 			return
+		}
+
+		// If the publicity second is 0, update the db proposal to voting state
+		if proposalRecord.PublicitySecond == 0 {
+			log.Error().Msgf("TTT: update proposal state to voting")
+			proposalRecord.State = int(model.ProposalStateVoting)
+			if err := db.Save(&proposalRecord).Error; err != nil {
+				log.Error().Msgf("update proposal to voting state error: %+v", err)
+				sdk.LogServerErrorToSentry(ctx, err)
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
+				return
+			}
 		}
 	}
 
@@ -448,12 +478,12 @@ func Reject(ctx *gin.Context) {
 //
 //	@summary	Returns proposals created by login user
 //	@tags		Proposal
-//	@router		/proposal/mylist [get]
+//	@router		/proposals/my [get]
 //	@param		page			query		int		false	"which page"
 //	@param		size			query		int		false	"size of each page"
 //	@param		sort_field		query		string	false	"sort by which field"
 //	@param		sort_order		query		string	false	"order of sort"	Enum(asc desc)
-//	@param		pending_submit	query		int	false		"Return pending submit proposals or other state, only query PendingSubmit records when value is `1`"
+//	@param		pending_submit	query		int		false	"Return pending submit proposals or other state, only query PendingSubmit records when value is `1`"
 //	@success	200				{object}	api.Reply{data=FrontendProposalDetailRecord}
 func MyList(ctx *gin.Context) {
 	user, _, db, _ := api.ForContext(ctx)
@@ -492,6 +522,67 @@ func MyList(ctx *gin.Context) {
 		Total: total,
 		Rows:  resultRows,
 	}))
+}
+
+// GetProposalsUsedForCreatingProjects returns proposals that is created by request user and from creating proposal template
+//
+//	@summary	Returns creating project and executed proposals created by login user, if category_id is not specified, all proposals for opening project will be returned
+//	@tags		Proposal
+//	@router		/proposals/creating_project_proposals [get]
+//	@param		category_id	query		int	false	"Limit the category of creating project proposal"
+//	@success	200			{object}	api.Reply{data=FrontendProposalDetailRecord}
+func GetProposalsUsedForCreatingProjects(ctx *gin.Context) {
+	user, _, db, _ := api.ForContext(ctx)
+	categoryIdStr := ctx.Query("category_id")
+
+	// Get template id which match the
+	var newProjectTemplateIds []uint
+	tmplQueryParams := model.ProposalTemplate{
+		Type: model.ProposalTemplateTypeNewProject,
+	}
+	if categoryIdStr != "" {
+		categoryId, err := strconv.Atoi(categoryIdStr)
+		if err != nil {
+			log.Error().Msgf("parse category ID %s to int error: %+v", categoryIdStr, err)
+			sdk.LogUserSideError(ctx, err)
+			ctx.JSON(http.StatusBadRequest, api.ServerError(fmt.Errorf("parse category ID %s to int error: %+v", categoryIdStr, err)))
+			return
+		}
+		tmplQueryParams.ProposalCategoryID = uint(categoryId)
+	}
+
+	err := db.Model(&model.ProposalTemplate{}).Where(tmplQueryParams).Pluck("id", &newProjectTemplateIds).Error
+	if err != nil {
+		log.Error().Msgf("get create project template id error: err: %+v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get proposal error")))
+		return
+	}
+
+	if len(newProjectTemplateIds) == 0 {
+		log.Warn().Msgf("no opening project template found for category: %s", categoryIdStr)
+		ctx.JSON(http.StatusOK, api.Success([]*FrontendProposalListRecord{}))
+		return
+	}
+
+	querySql := fmt.Sprintf("%s WHERE applicant = '%s' AND proposal_template_id IN (%s) AND state = %d",
+		ListProposalsSQL,
+		common.FormatUserWallet(user.Wallet),
+		strings.Join(lo.Map(newProjectTemplateIds, func(tmpId uint, _ int) string {
+			return fmt.Sprintf("%d", tmpId)
+		}), ","),
+		model.ProposalStateExecuted,
+	)
+
+	_, resultRows, err := generateFrontendProposalRecords(db, querySql, nil)
+	if err != nil {
+		log.Error().Msgf("get proposal list error: query sql: %s, err: %+v", querySql, err)
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get proposal error")))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, api.Success(resultRows))
 }
 
 // Internal function to handle duplicated logic of updating proposal state
@@ -533,20 +624,29 @@ func updateProposalState(db *gorm.DB, user *middleware.CurUser, proposalStrId st
 				return err
 			}
 
-			for _, record := range voteRecords {
-				err := metaforo.UpdateVoteTime(cfg.MetaforoData.AccessToken,
-					cfg.MetaforoData.GroupName,
-					record.MetaforoID,
-					time.Now().UTC().Add(-1*time.Minute).Unix(), // Set the start time 1 minute in advanced
-					time.Now().UTC().Add(proposalRecord.VoteDuration()).Unix(),
-				)
-				if err != nil {
-					log.Error().Msgf("update vote information error: %+v", err)
-					return err
+			if proposalRecord.VoteType == model.ProposalVoteTypeNone {
+				if proposalRecord.PendingExecutionSecond == 0 {
+					proposalRecord.State = int(model.ProposalStateExecuted)
+				} else {
+					proposalRecord.State = int(model.ProposalStatePendingExecution)
+					// TODO: Add cronjob to update the proposal state
 				}
+			} else {
+				for _, record := range voteRecords {
+					err := metaforo.UpdateVoteTime(cfg.MetaforoData.AccessToken,
+						cfg.MetaforoData.GroupName,
+						record.MetaforoID,
+						time.Now().UTC().Add(-1*time.Minute).Unix(), // Set the start time 1 minute in advanced
+						time.Now().UTC().Add(proposalRecord.VoteDuration()).Unix(),
+					)
+					if err != nil {
+						log.Error().Msgf("update vote information error: %+v", err)
+						return err
+					}
+				}
+				proposalRecord.State = int(model.ProposalStateVoting)
 			}
-			proposalRecord.State = int(model.ProposalStateVoting)
-			err = tx.Save(&proposalRecord).Error
+			err = tx.Updates(&proposalRecord).Error
 			if err != nil {
 				log.Error().Msgf("change proposal to approved error")
 				return err
@@ -577,9 +677,11 @@ func generateFrontendProposalRecords(db *gorm.DB, querySql string, page *gormfin
 	}
 	total := countTx.RowsAffected
 
-	orderByClause := fmt.Sprintf("%s %s ", *page.SortField, *page.Order)
-	querySql += fmt.Sprintf("\nORDER BY %s ", orderByClause)
-	querySql += fmt.Sprintf("LIMIT %d OFFSET %d", page.Size, (page.Page-1)*page.Size)
+	if page != nil {
+		orderByClause := fmt.Sprintf("%s %s ", *page.SortField, *page.Order)
+		querySql += fmt.Sprintf("\nORDER BY %s ", orderByClause)
+		querySql += fmt.Sprintf("LIMIT %d OFFSET %d", page.Size, (page.Page-1)*page.Size)
+	}
 
 	var resultRows []*FrontendProposalListRecord
 	err := db.Raw(querySql).Find(&resultRows).Error

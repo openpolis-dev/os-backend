@@ -35,11 +35,12 @@ type WidgetDataResponse struct {
 type WidgetDataType string
 
 const (
-	WidgetDataTypeProjectList     WidgetDataType = "project_list"
-	WidgetDataTypeGuildList                      = "guild_list"
-	WidgetDataTypeEntityList                     = "entity_list"
-	WidgetDataTypeAssetType                      = "asset_type"
-	WidgetDataTypePassedProposals                = "passed_proposals"
+	WidgetDataTypeProjectList          WidgetDataType = "project_list"
+	WidgetDataTypeGuildList                           = "guild_list"
+	WidgetDataTypeEntityList                          = "entity_list"
+	WidgetDataTypeAssetType                           = "asset_type"
+	WidgetDataTypePassedProposals                     = "passed_proposals"
+	WidgetDataTypeCanBeVetoedProposals                = "can_be_vetoed_proposals"
 )
 
 // TODO: Currently the data service is handled by RESTful API and query params, will be migrate to GraphQL in future
@@ -63,7 +64,6 @@ func WidgetData(ctx *gin.Context) {
 
 	user, enforcer, db, cfg := api.ForContext(ctx)
 	allEntities, err := enforcer.HasRoleForUser(common.FormatUserWallet(user.Wallet), internal.RoleHall)
-	log.Error().Msgf("TTT: all entities: %+v", allEntities)
 	if err != nil {
 		log.Error().Err(err).Msg("casbin error")
 		sdk.LogServerErrorToSentry(ctx, err)
@@ -138,6 +138,16 @@ func WidgetData(ctx *gin.Context) {
 		}
 		ctx.JSON(http.StatusOK, api.Success(rcds))
 		return
+	case WidgetDataTypeCanBeVetoedProposals:
+		rcds, err := getProposalsCanBeVetoed(db)
+		if err != nil {
+			log.Error().Err(err).Msg("query passed proposal error")
+			sdk.LogServerErrorToSentry(ctx, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("query passed proposal error")))
+			return
+		}
+		ctx.JSON(http.StatusOK, api.Success(rcds))
+		return
 	default:
 		err := errors.New("invalid data type")
 		log.Error().Err(err).Msg("missing data type")
@@ -204,7 +214,34 @@ func getPassedProposals(db *gorm.DB, userWallet string, allRecords bool) ([]*Wid
 		}
 	}
 
-	return lo.Map(rcds, func(r *proposal.FrontendProposalListRecord, _ int) *WidgetDataResponse {
+	return convertFrontendEndProposalListRecordToWidgetDataResponse(rcds), nil
+}
+
+func getProposalsCanBeVetoed(db *gorm.DB) ([]*WidgetDataResponse, error) {
+	var rcds []*proposal.FrontendProposalListRecord
+	querySql := fmt.Sprintf("%s WHERE state IN (%d, %d, %d)",
+		proposal.ListProposalsSQL,
+		model.ProposalStateVoting,
+		model.ProposalStateVotePassed,
+		model.ProposalStatePendingExecution,
+	)
+	querySql += fmt.Sprintf(" ORDER BY id ASC")
+
+	err := db.Raw(querySql).Find(&rcds).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			log.Warn().Err(err).Msgf("no proposal can be vetoed")
+			return []*WidgetDataResponse{}, nil
+		} else {
+			log.Error().Err(err).Msg("query proposal list error")
+			return nil, err
+		}
+	}
+	return convertFrontendEndProposalListRecordToWidgetDataResponse(rcds), nil
+}
+
+func convertFrontendEndProposalListRecordToWidgetDataResponse(proposalRcds []*proposal.FrontendProposalListRecord) []*WidgetDataResponse {
+	return lo.Map(proposalRcds, func(r *proposal.FrontendProposalListRecord, _ int) *WidgetDataResponse {
 		return &WidgetDataResponse{
 			ID:                   r.ID,
 			Name:                 r.Title,
@@ -214,5 +251,5 @@ func getPassedProposals(db *gorm.DB, userWallet string, allRecords bool) ([]*Wid
 			ApplicantAvatar:      r.ApplicantAvatar,
 			CreateTs:             r.CreateTs,
 		}
-	}), nil
+	})
 }

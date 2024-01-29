@@ -13,6 +13,7 @@ import (
 )
 
 type ProposalState int
+type ProposalTemplateType int
 
 const (
 	ProposalStatePendingSubmit ProposalState = iota // PendingSubmit means the proposal is still in personal box, no one else can view it.
@@ -24,17 +25,39 @@ const (
 	ProposalStateVoting
 	ProposalStateVotePassed
 	ProposalStateVoteFailed
+
+	// ProposalStatePendingExecution indicates vote has passed, and the execution command has been added into cronjob table
+	// In this state, the proposal should have execution_ts field settled, which can be fetched from cronjob table.
+	ProposalStatePendingExecution
+	ProposalStateExecuted
+
+	// ProposalStateExecutionFailed indicates the execution of cronjob failed, need to handle it manually
+	ProposalStateExecutionFailed
+
+	// ProposalStateVetoed indicates the proposal has been voted by city hall proposal.
+	// TODO: In this case, there should be some field to reflect this relationship
+	ProposalStateVetoed
+)
+
+const (
+	ProposalTemplateTypeNewProject     ProposalTemplateType = 10
+	ProposalTemplateTypeCloseProject                        = 11
+	ProposalTemplateTypeRejectProposal                      = 20
 )
 
 var ProposalStateIdNameMapping = map[string]ProposalState{
-	"pending_submit": ProposalStatePendingSubmit,
-	"draft":          ProposalStateDraft,
-	"withdrawn":      ProposalStateWithdrawn,
-	"rejected":       ProposalStateRejected,
-	"approved":       ProposalStateApproved,
-	"voting":         ProposalStateVoting,
-	"vote_passed":    ProposalStateVotePassed,
-	"vote_failed":    ProposalStateVoteFailed,
+	"pending_submit":    ProposalStatePendingSubmit,
+	"draft":             ProposalStateDraft,
+	"withdrawn":         ProposalStateWithdrawn,
+	"rejected":          ProposalStateRejected,
+	"approved":          ProposalStateApproved,
+	"voting":            ProposalStateVoting,
+	"vote_passed":       ProposalStateVotePassed,
+	"vote_failed":       ProposalStateVoteFailed,
+	"pending_execution": ProposalStatePendingExecution,
+	"executed":          ProposalStateExecuted,
+	"execution_failed":  ProposalStateExecutionFailed,
+	"vetoed":            ProposalStateVetoed,
 }
 
 var ProposalStateName = []string{
@@ -46,6 +69,10 @@ var ProposalStateName = []string{
 	"voting",
 	"vote_passed",
 	"vote_failed",
+	"pending_execution",
+	"executed",
+	"execution_failed",
+	"vetoed",
 }
 
 // MetaforoUser saves user mapping between OS and metaforo
@@ -60,6 +87,12 @@ type MetaforoUser struct {
 
 	// Groups saves groups user joined in metaforo
 	Groups datatypes.JSON
+}
+
+type VoteTimeProperties struct {
+	PublicitySecond        int64
+	VoteDurationSecond     int64
+	PendingExecutionSecond int64
 }
 
 type Proposal struct {
@@ -80,9 +113,6 @@ type Proposal struct {
 
 	Components []*ProposalComponentRecord
 
-	ProposalCategoryID uint `gorm:"index"`
-	ProposalCategory   ProposalCategory
-
 	//  Fields for versioned proposals
 	// ProposalRecordId is built from metaforo thread ID, which should be kept same in various versions
 	ProposalRecordId string `gorm:"index:proposalVer"`
@@ -94,22 +124,34 @@ type Proposal struct {
 
 	Applicant string `gorm:"index"`
 
-	// VoteType indicates the type of attached vote for this proposal, the available values are ProposalVoteTypeNumeric and ProposalVoteTypeDecision
+	// VoteType indicates the type of attached vote for this proposal, the available values are:
+	// - ProposalVoteTypeNone
+	// - ProposalVoteTypeNumericAvg
+	// - ProposalVoteTypeDecision
+	// - ProposalVoteTypeCustomerDefined
 	VoteType    int
 	VoteRecords []*ProposalVoteRecord
 
 	IsHidden bool
 
-	TemplateId uint
+	// If proposal is created from template, this value will be set
+	ProposalTemplateID *uint `gorm:"index"`
+	ProposalTemplate   *ProposalTemplate
 
-	// VoteDurationSecond and SecondDelayBeforeTaskExecution are used for controlling voting last time and delay before task execution
-	// the values are copied from proposal category db record
-	VoteDurationSecond             int64
-	SecondDelayBeforeTaskExecution int64
+	// Proposal category, this field is used for template created w/o template,
+	// while for proposal created with template, the category data wil be updated by value in template record
+	ProposalCategoryID uint `gorm:"index"`
+	ProposalCategory   ProposalCategory
+
+	VoteTimeProperties
 }
 
 func (p *Proposal) StateName() string {
 	return ProposalStateName[p.State]
+}
+
+func (p *Proposal) PublicityDuration() time.Duration {
+	return time.Duration(p.PublicitySecond) * time.Second
 }
 
 func (p *Proposal) VoteDuration() time.Duration {
@@ -117,7 +159,18 @@ func (p *Proposal) VoteDuration() time.Duration {
 }
 
 func (p *Proposal) TaskStartDelay() time.Duration {
-	return time.Duration(p.SecondDelayBeforeTaskExecution) * time.Second
+	return time.Duration(p.PendingExecutionSecond) * time.Second
+}
+
+func (p *Proposal) CanBeVetoed() bool {
+	return p.PendingExecutionSecond == 0
+}
+
+func (p *Proposal) IsInFinState() bool {
+	return p.State == int(ProposalStateVotePassed) ||
+		p.State == int(ProposalStateVoteFailed) ||
+		p.State == int(ProposalStateExecuted) ||
+		p.State == int(ProposalStateVetoed)
 }
 
 // StateIsUpdatable returns bool value indicates whether this proposal can be updated.
@@ -169,15 +222,18 @@ func BuildProposalRecordIdFromMetaforoThreadId(threadId int) string {
 }
 
 // ProposalContentBlock saves blocks in proposal.
-// In proposal the content is built by blocks, each block contains a title and content.
-// The content are saved in order in proposal records.
+// The block contains brief text block and components block.
+// The brief text block contains title and content.
+// The component block can contain multiple components, with a title field
 type ProposalContentBlock struct {
 	ID       uint  `gorm:"primaryKey"`
 	CreateTs int64 `gorm:"index"`
 
-	Title      string
-	Content    string
-	ProposalID uint
+	Title         string
+	Content       string
+	ProposalID    uint
+	Type          string
+	ComponentList string
 }
 
 // ProposalComponentRecord saves components in proposal.
@@ -226,30 +282,33 @@ type ProposalCategory struct {
 	Name       string
 	MetaforoId uint
 
-	ProposalVoteGateId uint
+	// Specify the display index while returning to frontend
+	DisplayIndex int `gorm:"index"`
+
+	ProposalVoteGateId *uint
 	ProposalVoteGate   *ProposalVoteGate
 
-	SecondDelayBeforeTaskExecution int64 // Second delay before execution of proposal component actions
-
-	VoteDurationSecond int64 // Vote duration in second for this proposal category
-
 	IsActive bool
+
+	VoteTimeProperties
 }
 
 // ProposalVoteGate saves the token requirements to vote
+// TODO: Add logic to the record and check
 type ProposalVoteGate struct {
 	ID           uint   `gorm:"primaryKey"`
 	ChainType    int    `gorm:"index:assetAttr"`
 	TokenType    int    `gorm:"index:assetAttr"`
 	TokenAddress string `gorm:"index"`
 	TokenId      string
+	Amount       string // Amount for specified gate
 	MetaforoId   uint
 
 	Name string // Name of the vote gate
 }
 
-func (ppg *ProposalVoteGate) TokenTypeName() string {
-	switch ppg.TokenType {
+func (pvg *ProposalVoteGate) TokenTypeName() string {
+	switch pvg.TokenType {
 	case 0:
 		return "ERC20"
 	case 1:
@@ -261,8 +320,8 @@ func (ppg *ProposalVoteGate) TokenTypeName() string {
 	}
 }
 
-func (ppg *ProposalVoteGate) ChainName() string {
-	switch ppg.ChainType {
+func (pvg *ProposalVoteGate) ChainName() string {
+	switch pvg.ChainType {
 	case 1:
 		return "Polygon"
 	case 8:
@@ -283,8 +342,11 @@ type ProposalAuditLog struct {
 }
 
 var (
-	ProposalVoteTypeDecision int = 0
-	ProposalVoteTypeNumeric      = 1
+	ProposalVoteTypeNone            int = 0
+	ProposalVoteTypeDecision            = 1
+	ProposalVoteTypeNumericAvg          = 2 // This means if the result contains same vote value, use the average for result
+	ProposalVoteTypeNumericSingle       = 3 // This means if the result contains same vote value, mark vote as failed
+	ProposalVoteTypeCustomerDefined     = 99
 )
 
 // ProposalVoteRecord saves vote record and associated to specified Proposal
@@ -298,11 +360,6 @@ type ProposalVoteRecord struct {
 	EndTs      int64 `gorm:"index"`
 	MetaforoID int   `gorm:"index"` // Poll id from metaforo
 
-	// TODO: Change the calculation for vote result from vote option record data
-	ApproveCount int
-	AbstainCount int
-	RejectCount  int
-
 	OptionType int
 	Options    []*ProposalVoteOptionRecord
 
@@ -313,8 +370,11 @@ type ProposalVoteRecord struct {
 
 	ProposalID uint
 
-	// indicate type of this vote. For now there are decision and numeric vote.
-	// The value for this field is defined as const ProposalVoteTypeDecision and ProposalVoteTypeNumeric
+	// VoteType indicates the type of attached vote for this proposal, the available values are:
+	// - ProposalVoteTypeNone
+	// - ProposalVoteTypeNumericAvg
+	// - ProposalVoteTypeDecision
+	// - ProposalVoteTypeCustomerDefined
 	VoteType int
 }
 
@@ -342,7 +402,8 @@ type ProposalVoteOptionRecord struct {
 func GetPredefinedVoteOptionValue(optLabel string, voteType int) string {
 	var optBucket map[string]string
 	switch voteType {
-	case ProposalVoteTypeNumeric:
+	case ProposalVoteTypeNumericAvg:
+	case ProposalVoteTypeNumericSingle:
 		optBucket = internal.ProposalNumericVoteOptionsMap
 	case ProposalVoteTypeDecision:
 		optBucket = internal.ProposalDecisionVoteOptionsMap
@@ -381,6 +442,8 @@ type ProposalComponent struct {
 	Thumbnail     string
 	ScreenshotUri string
 
+	IsHidden bool
+
 	ApproveActionId uint // ApproveActionId indicates the action will be executed when the component is approved
 	RejectActionId  uint // RejectActionId indicates the action will be executed when the component is rejected
 }
@@ -404,6 +467,19 @@ type ProposalTemplate struct {
 
 	Name string `gorm:"uniqueIndex"`
 
+	// RuleDesc saves a description for template rule
+	RuleDesc string
+
+	// VoteType indicates the type of attached vote for this proposal, the available values are:
+	// - ProposalVoteTypeNone
+	// - ProposalVoteTypeNumericAvg
+	// - ProposalVoteTypeDecision
+	// - ProposalVoteTypeCustomerDefined
+	VoteType int
+
+	// Type is used to filter proposal template, this field is not set to all templates, but only specified template records are required
+	Type ProposalTemplateType
+
 	ScreenshotUri string
 
 	// ContentSchema saves content blocks used for this template, each block contains one title and one content field
@@ -411,4 +487,22 @@ type ProposalTemplate struct {
 
 	// Components saves component used in this template,
 	Components []*ProposalComponent `gorm:"many2many:template_components;"`
+
+	// Proposal category
+	ProposalCategoryID uint `gorm:"index"`
+	ProposalCategory   *ProposalCategory
+
+	// UseTemplateGates saves gate for creating proposal based on this template
+	UseTemplateGates []*ProposalVoteGate `gorm:"many2many:template_usage_gates;"`
+
+	//////////
+	// Vote related information
+	//////////
+	// VoteGates saves gate info of voting on proposal created by this template
+	VoteGates []*ProposalVoteGate `gorm:"many2many:proposal_voting_gates;"`
+
+	VoteTimeProperties
+
+	// Specify the display index while returning to frontend
+	DisplayIndex int `gorm:"index"`
 }

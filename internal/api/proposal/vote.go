@@ -126,6 +126,57 @@ func RevokeVote(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, api.Success(nil))
 }
 
+// CloseVote closes all the votes in the proposal
+//
+//	@summary	close all votes belongs to the proposal
+//	@tags		Proposal
+//	@param		id		query		number				true	"proposal ID"
+//	@param		data	body		CloseVoteRequest	true	"revoke vote data"
+//	@success	200		{object}	api.Reply{data=nil}	"Success"
+//	@router		/proposals/close_vote/:id [post]
+func CloseVote(ctx *gin.Context) {
+	db, cfg := api.ForContextDBAndConfig(ctx)
+	proposalIdStr := ctx.Param("id")
+	reqData := CloseVoteRequest{}
+	if err := ctx.BindJSON(&reqData); err != nil {
+		log.Error().Msgf("parse request data error: %+v", err)
+		sdk.LogUserSideError(ctx, err)
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("parse request data error: %+v", err)))
+		return
+	}
+
+	if err := metaforo.CloseVote(
+		cfg.MetaforoData.AccessToken,
+		cfg.MetaforoData.GroupName,
+		reqData.MetaforoVoteId,
+	); err != nil {
+		log.Error().Msgf("close vote error: %+v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(fmt.Errorf("close vote error")))
+		return
+	}
+
+	// update proposal state after getting the vote result
+	dbProposal, err := GetProposalFromStringId(db, proposalIdStr)
+	if err != nil {
+		log.Error().Msgf("fetch db proposal record error: %+v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(fmt.Errorf("fetch db proposal error")))
+		return
+	}
+
+	metaforoProposalResponse, err := metaforo.GetProposal(dbProposal.GetMetaforoThreadId(), cfg.MetaforoData.GroupName, "", 0)
+	err = UpdateDbRecordsFromMetaforoProposalResponse(db, dbProposal, metaforoProposalResponse)
+	if err != nil {
+		log.Error().Msgf("update db proposal by response error: %+v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(fmt.Errorf("update proposal info error")))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, api.Success(nil))
+}
+
 // ShowVoteDetail returns vote detail for specified vote
 //
 //	@summary	revoke vote on existing metaforo vote

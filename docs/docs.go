@@ -1270,66 +1270,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/proposal/mylist": {
-            "get": {
-                "tags": [
-                    "Proposal"
-                ],
-                "summary": "Returns proposals created by login user",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "which page",
-                        "name": "page",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "size of each page",
-                        "name": "size",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "sort by which field",
-                        "name": "sort_field",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "order of sort",
-                        "name": "sort_order",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Return pending submit proposals or other state, only query PendingSubmit records when value is ` + "`" + `1` + "`" + `",
-                        "name": "pending_submit",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/api.Reply"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/proposal.FrontendProposalDetailRecord"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            }
-        },
         "/proposal_categories/list": {
             "get": {
                 "tags": [
@@ -1574,6 +1514,52 @@ const docTemplate = `{
                 }
             }
         },
+        "/proposals/close_vote/:id": {
+            "post": {
+                "tags": [
+                    "Proposal"
+                ],
+                "summary": "close all votes belongs to the proposal",
+                "parameters": [
+                    {
+                        "type": "number",
+                        "description": "proposal ID",
+                        "name": "id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "description": "revoke vote data",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/proposal.CloseVoteRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Reply"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/proposals/create": {
             "post": {
                 "tags": [
@@ -1596,6 +1582,42 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/api.Reply"
+                        }
+                    }
+                }
+            }
+        },
+        "/proposals/creating_project_proposals": {
+            "get": {
+                "tags": [
+                    "Proposal"
+                ],
+                "summary": "Returns creating project and executed proposals created by login user, if category_id is not specified, all proposals for opening project will be returned",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Limit the category of creating project proposal",
+                        "name": "category_id",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Reply"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/proposal.FrontendProposalDetailRecord"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     }
                 }
@@ -1726,7 +1748,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "state of proposal",
+                        "description": "state of proposal, for multiple states, use comma as separator",
                         "name": "state",
                         "in": "query"
                     },
@@ -1771,7 +1793,98 @@ const docTemplate = `{
                 }
             }
         },
-        "/proposals/proposal_tmpl/": {
+        "/proposals/my": {
+            "get": {
+                "tags": [
+                    "Proposal"
+                ],
+                "summary": "Returns proposals created by login user",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "which page",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "size of each page",
+                        "name": "size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "sort by which field",
+                        "name": "sort_field",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "order of sort",
+                        "name": "sort_order",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Return pending submit proposals or other state, only query PendingSubmit records when value is ` + "`" + `1` + "`" + `",
+                        "name": "pending_submit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Reply"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/proposal.FrontendProposalDetailRecord"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/proposals/proposal_tmpl/list": {
+            "get": {
+                "tags": [
+                    "Proposal"
+                ],
+                "summary": "list templates and return to frontend",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Reply"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/proposal.TemplateResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/proposals/proposal_tmpl/list_with_perm": {
             "get": {
                 "tags": [
                     "Proposal"
@@ -4392,6 +4505,17 @@ const docTemplate = `{
                 }
             }
         },
+        "proposal.CloseVoteRequest": {
+            "type": "object",
+            "properties": {
+                "metaforo_access_token": {
+                    "type": "string"
+                },
+                "vote_id": {
+                    "type": "integer"
+                }
+            }
+        },
         "proposal.ComponentRequestData": {
             "type": "object",
             "properties": {
@@ -4415,6 +4539,9 @@ const docTemplate = `{
             "properties": {
                 "id": {
                     "type": "integer"
+                },
+                "is_hidden": {
+                    "type": "boolean"
                 },
                 "name": {
                     "type": "string"
@@ -4463,6 +4590,12 @@ const docTemplate = `{
                 "vote_gate_id": {
                     "type": "integer"
                 },
+                "vote_options": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "vote_type": {
                     "type": "integer"
                 }
@@ -4505,7 +4638,13 @@ const docTemplate = `{
                 "id": {
                     "type": "integer"
                 },
+                "name": {
+                    "type": "string"
+                },
                 "title": {
+                    "type": "string"
+                },
+                "type": {
                     "type": "string"
                 }
             }
@@ -4620,6 +4759,9 @@ const docTemplate = `{
                     "description": "Timestamps",
                     "type": "integer"
                 },
+                "execution_ts": {
+                    "type": "integer"
+                },
                 "histories": {
                     "$ref": "#/definitions/proposal.FrontendProposalEditHistories"
                 },
@@ -4627,6 +4769,9 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "is_based_on_template": {
+                    "type": "boolean"
+                },
+                "is_instant_execution": {
                     "type": "boolean"
                 },
                 "is_rejected": {
@@ -4801,10 +4946,22 @@ const docTemplate = `{
                         "$ref": "#/definitions/proposal.ComponentResponse"
                     }
                 },
+                "has_perm_to_use": {
+                    "type": "boolean"
+                },
                 "id": {
                     "type": "integer"
                 },
+                "is_closing_project": {
+                    "type": "boolean"
+                },
+                "is_instant_vote": {
+                    "type": "boolean"
+                },
                 "name": {
+                    "type": "string"
+                },
+                "rule_description": {
                     "type": "string"
                 },
                 "schema": {
@@ -4812,6 +4969,9 @@ const docTemplate = `{
                 },
                 "screenshot_uri": {
                     "type": "string"
+                },
+                "vote_type": {
+                    "type": "integer"
                 }
             }
         },
