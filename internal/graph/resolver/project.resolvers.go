@@ -8,6 +8,7 @@ import (
 	"context"
 
 	"github.com/samber/lo"
+	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
@@ -25,7 +26,7 @@ func (r *queryResolver) AvailableProjects(ctx context.Context) ([]*gmodel.Projec
 	user, enforcer, db, _ := api.ForContext(ginCtx)
 
 	formattedWallet := common.FormatUserWallet(user.Wallet)
-	ok, err := enforcer.HasRoleForUser(formattedWallet, api.RoleHall)
+	ok, err := enforcer.HasRoleForUser(formattedWallet, internal.RoleHall)
 	if err != nil {
 		return nil, err
 	}

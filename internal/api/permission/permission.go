@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/samber/lo"
+	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/sdk"
@@ -22,24 +23,24 @@ type role struct {
 
 // GrantRole role to user
 //
-//	@Summary	Grant role to user
-//	@Tags		Permission
-//	@Accept		json
-//	@Produce	json
-//	@Param		grants	body		GrantRoleReq	true	"request json body"
-//	@Success	200		{object}	api.Reply
-//	@Router		/permission/grant_role [post]
+//	@summary	Grant role to user
+//	@tags		Permission
+//	@accept		json
+//	@produce	json
+//	@param		grants	body		GrantRoleReq	true	"request json body"
+//	@success	200		{object}	api.Reply
+//	@router		/permission/grant_role [post]
 func GrantRole(ctx *gin.Context) {
 	user, enforcer, _, _ := api.ForContext(ctx)
 	formattedWallet := common.FormatUserWallet(user.Wallet)
-	ok, err := enforcer.HasRoleForUser(formattedWallet, api.RoleHall)
+	ok, err := enforcer.HasRoleForUser(formattedWallet, internal.RoleHall)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 		return
 	}
 	if !ok {
-		sdk.LogForbiddenError(ctx, user.Wallet, api.RoleHall, "access")
+		sdk.LogForbiddenError(ctx, user.Wallet, internal.RoleHall, "access")
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
@@ -77,23 +78,23 @@ type RevokeRoleReq struct {
 
 // RevokeRole role from user
 //
-//	@Summary	Revoke role from user
-//	@Tags		Permission
-//	@Accept		json
-//	@Produce	json
-//	@Param		revokes	body		RevokeRoleReq	true	"request json body"
-//	@Success	200		{object}	api.Reply
-//	@Router		/permission/revoke_role [post]
+//	@summary	Revoke role from user
+//	@tags		Permission
+//	@accept		json
+//	@produce	json
+//	@param		revokes	body		RevokeRoleReq	true	"request json body"
+//	@success	200		{object}	api.Reply
+//	@router		/permission/revoke_role [post]
 func RevokeRole(ctx *gin.Context) {
 	user, enforcer, _, _ := api.ForContext(ctx)
-	ok, err := enforcer.HasRoleForUser(common.FormatUserWallet(user.Wallet), api.RoleHall)
+	ok, err := enforcer.HasRoleForUser(common.FormatUserWallet(user.Wallet), internal.RoleHall)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 		return
 	}
 	if !ok {
-		sdk.LogForbiddenError(ctx, user.Wallet, api.RoleHall, "access")
+		sdk.LogForbiddenError(ctx, user.Wallet, internal.RoleHall, "access")
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}

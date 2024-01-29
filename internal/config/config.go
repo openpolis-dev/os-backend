@@ -21,6 +21,7 @@ type Config struct {
 	AwsConfig        awsConfig       `json:"awsConfig" yaml:"awsConfig"`
 	ExternalServices externalService `json:"externalServices" yaml:"externalServices"`
 	PublicData       publicData      `json:"publicData" yaml:"publicData"`
+	MetaforoData     metaforoData    `json:"metaforoData" yaml:"metaforoData"`
 }
 
 type (
@@ -74,6 +75,20 @@ type (
 			ChainId int    `json:"chainId" yaml:"chainId"`
 			Wallet  string `json:"wallet" yaml:"wallet"`
 		} `json:"safeVaults" yaml:"safeVaults"`
+	}
+
+	metaforoData struct {
+		GroupName   string `json:"groupName" yaml:"groupName"`
+		GroupID     int    `json:"groupID" yaml:"groupID"`
+		AccessToken string `json:"accessToken" yaml:"accessToken"`
+
+		Assets []struct {
+			ID   uint   `json:"id" yaml:"id"`
+			Name string `json:"name" yaml:"name"`
+		} `json:"assets" yaml:"assets"`
+
+		// ProposalPrefix adds a prefix to all proposals created in OS system
+		ProposalPrefix string `json:"proposalPrefix" yaml:"proposalPrefix"`
 	}
 )
 
