@@ -624,7 +624,7 @@ func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcd *mod
 			var voteResult string
 			switch proposalVoteRecord.VoteType {
 			case model.ProposalVoteTypeNone:
-				proposalFinalState = model.ProposalStateVotePassed
+				proposalFinalState = model.ProposalStateExecuted
 			case model.ProposalVoteTypeDecision:
 				var voteOptRcds []*model.ProposalVoteOptionRecord
 				err = db.Where(&model.ProposalVoteOptionRecord{ProposalVoteRecordId: proposalVoteRecord.ID}).Select("voter_count").Find(&voteOptRcds).Error
