@@ -696,9 +696,33 @@ func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcd *mod
 					voteResult = recordsForCalcResults[0].Value
 				}
 			case model.ProposalVoteTypeNumericSingle:
-				// TODO: Get the max value and check whether there is only one record has this value
-				log.Warn().Msgf("not implemented yet")
+				var voteOptRcds []*model.ProposalVoteOptionRecord
+				err = db.Where(&model.ProposalVoteOptionRecord{ProposalVoteRecordId: proposalVoteRecord.ID}).Select("id, value, voter_count").Find(&voteOptRcds).Error
+				if err != nil {
+					log.Warn().Msgf("fetch vote options for proposal vote record: %+v error: %+v", proposalVoteRecord, err)
+					continue
+				}
 
+				if len(voteOptRcds) > 1 {
+					// Sort the vote option records in desc order
+					slices.SortFunc(voteOptRcds, func(a, b *model.ProposalVoteOptionRecord) int {
+						return cmp.Compare(b.VoterCount, a.VoterCount)
+					})
+
+					if voteOptRcds[0].VoterCount == voteOptRcds[1].VoterCount {
+						log.Warn().Msgf("vote result has same voter count, mark as failed")
+						proposalFinalState = model.ProposalStateVoteFailed
+					} else {
+						proposalFinalState = model.ProposalStateVotePassed
+						voteResult = voteOptRcds[0].Value
+					}
+				} else if len(voteOptRcds) == 1 {
+					proposalFinalState = model.ProposalStateVotePassed
+					voteResult = voteOptRcds[0].Value
+				} else {
+					log.Error().Msgf("vote option count error, set proposal to failed")
+					proposalFinalState = model.ProposalStateVoteFailed
+				}
 			default:
 				log.Warn().Msgf("unknown proposal type, no logic to set the proposal state")
 				continue
@@ -771,4 +795,8 @@ func createProposalFinTasks(db *gorm.DB, proposal *model.Proposal, finState mode
 	if err != nil {
 		log.Error().Msgf("")
 	}
+}
+
+func GetContractHolderCount() {
+
 }
