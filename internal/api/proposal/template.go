@@ -14,29 +14,43 @@ import (
 	"gorm.io/gorm"
 )
 
-const listTemplateWithPermSQL = `
-
-`
+const listTemplateWithPermSQL = `select
+pt.id,pt.name,pt.content_schema,pt.screenshot_uri,
+pc.name as category_name,
+pc.display_index as category_display_index,
+pt.proposal_category_id as category_id,
+pt.rule_desc as rule_descriotion,
+pt.publicity_second = 0 as is_instant_vote,
+pt.type = ? as is_closing_project,
+pt.vote_type
+from proposal_templates pt
+left join proposal_categories pc on pt.proposal_category_id =pc.id
+order by pc.display_index, pt.display_index`
 
 type TemplateResponse struct {
-	ID               uint                 `json:"id"`
-	Name             string               `json:"name"`
-	ScreenshotUri    string               `json:"screenshot_uri"`
-	ContentSchema    string               `json:"schema"`
-	CategoryName     string               `json:"-"`
-	CategoryId       uint                 `json:"-"`
-	HasPermToUse     bool                 `json:"has_perm_to_use"`
-	RuleDescription  string               `json:"rule_description"`
-	IsInstantVote    bool                 `json:"is_instant_vote"`
-	IsClosingProject bool                 `json:"is_closing_project"`
-	VoteType         int                  `json:"vote_type"`
-	Components       []*ComponentResponse `json:"components"`
+	ID                   uint   `json:"id"`
+	Name                 string `json:"name"`
+	ScreenshotUri        string `json:"screenshot_uri"`
+	ContentSchema        string `json:"schema"`
+	CategoryName         string `json:"-"`
+	CategoryId           uint   `json:"-"`
+	CategoryDisplayIndex uint   `json:"-"`
+	HasPermToUse         bool   `json:"has_perm_to_use"`
+	RuleDescription      string `json:"rule_description"`
+	IsInstantVote        bool   `json:"is_instant_vote"`
+	IsClosingProject     bool   `json:"is_closing_project"`
+	VoteType             int    `json:"vote_type"`
+}
+
+type TemplateResponseWithComponents struct {
+	TemplateResponse
+	Components []*ComponentResponse `json:"components"`
 }
 
 type TmplWithCategoryNameRecord struct {
-	CategoryId   uint                `json:"category_id"`
-	CategoryName string              `json:"category_name"`
-	Templates    []*TemplateResponse `json:"templates"`
+	CategoryId   uint                              `json:"category_id"`
+	CategoryName string                            `json:"category_name"`
+	Templates    []*TemplateResponseWithComponents `json:"templates"`
 }
 
 type updateTmplRequest struct {
@@ -62,8 +76,8 @@ func ListTemplates(ctx *gin.Context) {
 		return
 	}
 
-	respRcds := lo.Map(dbRcds, func(r *model.ProposalTemplate, _ int) *TemplateResponse {
-		return &TemplateResponse{
+	respRcds := lo.Map(dbRcds, func(r *model.ProposalTemplate, _ int) *TemplateResponseWithComponents {
+		tmplRsp := TemplateResponse{
 			ID:               r.ID,
 			Name:             r.Name,
 			ContentSchema:    r.ContentSchema,
@@ -72,6 +86,9 @@ func ListTemplates(ctx *gin.Context) {
 			IsInstantVote:    r.PublicitySecond == 0,
 			IsClosingProject: r.Type == model.ProposalTemplateTypeCloseProject,
 			VoteType:         r.VoteType,
+		}
+		return &TemplateResponseWithComponents{
+			TemplateResponse: tmplRsp,
 			Components: lo.Map(r.Components, func(c *model.ProposalComponent, _ int) *ComponentResponse {
 				return &ComponentResponse{
 					ID:            c.ID,
@@ -105,40 +122,33 @@ func ListTemplatesWithPerm(ctx *gin.Context) {
 		return
 	}
 
-	// TODO: Change to manual SQL with JOIN
-	var dbRcds []*model.ProposalTemplate
-	if err := db.Model(&model.ProposalTemplate{}).
-		Preload("UseTemplateGates").
-		Preload("ProposalCategory").
-		Preload("Components").Order("proposal_category_id").Find(&dbRcds).Error; err != nil {
+	var rcds []*TemplateResponse
+	err = db.Raw(listTemplateWithPermSQL, model.ProposalTemplateTypeCloseProject).Scan(&rcds).Error
+	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("list templates failed")))
 		return
 	}
 
-	tmplRecords := lo.Map(dbRcds, func(r *model.ProposalTemplate, _ int) *TemplateResponse {
-		// TODO: Validate permissions of vote gate
-		permArray := lo.Map(r.UseTemplateGates, func(r *model.ProposalVoteGate, _ int) bool {
+	tmplRecords := lo.Map(rcds, func(r *TemplateResponse, _ int) *TemplateResponseWithComponents {
+		var tmplDbRcd model.ProposalTemplate
+		err = db.Preload("Components").Find(&tmplDbRcd, r.ID).Error
+		if err != nil {
+			log.Warn().Msgf("try to fetch template record  %d error: %+v", r.ID, err)
+			return nil
+		}
+
+		permArray := lo.Map(tmplDbRcd.UseTemplateGates, func(r *model.ProposalVoteGate, _ int) bool {
 			return IsUserMetVoteGate(userSeepassData, r)
 		})
 
-		hasPermToUse := lo.Reduce(permArray, func(rslt bool, r bool, _ int) bool {
+		r.HasPermToUse = lo.Reduce(permArray, func(rslt bool, r bool, _ int) bool {
 			return rslt && r
 		}, true)
 
-		return &TemplateResponse{
-			ID:               r.ID,
-			Name:             r.Name,
-			ContentSchema:    r.ContentSchema,
-			ScreenshotUri:    r.ScreenshotUri,
-			CategoryName:     r.ProposalCategory.Name,
-			CategoryId:       r.ProposalCategoryID,
-			HasPermToUse:     hasPermToUse,
-			RuleDescription:  r.RuleDesc,
-			IsInstantVote:    r.PublicitySecond == 0,
-			IsClosingProject: r.Type == model.ProposalTemplateTypeCloseProject,
-			VoteType:         r.VoteType,
-			Components: lo.Map(r.Components, func(c *model.ProposalComponent, _ int) *ComponentResponse {
+		return &TemplateResponseWithComponents{
+			TemplateResponse: *r,
+			Components: lo.Map(tmplDbRcd.Components, func(c *model.ProposalComponent, _ int) *ComponentResponse {
 				return &ComponentResponse{
 					ID:            c.ID,
 					Name:          c.Name,
@@ -149,11 +159,11 @@ func ListTemplatesWithPerm(ctx *gin.Context) {
 		}
 	})
 
-	respRcdMap := lo.GroupBy(tmplRecords, func(r *TemplateResponse) lo.Tuple2[uint, string] {
+	respRcdMap := lo.GroupBy(tmplRecords, func(r *TemplateResponseWithComponents) lo.Tuple2[uint, string] {
 		return lo.T2[uint, string](r.CategoryId, r.CategoryName)
 	})
 
-	respRcds := lo.MapToSlice(respRcdMap, func(categoryIdName lo.Tuple2[uint, string], tmplRcds []*TemplateResponse) *TmplWithCategoryNameRecord {
+	respRcds := lo.MapToSlice(respRcdMap, func(categoryIdName lo.Tuple2[uint, string], tmplRcds []*TemplateResponseWithComponents) *TmplWithCategoryNameRecord {
 		categoryId, categoryName := lo.Unpack2(categoryIdName)
 		return &TmplWithCategoryNameRecord{
 			CategoryId:   categoryId,

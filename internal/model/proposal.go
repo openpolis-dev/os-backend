@@ -495,4 +495,7 @@ type ProposalTemplate struct {
 	VoteGates []*ProposalVoteGate `gorm:"many2many:proposal_voting_gates;"`
 
 	VoteTimeProperties
+
+	// Specify the display index while returning to frontend
+	DisplayIndex int `gorm:"index"`
 }
