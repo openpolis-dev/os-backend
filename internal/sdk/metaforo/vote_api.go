@@ -124,14 +124,12 @@ func UpdateVoteTime(accessToken, groupName string, voteId int, startTs, endTs in
 	formBody.Set("close_at", time.Unix(endTs, 0).UTC().Format(time.RFC3339))
 
 	// send request
-	statusCode, body, err := doHttpRequest[any](&httpRequestData{
+	_, _, err := doHttpRequest[any](&httpRequestData{
 		ApiUri:         apiBase + apiPath,
 		HttpMethod:     http.MethodPost,
 		FormBodyParams: &formBody,
 		Header:         formHeader,
 	})
-
-	log.Error().Msgf("TTT: %d %+v", statusCode, body)
 
 	return err
 }

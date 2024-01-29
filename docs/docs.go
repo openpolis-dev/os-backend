@@ -4667,6 +4667,9 @@ const docTemplate = `{
                 "vote_gate": {
                     "$ref": "#/definitions/proposal.FrontendVoteGateResponse"
                 },
+                "vote_type": {
+                    "type": "integer"
+                },
                 "votes": {
                     "description": "Vote"
                 }
