@@ -89,6 +89,11 @@ type RevokeVoteData struct {
 	MetaforoAccessToken string `json:"metaforo_access_token"`
 }
 
+type CloseVoteRequest struct {
+	MetaforoVoteId      int    `json:"vote_id"`
+	MetaforoAccessToken string `json:"metaforo_access_token"`
+}
+
 ///////////////////////
 // Response data definitions
 ///////////////////////

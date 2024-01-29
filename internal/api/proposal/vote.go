@@ -126,6 +126,38 @@ func RevokeVote(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, api.Success(nil))
 }
 
+// CloseVote closes all the votes in the proposal
+//
+//	@summary	close all votes belongs to the proposal
+//	@tags		Proposal
+//	@param		id		query		number				true	"proposal ID"
+//	@param		data	body		CloseVoteRequest	true	"revoke vote data"
+//	@success	200		{object}	api.Reply{data=nil}	"Success"
+//	@router		/proposals/close_vote/:id [post]
+func CloseVote(ctx *gin.Context) {
+	_, cfg := api.ForContextDBAndConfig(ctx)
+	reqData := CloseVoteRequest{}
+	if err := ctx.BindJSON(&reqData); err != nil {
+		log.Error().Msgf("parse request data error: %+v", err)
+		sdk.LogUserSideError(ctx, err)
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("parse request data error: %+v", err)))
+		return
+	}
+
+	if err := metaforo.CloseVote(
+		reqData.MetaforoAccessToken,
+		cfg.MetaforoData.GroupName,
+		reqData.MetaforoVoteId,
+	); err != nil {
+		log.Error().Msgf("revoke vote error error: %+v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(fmt.Errorf("revoke vote error")))
+		return
+
+	}
+	ctx.JSON(http.StatusOK, api.Success(nil))
+}
+
 // ShowVoteDetail returns vote detail for specified vote
 //
 //	@summary	revoke vote on existing metaforo vote

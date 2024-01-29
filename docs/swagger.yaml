@@ -927,6 +927,13 @@ definitions:
       vote_id:
         type: integer
     type: object
+  proposal.CloseVoteRequest:
+    properties:
+      metaforo_access_token:
+        type: string
+      vote_id:
+        type: integer
+    type: object
   proposal.ComponentRequestData:
     properties:
       auto_action:
@@ -943,6 +950,8 @@ definitions:
     properties:
       id:
         type: integer
+      is_hidden:
+        type: boolean
       name:
         type: string
       schema:
@@ -2454,6 +2463,33 @@ paths:
           schema:
             $ref: '#/definitions/api.Reply'
       summary: Check whether user has permission to vote in thread
+      tags:
+      - Proposal
+  /proposals/close_vote/:id:
+    post:
+      parameters:
+      - description: proposal ID
+        in: query
+        name: id
+        required: true
+        type: number
+      - description: revoke vote data
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/proposal.CloseVoteRequest'
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  type: object
+              type: object
+      summary: close all votes belongs to the proposal
       tags:
       - Proposal
   /proposals/create:

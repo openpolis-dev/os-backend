@@ -397,6 +397,7 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		proposalGroup.POST("/can_vote/:id", proposal.CheckVotePermission)
 		proposalGroup.POST("/vote/:id", proposal.CastVote)
 		proposalGroup.POST("/revoke_vote/:id", proposal.RevokeVote)
+		proposalGroup.POST("/close_vote/:id", proposal.CloseVote)
 
 		// Proposal templates router
 		proposalTmplRouter := authorizedGroup.Group("/proposal_tmpl")

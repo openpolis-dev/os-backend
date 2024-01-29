@@ -1514,6 +1514,52 @@ const docTemplate = `{
                 }
             }
         },
+        "/proposals/close_vote/:id": {
+            "post": {
+                "tags": [
+                    "Proposal"
+                ],
+                "summary": "close all votes belongs to the proposal",
+                "parameters": [
+                    {
+                        "type": "number",
+                        "description": "proposal ID",
+                        "name": "id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "description": "revoke vote data",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/proposal.CloseVoteRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Reply"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/proposals/create": {
             "post": {
                 "tags": [
@@ -4459,6 +4505,17 @@ const docTemplate = `{
                 }
             }
         },
+        "proposal.CloseVoteRequest": {
+            "type": "object",
+            "properties": {
+                "metaforo_access_token": {
+                    "type": "string"
+                },
+                "vote_id": {
+                    "type": "integer"
+                }
+            }
+        },
         "proposal.ComponentRequestData": {
             "type": "object",
             "properties": {
@@ -4482,6 +4539,9 @@ const docTemplate = `{
             "properties": {
                 "id": {
                     "type": "integer"
+                },
+                "is_hidden": {
+                    "type": "boolean"
                 },
                 "name": {
                     "type": "string"
