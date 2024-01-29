@@ -19,7 +19,7 @@ pt.id,pt.name,pt.content_schema,pt.screenshot_uri,
 pc.name as category_name,
 pc.display_index as category_display_index,
 pt.proposal_category_id as category_id,
-pt.rule_desc as rule_descriotion,
+pt.rule_desc as rule_description,
 pt.publicity_second = 0 as is_instant_vote,
 pt.type = ? as is_closing_project,
 pt.vote_type
