@@ -78,8 +78,11 @@ const DefaultTaskRunnerCheckIntervalSecond = 10
 const TaskRefreshVotingProposalVoteInfo = "RefreshVotingProposalVoteInfo"
 const TaskRefreshVotingProposalVoteInfoCronExpr = "0 * * * * * *" // Launch the job every minute
 
-const TaskCreateProject = "project/create"
-const TaskCloseProject = "project/close"
-const TaskCreateGuild = "guild/create"
-const TaskCloseGuild = "guild/close"
-const TaskRewardNewApplication = "reward/new_application"
+const (
+	TaskCreateProject        = "project/create"
+	TaskCloseProject         = "project/close"
+	TaskCreateGuild          = "guild/create"
+	TaskCloseGuild           = "guild/close"
+	TaskRewardNewApplication = "reward/new_application"
+	TaskVetoedProposal       = "proposal/veto"
+)
