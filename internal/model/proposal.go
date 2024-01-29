@@ -166,6 +166,13 @@ func (p *Proposal) CanBeVetoed() bool {
 	return p.PendingExecutionSecond == 0
 }
 
+func (p *Proposal) IsInFinState() bool {
+	return p.State == int(ProposalStateVotePassed) ||
+		p.State == int(ProposalStateVoteFailed) ||
+		p.State == int(ProposalStateExecuted) ||
+		p.State == int(ProposalStateVetoed)
+}
+
 // StateIsUpdatable returns bool value indicates whether this proposal can be updated.
 // The record can be updated if value returned is true
 // Only proposal in those states can be updated: PendingSubmit, Withdrawn and Rejected

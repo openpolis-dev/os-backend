@@ -2,6 +2,7 @@ package task_manager
 
 import (
 	"encoding/json"
+	"strings"
 
 	"github.com/rs/zerolog/log"
 	"github.com/theseed-labs/os-backend/internal/model"
@@ -66,7 +67,7 @@ func CreateVetoProposalTask(db *gorm.DB, job *model.CronJob, jobParams string) {
 			}
 			db.Updates(&proposalTasks)
 
-			err = db.Model(&model.Proposal{}).Update("state = ?", model.ProposalStateVetoed).Error
+			err = db.Model(&model.Proposal{}).Where("id = ?", params.BeVetoedProposalInfo.Id).Update("state", model.ProposalStateVetoed).Error
 			if err != nil {
 				log.Warn().Msgf("fetch be vetoed proposal data error: %+v", err)
 				execResult = err.Error()
@@ -79,4 +80,12 @@ func CreateVetoProposalTask(db *gorm.DB, job *model.CronJob, jobParams string) {
 	job.LastExecutionFailed = jobFailed
 	job.State = model.CronJobStateDone
 	db.Updates(&job)
+
+	vetoProposalId := strings.Replace(params.VetoProposalId, "os-", "", -1)
+
+	if jobFailed {
+		db.Model(&model.Proposal{}).Where("id = ?", vetoProposalId).Update("state", model.ProposalStateExecutionFailed)
+	} else {
+		db.Model(&model.Proposal{}).Where("id = ?", vetoProposalId).Update("state", model.ProposalStateExecuted)
+	}
 }

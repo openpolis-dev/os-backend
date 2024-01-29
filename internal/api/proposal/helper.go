@@ -635,6 +635,11 @@ func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcd *mod
 }
 
 func DoProposalPostJob(db *gorm.DB, proposalVoteRecord *model.ProposalVoteRecord, dbProposalRcd *model.Proposal) error {
+	if dbProposalRcd.IsInFinState() {
+		log.Warn().Msgf("proposal %d in state %d, not need to apply post job.", dbProposalRcd.ID, dbProposalRcd.State)
+		return nil
+	}
+
 	var err error
 	var proposalFinalState model.ProposalState
 	var voteResult string
@@ -643,7 +648,7 @@ func DoProposalPostJob(db *gorm.DB, proposalVoteRecord *model.ProposalVoteRecord
 		proposalFinalState = model.ProposalStateExecuted
 	case model.ProposalVoteTypeDecision:
 		var voteOptRcds []*model.ProposalVoteOptionRecord
-		err = db.Where(&model.ProposalVoteOptionRecord{ProposalVoteRecordId: proposalVoteRecord.ID}).Select("voter_count").Find(&voteOptRcds).Error
+		err = db.Where(&model.ProposalVoteOptionRecord{ProposalVoteRecordId: proposalVoteRecord.ID}).Find(&voteOptRcds).Error
 		if err != nil {
 			log.Warn().Msgf("fetch vote options for proposal vote record: %+v error: %+v", proposalVoteRecord, err)
 			return err
@@ -755,6 +760,11 @@ func DoProposalPostJob(db *gorm.DB, proposalVoteRecord *model.ProposalVoteRecord
 
 // createProposalFinTasks creates tasks after proposal finished (passed or failed)
 func createProposalFinTasks(db *gorm.DB, proposal *model.Proposal, finState model.ProposalState, voteResult string, voteType int) {
+	if proposal.IsInFinState() {
+		log.Warn().Msgf("proposal %d in state %d, not fit for changing to new fin state: %d.", proposal.ID, proposal.State, finState)
+		return
+	}
+
 	sqlQuery := QueryComponentActionNameBaseSQL + " WHERE proposal_id = ?"
 	var proposalComponentActions []*proposalComponentActions
 	err := db.Raw(sqlQuery, proposal.ID).Find(&proposalComponentActions).Error
@@ -807,7 +817,7 @@ func createProposalFinTasks(db *gorm.DB, proposal *model.Proposal, finState mode
 
 	err = db.Updates(&proposal).Error
 	if err != nil {
-		log.Error().Msgf("")
+		log.Error().Msgf("update proposl state to pending execution error: %+v", err)
 	}
 }
 
