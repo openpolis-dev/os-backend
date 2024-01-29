@@ -148,27 +148,15 @@ func (t *TaskManager) TaskDispatcher() {
 		switch task.HandlerName {
 		case internal.TaskRefreshVotingProposalVoteInfo:
 			go RefreshVotingProposalInfoJob(t.DatabaseClient, task, task.JobParams)
-		case internal.TaskCreateProject:
-			// Project related task is disabled for now
-			log.Debug().Msgf("create project")
-			//go CreateProjectTask(t.DatabaseClient, task, task.JobParams)
-			t.MarkTaskAsTerminated(task)
-		case internal.TaskCloseProject:
-			// Project related task is disabled for now
-			log.Debug().Msgf("close project")
-			//go CloseProjectTask(t.DatabaseClient, task, task.JobParams)
-			t.MarkTaskAsTerminated(task)
-		case internal.TaskCreateGuild:
-			//go CreateGuildTask(t.DatabaseClient, task, task.JobParams)
-			task.State = model.CronJobStateDone
-			t.DatabaseClient.Updates(task)
-			log.Debug().Msgf("create guild")
-		case internal.TaskCloseGuild:
-			log.Debug().Msgf("close guild")
-			go CloseGuildTask(t.DatabaseClient, task, task.JobParams)
 		case internal.TaskRewardNewApplication:
 			log.Debug().Msgf("new application reward")
 			go CreateAppBundleTask(t.DatabaseClient, task, task.JobParams, task.VoteType, task.VoteResult)
+		case internal.TaskVetoedProposal:
+			log.Debug().Msgf("new application reward")
+		case internal.TaskCloseGuild:
+		case internal.TaskCreateGuild:
+		case internal.TaskCloseProject:
+		case internal.TaskCreateProject:
 		default:
 			// Handle unknown task
 			log.Warn().Msgf("unknown task name: %s task detail: %+v", task.HandlerName, task)
