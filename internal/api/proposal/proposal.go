@@ -625,7 +625,7 @@ func updateProposalState(db *gorm.DB, user *middleware.CurUser, proposalStrId st
 			}
 
 			if proposalRecord.VoteType == model.ProposalVoteTypeNone {
-				proposalRecord.State = int(model.ProposalStateVotePassed)
+				proposalRecord.State = int(model.ProposalStateExecuted)
 			} else {
 				for _, record := range voteRecords {
 					err := metaforo.UpdateVoteTime(cfg.MetaforoData.AccessToken,
