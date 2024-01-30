@@ -17,6 +17,7 @@ import (
 const listTemplateWithPermSQL = `select
 pt.id,pt.name,pt.content_schema,pt.screenshot_uri,
 pc.name as category_name,
+pt.display_index as display_index,
 pc.display_index as category_display_index,
 pt.proposal_category_id as category_id,
 pt.rule_desc as rule_description,
@@ -30,11 +31,12 @@ order by pc.display_index, pt.display_index`
 type TemplateResponse struct {
 	ID                   uint   `json:"id"`
 	Name                 string `json:"name"`
+	DisplayIndex         int    `json:"display_index"`
 	ScreenshotUri        string `json:"screenshot_uri"`
 	ContentSchema        string `json:"schema"`
 	CategoryName         string `json:"-"`
 	CategoryId           uint   `json:"-"`
-	CategoryDisplayIndex uint   `json:"-"`
+	CategoryDisplayIndex uint   `json:"category_display_index"`
 	HasPermToUse         bool   `json:"has_perm_to_use"`
 	RuleDescription      string `json:"rule_description"`
 	IsInstantVote        bool   `json:"is_instant_vote"`
@@ -48,9 +50,10 @@ type TemplateResponseWithComponents struct {
 }
 
 type TmplWithCategoryNameRecord struct {
-	CategoryId   uint                              `json:"category_id"`
-	CategoryName string                            `json:"category_name"`
-	Templates    []*TemplateResponseWithComponents `json:"templates"`
+	CategoryId           uint                              `json:"category_id"`
+	CategoryDisplayIndex uint                              `json:"category_display_index"`
+	CategoryName         string                            `json:"category_name"`
+	Templates            []*TemplateResponseWithComponents `json:"templates"`
 }
 
 type updateTmplRequest struct {
@@ -80,6 +83,7 @@ func ListTemplates(ctx *gin.Context) {
 		tmplRsp := TemplateResponse{
 			ID:               r.ID,
 			Name:             r.Name,
+			DisplayIndex:     r.DisplayIndex,
 			ContentSchema:    r.ContentSchema,
 			ScreenshotUri:    r.ScreenshotUri,
 			RuleDescription:  r.RuleDesc,
@@ -159,16 +163,17 @@ func ListTemplatesWithPerm(ctx *gin.Context) {
 		}
 	})
 
-	respRcdMap := lo.GroupBy(tmplRecords, func(r *TemplateResponseWithComponents) lo.Tuple2[uint, string] {
-		return lo.T2[uint, string](r.CategoryId, r.CategoryName)
+	respRcdMap := lo.GroupBy(tmplRecords, func(r *TemplateResponseWithComponents) lo.Tuple3[uint, uint, string] {
+		return lo.T3[uint, uint, string](r.CategoryId, r.CategoryDisplayIndex, r.CategoryName)
 	})
 
-	respRcds := lo.MapToSlice(respRcdMap, func(categoryIdName lo.Tuple2[uint, string], tmplRcds []*TemplateResponseWithComponents) *TmplWithCategoryNameRecord {
-		categoryId, categoryName := lo.Unpack2(categoryIdName)
+	respRcds := lo.MapToSlice(respRcdMap, func(categoryIdName lo.Tuple3[uint, uint, string], tmplRcds []*TemplateResponseWithComponents) *TmplWithCategoryNameRecord {
+		categoryId, categoryDisplayIndex, categoryName := lo.Unpack3(categoryIdName)
 		return &TmplWithCategoryNameRecord{
-			CategoryId:   categoryId,
-			CategoryName: categoryName,
-			Templates:    tmplRcds,
+			CategoryId:           categoryId,
+			CategoryDisplayIndex: categoryDisplayIndex,
+			CategoryName:         categoryName,
+			Templates:            tmplRcds,
 		}
 	})
 

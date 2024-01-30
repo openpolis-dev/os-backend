@@ -218,7 +218,7 @@ func SaveProposalContentRecords(db *gorm.DB, proposalRecordId uint, reqContentBl
 	})
 }
 
-func SaveProposalComponentRecords(db *gorm.DB, proposalId uint, applicantWallet string, reqComponentData map[string]*ComponentRequestData) error {
+func SaveProposalComponentRecords(db *gorm.DB, proposalId uint, applicantWallet string, reqComponentData []*ComponentRequestData) error {
 	var existingComponentIds []uint
 	err := db.Model(&model.ProposalComponentRecord{}).Where(model.ProposalComponentRecord{ProposalID: proposalId}).Pluck("id", &existingComponentIds).Error
 	if err != nil {
