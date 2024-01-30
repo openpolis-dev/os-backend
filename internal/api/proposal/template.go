@@ -17,7 +17,7 @@ import (
 const listTemplateWithPermSQL = `select
 pt.id,pt.name,pt.content_schema,pt.screenshot_uri,
 pc.name as category_name,
-pc.display_index as display_index,
+pt.display_index as display_index,
 pc.display_index as category_display_index,
 pt.proposal_category_id as category_id,
 pt.rule_desc as rule_description,
