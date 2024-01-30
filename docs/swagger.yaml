@@ -962,9 +962,9 @@ definitions:
   proposal.CreateOrUpdateProposalData:
     properties:
       components:
-        additionalProperties:
+        items:
           $ref: '#/definitions/proposal.ComponentRequestData'
-        type: object
+        type: array
       content_blocks:
         items:
           $ref: '#/definitions/proposal.FrontendContentBlockRecord'
@@ -1217,10 +1217,10 @@ definitions:
     type: object
   proposal.TemplateResponse:
     properties:
-      components:
-        items:
-          $ref: '#/definitions/proposal.ComponentResponse'
-        type: array
+      category_display_index:
+        type: integer
+      display_index:
+        type: integer
       has_perm_to_use:
         type: boolean
       id:

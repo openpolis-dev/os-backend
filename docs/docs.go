@@ -4558,8 +4558,8 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "components": {
-                    "type": "object",
-                    "additionalProperties": {
+                    "type": "array",
+                    "items": {
                         "$ref": "#/definitions/proposal.ComponentRequestData"
                     }
                 },
@@ -4940,11 +4940,11 @@ const docTemplate = `{
         "proposal.TemplateResponse": {
             "type": "object",
             "properties": {
-                "components": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/proposal.ComponentResponse"
-                    }
+                "category_display_index": {
+                    "type": "integer"
+                },
+                "display_index": {
+                    "type": "integer"
                 },
                 "has_perm_to_use": {
                     "type": "boolean"
