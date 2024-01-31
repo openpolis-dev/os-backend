@@ -68,6 +68,13 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 
 	var voteTimeProps model.VoteTimeProperties
 
+	var pCategory model.ProposalCategory
+	err := db.Find(&pCategory, reqData.ProposalCategoryId).Error
+	if err != nil {
+		log.Error().Msgf("get proposal category error: %+v", err)
+		return nil, err
+	}
+
 	if reqData.TemplateId != 0 {
 		var pTemplate model.ProposalTemplate
 		err := db.Find(&pTemplate, reqData.TemplateId).Error
@@ -81,13 +88,6 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 		voteTimeProps.PendingExecutionSecond = pTemplate.PendingExecutionSecond
 		reqData.VoteType = pTemplate.VoteType
 	} else {
-		var pCategory model.ProposalCategory
-		err := db.Find(&pCategory, reqData.ProposalCategoryId).Error
-		if err != nil {
-			log.Error().Msgf("get proposal category error: %+v", err)
-			return nil, err
-		}
-
 		voteTimeProps.PublicitySecond = pCategory.PublicitySecond
 		voteTimeProps.VoteDurationSecond = pCategory.VoteDurationSecond
 		voteTimeProps.PendingExecutionSecond = pCategory.PendingExecutionSecond
@@ -147,6 +147,7 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 			ProposalCategoryID: reqData.ProposalCategoryId,
 			Version:            1,
 			VoteType:           reqData.VoteType,
+			CanBeVetoed:        pCategory.CanBeVetoed,
 		}
 		proposalRecord.PublicitySecond = voteTimeProps.PublicitySecond
 		proposalRecord.PendingExecutionSecond = voteTimeProps.PendingExecutionSecond
