@@ -748,7 +748,8 @@ func DoProposalPostJob(db *gorm.DB, proposalVoteRecord *model.ProposalVoteRecord
 		return err
 	}
 
-	err = db.Where(&model.Proposal{ID: dbProposalRcd.ID}).Updates(model.Proposal{State: int(proposalFinalState)}).Error
+	dbProposalRcd.State = int(proposalFinalState)
+	err = db.Where(&model.Proposal{ID: dbProposalRcd.ID}).Updates(&dbProposalRcd).Error
 	if err != nil {
 		log.Error().Msgf("update proposal state to %d error: %+v. DB proposal: %+v", proposalFinalState, err, dbProposalRcd)
 		return err
@@ -813,7 +814,6 @@ func createProposalFinTasks(db *gorm.DB, proposal *model.Proposal, finState mode
 	}
 
 	proposal.State = int(model.ProposalStatePendingExecution)
-
 	err = db.Updates(&proposal).Error
 	if err != nil {
 		log.Error().Msgf("update proposl state to pending execution error: %+v", err)
