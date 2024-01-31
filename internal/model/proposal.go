@@ -134,9 +134,13 @@ type Proposal struct {
 
 	IsHidden bool
 
+	CanBeVetoed bool
+
 	// If proposal is created from template, this value will be set
 	ProposalTemplateID *uint `gorm:"index"`
 	ProposalTemplate   *ProposalTemplate
+
+	IsBasedOnCustomTemplate bool
 
 	// Proposal category, this field is used for template created w/o template,
 	// while for proposal created with template, the category data wil be updated by value in template record
@@ -160,10 +164,6 @@ func (p *Proposal) VoteDuration() time.Duration {
 
 func (p *Proposal) TaskStartDelay() time.Duration {
 	return time.Duration(p.PendingExecutionSecond) * time.Second
-}
-
-func (p *Proposal) CanBeVetoed() bool {
-	return p.PendingExecutionSecond == 0
 }
 
 func (p *Proposal) IsInFinState() bool {
@@ -289,6 +289,8 @@ type ProposalCategory struct {
 	ProposalVoteGate   *ProposalVoteGate
 
 	IsActive bool
+
+	CanBeVetoed bool
 
 	VoteTimeProperties
 }
@@ -505,4 +507,7 @@ type ProposalTemplate struct {
 
 	// Specify the display index while returning to frontend
 	DisplayIndex int `gorm:"index"`
+
+	// Identify whether this template is custom template
+	IsCustomTemplate bool
 }

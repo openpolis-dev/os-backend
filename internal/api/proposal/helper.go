@@ -68,30 +68,24 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 
 	var voteTimeProps model.VoteTimeProperties
 
-	if reqData.TemplateId != 0 {
-		var pTemplate model.ProposalTemplate
-		err := db.Find(&pTemplate, reqData.TemplateId).Error
-		if err != nil {
-			log.Error().Msgf("get proposal template error: %+v", err)
-			return nil, err
-		}
-
-		voteTimeProps.PublicitySecond = pTemplate.PublicitySecond
-		voteTimeProps.VoteDurationSecond = pTemplate.VoteDurationSecond
-		voteTimeProps.PendingExecutionSecond = pTemplate.PendingExecutionSecond
-		reqData.VoteType = pTemplate.VoteType
-	} else {
-		var pCategory model.ProposalCategory
-		err := db.Find(&pCategory, reqData.ProposalCategoryId).Error
-		if err != nil {
-			log.Error().Msgf("get proposal category error: %+v", err)
-			return nil, err
-		}
-
-		voteTimeProps.PublicitySecond = pCategory.PublicitySecond
-		voteTimeProps.VoteDurationSecond = pCategory.VoteDurationSecond
-		voteTimeProps.PendingExecutionSecond = pCategory.PendingExecutionSecond
+	var pCategory model.ProposalCategory
+	err := db.Find(&pCategory, reqData.ProposalCategoryId).Error
+	if err != nil {
+		log.Error().Msgf("get proposal category error: %+v", err)
+		return nil, err
 	}
+
+	var pTemplate model.ProposalTemplate
+	err = db.Find(&pTemplate, reqData.TemplateId).Error
+	if err != nil {
+		log.Error().Msgf("get proposal template error: %+v", err)
+		return nil, err
+	}
+
+	voteTimeProps.PublicitySecond = pTemplate.PublicitySecond
+	voteTimeProps.VoteDurationSecond = pTemplate.VoteDurationSecond
+	voteTimeProps.PendingExecutionSecond = pTemplate.PendingExecutionSecond
+	reqData.VoteType = pTemplate.VoteType
 
 	if proposalIdStr != "" {
 		// Updating existing proposals
@@ -141,12 +135,14 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 	} else {
 		// Init proposal record to get ID
 		proposalRecord := model.Proposal{
-			CreateTs:           time.Now().UTC().Unix(),
-			Title:              reqData.Title,
-			Applicant:          common.FormatUserWallet(userWallet),
-			ProposalCategoryID: reqData.ProposalCategoryId,
-			Version:            1,
-			VoteType:           reqData.VoteType,
+			CreateTs:                time.Now().UTC().Unix(),
+			Title:                   reqData.Title,
+			Applicant:               common.FormatUserWallet(userWallet),
+			ProposalCategoryID:      reqData.ProposalCategoryId,
+			Version:                 1,
+			VoteType:                reqData.VoteType,
+			CanBeVetoed:             pCategory.CanBeVetoed,
+			IsBasedOnCustomTemplate: pTemplate.IsCustomTemplate,
 		}
 		proposalRecord.PublicitySecond = voteTimeProps.PublicitySecond
 		proposalRecord.PendingExecutionSecond = voteTimeProps.PendingExecutionSecond
@@ -617,7 +613,10 @@ func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcd *mod
 		}
 
 		// TODO: Update the check logic of vote result with voter user limitations
-		if poll.Status == "close" {
+		if poll.Status == "open" {
+			dbProposalRcd.State = int(model.ProposalStateVoting)
+			db.Updates(dbProposalRcd)
+		} else if poll.Status == "close" {
 			// In current logic, only one vote can be existing in proposal, so if got one close state vote, exit the loop
 			// If poll closed in proposal, only process this one and exit
 
@@ -749,7 +748,8 @@ func DoProposalPostJob(db *gorm.DB, proposalVoteRecord *model.ProposalVoteRecord
 		return err
 	}
 
-	err = db.Where(&model.Proposal{ID: dbProposalRcd.ID}).Updates(model.Proposal{State: int(proposalFinalState)}).Error
+	dbProposalRcd.State = int(proposalFinalState)
+	err = db.Where(&model.Proposal{ID: dbProposalRcd.ID}).Updates(&dbProposalRcd).Error
 	if err != nil {
 		log.Error().Msgf("update proposal state to %d error: %+v. DB proposal: %+v", proposalFinalState, err, dbProposalRcd)
 		return err
@@ -814,7 +814,6 @@ func createProposalFinTasks(db *gorm.DB, proposal *model.Proposal, finState mode
 	}
 
 	proposal.State = int(model.ProposalStatePendingExecution)
-
 	err = db.Updates(&proposal).Error
 	if err != nil {
 		log.Error().Msgf("update proposl state to pending execution error: %+v", err)

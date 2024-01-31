@@ -192,8 +192,8 @@ type FrontendProposalDetailRecord struct {
 	// Is current user voted for this proposal
 	IsVoted bool `json:"is_voted"`
 
-	IsBasedOnTemplate bool   `json:"is_based_on_template"`
-	TemplateName      string `json:"template_name"`
+	IsBasedOnCustomTemplate bool   `json:"is_based_on_custom_template"`
+	TemplateName            string `json:"template_name"`
 
 	IsInstantExecution bool  `json:"is_instant_execution"`
 	ExecutionTs        int64 `json:"execution_ts"`
@@ -424,16 +424,16 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 			TotalCount: len(editHistoryRecords),
 			Lists:      editHistoryRecords,
 		},
-		Arweave:            proposal.ArweaveHash,
-		CommentCount:       commentCount,
-		Comments:           frontendCommentsRecords,
-		VoteGate:           voteGate,
-		Votes:              votes,
-		VoteType:           proposal.VoteType,
-		CreateTs:           proposal.CreateTs,
-		IsBasedOnTemplate:  proposal.ProposalTemplateID != nil,
-		TemplateName:       templateName,
-		IsInstantExecution: proposal.PendingExecutionSecond == 0,
-		ExecutionTs:        proposalExecTs,
+		Arweave:                 proposal.ArweaveHash,
+		CommentCount:            commentCount,
+		Comments:                frontendCommentsRecords,
+		VoteGate:                voteGate,
+		Votes:                   votes,
+		VoteType:                proposal.VoteType,
+		CreateTs:                proposal.CreateTs,
+		IsBasedOnCustomTemplate: proposal.IsBasedOnCustomTemplate,
+		TemplateName:            templateName,
+		IsInstantExecution:      proposal.PendingExecutionSecond == 0,
+		ExecutionTs:             proposalExecTs,
 	}, nil
 }

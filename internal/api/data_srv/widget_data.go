@@ -219,7 +219,7 @@ func getPassedProposals(db *gorm.DB, userWallet string, allRecords bool) ([]*Wid
 
 func getProposalsCanBeVetoed(db *gorm.DB) ([]*WidgetDataResponse, error) {
 	var rcds []*proposal.FrontendProposalListRecord
-	querySql := fmt.Sprintf("%s WHERE state IN (%d, %d, %d)",
+	querySql := fmt.Sprintf("%s WHERE state IN (%d, %d, %d) and p.can_be_vetoed = true",
 		proposal.ListProposalsSQL,
 		model.ProposalStateVoting,
 		model.ProposalStateVotePassed,

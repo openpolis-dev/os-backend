@@ -4768,7 +4768,7 @@ const docTemplate = `{
                 "id": {
                     "type": "integer"
                 },
-                "is_based_on_template": {
+                "is_based_on_custom_template": {
                     "type": "boolean"
                 },
                 "is_instant_execution": {
