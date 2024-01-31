@@ -43,7 +43,11 @@ func RefreshVotingProposalInfoJob(db *gorm.DB, job *model.CronJob, jobParams str
 	} else {
 		var proposals []*model.Proposal
 		err = db.Model(&model.Proposal{}).
-			Where("state = ?", model.ProposalStateVoting).
+			Where("state IN ?", []model.ProposalState{
+				model.ProposalStateVoting,
+				model.ProposalStateApproved,
+				model.ProposalStateDraft,
+			}).
 			Distinct("proposal_record_id").
 			Select("id, proposal_record_id, vote_type").
 			Find(&proposals).Error
@@ -53,14 +57,14 @@ func RefreshVotingProposalInfoJob(db *gorm.DB, job *model.CronJob, jobParams str
 		} else {
 			for _, dbRcd := range proposals {
 				metaforoThreadId := dbRcd.GetMetaforoThreadId()
-				metaforoPropsalData, err := metaforo.GetProposal(metaforoThreadId, params.GroupName, "", 0)
+				metaforoProposalData, err := metaforo.GetProposal(metaforoThreadId, params.GroupName, "", 0)
 				if err != nil {
 					log.Warn().Msgf("get metaforo proposal error: %+v", err)
 					jobFailed = true
 					break
 				}
 
-				err = proposal.UpdateDbRecordsFromMetaforoProposalResponse(db, dbRcd, metaforoPropsalData)
+				err = proposal.UpdateDbRecordsFromMetaforoProposalResponse(db, dbRcd, metaforoProposalData)
 				if err != nil {
 					log.Warn().Msgf("get metaforo proposal error: %+v", err)
 					jobFailed = true

@@ -613,7 +613,10 @@ func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcd *mod
 		}
 
 		// TODO: Update the check logic of vote result with voter user limitations
-		if poll.Status == "close" {
+		if poll.Status == "open" {
+			dbProposalRcd.State = int(model.ProposalStateVoting)
+			db.Updates(dbProposalRcd)
+		} else if poll.Status == "close" {
 			// In current logic, only one vote can be existing in proposal, so if got one close state vote, exit the loop
 			// If poll closed in proposal, only process this one and exit
 
