@@ -1104,7 +1104,7 @@ definitions:
         $ref: '#/definitions/proposal.FrontendProposalEditHistories'
       id:
         type: integer
-      is_based_on_template:
+      is_based_on_custom_template:
         type: boolean
       is_instant_execution:
         type: boolean
