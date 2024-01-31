@@ -75,23 +75,17 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 		return nil, err
 	}
 
-	if reqData.TemplateId != 0 {
-		var pTemplate model.ProposalTemplate
-		err := db.Find(&pTemplate, reqData.TemplateId).Error
-		if err != nil {
-			log.Error().Msgf("get proposal template error: %+v", err)
-			return nil, err
-		}
-
-		voteTimeProps.PublicitySecond = pTemplate.PublicitySecond
-		voteTimeProps.VoteDurationSecond = pTemplate.VoteDurationSecond
-		voteTimeProps.PendingExecutionSecond = pTemplate.PendingExecutionSecond
-		reqData.VoteType = pTemplate.VoteType
-	} else {
-		voteTimeProps.PublicitySecond = pCategory.PublicitySecond
-		voteTimeProps.VoteDurationSecond = pCategory.VoteDurationSecond
-		voteTimeProps.PendingExecutionSecond = pCategory.PendingExecutionSecond
+	var pTemplate model.ProposalTemplate
+	err = db.Find(&pTemplate, reqData.TemplateId).Error
+	if err != nil {
+		log.Error().Msgf("get proposal template error: %+v", err)
+		return nil, err
 	}
+
+	voteTimeProps.PublicitySecond = pTemplate.PublicitySecond
+	voteTimeProps.VoteDurationSecond = pTemplate.VoteDurationSecond
+	voteTimeProps.PendingExecutionSecond = pTemplate.PendingExecutionSecond
+	reqData.VoteType = pTemplate.VoteType
 
 	if proposalIdStr != "" {
 		// Updating existing proposals
@@ -141,13 +135,14 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 	} else {
 		// Init proposal record to get ID
 		proposalRecord := model.Proposal{
-			CreateTs:           time.Now().UTC().Unix(),
-			Title:              reqData.Title,
-			Applicant:          common.FormatUserWallet(userWallet),
-			ProposalCategoryID: reqData.ProposalCategoryId,
-			Version:            1,
-			VoteType:           reqData.VoteType,
-			CanBeVetoed:        pCategory.CanBeVetoed,
+			CreateTs:                time.Now().UTC().Unix(),
+			Title:                   reqData.Title,
+			Applicant:               common.FormatUserWallet(userWallet),
+			ProposalCategoryID:      reqData.ProposalCategoryId,
+			Version:                 1,
+			VoteType:                reqData.VoteType,
+			CanBeVetoed:             pCategory.CanBeVetoed,
+			IsBasedOnCustomTemplate: pTemplate.IsCustomTemplate,
 		}
 		proposalRecord.PublicitySecond = voteTimeProps.PublicitySecond
 		proposalRecord.PendingExecutionSecond = voteTimeProps.PendingExecutionSecond

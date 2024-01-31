@@ -140,6 +140,8 @@ type Proposal struct {
 	ProposalTemplateID *uint `gorm:"index"`
 	ProposalTemplate   *ProposalTemplate
 
+	IsBasedOnCustomTemplate bool
+
 	// Proposal category, this field is used for template created w/o template,
 	// while for proposal created with template, the category data wil be updated by value in template record
 	ProposalCategoryID uint `gorm:"index"`
@@ -505,4 +507,7 @@ type ProposalTemplate struct {
 
 	// Specify the display index while returning to frontend
 	DisplayIndex int `gorm:"index"`
+
+	// Identify whether this template is custom template
+	IsCustomTemplate bool
 }
