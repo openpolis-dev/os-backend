@@ -148,13 +148,14 @@ func (t *TaskManager) TaskDispatcher() {
 		switch task.HandlerName {
 		case internal.TaskRefreshVotingProposalVoteInfo:
 			go RefreshVotingProposalInfoJob(t.DatabaseClient, task, task.JobParams)
-		case internal.TaskRewardNewApplication:
-			log.Debug().Msgf("new application reward")
-			go CreateAppBundleTask(t.DatabaseClient, task, task.JobParams, task.VoteType, task.VoteResult)
 		case internal.TaskVetoedProposal:
 			log.Debug().Msgf("veto proposal task")
 			go CreateVetoProposalTask(t.DatabaseClient, task, task.JobParams)
+		case internal.TaskNewMotivationReward:
+			log.Debug().Msgf("motivation task")
+			go CreateAppBundleTaskFromMotivationComponent(t.DatabaseClient, task, task.JobParams, task.VoteType, task.VoteResult)
 		case internal.TaskCloseGuild:
+		case internal.TaskRewardNewApplication:
 		case internal.TaskCreateGuild:
 		case internal.TaskCloseProject:
 		case internal.TaskCreateProject:

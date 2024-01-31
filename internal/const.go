@@ -84,5 +84,6 @@ const (
 	TaskCreateGuild          = "guild/create"
 	TaskCloseGuild           = "guild/close"
 	TaskRewardNewApplication = "reward/new_application"
+	TaskNewMotivationReward  = "motivation"
 	TaskVetoedProposal       = "proposal/veto"
 )
