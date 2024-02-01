@@ -385,6 +385,8 @@ type ProposalVoteOptionRecord struct {
 
 	// Foreign key
 	ProposalVoteRecordId uint
+	//
+	//ProposalId uint
 
 	// Metaforo related data
 	// Text field is used to

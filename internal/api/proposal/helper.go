@@ -131,6 +131,12 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 			log.Error().Msgf("create proposal component blocks error: %+v", err)
 			return nil, err
 		}
+		//
+		//if err := SaveProposalVoteOptionRecords(db, proposalRcd.ID, userWallet, reqData.VoteType, reqData.VoteOptions); err != nil {
+		//	log.Error().Msgf("create proposal vote option records error: %+v", err)
+		//	return nil, err
+		//}
+
 		return proposalRcd, nil
 	} else {
 		// Init proposal record to get ID
@@ -274,6 +280,109 @@ func SaveProposalComponentRecords(db *gorm.DB, proposalId uint, applicantWallet 
 		return nil
 	})
 }
+
+//func SaveProposalVoteOptionRecords(db *gorm.DB, proposalId uint, applicantWallet string, voteType int, voteOptions []*string) error {
+//	switch voteType {
+//	case model.ProposalVoteTypeNone:
+//		return nil
+//	case model.ProposalVoteTypeDecision:
+//		proposalVoteRecord := model.ProposalVoteRecord{
+//			Options: lo.Map(internal.ProposalDecisionVoteOptions, func(s []string, _ int) *model.ProposalVoteOptionRecord {
+//				return &model.ProposalVoteOptionRecord{
+//					ProposalId: proposalId,
+//					Text:       s[0],
+//					Value:      s[1],
+//				}
+//			}),
+//			ProposalID: proposalId,
+//			VoteType:   voteType,
+//		}
+//		if err := db.Model(&model.ProposalVoteRecord{}).Where(&proposalVoteRecord).First(&proposalVoteRecord).Error; err != nil {
+//			if errors.Is(err, gorm.ErrRecordNotFound) {
+//				db.Create(&proposalVoteRecord)
+//			} else {
+//			}
+//		}
+//		voteOptions = lo.Map(internal.ProposalDecisionVoteOptions, func(s []string, _ int) *string {
+//			return &model.ProposalVoteOptionRecord{
+//				ProposalVoteRecordId: 0,
+//				ProposalId:           proposalId,
+//				Text:                 "",
+//				MetaforoID:           0,
+//				MetaforoVoteID:       0,
+//				Value:                "",
+//				VoterCount:           0,
+//			}
+//		})
+//	case model.ProposalVoteTypeNumericSingle:
+//		return nil
+//	case model.ProposalVoteTypeNumericAvg:
+//		return nil
+//	case model.ProposalVoteType:
+//
+//	}
+//
+//	var existingVoteOptionRecordsId []uint
+//	err := db.Model(&model.ProposalVoteOptionRecord{}).
+//		Where(model.ProposalVoteOptionRecord{ProposalVoteRecordId: proposalId}).
+//		Pluck("id", &existingVoteOptionRecordsId).Error
+//	if err != nil {
+//		log.Error().Msgf("get proposal vote record ids error: %+v", err)
+//		return err
+//	}
+//
+//	return db.Transaction(func(tx *gorm.DB) error {
+//		var updatedIds []uint
+//		for _, componentData := range reqComponentData {
+//			// Try to get component record from DB
+//			componentRecord := model.ProposalComponent{
+//				Name: componentData.Name,
+//			}
+//			if err := tx.Where(componentRecord).First(&componentRecord).Error; err != nil {
+//				tx.Rollback()
+//				log.Error().Msgf("find proposal component %s error: %+v", componentData.Name, err)
+//				return err
+//			}
+//
+//			// Append applicant information
+//			componentData.Data["applicant"] = common.FormatUserWallet(applicantWallet)
+//			componentData.Data["proposal_id"] = fmt.Sprintf("os-%d", proposalId)
+//
+//			proposalDataStr, err := json.Marshal(componentData.Data)
+//			if err != nil {
+//				tx.Rollback()
+//				log.Error().Msgf("create proposal component error: %+v", err)
+//				return err
+//			}
+//
+//			// Create proposal component record and save to DB
+//			if err := db.Save(&model.ProposalComponentRecord{
+//				CreateTs:    time.Now().UTC().Unix(),
+//				ComponentID: componentRecord.ID,
+//				ProposalID:  proposalId,
+//				Data:        string(proposalDataStr),
+//			}).Error; err != nil {
+//				log.Error().Msgf("create proposal component error: %+v", err)
+//				return err
+//			}
+//
+//			if componentData.ID != 0 {
+//				updatedIds = append(updatedIds, componentData.ID)
+//			}
+//		}
+//
+//		// Remove deleted blocks
+//		for _, componentId := range existingComponentIds {
+//			if !lo.Contains(updatedIds, componentId) {
+//				if err := db.Delete(&model.ProposalComponentRecord{ID: componentId}).Error; err != nil {
+//					log.Error().Msgf("delete proposal component error: %+v", err)
+//					return err
+//				}
+//			}
+//		}
+//		return nil
+//	})
+//}
 
 // SaveProposalToMetaforo updates proposal record to Metaforo
 // If proposal is in pending submit state, update existing proposal record (state, ProposalRecordId, ArweaveHash) and save back,
