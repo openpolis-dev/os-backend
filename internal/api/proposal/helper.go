@@ -620,7 +620,7 @@ func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcd *mod
 			// In current logic, only one vote can be existing in proposal, so if got one close state vote, exit the loop
 			// If poll closed in proposal, only process this one and exit
 
-			err := DoProposalPostJob(db, &proposalVoteRecord, dbProposalRcd)
+			err := UpdateProposalState(db, &proposalVoteRecord, dbProposalRcd)
 			if err != nil {
 				log.Warn().Msgf("process proposal state error: %+v", err)
 				continue
@@ -633,7 +633,7 @@ func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcd *mod
 	return nil
 }
 
-func DoProposalPostJob(db *gorm.DB, proposalVoteRecord *model.ProposalVoteRecord, dbProposalRcd *model.Proposal) error {
+func UpdateProposalState(db *gorm.DB, proposalVoteRecord *model.ProposalVoteRecord, dbProposalRcd *model.Proposal) error {
 	if dbProposalRcd.IsInFinState() {
 		log.Warn().Msgf("proposal %d in state %d, not need to apply post job.", dbProposalRcd.ID, dbProposalRcd.State)
 		return nil
@@ -754,17 +754,16 @@ func DoProposalPostJob(db *gorm.DB, proposalVoteRecord *model.ProposalVoteRecord
 		log.Error().Msgf("update proposal state to %d error: %+v. DB proposal: %+v", proposalFinalState, err, dbProposalRcd)
 		return err
 	}
-	go createProposalFinTasks(db, dbProposalRcd, proposalFinalState, voteResult, dbProposalRcd.VoteType)
+
+	if !dbProposalRcd.IsInFinState() {
+		go createProposalAutomationTasks(db, dbProposalRcd, proposalFinalState, voteResult, dbProposalRcd.VoteType)
+	}
+
 	return nil
 }
 
-// createProposalFinTasks creates tasks after proposal finished (passed or failed)
-func createProposalFinTasks(db *gorm.DB, proposal *model.Proposal, finState model.ProposalState, voteResult string, voteType int) {
-	if proposal.IsInFinState() {
-		log.Warn().Msgf("proposal %d in state %d, not fit for changing to new fin state: %d.", proposal.ID, proposal.State, finState)
-		return
-	}
-
+// createProposalAutomationTasks creates automation tasks after proposal finished (passed or failed)
+func createProposalAutomationTasks(db *gorm.DB, proposal *model.Proposal, finState model.ProposalState, voteResult string, voteType int) {
 	sqlQuery := QueryComponentActionNameBaseSQL + " WHERE proposal_id = ?"
 	var proposalComponentActions []*proposalComponentActions
 	err := db.Raw(sqlQuery, proposal.ID).Find(&proposalComponentActions).Error
@@ -811,12 +810,13 @@ func createProposalFinTasks(db *gorm.DB, proposal *model.Proposal, finState mode
 		} else if createTaskTx.RowsAffected == 0 {
 			log.Warn().Msgf("proposal fin task already exists: %+v", finTask)
 		}
-	}
 
-	proposal.State = int(model.ProposalStatePendingExecution)
-	err = db.Updates(&proposal).Error
-	if err != nil {
-		log.Error().Msgf("update proposl state to pending execution error: %+v", err)
+		// Update proposal state to PendingExecution, the next state change will be launched by cron job or veto proposal
+		proposal.State = int(model.ProposalStatePendingExecution)
+		err = db.Updates(&proposal).Error
+		if err != nil {
+			log.Error().Msgf("update proposl state to pending execution error: %+v", err)
+		}
 	}
 }
 

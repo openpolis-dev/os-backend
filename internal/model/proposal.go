@@ -167,8 +167,7 @@ func (p *Proposal) TaskStartDelay() time.Duration {
 }
 
 func (p *Proposal) IsInFinState() bool {
-	return p.State == int(ProposalStateVotePassed) ||
-		p.State == int(ProposalStateVoteFailed) ||
+	return p.State == int(ProposalStateVoteFailed) ||
 		p.State == int(ProposalStateExecuted) ||
 		p.State == int(ProposalStateVetoed)
 }

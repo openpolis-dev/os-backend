@@ -190,7 +190,7 @@ func CreateAppBundleTaskFromNewRewardComponent(db *gorm.DB, job *model.CronJob, 
 }
 
 func CreateAppBundleTaskFromMotivationComponent(db *gorm.DB, job *model.CronJob, jobParams string, voteType int, voteResult string) {
-	log.Debug().Msgf("start create app bundle from motivation component task: %+v", job)
+	log.Debug().Msgf("enter create app bundle from motivation component task: %+v", job)
 	err := db.Model(&job).Updates(model.CronJob{State: model.CronJobStateRunning}).Error
 	if err != nil {
 		log.Warn().Msgf("update cron job error: %+v", err)
@@ -316,5 +316,9 @@ func CreateAppBundleTaskFromMotivationComponent(db *gorm.DB, job *model.CronJob,
 	job.LastExecResult = execResult
 	job.LastExecutionFailed = jobFailed
 	job.State = model.CronJobStateDone
-	db.Updates(&job)
+	err = db.Updates(&job).Error
+	if err != nil {
+		log.Error().Msgf("Update cron job error: %+v", err)
+	}
+	log.Error().Msgf("TTT: exit create app bundle from motivation component task: %+v", job)
 }
