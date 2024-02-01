@@ -9,6 +9,7 @@ import (
 	"github.com/go-co-op/gocron/v2"
 	"github.com/rs/zerolog/log"
 	"github.com/theseed-labs/os-backend/internal"
+	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/config"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"gorm.io/gorm"
@@ -122,18 +123,26 @@ func (t *TaskManager) ScanTaskPool() {
 
 func (t *TaskManager) ActivateRefreshVoteStateJobIfRequired() error {
 	log.Debug().Msgf("activate refresh vote state job")
-	refreshVoteStateJob := &model.CronJob{
-		HandlerName: internal.TaskRefreshVotingProposalVoteInfo,
-		State:       model.CronJobStateActive,
-		CronExp:     internal.TaskRefreshVotingProposalVoteInfoCronExpr,
-		CreateTs:    time.Now().UTC().Unix(),
-		NextExecTs:  cronexpr.MustParse(internal.TaskRefreshVotingProposalVoteInfoCronExpr).Next(time.Now()).UTC().Unix(),
-		JobParams:   fmt.Sprintf(`{"group_name": "%s"}`, t.AppConfig.MetaforoData.GroupName),
+
+	var refreshProposalInfoJob model.CronJob
+	if err := t.DatabaseClient.Model(&refreshProposalInfoJob).Where("handler_name = ?", internal.TaskRefreshVotingProposalVoteInfo).First(&refreshProposalInfoJob).Error; err != nil {
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return err
+		}
 	}
 
-	if err := t.DatabaseClient.Model(&refreshVoteStateJob).Where("handler_name = ?", internal.TaskRefreshVotingProposalVoteInfo).Updates(&refreshVoteStateJob).Error; err != nil {
+	refreshProposalInfoJob.HandlerName = internal.TaskRefreshVotingProposalVoteInfo
+	refreshProposalInfoJob.State = model.CronJobStateActive
+	refreshProposalInfoJob.CronExp = internal.TaskRefreshVotingProposalVoteInfoCronExpr
+	refreshProposalInfoJob.CreateTs = time.Now().UTC().Unix()
+	refreshProposalInfoJob.NextExecTs = cronexpr.MustParse(internal.TaskRefreshVotingProposalVoteInfoCronExpr).Next(time.Now()).UTC().Unix()
+	refreshProposalInfoJob.JobParams = fmt.Sprintf(`{"group_name": "%s"}`, t.AppConfig.MetaforoData.GroupName)
+
+	api.PrintStructAsJson(refreshProposalInfoJob, "TTT: after update")
+
+	if err := t.DatabaseClient.Model(&refreshProposalInfoJob).Where("handler_name = ?", internal.TaskRefreshVotingProposalVoteInfo).Updates(&refreshProposalInfoJob).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return t.DatabaseClient.Create(&refreshVoteStateJob).Error
+			return t.DatabaseClient.Create(&refreshProposalInfoJob).Error
 		} else {
 			return err
 		}

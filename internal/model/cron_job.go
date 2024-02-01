@@ -3,11 +3,11 @@ package model
 type CronJobState int
 
 const (
-	CronJobStateActive CronJobState = iota
-	CronJobStatePaused
-	CronJobStateTerminated
-	CronJobStateRunning
-	CronJobStateDone
+	CronJobStateActive     CronJobState = 0
+	CronJobStatePaused                  = 1
+	CronJobStateTerminated              = 2
+	CronJobStateRunning                 = 3
+	CronJobStateDone                    = 4
 )
 
 // CronJob saves info for scheduler tasks.
