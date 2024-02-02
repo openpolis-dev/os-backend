@@ -32,8 +32,13 @@ type VoteProposalParams struct {
 	} `json:"proposal_info"`
 }
 
+type UpdateProposalStateParams struct {
+	ProposalId uint `json:"proposal_id"`
+	State      int  `json:"state"`
+}
+
 func CreateVetoProposalTask(db *gorm.DB, job *model.CronJob, jobParams string) {
-	log.Debug().Msgf("start create project task: %+v", job)
+	log.Debug().Msgf("start veto proposal task: %+v", job)
 	err := db.Model(&job).Updates(model.CronJob{State: model.CronJobStateRunning}).Error
 	if err != nil {
 		log.Warn().Msgf("update cron job error: %+v", err)
@@ -88,4 +93,40 @@ func CreateVetoProposalTask(db *gorm.DB, job *model.CronJob, jobParams string) {
 	} else {
 		db.Model(&model.Proposal{}).Where("id = ?", vetoProposalId).Update("state", model.ProposalStateExecuted)
 	}
+}
+
+func UpdateProposalSateTask(db *gorm.DB, job *model.CronJob, jobParams string) {
+	log.Debug().Msgf("start updating proposal state task: %+v", job)
+	err := db.Model(&job).Updates(model.CronJob{State: model.CronJobStateRunning}).Error
+	if err != nil {
+		log.Warn().Msgf("update cron job error: %+v", err)
+		return
+	}
+
+	execResult := ""
+	jobFailed := false
+
+	var params UpdateProposalStateParams
+	err = json.Unmarshal([]byte(jobParams), &params)
+	if err != nil {
+		log.Warn().Msgf("parse update proposal job params error: %+v", err)
+		execResult = err.Error()
+		jobFailed = true
+	} else {
+		proposal := model.Proposal{ID: params.ProposalId}
+		log.Debug().Msgf("update proposal %d from state %d to %d", proposal.ID, proposal.State, params.State)
+		proposal.State = params.State
+		err = db.Updates(&proposal).Error
+		if err != nil {
+			log.Warn().Msgf("update proposal state error: %+v", err)
+			execResult = err.Error()
+			jobFailed = true
+		}
+
+	}
+	job.LastExecTs = model.GetCurrentUtcEpochSecond()
+	job.LastExecResult = execResult
+	job.LastExecutionFailed = jobFailed
+	job.State = model.CronJobStateDone
+	db.Updates(&job)
 }

@@ -3,6 +3,7 @@ package proposal
 import (
 	"cmp"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"reflect"
 	"slices"
@@ -14,6 +15,7 @@ import (
 	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
 	"github.com/theseed-labs/os-backend/internal"
+	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/config"
 	"github.com/theseed-labs/os-backend/internal/model"
@@ -859,6 +861,7 @@ func UpdateProposalState(db *gorm.DB, proposalVoteRecord *model.ProposalVoteReco
 
 	dbProposalRcd.State = int(proposalFinalState)
 	err = db.Where(&model.Proposal{ID: dbProposalRcd.ID}).Updates(&dbProposalRcd).Error
+	api.PrintStructAsJson(dbProposalRcd, "TTT: proposal record after update")
 	if err != nil {
 		log.Error().Msgf("update proposal state to %d error: %+v. DB proposal: %+v", proposalFinalState, err, dbProposalRcd)
 		return err
@@ -881,6 +884,51 @@ func createProposalAutomationTasks(db *gorm.DB, proposal *model.Proposal, finSta
 		return
 	}
 
+	if len(proposalComponentActions) == 0 {
+		// No automation action found for the proposal, check whether the proposal has pending execution time
+		// If yes, change the proposal state to pending execution, and create a new cron job to update proposal state after pending execution second
+		// If no, change the proposal state to executed directly
+		if proposal.PendingExecutionSecond != 0 {
+			proposalComponentRecord := model.ProposalComponentRecord{
+				ComponentID: 0,
+				ProposalID:  proposal.ID,
+			}
+			if err = db.Where(&proposalComponentRecord).First(&proposalComponentRecord).Error; err != nil {
+				if errors.Is(err, gorm.ErrRecordNotFound) {
+					db.Create(&proposalComponentRecord)
+				} else {
+					log.Error().Msgf("create proposal component record error: %+v", err)
+					return
+				}
+			} else {
+				log.Debug().Msgf("automation for updating state has already created, return")
+				return
+			}
+
+			updateProposalStateTaskParams := map[string]any{
+				"proposal_id": proposal.ID,
+				"state":       int(model.ProposalStateExecuted),
+			}
+			api.PrintStructAsJson(proposal, "TTT: Check db proposal state")
+			jobParamsStr, err := json.Marshal(updateProposalStateTaskParams)
+			if err != nil {
+				log.Error().Msgf("marshal update proposal state params error: %+v", err)
+				return
+			}
+			err = createCronJob(db, proposal, "proposal/update_state", string(jobParamsStr), "", 0, int(proposalComponentRecord.ID))
+			if err != nil {
+				log.Error().Msgf("marshal update proposal state params error: %+v", err)
+				return
+			}
+		} else {
+			proposal.State = int(model.ProposalStateExecuted)
+			err = db.Updates(&proposal).Error
+			if err != nil {
+				log.Error().Msgf("update proposal %d state to executed error", proposal.ID)
+			}
+		}
+	}
+
 	for _, componentAction := range proposalComponentActions {
 		var actionName string
 		switch finState {
@@ -895,29 +943,9 @@ func createProposalAutomationTasks(db *gorm.DB, proposal *model.Proposal, finSta
 			return
 		}
 
-		currentTs := time.Now().UTC().Unix()
-		proposalExecutionTs := currentTs + proposal.PendingExecutionSecond
-
-		finTask := &model.CronJob{
-			CreateTs:       currentTs,
-			UpdateTs:       currentTs,
-			HandlerName:    actionName,
-			LastExecTs:     0,
-			NextExecTs:     proposalExecutionTs,
-			JobParams:      componentAction.ComponentParams,
-			VoteResult:     voteResult,
-			VoteType:       voteType,
-			State:          model.CronJobStateActive,
-			LastExecResult: "",
-		}
-		createTaskTx := db.Where(model.CronJob{HandlerName: actionName, ProposalComponentRecordId: componentAction.ProposalComponentRecordId}).
-			Assign(&finTask).FirstOrCreate(&finTask)
-
-		if createTaskTx.Error != nil {
-			log.Error().Msgf("create proposal fin task error: %+v", err)
-			return
-		} else if createTaskTx.RowsAffected == 0 {
-			log.Warn().Msgf("proposal fin task already exists: %+v", finTask)
+		err = createCronJob(db, proposal, actionName, componentAction.ComponentParams, voteResult, voteType, componentAction.ProposalComponentRecordId)
+		if err != nil {
+			log.Error().Msgf("create cron job error: %+v", err)
 		}
 
 		// Update proposal state to PendingExecution, the next state change will be launched by cron job or veto proposal
@@ -927,6 +955,36 @@ func createProposalAutomationTasks(db *gorm.DB, proposal *model.Proposal, finSta
 			log.Error().Msgf("update proposl state to pending execution error: %+v", err)
 		}
 	}
+}
+
+func createCronJob(db *gorm.DB, dbProposal *model.Proposal, actionName string, jobParams string, voteResult string, voteType int, pComponentRecordId int) error {
+	currentTs := time.Now().UTC().Unix()
+	proposalExecutionTs := currentTs + dbProposal.PendingExecutionSecond
+
+	finTask := &model.CronJob{
+		CreateTs:       currentTs,
+		UpdateTs:       currentTs,
+		HandlerName:    actionName,
+		LastExecTs:     0,
+		NextExecTs:     proposalExecutionTs,
+		JobParams:      jobParams,
+		VoteResult:     voteResult,
+		VoteType:       voteType,
+		State:          model.CronJobStateActive,
+		LastExecResult: "",
+	}
+	api.PrintStructAsJson(finTask, "TTT: createCronJob task")
+	createTaskTx := db.Where(model.CronJob{HandlerName: actionName, ProposalComponentRecordId: pComponentRecordId}).
+		Assign(&finTask).FirstOrCreate(&finTask)
+
+	if createTaskTx.Error != nil {
+		log.Error().Msgf("create proposal fin task error: %+v", createTaskTx.Error)
+		return createTaskTx.Error
+	} else if createTaskTx.RowsAffected == 0 {
+		log.Warn().Msgf("proposal fin task already exists: %+v", finTask)
+	}
+
+	return nil
 }
 
 func GetContractHolderCount() {

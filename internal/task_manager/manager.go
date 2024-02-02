@@ -106,8 +106,8 @@ func (t *TaskManager) ScanTaskPool() {
 	endTime := time.Now().Add(t.CheckDuration).UTC()
 
 	err := t.DatabaseClient.Model(&model.CronJob{}).
-		Where("state = ? AND ((next_exec_ts >= ? AND next_exec_ts < ?) OR last_exec_ts=0)",
-			model.CronJobStateActive, startTime.Unix(), endTime.Unix()).Find(&tasksShouldBeExecuted).Error
+		Where("state = ? AND ((next_exec_ts >= ? AND next_exec_ts < ?) OR (last_exec_ts=0 AND next_exec_ts <= ?))",
+			model.CronJobStateActive, startTime.Unix(), endTime.Unix(), startTime.Unix()).Find(&tasksShouldBeExecuted).Error
 
 	if err != nil {
 		log.Error().Msgf("scan task pool error: %+v", err)
@@ -160,6 +160,9 @@ func (t *TaskManager) TaskDispatcher() {
 		case internal.TaskNewMotivationReward:
 			log.Debug().Msgf("motivation task")
 			go CreateAppBundleTaskFromMotivationComponent(t.DatabaseClient, task, task.JobParams, task.VoteType, task.VoteResult)
+		case internal.TaskUpdateProposalState:
+			log.Debug().Msgf("update proposal state task")
+			go UpdateProposalSateTask(t.DatabaseClient, task, task.JobParams)
 		case internal.TaskCloseGuild:
 		case internal.TaskRewardNewApplication:
 		case internal.TaskCreateGuild:
