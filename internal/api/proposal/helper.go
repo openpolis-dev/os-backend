@@ -745,6 +745,8 @@ func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcd *mod
 			}
 
 			break
+		} else {
+			log.Warn().Msgf("unknown poll status: %+v", poll.Status)
 		}
 	}
 
