@@ -962,19 +962,20 @@ func createCronJob(db *gorm.DB, dbProposal *model.Proposal, actionName string, j
 	proposalExecutionTs := currentTs + dbProposal.PendingExecutionSecond
 
 	finTask := &model.CronJob{
-		CreateTs:       currentTs,
-		UpdateTs:       currentTs,
-		HandlerName:    actionName,
-		LastExecTs:     0,
-		NextExecTs:     proposalExecutionTs,
-		JobParams:      jobParams,
-		VoteResult:     voteResult,
-		VoteType:       voteType,
-		State:          model.CronJobStateActive,
-		LastExecResult: "",
+		CreateTs:                  currentTs,
+		UpdateTs:                  currentTs,
+		HandlerName:               actionName,
+		ProposalComponentRecordId: pComponentRecordId,
+		ProposalId:                dbProposal.ID,
+		LastExecTs:                0,
+		NextExecTs:                proposalExecutionTs,
+		JobParams:                 jobParams,
+		VoteResult:                voteResult,
+		VoteType:                  voteType,
+		State:                     model.CronJobStateActive,
+		LastExecResult:            "",
 	}
-	api.PrintStructAsJson(finTask, "TTT: createCronJob task")
-	createTaskTx := db.Where(model.CronJob{HandlerName: actionName, ProposalComponentRecordId: pComponentRecordId}).
+	createTaskTx := db.Where(model.CronJob{HandlerName: actionName, ProposalComponentRecordId: pComponentRecordId, ProposalId: dbProposal.ID}).
 		Assign(&finTask).FirstOrCreate(&finTask)
 
 	if createTaskTx.Error != nil {

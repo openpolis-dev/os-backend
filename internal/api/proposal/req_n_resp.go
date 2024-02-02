@@ -398,12 +398,14 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 	}
 
 	proposalExecTs := int64(0)
-	if len(proposal.Components) > 1 {
-		proposalCronJob := model.CronJob{ProposalComponentRecordId: int(proposal.Components[0].ID)}
-		if err = db.Where(proposalCronJob).First(&proposalCronJob).Error; err != nil {
-			log.Error().Msgf("get proposal cronjob error: %+v", err)
-		} else {
-			proposalExecTs = proposalCronJob.NextExecTs
+	var proposalCronJobs []*model.CronJob
+	if err = db.Where(&model.CronJob{ProposalId: proposal.ID}).Find(&proposalCronJobs).Error; err != nil {
+		log.Error().Msgf("get proposal cronjob error: %+v", err)
+	}
+
+	for _, job := range proposalCronJobs {
+		if job.NextExecTs > proposalExecTs {
+			proposalExecTs = job.NextExecTs
 		}
 	}
 
