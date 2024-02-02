@@ -755,6 +755,7 @@ func UpdateProposalStateBasedOnVoteResult(db *gorm.DB, proposalVoteRecord *model
 	var voteResult string
 	switch proposalVoteRecord.VoteType {
 	case model.ProposalVoteTypeNone:
+	case model.ProposalVoteTypeCustomerDefined:
 		proposalFinalState = model.ProposalStateExecuted
 	case model.ProposalVoteTypeDecision:
 		var voteOptRcds []*model.ProposalVoteOptionRecord
