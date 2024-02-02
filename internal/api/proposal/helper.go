@@ -785,7 +785,7 @@ func UpdateProposalState(db *gorm.DB, proposalVoteRecord *model.ProposalVoteReco
 		proposalFinalState = model.ProposalStateVotePassed
 
 		var voteOptRcds []*model.ProposalVoteOptionRecord
-		err = db.Where(&model.ProposalVoteOptionRecord{ProposalVoteRecordId: proposalVoteRecord.ID}).Select("id, value, voter_count").Find(&voteOptRcds).Error
+		err = db.Where(&model.ProposalVoteOptionRecord{ProposalVoteRecordId: proposalVoteRecord.ID}).Find(&voteOptRcds).Error
 		if err != nil {
 			log.Warn().Msgf("fetch vote options for proposal vote record: %+v error: %+v", proposalVoteRecord, err)
 			return err
@@ -826,7 +826,7 @@ func UpdateProposalState(db *gorm.DB, proposalVoteRecord *model.ProposalVoteReco
 		}
 	case model.ProposalVoteTypeNumericSingle:
 		var voteOptRcds []*model.ProposalVoteOptionRecord
-		err = db.Where(&model.ProposalVoteOptionRecord{ProposalVoteRecordId: proposalVoteRecord.ID}).Select("id, value, voter_count").Find(&voteOptRcds).Error
+		err = db.Where(&model.ProposalVoteOptionRecord{ProposalVoteRecordId: proposalVoteRecord.ID}).Find(&voteOptRcds).Error
 		if err != nil {
 			log.Warn().Msgf("fetch vote options for proposal vote record: %+v error: %+v", proposalVoteRecord, err)
 			return err

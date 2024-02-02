@@ -286,7 +286,7 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 				log.Error().Msgf("unmarshal associate proposal data error: %+v", err)
 			} else {
 				var associatedProposalRecord model.Proposal
-				err = db.Find(&associatedProposalRecord, parsedData.Proposal.Id).Select("state").Error
+				err = db.Find(&associatedProposalRecord, parsedData.Proposal.Id).Error
 				if err != nil {
 					log.Error().Msgf("query associated proposal %d from DB error: %+v", parsedData.Proposal.Id, err)
 				} else {
@@ -294,7 +294,7 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 				}
 
 				var associatedApplicantRecord model.User
-				err = db.Model(&model.User{}).Where("wallet = ?", common.FormatUserWallet(parsedData.Applicant)).Select("avatar").First(&associatedApplicantRecord).Error
+				err = db.Model(&model.User{}).Where("wallet = ?", common.FormatUserWallet(parsedData.Applicant)).First(&associatedApplicantRecord).Error
 				if err != nil {
 					log.Error().Msgf("query associated applicant %s from DB error: %+v", parsedData.Applicant, err)
 				} else {
@@ -321,7 +321,7 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 	})
 
 	var applicantAvatarLink string
-	db.Model(model.User{}).Where("wallet = ?", common.FormatUserWallet(proposal.Applicant)).Select("avatar").First(&applicantAvatarLink)
+	db.Model(model.User{}).Where("wallet = ?", common.FormatUserWallet(proposal.Applicant)).First(&applicantAvatarLink)
 
 	var editHistoryRecords []*FrontendProposalEditHistoryRecord
 	var frontendCommentsRecords []*FrontendProposalCommentRecord

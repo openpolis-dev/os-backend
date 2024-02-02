@@ -101,7 +101,7 @@ func MetaforoActivities(ctx *gin.Context) {
 	})
 
 	var touchedProposals []*model.Proposal
-	err = db.Model(model.Proposal{}).Where("proposal_record_id in ?", proposalRecordIds).Select("id, proposal_record_id").Find(&touchedProposals).Error
+	err = db.Model(model.Proposal{}).Where("proposal_record_id in ?", proposalRecordIds).Find(&touchedProposals).Error
 	if err != nil {
 		log.Error().Msgf("get proposal error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)

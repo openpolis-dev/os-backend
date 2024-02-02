@@ -9,7 +9,6 @@ import (
 	"github.com/go-co-op/gocron/v2"
 	"github.com/rs/zerolog/log"
 	"github.com/theseed-labs/os-backend/internal"
-	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/config"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"gorm.io/gorm"
@@ -137,8 +136,6 @@ func (t *TaskManager) ActivateRefreshVoteStateJobIfRequired() error {
 	refreshProposalInfoJob.CreateTs = time.Now().UTC().Unix()
 	refreshProposalInfoJob.NextExecTs = cronexpr.MustParse(internal.TaskRefreshVotingProposalVoteInfoCronExpr).Next(time.Now()).UTC().Unix()
 	refreshProposalInfoJob.JobParams = fmt.Sprintf(`{"group_name": "%s"}`, t.AppConfig.MetaforoData.GroupName)
-
-	api.PrintStructAsJson(refreshProposalInfoJob, "TTT: after update")
 
 	if err := t.DatabaseClient.Model(&refreshProposalInfoJob).Where("handler_name = ?", internal.TaskRefreshVotingProposalVoteInfo).Updates(&refreshProposalInfoJob).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
