@@ -221,7 +221,6 @@ func Update(ctx *gin.Context) {
 
 		// If the publicity second is 0, update the db proposal to voting state
 		if proposalRecord.PublicitySecond == 0 {
-			log.Error().Msgf("TTT: update proposal state to voting")
 			proposalRecord.State = int(model.ProposalStateVoting)
 			if err := db.Save(&proposalRecord).Error; err != nil {
 				log.Error().Msgf("update proposal to voting state error: %+v", err)

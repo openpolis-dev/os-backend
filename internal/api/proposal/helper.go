@@ -109,16 +109,25 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 		proposalRcd.Title = reqData.Title
 		proposalRcd.ProposalCategoryID = reqData.ProposalCategoryId
 		proposalRcd.VoteType = dbProposalRcd.VoteType
+		proposalRcd.CanBeVetoed = dbProposalRcd.CanBeVetoed
+		proposalRcd.IsBasedOnCustomTemplate = dbProposalRcd.IsBasedOnCustomTemplate
 		proposalRcd.PublicitySecond = dbProposalRcd.PublicitySecond
 		proposalRcd.PendingExecutionSecond = dbProposalRcd.PendingExecutionSecond
 		proposalRcd.VoteDurationSecond = dbProposalRcd.VoteDurationSecond
+		proposalRcd.VoteDurationSecond = dbProposalRcd.VoteDurationSecond
+
 		err = db.Save(&proposalRcd).Error
 		if err != nil {
 			log.Error().Msgf("duplicate proposal error: %+v", err)
 			return nil, err
 		}
 
-		// Update proposal content blocks, includes update existing blocks and remove deleted blocks
+		// Move vote record from original proposal to new one
+		if err = db.Model(&model.ProposalVoteRecord{}).Where(&model.ProposalVoteRecord{ProposalID: dbProposalRcd.ID}).Updates(&model.ProposalVoteRecord{ProposalID: proposalRcd.ID}).Error; err != nil {
+			log.Error().Msgf("move proposal vote record error: %+v", err)
+			return nil, err
+		}
+
 		if err := SaveProposalContentRecords(db, proposalRcd.ID, reqData.ContentBlocks); err != nil {
 			log.Error().Msgf("create proposal block error: %+v", err)
 			return nil, err
