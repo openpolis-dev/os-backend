@@ -731,7 +731,7 @@ func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcd *mod
 			// In current logic, only one vote can be existing in proposal, so if got one close state vote, exit the loop
 			// If poll closed in proposal, only process this one and exit
 
-			err := UpdateProposalState(db, &proposalVoteRecord, dbProposalRcd)
+			err := UpdateProposalStateBasedOnVoteResult(db, &proposalVoteRecord, dbProposalRcd)
 			if err != nil {
 				log.Warn().Msgf("process proposal state error: %+v", err)
 				continue
@@ -744,8 +744,8 @@ func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcd *mod
 	return nil
 }
 
-func UpdateProposalState(db *gorm.DB, proposalVoteRecord *model.ProposalVoteRecord, dbProposalRcd *model.Proposal) error {
-	if dbProposalRcd.IsInFinState() {
+func UpdateProposalStateBasedOnVoteResult(db *gorm.DB, proposalVoteRecord *model.ProposalVoteRecord, dbProposalRcd *model.Proposal) error {
+	if dbProposalRcd.IsInFinState() || dbProposalRcd.State == int(model.ProposalStatePendingExecution) {
 		log.Warn().Msgf("proposal %d in state %d, not need to apply post job.", dbProposalRcd.ID, dbProposalRcd.State)
 		return nil
 	}
