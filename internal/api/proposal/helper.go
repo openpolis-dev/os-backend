@@ -750,8 +750,7 @@ func UpdateProposalStateBasedOnVoteResult(db *gorm.DB, proposalVoteRecord *model
 	var proposalFinalState model.ProposalState
 	var voteResult string
 	switch proposalVoteRecord.VoteType {
-	case model.ProposalVoteTypeNone:
-	case model.ProposalVoteTypeCustomerDefinedAlwaysPassed:
+	case model.ProposalVoteTypeNone, model.ProposalVoteTypeCustomerDefinedAlwaysPassed:
 		proposalFinalState = model.ProposalStateExecuted
 	case model.ProposalVoteTypeDecision:
 		var voteOptRcds []*model.ProposalVoteOptionRecord
@@ -823,8 +822,7 @@ func UpdateProposalStateBasedOnVoteResult(db *gorm.DB, proposalVoteRecord *model
 		} else {
 			voteResult = recordsForCalcResults[0].Value
 		}
-	case model.ProposalVoteTypeNumericSingle:
-	case model.ProposalVoteTypeCustomerDefinedEqualFailed:
+	case model.ProposalVoteTypeNumericSingle, model.ProposalVoteTypeCustomerDefinedEqualFailed:
 		var voteOptRcds []*model.ProposalVoteOptionRecord
 		err = db.Where(&model.ProposalVoteOptionRecord{ProposalVoteRecordId: proposalVoteRecord.ID}).Find(&voteOptRcds).Error
 		if err != nil {
