@@ -151,6 +151,7 @@ func (t *TaskManager) TaskDispatcher() {
 	log.Debug().Msgf("task dispatcher started")
 	for {
 		task := <-t.TaskChannel
+		log.Debug().Msgf("received task: %+v", task)
 		switch task.HandlerName {
 		case internal.TaskRefreshVotingProposalVoteInfo:
 			go RefreshVotingProposalInfoJob(t.DatabaseClient, task, task.JobParams)
@@ -163,22 +164,23 @@ func (t *TaskManager) TaskDispatcher() {
 		case internal.TaskUpdateProposalState:
 			log.Debug().Msgf("update proposal state task")
 			go UpdateProposalSateTask(t.DatabaseClient, task, task.JobParams)
-		case internal.TaskCloseGuild:
-		case internal.TaskRewardNewApplication:
-		case internal.TaskCreateGuild:
-		case internal.TaskCloseProject:
-		case internal.TaskCreateProject:
+		//case internal.TaskCloseGuild:
+		//case internal.TaskRewardNewApplication:
+		//case internal.TaskCreateGuild:
+		//case internal.TaskCloseProject:
+		//case internal.TaskCreateProject:
 		default:
 			// Handle unknown task
 			log.Warn().Msgf("unknown task name: %s task detail: %+v", task.HandlerName, task)
-			t.MarkTaskAsTerminated(task)
+			t.MarkTaskAsTerminatedAndSetProposalToExecuted(task)
 		}
 	}
 }
 
-func (t *TaskManager) MarkTaskAsTerminated(task *model.CronJob) {
+func (t *TaskManager) MarkTaskAsTerminatedAndSetProposalToExecuted(task *model.CronJob) {
 	task.State = model.CronJobStateTerminated
 	task.LastExecTs = model.GetCurrentUtcEpochSecond()
 	task.UpdateTs = model.GetCurrentUtcEpochSecond()
 	t.DatabaseClient.Updates(task)
+	t.DatabaseClient.Model(&model.Proposal{}).Where("id = ?", task.ProposalId).Update("state", model.ProposalStateExecuted)
 }

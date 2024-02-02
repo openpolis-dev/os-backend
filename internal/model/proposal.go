@@ -128,7 +128,7 @@ type Proposal struct {
 	// - ProposalVoteTypeNone
 	// - ProposalVoteTypeNumericAvg
 	// - ProposalVoteTypeDecision
-	// - ProposalVoteTypeCustomerDefined
+	// - ProposalVoteTypeCustomerDefinedAlwaysPassed
 	VoteType    int
 	VoteRecords []*ProposalVoteRecord
 
@@ -343,11 +343,12 @@ type ProposalAuditLog struct {
 }
 
 var (
-	ProposalVoteTypeNone            int = 0
-	ProposalVoteTypeDecision            = 1
-	ProposalVoteTypeNumericAvg          = 2 // This means if the result contains same vote value, use the average for result
-	ProposalVoteTypeNumericSingle       = 3 // This means if the result contains same vote value, mark vote as failed
-	ProposalVoteTypeCustomerDefined     = 99
+	ProposalVoteTypeNone                        int = 0
+	ProposalVoteTypeDecision                        = 1
+	ProposalVoteTypeNumericAvg                      = 2  // This means if the result contains same vote value, use the average for result
+	ProposalVoteTypeNumericSingle                   = 3  // This means if the result contains same vote value, mark vote as failed
+	ProposalVoteTypeCustomerDefinedEqualFailed      = 98 // This is custom voting, but if more than one max value, the vote failed
+	ProposalVoteTypeCustomerDefinedAlwaysPassed     = 99 // Custom vote, always passed
 )
 
 // ProposalVoteRecord saves vote record and associated to specified Proposal
@@ -375,7 +376,7 @@ type ProposalVoteRecord struct {
 	// - ProposalVoteTypeNone
 	// - ProposalVoteTypeNumericAvg
 	// - ProposalVoteTypeDecision
-	// - ProposalVoteTypeCustomerDefined
+	// - ProposalVoteTypeCustomerDefinedAlwaysPassed
 	VoteType int
 }
 
@@ -477,7 +478,7 @@ type ProposalTemplate struct {
 	// - ProposalVoteTypeNone
 	// - ProposalVoteTypeNumericAvg
 	// - ProposalVoteTypeDecision
-	// - ProposalVoteTypeCustomerDefined
+	// - ProposalVoteTypeCustomerDefinedAlwaysPassed
 	VoteType int
 
 	// Type is used to filter proposal template, this field is not set to all templates, but only specified template records are required

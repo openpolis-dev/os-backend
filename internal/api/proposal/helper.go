@@ -64,10 +64,6 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 		reqData.Title = cfg.MetaforoData.ProposalPrefix + reqData.Title
 	}
 
-	if reqData.VoteOptions != nil {
-		reqData.VoteType = model.ProposalVoteTypeCustomerDefined
-	}
-
 	var voteTimeProps model.VoteTimeProperties
 
 	var pCategory model.ProposalCategory
@@ -755,7 +751,7 @@ func UpdateProposalStateBasedOnVoteResult(db *gorm.DB, proposalVoteRecord *model
 	var voteResult string
 	switch proposalVoteRecord.VoteType {
 	case model.ProposalVoteTypeNone:
-	case model.ProposalVoteTypeCustomerDefined:
+	case model.ProposalVoteTypeCustomerDefinedAlwaysPassed:
 		proposalFinalState = model.ProposalStateExecuted
 	case model.ProposalVoteTypeDecision:
 		var voteOptRcds []*model.ProposalVoteOptionRecord
@@ -828,6 +824,7 @@ func UpdateProposalStateBasedOnVoteResult(db *gorm.DB, proposalVoteRecord *model
 			voteResult = recordsForCalcResults[0].Value
 		}
 	case model.ProposalVoteTypeNumericSingle:
+	case model.ProposalVoteTypeCustomerDefinedEqualFailed:
 		var voteOptRcds []*model.ProposalVoteOptionRecord
 		err = db.Where(&model.ProposalVoteOptionRecord{ProposalVoteRecordId: proposalVoteRecord.ID}).Find(&voteOptRcds).Error
 		if err != nil {
