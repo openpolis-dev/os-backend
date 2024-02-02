@@ -112,10 +112,10 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 		// Proposal is in PendingSubmit state, the data can be updated directory w/o bumping up version
 		proposalRcd.Title = reqData.Title
 		proposalRcd.ProposalCategoryID = reqData.ProposalCategoryId
-		proposalRcd.PublicitySecond = voteTimeProps.PublicitySecond
-		proposalRcd.PendingExecutionSecond = voteTimeProps.PendingExecutionSecond
-		proposalRcd.VoteDurationSecond = voteTimeProps.VoteDurationSecond
 		proposalRcd.VoteType = dbProposalRcd.VoteType
+		proposalRcd.PublicitySecond = dbProposalRcd.PublicitySecond
+		proposalRcd.PendingExecutionSecond = dbProposalRcd.PendingExecutionSecond
+		proposalRcd.VoteDurationSecond = dbProposalRcd.VoteDurationSecond
 		err = db.Save(&proposalRcd).Error
 		if err != nil {
 			log.Error().Msgf("duplicate proposal error: %+v", err)
