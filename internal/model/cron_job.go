@@ -3,11 +3,11 @@ package model
 type CronJobState int
 
 const (
-	CronJobStateActive CronJobState = iota
-	CronJobStatePaused
-	CronJobStateTerminated
-	CronJobStateRunning
-	CronJobStateDone
+	CronJobStateActive     CronJobState = 0
+	CronJobStatePaused                  = 1
+	CronJobStateTerminated              = 2
+	CronJobStateRunning                 = 3
+	CronJobStateDone                    = 4
 )
 
 // CronJob saves info for scheduler tasks.
@@ -34,6 +34,8 @@ type CronJob struct {
 	VoteResult string // Saves vote result, used to record numeric result and do calculation
 
 	ProposalComponentRecordId int `gorm:"index:component_job"` // Indicates which component record launches this job, to avoid duplicated jobs
+
+	ProposalId uint `gorm:"index"`
 
 	LastExecResult string // Saves last execution result, used for debug
 

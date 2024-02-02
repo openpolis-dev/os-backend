@@ -286,7 +286,7 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 				log.Error().Msgf("unmarshal associate proposal data error: %+v", err)
 			} else {
 				var associatedProposalRecord model.Proposal
-				err = db.Find(&associatedProposalRecord, parsedData.Proposal.Id).Select("state").Error
+				err = db.Find(&associatedProposalRecord, parsedData.Proposal.Id).Error
 				if err != nil {
 					log.Error().Msgf("query associated proposal %d from DB error: %+v", parsedData.Proposal.Id, err)
 				} else {
@@ -294,7 +294,7 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 				}
 
 				var associatedApplicantRecord model.User
-				err = db.Model(&model.User{}).Where("wallet = ?", common.FormatUserWallet(parsedData.Applicant)).Select("avatar").First(&associatedApplicantRecord).Error
+				err = db.Model(&model.User{}).Where("wallet = ?", common.FormatUserWallet(parsedData.Applicant)).First(&associatedApplicantRecord).Error
 				if err != nil {
 					log.Error().Msgf("query associated applicant %s from DB error: %+v", parsedData.Applicant, err)
 				} else {
@@ -321,7 +321,7 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 	})
 
 	var applicantAvatarLink string
-	db.Model(model.User{}).Where("wallet = ?", common.FormatUserWallet(proposal.Applicant)).Select("avatar").First(&applicantAvatarLink)
+	db.Model(model.User{}).Where("wallet = ?", common.FormatUserWallet(proposal.Applicant)).First(&applicantAvatarLink)
 
 	var editHistoryRecords []*FrontendProposalEditHistoryRecord
 	var frontendCommentsRecords []*FrontendProposalCommentRecord
@@ -398,12 +398,14 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 	}
 
 	proposalExecTs := int64(0)
-	if len(proposal.Components) > 1 {
-		proposalCronJob := model.CronJob{ProposalComponentRecordId: int(proposal.Components[0].ID)}
-		if err = db.Where(proposalCronJob).First(&proposalCronJob).Error; err != nil {
-			log.Error().Msgf("get proposal cronjob error: %+v", err)
-		} else {
-			proposalExecTs = proposalCronJob.NextExecTs
+	var proposalCronJobs []*model.CronJob
+	if err = db.Where(&model.CronJob{ProposalId: proposal.ID}).Find(&proposalCronJobs).Error; err != nil {
+		log.Error().Msgf("get proposal cronjob error: %+v", err)
+	}
+
+	for _, job := range proposalCronJobs {
+		if job.NextExecTs > proposalExecTs {
+			proposalExecTs = job.NextExecTs
 		}
 	}
 

@@ -212,7 +212,7 @@ func Update(ctx *gin.Context) {
 	// FIXME: refactor here: If not submitting to metaforo, a new version will be created in DB but no metaforo record.
 	// FIXME: Do we need to force passing the metaforo access token if not in pending submit state?
 	if reqData.SubmitToMetaforo {
-		if err := SaveProposalToMetaforo(db, proposalRecord, reqData.VoteType, reqData.VoteOptions, reqData.MetaforoAccessToken, reqData.EditorType, cfg.MetaforoData.GroupName); err != nil {
+		if err := SaveProposalToMetaforo(db, proposalRecord, proposalRecord.VoteType, reqData.VoteOptions, reqData.MetaforoAccessToken, reqData.EditorType, cfg.MetaforoData.GroupName); err != nil {
 			log.Error().Msgf("create metaforo proposal error: %+v", err)
 			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
@@ -221,7 +221,6 @@ func Update(ctx *gin.Context) {
 
 		// If the publicity second is 0, update the db proposal to voting state
 		if proposalRecord.PublicitySecond == 0 {
-			log.Error().Msgf("TTT: update proposal state to voting")
 			proposalRecord.State = int(model.ProposalStateVoting)
 			if err := db.Save(&proposalRecord).Error; err != nil {
 				log.Error().Msgf("update proposal to voting state error: %+v", err)

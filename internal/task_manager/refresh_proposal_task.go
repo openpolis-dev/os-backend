@@ -42,15 +42,12 @@ func RefreshVotingProposalInfoJob(db *gorm.DB, job *model.CronJob, jobParams str
 		jobFailed = true
 	} else {
 		var proposals []*model.Proposal
-		err = db.Model(&model.Proposal{}).
-			Where("state IN ?", []model.ProposalState{
-				model.ProposalStateVoting,
-				model.ProposalStateApproved,
-				model.ProposalStateDraft,
-			}).
-			Distinct("proposal_record_id").
-			Select("id, proposal_record_id, vote_type").
-			Find(&proposals).Error
+		querySql := `select distinct on (proposal_record_id) proposals.* FROM "proposals" WHERE state IN ?`
+		err = db.Raw(querySql, []model.ProposalState{
+			model.ProposalStateVoting,
+			model.ProposalStateApproved,
+			model.ProposalStateDraft,
+		}).Find(&proposals).Error
 		if err != nil {
 			log.Warn().Msgf("get proposal list error: %+v", err)
 			jobFailed = true

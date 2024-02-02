@@ -106,8 +106,8 @@ func (t *TaskManager) ScanTaskPool() {
 	endTime := time.Now().Add(t.CheckDuration).UTC()
 
 	err := t.DatabaseClient.Model(&model.CronJob{}).
-		Where("state = ? AND ((next_exec_ts >= ? AND next_exec_ts < ?) OR last_exec_ts=0)",
-			model.CronJobStateActive, startTime.Unix(), endTime.Unix()).Find(&tasksShouldBeExecuted).Error
+		Where("state = ? AND ((next_exec_ts >= ? AND next_exec_ts < ?) OR (last_exec_ts=0 AND next_exec_ts <= ?))",
+			model.CronJobStateActive, startTime.Unix(), endTime.Unix(), startTime.Unix()).Find(&tasksShouldBeExecuted).Error
 
 	if err != nil {
 		log.Error().Msgf("scan task pool error: %+v", err)
@@ -122,18 +122,24 @@ func (t *TaskManager) ScanTaskPool() {
 
 func (t *TaskManager) ActivateRefreshVoteStateJobIfRequired() error {
 	log.Debug().Msgf("activate refresh vote state job")
-	refreshVoteStateJob := &model.CronJob{
-		HandlerName: internal.TaskRefreshVotingProposalVoteInfo,
-		State:       model.CronJobStateActive,
-		CronExp:     internal.TaskRefreshVotingProposalVoteInfoCronExpr,
-		CreateTs:    time.Now().UTC().Unix(),
-		NextExecTs:  cronexpr.MustParse(internal.TaskRefreshVotingProposalVoteInfoCronExpr).Next(time.Now()).UTC().Unix(),
-		JobParams:   fmt.Sprintf(`{"group_name": "%s"}`, t.AppConfig.MetaforoData.GroupName),
+
+	var refreshProposalInfoJob model.CronJob
+	if err := t.DatabaseClient.Model(&refreshProposalInfoJob).Where("handler_name = ?", internal.TaskRefreshVotingProposalVoteInfo).First(&refreshProposalInfoJob).Error; err != nil {
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return err
+		}
 	}
 
-	if err := t.DatabaseClient.Model(&refreshVoteStateJob).Where("handler_name = ?", internal.TaskRefreshVotingProposalVoteInfo).Updates(&refreshVoteStateJob).Error; err != nil {
+	refreshProposalInfoJob.HandlerName = internal.TaskRefreshVotingProposalVoteInfo
+	refreshProposalInfoJob.State = model.CronJobStateActive
+	refreshProposalInfoJob.CronExp = internal.TaskRefreshVotingProposalVoteInfoCronExpr
+	refreshProposalInfoJob.CreateTs = time.Now().UTC().Unix()
+	refreshProposalInfoJob.NextExecTs = cronexpr.MustParse(internal.TaskRefreshVotingProposalVoteInfoCronExpr).Next(time.Now()).UTC().Unix()
+	refreshProposalInfoJob.JobParams = fmt.Sprintf(`{"group_name": "%s"}`, t.AppConfig.MetaforoData.GroupName)
+
+	if err := t.DatabaseClient.Model(&refreshProposalInfoJob).Where("handler_name = ?", internal.TaskRefreshVotingProposalVoteInfo).Updates(&refreshProposalInfoJob).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return t.DatabaseClient.Create(&refreshVoteStateJob).Error
+			return t.DatabaseClient.Create(&refreshProposalInfoJob).Error
 		} else {
 			return err
 		}
@@ -145,6 +151,7 @@ func (t *TaskManager) TaskDispatcher() {
 	log.Debug().Msgf("task dispatcher started")
 	for {
 		task := <-t.TaskChannel
+		log.Debug().Msgf("received task: %+v", task)
 		switch task.HandlerName {
 		case internal.TaskRefreshVotingProposalVoteInfo:
 			go RefreshVotingProposalInfoJob(t.DatabaseClient, task, task.JobParams)
@@ -154,22 +161,26 @@ func (t *TaskManager) TaskDispatcher() {
 		case internal.TaskNewMotivationReward:
 			log.Debug().Msgf("motivation task")
 			go CreateAppBundleTaskFromMotivationComponent(t.DatabaseClient, task, task.JobParams, task.VoteType, task.VoteResult)
-		case internal.TaskCloseGuild:
-		case internal.TaskRewardNewApplication:
-		case internal.TaskCreateGuild:
-		case internal.TaskCloseProject:
-		case internal.TaskCreateProject:
+		case internal.TaskUpdateProposalState:
+			log.Debug().Msgf("update proposal state task")
+			go UpdateProposalSateTask(t.DatabaseClient, task, task.JobParams)
+		//case internal.TaskCloseGuild:
+		//case internal.TaskRewardNewApplication:
+		//case internal.TaskCreateGuild:
+		//case internal.TaskCloseProject:
+		//case internal.TaskCreateProject:
 		default:
 			// Handle unknown task
 			log.Warn().Msgf("unknown task name: %s task detail: %+v", task.HandlerName, task)
-			t.MarkTaskAsTerminated(task)
+			t.MarkTaskAsTerminatedAndSetProposalToExecuted(task)
 		}
 	}
 }
 
-func (t *TaskManager) MarkTaskAsTerminated(task *model.CronJob) {
+func (t *TaskManager) MarkTaskAsTerminatedAndSetProposalToExecuted(task *model.CronJob) {
 	task.State = model.CronJobStateTerminated
 	task.LastExecTs = model.GetCurrentUtcEpochSecond()
 	task.UpdateTs = model.GetCurrentUtcEpochSecond()
 	t.DatabaseClient.Updates(task)
+	t.DatabaseClient.Model(&model.Proposal{}).Where("id = ?", task.ProposalId).Update("state", model.ProposalStateExecuted)
 }

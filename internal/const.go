@@ -86,4 +86,5 @@ const (
 	TaskRewardNewApplication = "reward/new_application"
 	TaskNewMotivationReward  = "reward/motivation"
 	TaskVetoedProposal       = "proposal/veto"
+	TaskUpdateProposalState  = "proposal/update_state"
 )

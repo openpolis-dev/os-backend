@@ -128,7 +128,7 @@ type Proposal struct {
 	// - ProposalVoteTypeNone
 	// - ProposalVoteTypeNumericAvg
 	// - ProposalVoteTypeDecision
-	// - ProposalVoteTypeCustomerDefined
+	// - ProposalVoteTypeCustomerDefinedAlwaysPassed
 	VoteType    int
 	VoteRecords []*ProposalVoteRecord
 
@@ -167,8 +167,7 @@ func (p *Proposal) TaskStartDelay() time.Duration {
 }
 
 func (p *Proposal) IsInFinState() bool {
-	return p.State == int(ProposalStateVotePassed) ||
-		p.State == int(ProposalStateVoteFailed) ||
+	return p.State == int(ProposalStateVoteFailed) ||
 		p.State == int(ProposalStateExecuted) ||
 		p.State == int(ProposalStateVetoed)
 }
@@ -344,11 +343,12 @@ type ProposalAuditLog struct {
 }
 
 var (
-	ProposalVoteTypeNone            int = 0
-	ProposalVoteTypeDecision            = 1
-	ProposalVoteTypeNumericAvg          = 2 // This means if the result contains same vote value, use the average for result
-	ProposalVoteTypeNumericSingle       = 3 // This means if the result contains same vote value, mark vote as failed
-	ProposalVoteTypeCustomerDefined     = 99
+	ProposalVoteTypeNone                        int = 0
+	ProposalVoteTypeDecision                        = 1
+	ProposalVoteTypeNumericAvg                      = 2  // This means if the result contains same vote value, use the average for result
+	ProposalVoteTypeNumericSingle                   = 3  // This means if the result contains same vote value, mark vote as failed
+	ProposalVoteTypeCustomerDefinedEqualFailed      = 98 // This is custom voting, but if more than one max value, the vote failed
+	ProposalVoteTypeCustomerDefinedAlwaysPassed     = 99 // Custom vote, always passed
 )
 
 // ProposalVoteRecord saves vote record and associated to specified Proposal
@@ -376,7 +376,7 @@ type ProposalVoteRecord struct {
 	// - ProposalVoteTypeNone
 	// - ProposalVoteTypeNumericAvg
 	// - ProposalVoteTypeDecision
-	// - ProposalVoteTypeCustomerDefined
+	// - ProposalVoteTypeCustomerDefinedAlwaysPassed
 	VoteType int
 }
 
@@ -386,6 +386,8 @@ type ProposalVoteOptionRecord struct {
 
 	// Foreign key
 	ProposalVoteRecordId uint
+	//
+	//ProposalId uint
 
 	// Metaforo related data
 	// Text field is used to
@@ -404,8 +406,7 @@ type ProposalVoteOptionRecord struct {
 func GetPredefinedVoteOptionValue(optLabel string, voteType int) string {
 	var optBucket map[string]string
 	switch voteType {
-	case ProposalVoteTypeNumericAvg:
-	case ProposalVoteTypeNumericSingle:
+	case ProposalVoteTypeNumericAvg, ProposalVoteTypeNumericSingle:
 		optBucket = internal.ProposalNumericVoteOptionsMap
 	case ProposalVoteTypeDecision:
 		optBucket = internal.ProposalDecisionVoteOptionsMap
@@ -476,7 +477,7 @@ type ProposalTemplate struct {
 	// - ProposalVoteTypeNone
 	// - ProposalVoteTypeNumericAvg
 	// - ProposalVoteTypeDecision
-	// - ProposalVoteTypeCustomerDefined
+	// - ProposalVoteTypeCustomerDefinedAlwaysPassed
 	VoteType int
 
 	// Type is used to filter proposal template, this field is not set to all templates, but only specified template records are required
