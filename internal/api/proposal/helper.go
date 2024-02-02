@@ -908,7 +908,7 @@ func createProposalAutomationTasks(db *gorm.DB, proposal *model.Proposal, finSta
 				"proposal_id": proposal.ID,
 				"state":       int(model.ProposalStateExecuted),
 			}
-			api.PrintStructAsJson(proposal, "TTT: Check db proposal state")
+
 			jobParamsStr, err := json.Marshal(updateProposalStateTaskParams)
 			if err != nil {
 				log.Error().Msgf("marshal update proposal state params error: %+v", err)
@@ -917,6 +917,11 @@ func createProposalAutomationTasks(db *gorm.DB, proposal *model.Proposal, finSta
 			err = createCronJob(db, proposal, "proposal/update_state", string(jobParamsStr), "", 0, int(proposalComponentRecord.ID))
 			if err != nil {
 				log.Error().Msgf("marshal update proposal state params error: %+v", err)
+				return
+			}
+			proposal.State = int(model.ProposalStatePendingExecution)
+			if err = db.Model(&proposal).Updates(&proposal).Error; err != nil {
+				log.Error().Msgf("update proposal %d state to pending execution error", proposal.ID)
 				return
 			}
 		} else {
