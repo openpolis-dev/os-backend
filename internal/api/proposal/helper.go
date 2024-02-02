@@ -889,11 +889,10 @@ func createProposalAutomationTasks(db *gorm.DB, proposal *model.Proposal, finSta
 		// If yes, change the proposal state to pending execution, and create a new cron job to update proposal state after pending execution second
 		// If no, change the proposal state to executed directly
 		if proposal.PendingExecutionSecond != 0 {
-			proposalComponentRecord := model.ProposalComponentRecord{
-				ComponentID: 0,
-				ProposalID:  proposal.ID,
-			}
-			if err = db.Where(&proposalComponentRecord).First(&proposalComponentRecord).Error; err != nil {
+			var proposalComponentRecord model.ProposalComponentRecord
+			if err = db.Model(&proposalComponentRecord).
+				Where(map[string]any{"proposal_id": proposal.ID, "component_id": 0}). // Note: 0 won't be passed to query if using struct data
+				First(&proposalComponentRecord).Error; err != nil {
 				if errors.Is(err, gorm.ErrRecordNotFound) {
 					db.Create(&proposalComponentRecord)
 				} else {
