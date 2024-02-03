@@ -642,7 +642,6 @@ func updateProposalState(db *gorm.DB, user *middleware.CurUser, proposalStrId st
 			return nil, err
 		}
 	case model.ProposalStateApproved:
-		// TODO: Update Metaforo Label: Remove old label and add new, verify whether metaforo can handle this
 		return nil, db.Transaction(func(tx *gorm.DB) error {
 			proposalRecord.State = int(model.ProposalStateApproved)
 			err = tx.Save(&proposalRecord).Error
@@ -658,7 +657,7 @@ func updateProposalState(db *gorm.DB, user *middleware.CurUser, proposalStrId st
 					proposalRecord.State = int(model.ProposalStateExecuted)
 				} else {
 					proposalRecord.State = int(model.ProposalStatePendingExecution)
-					createProposalAutomationTasks(tx, proposalRecord, model.ProposalStateExecuted, "", model.ProposalVoteTypeNone)
+					go createProposalAutomationTasks(db, proposalRecord, model.ProposalStateExecuted, "", model.ProposalVoteTypeNone)
 				}
 			} else {
 				for _, record := range voteRecords {
