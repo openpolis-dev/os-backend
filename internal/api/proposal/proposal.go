@@ -658,7 +658,7 @@ func updateProposalState(db *gorm.DB, user *middleware.CurUser, proposalStrId st
 					proposalRecord.State = int(model.ProposalStateExecuted)
 				} else {
 					proposalRecord.State = int(model.ProposalStatePendingExecution)
-					// TODO: Add cronjob to update the proposal state
+					createProposalAutomationTasks(db, proposalRecord, model.ProposalStateExecuted, "", model.ProposalVoteTypeNone)
 				}
 			} else {
 				for _, record := range voteRecords {
