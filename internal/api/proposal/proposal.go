@@ -612,6 +612,28 @@ func updateProposalState(db *gorm.DB, user *middleware.CurUser, proposalStrId st
 		if !strings.EqualFold(user.Wallet, proposalRecord.Applicant) {
 			return nil, errors.New("proposal can only be withdrawn by applicant")
 		}
+
+		var voteRecords []*model.ProposalVoteRecord
+		err = db.Model(proposalRecord).Association("VoteRecords").Find(&voteRecords)
+		if err != nil {
+			log.Error().Msgf("get vote records error: %+v", err)
+			return nil, err
+		}
+
+		for _, record := range voteRecords {
+			oneYearDuration := 24 * 365 * time.Hour
+			err := metaforo.UpdateVoteTime(cfg.MetaforoData.AccessToken,
+				cfg.MetaforoData.GroupName,
+				record.MetaforoID,
+				time.Now().UTC().Add(oneYearDuration).Unix(), // Set the start time 1 minute in advanced
+				time.Now().UTC().Add(oneYearDuration+proposalRecord.VoteDuration()).Unix(),
+			)
+			if err != nil {
+				log.Error().Msgf("update vote information error: %+v", err)
+				return nil, err
+			}
+		}
+
 		proposalRecord.State = int(model.ProposalStateWithdrawn)
 		err = db.Save(&proposalRecord).Error
 		// TODO: Update Metaforo Label: Remove old label and add new, verify whether metaforo can handle this
