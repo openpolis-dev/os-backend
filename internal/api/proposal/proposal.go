@@ -547,7 +547,15 @@ func GetProposalsUsedForCreatingProjects(ctx *gin.Context) {
 			ctx.JSON(http.StatusBadRequest, api.ServerError(fmt.Errorf("parse category ID %s to int error: %+v", categoryIdStr, err)))
 			return
 		}
-		tmplQueryParams.ProposalCategoryID = uint(categoryId)
+
+		// Try to get category data and check whether it is needed to remap the category ID
+		var pCategory model.ProposalCategory
+		db.Model(&pCategory).Where("id = ?", categoryId).First(&pCategory)
+		if pCategory.CategoryIdForCloseProject != 0 {
+			tmplQueryParams.ProposalCategoryID = pCategory.CategoryIdForCloseProject
+		} else {
+			tmplQueryParams.ProposalCategoryID = uint(categoryId)
+		}
 	}
 
 	err := db.Model(&model.ProposalTemplate{}).Where(tmplQueryParams).Pluck("id", &newProjectTemplateIds).Error

@@ -291,6 +291,9 @@ type ProposalCategory struct {
 
 	CanBeVetoed bool
 
+	// CategoryIdForCloseProject saves which category should be queried when trying to get project can be closed
+	CategoryIdForCloseProject uint
+
 	VoteTimeProperties
 }
 
