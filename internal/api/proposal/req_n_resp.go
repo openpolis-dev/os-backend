@@ -108,6 +108,7 @@ type FrontendProposalListRecord struct {
 	StateId         int    `json:"-"`
 	CreateTs        int64  `json:"create_ts"`
 	Version         uint   `json:"version"`
+	Sip             int    `json:"sip"`
 
 	// Vote related state
 	// TODO: Vote Gate related logic
@@ -167,6 +168,8 @@ type FrontendProposalDetailRecord struct {
 	ApplicantAvatar string `json:"applicant_avatar"`
 	Reviewer        string `json:"reviewer"`
 	ReviewerAvatar  string `json:"reviewer_avatar"`
+
+	Sip int `json:"sip"`
 
 	// Arweave Hash
 	Arweave string `json:"arweave"`
@@ -441,6 +444,7 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 			TotalCount: len(editHistoryRecords),
 			Lists:      editHistoryRecords,
 		},
+		Sip:                     proposal.Sip,
 		Arweave:                 proposal.ArweaveHash,
 		CommentCount:            commentCount,
 		Comments:                frontendCommentsRecords,

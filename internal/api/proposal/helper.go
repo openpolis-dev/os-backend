@@ -923,7 +923,7 @@ func createProposalAutomationTasks(db *gorm.DB, proposal *model.Proposal, finSta
 				log.Error().Msgf("marshal update proposal state params error: %+v", err)
 				return
 			}
-			err = createCronJob(db, proposal, "proposal/update_state", string(jobParamsStr), "", 0, int(proposalComponentRecord.ID))
+			err = createCronJob(db, proposal, internal.TaskUpdateProposalState, string(jobParamsStr), "", 0, int(proposalComponentRecord.ID))
 			if err != nil {
 				log.Error().Msgf("marshal update proposal state params error: %+v", err)
 				return

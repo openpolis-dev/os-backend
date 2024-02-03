@@ -147,6 +147,8 @@ type Proposal struct {
 	ProposalCategoryID uint `gorm:"index"`
 	ProposalCategory   ProposalCategory
 
+	Sip int `gorm:"index"`
+
 	VoteTimeProperties
 }
 
