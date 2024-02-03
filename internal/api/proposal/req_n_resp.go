@@ -197,6 +197,7 @@ type FrontendProposalDetailRecord struct {
 
 	IsInstantExecution bool  `json:"is_instant_execution"`
 	ExecutionTs        int64 `json:"execution_ts"`
+	PublicityTs        int64 `json:"publicity_ts"`
 
 	// Timestamps
 	CreateTs int64 `json:"create_ts"`
@@ -403,6 +404,20 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 		log.Error().Msgf("get proposal cronjob error: %+v", err)
 	}
 
+	var voteRecords []*model.ProposalVoteRecord
+	err = db.Model(proposal).Association("VoteRecords").Find(&voteRecords)
+	if err != nil {
+		log.Error().Msgf("get vote records error: %+v", err)
+		return nil, err
+	}
+
+	proposalPublicityTs := model.GetCurrentUtcEpochSecond() + proposal.PublicitySecond
+	for _, r := range voteRecords {
+		if r.StartTs < proposalPublicityTs {
+			proposalPublicityTs = r.StartTs
+		}
+	}
+
 	for _, job := range proposalCronJobs {
 		if job.NextExecTs > proposalExecTs {
 			proposalExecTs = job.NextExecTs
@@ -437,5 +452,6 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 		TemplateName:            templateName,
 		IsInstantExecution:      proposal.PendingExecutionSecond == 0,
 		ExecutionTs:             proposalExecTs,
+		PublicityTs:             proposalPublicityTs,
 	}, nil
 }
