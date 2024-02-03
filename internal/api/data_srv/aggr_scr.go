@@ -127,6 +127,28 @@ func getSeedHolderData(endTs int64) map[string]int {
 	return seedCount
 }
 
+func getSeasonSBTHolderData(endTs int64, tokenId string) int {
+	indexerClient := sdk.GetIndexerClient()
+	hodletData, err := indexerClient.GetSeasonSBTHolderInfo(endTs)
+	if err != nil {
+		log.Error().Msgf("query seed holder data error: %+v", err)
+		return 0
+	}
+
+	count := 0
+
+	for _, v := range hodletData {
+		for _, id := range v.Ids {
+			if id == tokenId {
+				count++
+				break
+			}
+		}
+	}
+
+	return count
+}
+
 func seasonCreditWeight(seasonIdx, currSeasonIdx uint) decimal.Decimal {
 	return decimal.NewFromInt(1).Div(decimal.NewFromInt(2).Pow(decimal.NewFromInt(int64(currSeasonIdx - seasonIdx))))
 }
