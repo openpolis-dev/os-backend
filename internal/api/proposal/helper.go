@@ -425,7 +425,7 @@ func SaveProposalToMetaforo(db *gorm.DB, origProposalRecord *model.Proposal, vot
 
 	// Vote start and end time, used for create and update proposal
 	// TODO: The default vote start delay should be saved into proposal category record
-	voteStartTime := time.Now().UTC().Add(origProposalRecord.PublicityDuration())
+	voteStartTime := time.Now().UTC().Add(origProposalRecord.PublicityDuration() - time.Minute)
 	voteEndTime := time.Now().UTC().Add(origProposalRecord.PublicityDuration() + origProposalRecord.VoteDuration())
 
 	if origProposalRecord.ProposalRecordId != "" {
