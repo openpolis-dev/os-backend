@@ -595,7 +595,14 @@ func GetProposalsUsedForCreatingProjects(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, api.Success(resultRows))
+	resultRowsWithSipRecords := lo.Map(resultRows, func(r *FrontendProposalListRecord, _ int) *FrontendProposalListRecord {
+		if r.Sip != 0 {
+			r.Title = fmt.Sprintf("SIP-%d: %s", r.Sip, r.Title)
+		}
+		return r
+	})
+
+	ctx.JSON(http.StatusOK, api.Success(resultRowsWithSipRecords))
 }
 
 // Internal function to handle duplicated logic of updating proposal state
