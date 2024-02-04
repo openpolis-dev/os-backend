@@ -222,13 +222,7 @@ func Update(ctx *gin.Context) {
 
 		// If the publicity second is 0, update the db proposal to voting state
 		if proposalRecord.PublicitySecond == 0 {
-			proposalRecord.State = int(model.ProposalStateVoting)
-			if err := db.Save(&proposalRecord).Error; err != nil {
-				log.Error().Msgf("update proposal to voting state error: %+v", err)
-				sdk.LogServerErrorToSentry(ctx, err)
-				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
-				return
-			}
+			_, err = updateProposalState(db, user, proposalIdStr, model.ProposalStateApproved, cfg)
 		}
 	}
 
@@ -293,17 +287,13 @@ func Create(ctx *gin.Context) {
 			return
 		}
 
-		// If the publicity second is 0, update the db proposal to voting state
+		// If the publicity second is 0, update the db proposal to voting state or pending execution state, and handle SIP data
 		if proposalRecord.PublicitySecond == 0 {
-			log.Error().Msgf("TTT: update proposal state to voting")
-			proposalRecord.State = int(model.ProposalStateVoting)
-			if err := db.Save(&proposalRecord).Error; err != nil {
-				log.Error().Msgf("update proposal to voting state error: %+v", err)
-				sdk.LogServerErrorToSentry(ctx, err)
-				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
-				return
-			}
+			log.Debug().Msgf("proposal has no publicity time, change to approved status directly. Checking for vote type will be done later")
+			_, err = updateProposalState(db, user, fmt.Sprintf("%d", proposalRecord.ID), model.ProposalStateApproved, cfg)
 		}
+
+		db.First(&proposalRecord, proposalRecord.ID)
 	}
 
 	responseData, err := ConvertProposalToFrontendDetailRecord(db, proposalRecord, 0, reqData.MetaforoAccessToken, cfg.MetaforoData.GroupName)
@@ -603,10 +593,6 @@ func updateProposalState(db *gorm.DB, user *middleware.CurUser, proposalStrId st
 		return nil, err
 	}
 
-	if proposalRecord.State != int(model.ProposalStateDraft) {
-		return nil, fmt.Errorf("proposal %s in %s state can't be updated", proposalStrId, proposalRecord.StateName())
-	}
-
 	// Check whether user has permission to the change the proposal state
 	switch newState {
 	case model.ProposalStateWithdrawn:
@@ -674,7 +660,7 @@ func updateProposalState(db *gorm.DB, user *middleware.CurUser, proposalStrId st
 				}
 			}
 
-			err = tx.Save(&proposalRecord).Error
+			err = tx.Updates(&proposalRecord).Error
 			var voteRecords []*model.ProposalVoteRecord
 			err = tx.Model(proposalRecord).Association("VoteRecords").Find(&voteRecords)
 			if err != nil {
@@ -699,7 +685,6 @@ func updateProposalState(db *gorm.DB, user *middleware.CurUser, proposalStrId st
 					)
 					if err != nil {
 						log.Error().Msgf("update vote information error: %+v", err)
-						return err
 					}
 				}
 				proposalRecord.State = int(model.ProposalStateVoting)
@@ -759,30 +744,42 @@ func generateFrontendProposalRecords(db *gorm.DB, querySql string, page *gormfin
 
 // TODO: Temporary solution to get open project proposal info while creating close project proposal
 
-type associateProposalParams struct {
-	Relate     string `json:"relate"`
-	ProposalId uint   `json:"proposal_id"`
+type createProjectProposalContentBlockStruct struct {
+	ComponentId int    `json:"component_id"`
+	Name        string `json:"name"`
+	Schema      string `json:"schema"`
+	Data        any    `json:"data"`
+	Id          int    `json:"id,omitempty"`
+	CreateTs    int    `json:"create_ts,omitempty"`
 }
 
 func getCreatingProjectProposalInfoFromClosingProposalContentBlocks(db *gorm.DB, closeProjectProposal *model.Proposal) (*model.Proposal, error) {
 	// Find the related created project data
 	var pContentBlocks []*model.ProposalContentBlock
-	if err := db.Model(&closeProjectProposal).Association("ProposalContentBlocks").Find(&pContentBlocks); err != nil {
+	if err := db.Model(&model.ProposalContentBlock{}).Where("proposal_id = ?", closeProjectProposal.ID).Find(&pContentBlocks).Error; err != nil {
 		log.Error().Msgf("get proposal content blocks error: %+v", err)
 		return nil, err
 	}
 
 	for _, block := range pContentBlocks {
 		if block.Title == internal.ContentBlockTitleCreateProjectName {
-			var contentParams associateProposalParams
+			var contentParams []*createProjectProposalContentBlockStruct
 			err := json.Unmarshal([]byte(block.Content), &contentParams)
 			if err != nil {
 				return nil, err
 			}
-			proposalRcd := model.Proposal{ID: contentParams.ProposalId}
-			err = db.Find(&proposalRcd).Error
-			if err != nil {
-				return nil, err
+			for _, param := range contentParams {
+				if param.Name == "relate" {
+					if proposalId, found := param.Data.(map[string]any)["proposal_id"]; found {
+						proposalRcd := model.Proposal{ID: uint(proposalId.(float64))}
+						err = db.Find(&proposalRcd).Error
+						if err != nil {
+							log.Error().Msgf("get proposal error: %+v", err)
+							return nil, err
+						}
+						return &proposalRcd, nil
+					}
+				}
 			}
 		}
 	}
