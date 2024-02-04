@@ -500,6 +500,9 @@ type ProposalTemplate struct {
 	// Components saves component used in this template,
 	Components []*ProposalComponent `gorm:"many2many:template_components;"`
 
+	// ComponentNameList saves order of component in proposal template
+	ComponentNameList []string `gorm:"serializer:json"`
+
 	// Proposal category
 	ProposalCategoryID uint `gorm:"index"`
 	ProposalCategory   *ProposalCategory

@@ -150,16 +150,25 @@ func ListTemplatesWithPerm(ctx *gin.Context) {
 			return rslt && r
 		}, true)
 
+		compNameMapping := lo.SliceToMap(tmplDbRcd.Components, func(c *model.ProposalComponent) (string, *model.ProposalComponent) {
+			return c.Name, c
+		})
+
+		var components []*ComponentResponse
+		for _, name := range tmplDbRcd.ComponentNameList {
+			if comp, ok := compNameMapping[name]; ok {
+				components = append(components, &ComponentResponse{
+					ID:            comp.ID,
+					Name:          comp.Name,
+					Schema:        comp.Schema,
+					ScreenshotUri: comp.Schema,
+				})
+			}
+		}
+
 		return &TemplateResponseWithComponents{
 			TemplateResponse: *r,
-			Components: lo.Map(tmplDbRcd.Components, func(c *model.ProposalComponent, _ int) *ComponentResponse {
-				return &ComponentResponse{
-					ID:            c.ID,
-					Name:          c.Name,
-					Schema:        c.Schema,
-					ScreenshotUri: c.ScreenshotUri,
-				}
-			}),
+			Components:       components,
 		}
 	})
 
