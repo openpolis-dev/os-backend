@@ -704,7 +704,13 @@ func updateProposalState(db *gorm.DB, user *middleware.CurUser, proposalStrId st
 						return err
 					}
 
-					if err = createJobToUpdateNoVoteProposalToNextState(db, proposalRecord, model.GetCurrentUtcEpochSecond()+proposalRecord.PendingExecutionSecond, model.ProposalStateExecuted); err != nil {
+					if err = tx.Model(&model.ProposalComponentRecord{}).
+						Delete(&model.ProposalComponentRecord{}, &model.ProposalComponentRecord{ProposalID: proposalRecord.ID, ComponentID: 0}).Error; err != nil {
+						log.Error().Msgf("create proposal state change error: %+v", err)
+						return err
+					}
+
+					if err = createJobToUpdateNoVoteProposalToNextState(tx, proposalRecord, model.GetCurrentUtcEpochSecond()+proposalRecord.PendingExecutionSecond, model.ProposalStateExecuted); err != nil {
 						log.Error().Msgf("create proposal state change error: %+v", err)
 						return err
 					}
