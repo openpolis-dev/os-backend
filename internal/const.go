@@ -91,3 +91,5 @@ const (
 	TaskVetoedProposal       = "proposal/veto"
 	TaskUpdateProposalState  = "proposal/update_state"
 )
+
+const ContentBlockTitleCreateProjectName = "立项信息"

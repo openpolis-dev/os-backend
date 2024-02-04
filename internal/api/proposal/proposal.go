@@ -1,6 +1,7 @@
 package proposal
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -19,6 +20,7 @@ import (
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk"
 	"github.com/theseed-labs/os-backend/internal/sdk/metaforo"
+	"github.com/theseed-labs/os-backend/internal/task_manager"
 	"github.com/xiaosongfu/gormfind"
 	"gorm.io/gorm"
 )
@@ -645,17 +647,32 @@ func updateProposalState(db *gorm.DB, user *middleware.CurUser, proposalStrId st
 		return nil, db.Transaction(func(tx *gorm.DB) error {
 			proposalRecord.State = int(model.ProposalStateApproved)
 
-			var maxSipVal int
-			if err := db.Model(&model.Proposal{}).Select("max(sip)").Limit(1).Pluck("sip", &maxSipVal).Error; err != nil {
-				log.Error().Msgf("get vote records error: %+v", err)
+			var pTemplate *model.ProposalTemplate
+			if err := tx.Model(&proposalRecord).Association("ProposalTemplate").Find(&pTemplate); err != nil {
+				log.Error().Msgf("get proposal template error: %+v", err)
 				return err
 			}
 
-			if maxSipVal != 0 {
-				proposalRecord.Sip = maxSipVal + 1
+			if pTemplate != nil && pTemplate.Type == model.ProposalTemplateTypeCloseProject {
+				createProjectProposal, err := getCreatingProjectProposalInfoFromClosingProposalContentBlocks(tx, proposalRecord)
+				if err != nil {
+					log.Error().Msgf("get creating project proposal error: %+v", err)
+					return err
+				}
+				proposalRecord.Sip = createProjectProposal.Sip
 			} else {
-				log.Error().Msgf("TTT: init sip val: %d", cfg.ProposalData.SipInitNumber)
-				proposalRecord.Sip = cfg.ProposalData.SipInitNumber
+				var maxSipVal int
+				if err := db.Model(&model.Proposal{}).Select("max(sip)").Limit(1).Pluck("sip", &maxSipVal).Error; err != nil {
+					log.Error().Msgf("get vote records error: %+v", err)
+					return err
+				}
+
+				if maxSipVal != 0 {
+					proposalRecord.Sip = maxSipVal + 1
+				} else {
+					log.Error().Msgf("TTT: init sip val: %d", cfg.ProposalData.SipInitNumber)
+					proposalRecord.Sip = cfg.ProposalData.SipInitNumber
+				}
 			}
 
 			err = tx.Save(&proposalRecord).Error
@@ -739,4 +756,32 @@ func generateFrontendProposalRecords(db *gorm.DB, querySql string, page *gormfin
 	})
 
 	return total, resultRows, nil
+}
+
+// TODO: Temporary solution to get open project proposal info while creating close project proposal
+
+func getCreatingProjectProposalInfoFromClosingProposalContentBlocks(db *gorm.DB, closeProjectProposal *model.Proposal) (*model.Proposal, error) {
+	// Find the related created project data
+	var pContentBlocks []*model.ProposalContentBlock
+	if err := db.Model(&closeProjectProposal).Association("ProposalContentBlocks").Find(&pContentBlocks); err != nil {
+		log.Error().Msgf("get proposal content blocks error: %+v", err)
+		return nil, err
+	}
+
+	for _, block := range pContentBlocks {
+		if block.Title == internal.ContentBlockTitleCreateProjectName {
+			var contentParams task_manager.AssociateProposalParams
+			err := json.Unmarshal([]byte(block.Content), &contentParams)
+			if err != nil {
+				return nil, err
+			}
+			proposalRcd := model.Proposal{ID: contentParams.ProposalId}
+			err = db.Find(&proposalRcd).Error
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	return nil, errors.New("create project proposal not found")
 }

@@ -37,6 +37,11 @@ type UpdateProposalStateParams struct {
 	State      int  `json:"state"`
 }
 
+type AssociateProposalParams struct {
+	Relate     string `json:"relate"`
+	ProposalId uint   `json:"proposal_id"`
+}
+
 func CreateVetoProposalTask(db *gorm.DB, job *model.CronJob, jobParams string) {
 	log.Debug().Msgf("start veto proposal task: %+v", job)
 	err := db.Model(&job).Updates(model.CronJob{State: model.CronJobStateRunning}).Error
