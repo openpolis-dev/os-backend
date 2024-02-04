@@ -20,7 +20,6 @@ import (
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk"
 	"github.com/theseed-labs/os-backend/internal/sdk/metaforo"
-	"github.com/theseed-labs/os-backend/internal/task_manager"
 	"github.com/xiaosongfu/gormfind"
 	"gorm.io/gorm"
 )
@@ -760,6 +759,11 @@ func generateFrontendProposalRecords(db *gorm.DB, querySql string, page *gormfin
 
 // TODO: Temporary solution to get open project proposal info while creating close project proposal
 
+type associateProposalParams struct {
+	Relate     string `json:"relate"`
+	ProposalId uint   `json:"proposal_id"`
+}
+
 func getCreatingProjectProposalInfoFromClosingProposalContentBlocks(db *gorm.DB, closeProjectProposal *model.Proposal) (*model.Proposal, error) {
 	// Find the related created project data
 	var pContentBlocks []*model.ProposalContentBlock
@@ -770,7 +774,7 @@ func getCreatingProjectProposalInfoFromClosingProposalContentBlocks(db *gorm.DB,
 
 	for _, block := range pContentBlocks {
 		if block.Title == internal.ContentBlockTitleCreateProjectName {
-			var contentParams task_manager.AssociateProposalParams
+			var contentParams associateProposalParams
 			err := json.Unmarshal([]byte(block.Content), &contentParams)
 			if err != nil {
 				return nil, err
