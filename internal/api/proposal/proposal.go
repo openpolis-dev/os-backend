@@ -222,7 +222,10 @@ func Update(ctx *gin.Context) {
 
 		// If the publicity second is 0, update the db proposal to voting state
 		if proposalRecord.PublicitySecond == 0 {
+			log.Debug().Msgf("proposal has no publicity time, change to approved status directly")
 			_, err = updateProposalState(db, user, proposalIdStr, model.ProposalStateApproved, cfg)
+		} else if proposalRecord.VoteType == model.ProposalVoteTypeNone {
+			go createProposalAutomationTasks(db, proposalRecord, model.ProposalStateApproved, "", model.ProposalVoteTypeNone)
 		}
 	}
 
@@ -289,8 +292,10 @@ func Create(ctx *gin.Context) {
 
 		// If the publicity second is 0, update the db proposal to voting state or pending execution state, and handle SIP data
 		if proposalRecord.PublicitySecond == 0 {
-			log.Debug().Msgf("proposal has no publicity time, change to approved status directly. Checking for vote type will be done later")
+			log.Debug().Msgf("proposal has no publicity time, change to approved status directly")
 			_, err = updateProposalState(db, user, fmt.Sprintf("%d", proposalRecord.ID), model.ProposalStateApproved, cfg)
+		} else if proposalRecord.VoteType == model.ProposalVoteTypeNone {
+			go createProposalAutomationTasks(db, proposalRecord, model.ProposalStateApproved, "", model.ProposalVoteTypeNone)
 		}
 
 		db.First(&proposalRecord, proposalRecord.ID)
@@ -675,6 +680,14 @@ func updateProposalState(db *gorm.DB, user *middleware.CurUser, proposalStrId st
 					proposalRecord.State = int(model.ProposalStatePendingExecution)
 					go createProposalAutomationTasks(db, proposalRecord, model.ProposalStateExecuted, "", model.ProposalVoteTypeNone)
 				}
+
+				// Delete cronjob created while creating for updating proposal state to approved
+				db.Model(&model.CronJob{}).Where(&model.CronJob{
+					ProposalId:  proposalRecord.ID,
+					HandlerName: internal.TaskUpdateProposalState,
+				}).Updates(&model.CronJob{
+					State: model.CronJobStateTerminated,
+				})
 			} else {
 				for _, record := range voteRecords {
 					err := metaforo.UpdateVoteTime(cfg.MetaforoData.AccessToken,

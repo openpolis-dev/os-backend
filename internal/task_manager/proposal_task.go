@@ -2,6 +2,7 @@ package task_manager
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	"github.com/rs/zerolog/log"
@@ -120,14 +121,20 @@ func UpdateProposalSateTask(db *gorm.DB, job *model.CronJob, jobParams string) {
 	} else {
 		proposal := model.Proposal{ID: params.ProposalId}
 		log.Debug().Msgf("update proposal %d from state %d to %d", proposal.ID, proposal.State, params.State)
-		proposal.State = params.State
-		err = db.Updates(&proposal).Error
-		if err != nil {
-			log.Warn().Msgf("update proposal state error: %+v", err)
+		if proposal.IsInFinState() {
+			err := fmt.Errorf("proposal %d is already in final state %d", proposal.ID, proposal.State)
+			log.Warn().Msgf(err.Error())
 			execResult = err.Error()
 			jobFailed = true
+		} else {
+			proposal.State = params.State
+			err = db.Updates(&proposal).Error
+			if err != nil {
+				log.Warn().Msgf("update proposal state error: %+v", err)
+				execResult = err.Error()
+				jobFailed = true
+			}
 		}
-
 	}
 	job.LastExecTs = model.GetCurrentUtcEpochSecond()
 	job.LastExecResult = execResult
