@@ -26,6 +26,7 @@ type ListProposalQueryParams struct {
 	CategoryId    uint   `form:"category_id"`
 	PendingSubmit int    `form:"pending_submit"`
 	Q             string `form:"q"`
+	Sip           string `form:"sip"`
 }
 
 // ComponentRequestData represents a component request, which contains component name and associated data
@@ -41,17 +42,18 @@ type ComponentRequestData struct {
 }
 
 type CreateOrUpdateProposalData struct {
-	TemplateId          uint                          `json:"template_id"`
-	Title               string                        `json:"title"`
-	ProposalCategoryId  uint                          `json:"proposal_category_id"`
-	ContentBlocks       []*FrontendContentBlockRecord `json:"content_blocks"`
-	Components          []*ComponentRequestData       `json:"components"`
-	VoteGateId          uint                          `json:"vote_gate_id"`
-	MetaforoAccessToken string                        `json:"metaforo_access_token"`
-	SubmitToMetaforo    bool                          `json:"submit_to_metaforo"`
-	EditorType          int                           `json:"editor_type"`
-	VoteType            int                           `json:"vote_type"`
-	VoteOptions         []string                      `json:"vote_options"`
+	TemplateId              uint                          `json:"template_id"`
+	Title                   string                        `json:"title"`
+	ProposalCategoryId      uint                          `json:"proposal_category_id"`
+	ContentBlocks           []*FrontendContentBlockRecord `json:"content_blocks"`
+	Components              []*ComponentRequestData       `json:"components"`
+	VoteGateId              uint                          `json:"vote_gate_id"`
+	MetaforoAccessToken     string                        `json:"metaforo_access_token"`
+	SubmitToMetaforo        bool                          `json:"submit_to_metaforo"`
+	EditorType              int                           `json:"editor_type"`
+	VoteType                int                           `json:"vote_type"`
+	VoteOptions             []string                      `json:"vote_options"`
+	CreateProjectProposalId uint                          `json:"create_project_proposal_id"`
 }
 
 type RejectProposalData struct {
@@ -108,6 +110,7 @@ type FrontendProposalListRecord struct {
 	StateId         int    `json:"-"`
 	CreateTs        int64  `json:"create_ts"`
 	Version         uint   `json:"version"`
+	Sip             int    `json:"sip"`
 
 	// Vote related state
 	// TODO: Vote Gate related logic
@@ -168,6 +171,8 @@ type FrontendProposalDetailRecord struct {
 	Reviewer        string `json:"reviewer"`
 	ReviewerAvatar  string `json:"reviewer_avatar"`
 
+	Sip int `json:"sip"`
+
 	// Arweave Hash
 	Arweave string `json:"arweave"`
 
@@ -197,6 +202,7 @@ type FrontendProposalDetailRecord struct {
 
 	IsInstantExecution bool  `json:"is_instant_execution"`
 	ExecutionTs        int64 `json:"execution_ts"`
+	PublicityTs        int64 `json:"publicity_ts"`
 
 	// Timestamps
 	CreateTs int64 `json:"create_ts"`
@@ -403,6 +409,18 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 		log.Error().Msgf("get proposal cronjob error: %+v", err)
 	}
 
+	var voteRecords []*model.ProposalVoteRecord
+	err = db.Model(proposal).Association("VoteRecords").Find(&voteRecords)
+	if err != nil {
+		log.Error().Msgf("get vote records error: %+v", err)
+		return nil, err
+	}
+
+	proposalPublicityTs := proposal.CreateTs + proposal.PublicitySecond
+	for _, r := range voteRecords {
+		proposalPublicityTs = r.StartTs
+	}
+
 	for _, job := range proposalCronJobs {
 		if job.NextExecTs > proposalExecTs {
 			proposalExecTs = job.NextExecTs
@@ -426,6 +444,7 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 			TotalCount: len(editHistoryRecords),
 			Lists:      editHistoryRecords,
 		},
+		Sip:                     proposal.Sip,
 		Arweave:                 proposal.ArweaveHash,
 		CommentCount:            commentCount,
 		Comments:                frontendCommentsRecords,
@@ -437,5 +456,6 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 		TemplateName:            templateName,
 		IsInstantExecution:      proposal.PendingExecutionSecond == 0,
 		ExecutionTs:             proposalExecTs,
+		PublicityTs:             proposalPublicityTs,
 	}, nil
 }

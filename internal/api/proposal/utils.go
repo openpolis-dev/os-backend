@@ -17,6 +17,7 @@ SELECT p.id,
        u.avatar as applicant_avatar,
        pc.name  as category_name,
        p.create_ts,
+       p.sip,
        p.version,
        p.state as state_id
 FROM proposals p

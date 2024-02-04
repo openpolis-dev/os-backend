@@ -93,14 +93,7 @@ func ListTemplates(ctx *gin.Context) {
 		}
 		return &TemplateResponseWithComponents{
 			TemplateResponse: tmplRsp,
-			Components: lo.Map(r.Components, func(c *model.ProposalComponent, _ int) *ComponentResponse {
-				return &ComponentResponse{
-					ID:            c.ID,
-					Name:          c.Name,
-					Schema:        c.Schema,
-					ScreenshotUri: c.ScreenshotUri,
-				}
-			}),
+			Components:       getTemplateComponents(r),
 		}
 	})
 
@@ -150,16 +143,11 @@ func ListTemplatesWithPerm(ctx *gin.Context) {
 			return rslt && r
 		}, true)
 
+		components := getTemplateComponents(&tmplDbRcd)
+
 		return &TemplateResponseWithComponents{
 			TemplateResponse: *r,
-			Components: lo.Map(tmplDbRcd.Components, func(c *model.ProposalComponent, _ int) *ComponentResponse {
-				return &ComponentResponse{
-					ID:            c.ID,
-					Name:          c.Name,
-					Schema:        c.Schema,
-					ScreenshotUri: c.ScreenshotUri,
-				}
-			}),
+			Components:       components,
 		}
 	})
 
@@ -246,4 +234,34 @@ func UpdateTemplate(ctx *gin.Context) {
 	}
 
 	ctx.JSON(200, api.Success(newTmplRcd))
+}
+
+func getTemplateComponents(tmplDbRcd *model.ProposalTemplate) []*ComponentResponse {
+	compNameMapping := lo.SliceToMap(tmplDbRcd.Components, func(c *model.ProposalComponent) (string, *model.ProposalComponent) {
+		return c.Name, c
+	})
+	var components []*ComponentResponse
+	if tmplDbRcd.ComponentNameList != nil {
+		for _, name := range tmplDbRcd.ComponentNameList {
+			if comp, ok := compNameMapping[name]; ok {
+				components = append(components, &ComponentResponse{
+					ID:            comp.ID,
+					Name:          comp.Name,
+					Schema:        comp.Schema,
+					ScreenshotUri: comp.Schema,
+				})
+			}
+		}
+	} else {
+		components = lo.Map(tmplDbRcd.Components, func(c *model.ProposalComponent, _ int) *ComponentResponse {
+			return &ComponentResponse{
+				ID:            c.ID,
+				Name:          c.Name,
+				Schema:        c.Schema,
+				ScreenshotUri: c.ScreenshotUri,
+			}
+		})
+	}
+
+	return components
 }

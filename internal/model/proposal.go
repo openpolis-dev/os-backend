@@ -147,6 +147,12 @@ type Proposal struct {
 	ProposalCategoryID uint `gorm:"index"`
 	ProposalCategory   ProposalCategory
 
+	Sip int `gorm:"index"`
+
+	// AssociateProposalId saves associated proposal record with this proposal,
+	// which is using for rejecting and closing project for now
+	AssociateProposalId uint
+
 	VoteTimeProperties
 }
 
@@ -290,6 +296,9 @@ type ProposalCategory struct {
 	IsActive bool
 
 	CanBeVetoed bool
+
+	// CategoryIdForCloseProject saves which category should be queried when trying to get project can be closed
+	CategoryIdForCloseProject uint
 
 	VoteTimeProperties
 }
@@ -490,6 +499,9 @@ type ProposalTemplate struct {
 
 	// Components saves component used in this template,
 	Components []*ProposalComponent `gorm:"many2many:template_components;"`
+
+	// ComponentNameList saves order of component in proposal template
+	ComponentNameList []string `gorm:"serializer:json"`
 
 	// Proposal category
 	ProposalCategoryID uint `gorm:"index"`
