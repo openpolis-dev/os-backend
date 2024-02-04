@@ -696,13 +696,18 @@ func updateProposalState(db *gorm.DB, user *middleware.CurUser, proposalStrId st
 				} else {
 					proposalRecord.State = int(model.ProposalStatePendingExecution)
 					// Delete cronjob created while creating for updating proposal state to approved
-					db.Model(&model.CronJob{}).Where(&model.CronJob{
+					if err = tx.Model(&model.CronJob{}).Delete(&model.CronJob{}, &model.CronJob{
 						ProposalId:  proposalRecord.ID,
 						HandlerName: internal.TaskUpdateProposalState,
-					}).Updates(&model.CronJob{
-						State: model.CronJobStateTerminated,
-					})
-					go createProposalAutomationTasks(db, proposalRecord, model.ProposalStateExecuted, "", model.ProposalVoteTypeNone)
+					}).Error; err != nil {
+						log.Error().Msgf("create proposal state change error: %+v", err)
+						return err
+					}
+
+					if err = createJobToUpdateNoVoteProposalToNextState(db, proposalRecord, model.GetCurrentUtcEpochSecond()+proposalRecord.PendingExecutionSecond, model.ProposalStateExecuted); err != nil {
+						log.Error().Msgf("create proposal state change error: %+v", err)
+						return err
+					}
 				}
 			} else {
 				for _, record := range voteRecords {
@@ -818,7 +823,10 @@ func getCreatingProjectProposalInfoFromClosingProposalContentBlocks(db *gorm.DB,
 
 func createJobToUpdateNoVoteProposalToNextState(db *gorm.DB, proposal *model.Proposal, jobExecTs int64, nextState model.ProposalState) error {
 	var err error
-	var proposalComponentRecord model.ProposalComponentRecord
+	proposalComponentRecord := model.ProposalComponentRecord{
+		ProposalID:  proposal.ID,
+		ComponentID: 0,
+	}
 	if err = db.Model(&proposalComponentRecord).
 		Where(map[string]any{"proposal_id": proposal.ID, "component_id": 0}). // Note: 0 won't be passed to query if using struct data
 		First(&proposalComponentRecord).Error; err != nil {
