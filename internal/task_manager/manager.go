@@ -123,24 +123,22 @@ func (t *TaskManager) ScanTaskPool() {
 func (t *TaskManager) ActivateRefreshVoteStateJobIfRequired() error {
 	log.Debug().Msgf("activate refresh vote state job")
 
-	var refreshProposalInfoJob model.CronJob
-	if err := t.DatabaseClient.Model(&refreshProposalInfoJob).Where("handler_name = ?", internal.TaskRefreshVotingProposalVoteInfo).First(&refreshProposalInfoJob).Error; err != nil {
-		if !errors.Is(err, gorm.ErrRecordNotFound) {
-			return err
-		}
+	refreshProposalInfoJob := model.CronJob{
+		HandlerName: internal.TaskRefreshVotingProposalVoteInfo,
+		CronExp:     internal.TaskRefreshVotingProposalVoteInfoCronExpr,
+		LastExecTs:  0,
+		NextExecTs:  cronexpr.MustParse(internal.TaskRefreshVotingProposalVoteInfoCronExpr).Next(time.Now()).UTC().Unix(),
+		JobParams:   fmt.Sprintf(`{"group_name": "%s"}`, t.AppConfig.MetaforoData.GroupName),
+		State:       model.CronJobStateActive,
 	}
 
-	refreshProposalInfoJob.HandlerName = internal.TaskRefreshVotingProposalVoteInfo
-	refreshProposalInfoJob.State = model.CronJobStateActive
-	refreshProposalInfoJob.CronExp = internal.TaskRefreshVotingProposalVoteInfoCronExpr
-	refreshProposalInfoJob.CreateTs = time.Now().UTC().Unix()
-	refreshProposalInfoJob.NextExecTs = cronexpr.MustParse(internal.TaskRefreshVotingProposalVoteInfoCronExpr).Next(time.Now()).UTC().Unix()
-	refreshProposalInfoJob.JobParams = fmt.Sprintf(`{"group_name": "%s"}`, t.AppConfig.MetaforoData.GroupName)
-
-	if err := t.DatabaseClient.Model(&refreshProposalInfoJob).Where("handler_name = ?", internal.TaskRefreshVotingProposalVoteInfo).Updates(&refreshProposalInfoJob).Error; err != nil {
+	if err = t.DatabaseClient.Model(&model.CronJob{}).
+		Where("handler_name = ?", internal.TaskRefreshVotingProposalVoteInfo).
+		Updates(&refreshProposalInfoJob).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return t.DatabaseClient.Create(&refreshProposalInfoJob).Error
 		} else {
+			log.Error().Msgf("Refresh vote state job update error: %+v", err)
 			return err
 		}
 	}
