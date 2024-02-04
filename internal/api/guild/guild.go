@@ -33,6 +33,9 @@ type (
 		Proposals []string `json:"proposals"`
 
 		Budgets []*BudgetParam `json:"budgets"`
+
+		ContantWay  string `json:"ContantWay"`
+		OfficalLink string `json:"OfficalLink"`
 	}
 	BudgetParam struct {
 		Name        string          `json:"name"`
@@ -43,6 +46,9 @@ type (
 		Name    string `json:"name"`
 		Intro   string `json:"intro"`
 		Desc    string `json:"desc"`
+
+		ContantWay  string `json:"ContantWay"`
+		OfficalLink string `json:"OfficalLink"`
 	}
 	DetailReply struct {
 		model.Guild
@@ -120,6 +126,9 @@ func Create(ctx *gin.Context) {
 		Creator:   common.FormatUserWallet(user.Wallet),
 		CreateTs:  model.GetCurrentUtcEpochSecond(),
 		UpdateTs:  model.GetCurrentUtcEpochSecond(),
+
+		ContantWay:  req.ContantWay,
+		OfficalLink: req.OfficalLink,
 	}
 	err = model.GuildModel.CreateOrUpdate(tx, &guild)
 	if err != nil {
@@ -269,6 +278,10 @@ func Update(ctx *gin.Context) {
 	guild.Name = req.Name
 	guild.Intro = req.Intro
 	guild.Desc = req.Desc
+
+	guild.ContantWay = req.ContantWay
+	guild.OfficalLink = req.OfficalLink
+
 	guild.UpdateTs = model.GetCurrentUtcEpochSecond()
 	guild.UpdatedAt = time.Now().In(internal.ProjectTimezone)
 	err = model.GuildModel.CreateOrUpdate(db, guild)

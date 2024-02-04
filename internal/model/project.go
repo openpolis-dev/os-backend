@@ -46,6 +46,16 @@ type Project struct {
 	UpdatedAt time.Time `json:"-"`
 	CreateTs  int64     `json:"create_ts" gorm:"index"`
 	UpdateTs  int64     `json:"update_ts" gorm:"index"`
+
+	SIP          string `json:"SIP"`
+	Category     string `json:"Category"`
+	ApprovalLink string `json:"ApprovalLink"`
+	OverLink     string `json:"OverLink"`
+	Budget       string `json:"Budget"`
+	Deliverable  string `json:"Deliverable"`
+	PlanTime     string `json:"PlanTime"`
+	ContantWay   string `json:"ContantWay"`
+	OfficialLink string `json:"OfficialLink"`
 }
 
 type projectModel struct{}

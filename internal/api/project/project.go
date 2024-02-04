@@ -34,7 +34,17 @@ type (
 		Members   []string `json:"members"`
 		Proposals []string `json:"proposals"`
 
-		Budgets []*BudgetParam `json:"budgets"`
+		// Budgets []*BudgetParam `json:"budgets"`
+
+		SIP          string `json:"SIP"`
+		Category     string `json:"Category"`
+		ApprovalLink string `json:"ApprovalLink"`
+		OverLink     string `json:"OverLink"`
+		Budget       string `json:"Budget"`
+		Deliverable  string `json:"Deliverable"`
+		PlanTime     string `json:"PlanTime"`
+		ContantWay   string `json:"ContantWay"`
+		OfficialLink string `json:"OfficialLink"`
 	}
 	BudgetParam struct {
 		Name        string          `json:"name"`
@@ -42,9 +52,14 @@ type (
 	}
 	UpdateReq struct {
 		LogoStr string `json:"logo"`
-		Name    string `json:"name"`
-		Intro   string `json:"intro"`
-		Desc    string `json:"desc"`
+		// Name    string `json:"name"`
+		// Intro   string `json:"intro"`
+		Desc string `json:"desc"`
+
+		Sponsors     []string `json:"sponsors"`
+		OverLink     string   `json:"OverLink"`
+		ContantWay   string   `json:"ContantWay"`
+		OfficialLink string   `json:"OfficialLink"`
 	}
 	DetailReply struct {
 		model.Project
@@ -118,6 +133,16 @@ func Create(ctx *gin.Context) {
 		UpdatedAt: time.Now().In(internal.ProjectTimezone),
 		CreateTs:  model.GetCurrentUtcEpochSecond(),
 		UpdateTs:  model.GetCurrentUtcEpochSecond(),
+
+		SIP:          req.SIP,
+		Category:     req.Category,
+		ApprovalLink: req.ApprovalLink,
+		OverLink:     req.OverLink,
+		Budget:       req.Budget,
+		Deliverable:  req.Deliverable,
+		PlanTime:     req.PlanTime,
+		ContantWay:   req.ContantWay,
+		OfficialLink: req.OfficialLink,
 	}
 	err = model.ProjectModel.CreateOrUpdate(tx, &proj)
 	if err != nil {
@@ -267,12 +292,22 @@ func Update(ctx *gin.Context) {
 	}
 
 	// update logo and name
+	sponsors := lo.Map[string](req.Sponsors, func(item string, _ int) string {
+		return common.FormatUserWallet(item)
+	})
+
 	proj.Logo = logoUrl
-	proj.Name = req.Name
-	proj.Intro = req.Intro
+	// proj.Name = req.Name
+	// proj.Intro = req.Intro
 	proj.Desc = req.Desc
+	proj.Sponsors = sponsors
+	proj.OverLink = req.OverLink
+	proj.ContantWay = req.ContantWay
+	proj.OfficialLink = req.OfficialLink
+
 	proj.UpdateTs = model.GetCurrentUtcEpochSecond()
 	proj.UpdatedAt = time.Now().In(internal.ProjectTimezone)
+
 	err = model.ProjectModel.CreateOrUpdate(db, proj)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
