@@ -414,11 +414,9 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 		return nil, err
 	}
 
-	proposalPublicityTs := model.GetCurrentUtcEpochSecond() + proposal.PublicitySecond
+	proposalPublicityTs := proposal.CreateTs + proposal.PublicitySecond
 	for _, r := range voteRecords {
-		if r.StartTs < proposalPublicityTs {
-			proposalPublicityTs = r.StartTs
-		}
+		proposalPublicityTs = r.StartTs
 	}
 
 	for _, job := range proposalCronJobs {
