@@ -155,15 +155,26 @@ func ListTemplatesWithPerm(ctx *gin.Context) {
 		})
 
 		var components []*ComponentResponse
-		for _, name := range tmplDbRcd.ComponentNameList {
-			if comp, ok := compNameMapping[name]; ok {
-				components = append(components, &ComponentResponse{
-					ID:            comp.ID,
-					Name:          comp.Name,
-					Schema:        comp.Schema,
-					ScreenshotUri: comp.Schema,
-				})
+		if tmplDbRcd.ComponentNameList != nil {
+			for _, name := range tmplDbRcd.ComponentNameList {
+				if comp, ok := compNameMapping[name]; ok {
+					components = append(components, &ComponentResponse{
+						ID:            comp.ID,
+						Name:          comp.Name,
+						Schema:        comp.Schema,
+						ScreenshotUri: comp.Schema,
+					})
+				}
 			}
+		} else {
+			components = lo.Map(tmplDbRcd.Components, func(c *model.ProposalComponent, _ int) *ComponentResponse {
+				return &ComponentResponse{
+					ID:            c.ID,
+					Name:          c.Name,
+					Schema:        c.Schema,
+					ScreenshotUri: c.ScreenshotUri,
+				}
+			})
 		}
 
 		return &TemplateResponseWithComponents{
