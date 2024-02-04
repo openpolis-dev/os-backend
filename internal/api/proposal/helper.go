@@ -921,7 +921,7 @@ func createProposalAutomationTasks(db *gorm.DB, proposal *model.Proposal, finSta
 		if proposal.PendingExecutionSecond != 0 {
 			var proposalComponentRecord model.ProposalComponentRecord
 			if err = db.Model(&proposalComponentRecord).
-				Where(map[string]any{"proposal_id": proposal.ID, "component_id": 0}). // Note: 0 won't be passed to query if using struct data
+				Where(map[string]any{"proposal_id": proposal.ID, "component_id": 0, "state": int(model.CronJobStateActive)}). // Note: 0 won't be passed to query if using struct data
 				First(&proposalComponentRecord).Error; err != nil {
 				if errors.Is(err, gorm.ErrRecordNotFound) {
 					db.Create(&proposalComponentRecord)

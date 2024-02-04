@@ -688,16 +688,15 @@ func updateProposalState(db *gorm.DB, user *middleware.CurUser, proposalStrId st
 					proposalRecord.State = int(model.ProposalStateExecuted)
 				} else {
 					proposalRecord.State = int(model.ProposalStatePendingExecution)
+					// Delete cronjob created while creating for updating proposal state to approved
+					db.Model(&model.CronJob{}).Where(&model.CronJob{
+						ProposalId:  proposalRecord.ID,
+						HandlerName: internal.TaskUpdateProposalState,
+					}).Updates(&model.CronJob{
+						State: model.CronJobStateTerminated,
+					})
 					go createProposalAutomationTasks(db, proposalRecord, model.ProposalStateExecuted, "", model.ProposalVoteTypeNone)
 				}
-
-				// Delete cronjob created while creating for updating proposal state to approved
-				db.Model(&model.CronJob{}).Where(&model.CronJob{
-					ProposalId:  proposalRecord.ID,
-					HandlerName: internal.TaskUpdateProposalState,
-				}).Updates(&model.CronJob{
-					State: model.CronJobStateTerminated,
-				})
 			} else {
 				for _, record := range voteRecords {
 					err := metaforo.UpdateVoteTime(cfg.MetaforoData.AccessToken,
