@@ -185,10 +185,9 @@ type Thread struct {
 	//UserTitle any        `json:"user_title"`
 	Posts []PostData `json:"posts"`
 	//PostsMap        []interface{} `json:"posts_map"` // map[string]int
-	FirstLevelCount int           `json:"first_level_count"`
-	IsSubscribe     bool          `json:"is_subscribe"`
-	IsPin           int           `json:"is_pin"`
-	Pinned          []interface{} `json:"pinned"`
+	FirstLevelCount int  `json:"first_level_count"`
+	IsSubscribe     bool `json:"is_subscribe"`
+	IsPin           int  `json:"is_pin"`
 
 	EditHistory struct {
 		Count int                      `json:"count"`
