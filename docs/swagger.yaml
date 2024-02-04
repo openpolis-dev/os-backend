@@ -969,6 +969,8 @@ definitions:
         items:
           $ref: '#/definitions/proposal.FrontendContentBlockRecord'
         type: array
+      create_project_proposal_id:
+        type: integer
       editor_type:
         type: integer
       metaforo_access_token:
@@ -1116,6 +1118,8 @@ definitions:
         type: boolean
       proposal_category_id:
         type: integer
+      publicity_ts:
+        type: integer
       reject_metaforo_comment_id:
         type: integer
       reject_reason:
@@ -1126,6 +1130,8 @@ definitions:
         type: string
       reviewer_avatar:
         type: string
+      sip:
+        type: integer
       state:
         type: string
       template_name:
@@ -1172,6 +1178,8 @@ definitions:
       create_ts:
         type: integer
       id:
+        type: integer
+      sip:
         type: integer
       state:
         type: string
@@ -2608,6 +2616,10 @@ paths:
       - description: state of proposal, for multiple states, use comma as separator
         in: query
         name: state
+        type: string
+      - description: whether query only proposals with SIP number
+        in: query
+        name: sip
         type: string
       - description: filter proposal records with specified category
         in: query

@@ -1753,6 +1753,12 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
+                        "type": "string",
+                        "description": "whether query only proposals with SIP number",
+                        "name": "sip",
+                        "in": "query"
+                    },
+                    {
                         "type": "integer",
                         "description": "filter proposal records with specified category",
                         "name": "category_id",
@@ -4569,6 +4575,9 @@ const docTemplate = `{
                         "$ref": "#/definitions/proposal.FrontendContentBlockRecord"
                     }
                 },
+                "create_project_proposal_id": {
+                    "type": "integer"
+                },
                 "editor_type": {
                     "type": "integer"
                 },
@@ -4785,6 +4794,9 @@ const docTemplate = `{
                 "proposal_category_id": {
                     "type": "integer"
                 },
+                "publicity_ts": {
+                    "type": "integer"
+                },
                 "reject_metaforo_comment_id": {
                     "type": "integer"
                 },
@@ -4799,6 +4811,9 @@ const docTemplate = `{
                 },
                 "reviewer_avatar": {
                     "type": "string"
+                },
+                "sip": {
+                    "type": "integer"
                 },
                 "state": {
                     "type": "string"
@@ -4870,6 +4885,9 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "id": {
+                    "type": "integer"
+                },
+                "sip": {
                     "type": "integer"
                 },
                 "state": {

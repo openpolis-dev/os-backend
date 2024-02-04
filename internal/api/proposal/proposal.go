@@ -34,7 +34,7 @@ import (
 //	@Param		sort_field	query		string	false	"sort by which field"
 //	@Param		sort_order	query		string	false	"order of sort"	Enum(asc desc)
 //	@Param		state		query		string	false	"state of proposal, for multiple states, use comma as separator"
-//	@Param		sip		query		string	false	"whether query only proposals with SIP number"
+//	@Param		sip			query		string	false	"whether query only proposals with SIP number"
 //	@Param		category_id	query		int		false	"filter proposal records with specified category"
 //	@success	200			{object}	api.Reply{data=api.ListReplyData{rows=FrontendProposalListRecord}}
 func List(ctx *gin.Context) {
