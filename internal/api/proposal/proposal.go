@@ -225,7 +225,12 @@ func Update(ctx *gin.Context) {
 			log.Debug().Msgf("proposal has no publicity time, change to approved status directly")
 			_, err = updateProposalState(db, user, proposalIdStr, model.ProposalStateApproved, cfg)
 		} else if proposalRecord.VoteType == model.ProposalVoteTypeNone {
-			go createProposalAutomationTasks(db, proposalRecord, model.ProposalStateApproved, "", model.ProposalVoteTypeNone)
+			if err = createJobToUpdateNoVoteProposalToNextState(db, proposalRecord, proposalRecord.CreateTs+proposalRecord.PublicitySecond, model.ProposalStateApproved); err != nil {
+				log.Error().Msgf("create proposal state change error: %+v", err)
+				sdk.LogServerErrorToSentry(ctx, err)
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
+				return
+			}
 		}
 	}
 
@@ -295,7 +300,12 @@ func Create(ctx *gin.Context) {
 			log.Debug().Msgf("proposal has no publicity time, change to approved status directly")
 			_, err = updateProposalState(db, user, fmt.Sprintf("%d", proposalRecord.ID), model.ProposalStateApproved, cfg)
 		} else if proposalRecord.VoteType == model.ProposalVoteTypeNone {
-			go createProposalAutomationTasks(db, proposalRecord, model.ProposalStateApproved, "", model.ProposalVoteTypeNone)
+			if err = createJobToUpdateNoVoteProposalToNextState(db, proposalRecord, proposalRecord.CreateTs+proposalRecord.PublicitySecond, model.ProposalStateApproved); err != nil {
+				log.Error().Msgf("create proposal state change error: %+v", err)
+				sdk.LogServerErrorToSentry(ctx, err)
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
+				return
+			}
 		}
 
 		db.First(&proposalRecord, proposalRecord.ID)
@@ -798,4 +808,64 @@ func getCreatingProjectProposalInfoFromClosingProposalContentBlocks(db *gorm.DB,
 	}
 
 	return nil, errors.New("create project proposal not found")
+}
+
+func createJobToUpdateNoVoteProposalToNextState(db *gorm.DB, proposal *model.Proposal, jobExecTs int64, nextState model.ProposalState) error {
+	var err error
+	var proposalComponentRecord model.ProposalComponentRecord
+	if err = db.Model(&proposalComponentRecord).
+		Where(map[string]any{"proposal_id": proposal.ID, "component_id": 0}). // Note: 0 won't be passed to query if using struct data
+		First(&proposalComponentRecord).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			db.Create(&proposalComponentRecord)
+		} else {
+			log.Error().Msgf("create proposal component record error: %+v", err)
+			return err
+		}
+	} else {
+		log.Debug().Msgf("automation for updating state has already created, return")
+		return nil
+	}
+
+	updateProposalStateTaskParams := map[string]any{
+		"proposal_id": proposal.ID,
+		"state":       int(nextState),
+	}
+
+	jobParamsStr, err := json.Marshal(updateProposalStateTaskParams)
+	if err != nil {
+		log.Error().Msgf("marshal update proposal state params error: %+v", err)
+		return err
+	}
+
+	currentTs := model.GetCurrentUtcEpochSecond()
+
+	finTask := &model.CronJob{
+		CreateTs:                  currentTs,
+		UpdateTs:                  currentTs,
+		HandlerName:               internal.TaskUpdateProposalState,
+		ProposalComponentRecordId: int(proposalComponentRecord.ID),
+		ProposalId:                proposal.ID,
+		LastExecTs:                0,
+		NextExecTs:                jobExecTs,
+		JobParams:                 string(jobParamsStr),
+		VoteResult:                "",
+		VoteType:                  proposal.VoteType,
+		State:                     model.CronJobStateActive,
+		LastExecResult:            "",
+	}
+	createTaskTx := db.Where(model.CronJob{
+		HandlerName:               internal.TaskUpdateProposalState,
+		ProposalComponentRecordId: int(proposalComponentRecord.ID),
+		ProposalId:                proposal.ID}).
+		Assign(&finTask).FirstOrCreate(&finTask)
+
+	if createTaskTx.Error != nil {
+		log.Error().Msgf("create proposal fin task error: %+v", createTaskTx.Error)
+		return createTaskTx.Error
+	} else if createTaskTx.RowsAffected == 0 {
+		log.Warn().Msgf("proposal fin task already exists: %+v", finTask)
+	}
+
+	return nil
 }
