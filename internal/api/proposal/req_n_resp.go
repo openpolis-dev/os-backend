@@ -26,6 +26,7 @@ type ListProposalQueryParams struct {
 	CategoryId    uint   `form:"category_id"`
 	PendingSubmit int    `form:"pending_submit"`
 	Q             string `form:"q"`
+	Sip           string `form:"sip"`
 }
 
 // ComponentRequestData represents a component request, which contains component name and associated data
