@@ -661,8 +661,8 @@ func updateProposalState(db *gorm.DB, user *middleware.CurUser, proposalStrId st
 			}
 
 			if pTemplate != nil && pTemplate.Type == model.ProposalTemplateTypeCloseProject {
-				createProjectProposal, err := getCreatingProjectProposalInfoFromClosingProposalContentBlocks(tx, proposalRecord)
-				if err != nil {
+				createProjectProposal := model.Proposal{ID: proposalRecord.AssociateProposalId}
+				if err = db.Find(&createProjectProposal).Error; err != nil {
 					log.Error().Msgf("get creating project proposal error: %+v", err)
 					return err
 				}
@@ -785,40 +785,6 @@ type createProjectProposalContentBlockStruct struct {
 	Data        any    `json:"data"`
 	Id          int    `json:"id,omitempty"`
 	CreateTs    int    `json:"create_ts,omitempty"`
-}
-
-func getCreatingProjectProposalInfoFromClosingProposalContentBlocks(db *gorm.DB, closeProjectProposal *model.Proposal) (*model.Proposal, error) {
-	// Find the related created project data
-	var pContentBlocks []*model.ProposalContentBlock
-	if err := db.Model(&model.ProposalContentBlock{}).Where("proposal_id = ?", closeProjectProposal.ID).Find(&pContentBlocks).Error; err != nil {
-		log.Error().Msgf("get proposal content blocks error: %+v", err)
-		return nil, err
-	}
-
-	for _, block := range pContentBlocks {
-		if block.Title == internal.ContentBlockTitleCreateProjectName {
-			var contentParams []*createProjectProposalContentBlockStruct
-			err := json.Unmarshal([]byte(block.Content), &contentParams)
-			if err != nil {
-				return nil, err
-			}
-			for _, param := range contentParams {
-				if param.Name == "relate" {
-					if proposalId, found := param.Data.(map[string]any)["proposal_id"]; found {
-						proposalRcd := model.Proposal{ID: uint(proposalId.(float64))}
-						err = db.Find(&proposalRcd).Error
-						if err != nil {
-							log.Error().Msgf("get proposal error: %+v", err)
-							return nil, err
-						}
-						return &proposalRcd, nil
-					}
-				}
-			}
-		}
-	}
-
-	return nil, errors.New("create project proposal not found")
 }
 
 func createJobToUpdateNoVoteProposalToNextState(db *gorm.DB, proposal *model.Proposal, jobExecTs int64, nextState model.ProposalState) error {

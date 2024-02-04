@@ -115,6 +115,7 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 		proposalRcd.PendingExecutionSecond = dbProposalRcd.PendingExecutionSecond
 		proposalRcd.VoteDurationSecond = dbProposalRcd.VoteDurationSecond
 		proposalRcd.VoteDurationSecond = dbProposalRcd.VoteDurationSecond
+		proposalRcd.AssociateProposalId = reqData.CreateProjectProposalId
 
 		err = db.Save(&proposalRcd).Error
 		if err != nil {
@@ -156,6 +157,7 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 			VoteType:                reqData.VoteType,
 			CanBeVetoed:             pCategory.CanBeVetoed,
 			IsBasedOnCustomTemplate: pTemplate.IsCustomTemplate,
+			AssociateProposalId:     reqData.CreateProjectProposalId,
 		}
 		proposalRecord.PublicitySecond = voteTimeProps.PublicitySecond
 		proposalRecord.PendingExecutionSecond = voteTimeProps.PendingExecutionSecond
@@ -1020,8 +1022,4 @@ func createCronJob(db *gorm.DB, dbProposal *model.Proposal, actionName string, j
 	}
 
 	return nil
-}
-
-func GetContractHolderCount() {
-
 }

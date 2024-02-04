@@ -41,17 +41,18 @@ type ComponentRequestData struct {
 }
 
 type CreateOrUpdateProposalData struct {
-	TemplateId          uint                          `json:"template_id"`
-	Title               string                        `json:"title"`
-	ProposalCategoryId  uint                          `json:"proposal_category_id"`
-	ContentBlocks       []*FrontendContentBlockRecord `json:"content_blocks"`
-	Components          []*ComponentRequestData       `json:"components"`
-	VoteGateId          uint                          `json:"vote_gate_id"`
-	MetaforoAccessToken string                        `json:"metaforo_access_token"`
-	SubmitToMetaforo    bool                          `json:"submit_to_metaforo"`
-	EditorType          int                           `json:"editor_type"`
-	VoteType            int                           `json:"vote_type"`
-	VoteOptions         []string                      `json:"vote_options"`
+	TemplateId              uint                          `json:"template_id"`
+	Title                   string                        `json:"title"`
+	ProposalCategoryId      uint                          `json:"proposal_category_id"`
+	ContentBlocks           []*FrontendContentBlockRecord `json:"content_blocks"`
+	Components              []*ComponentRequestData       `json:"components"`
+	VoteGateId              uint                          `json:"vote_gate_id"`
+	MetaforoAccessToken     string                        `json:"metaforo_access_token"`
+	SubmitToMetaforo        bool                          `json:"submit_to_metaforo"`
+	EditorType              int                           `json:"editor_type"`
+	VoteType                int                           `json:"vote_type"`
+	VoteOptions             []string                      `json:"vote_options"`
+	CreateProjectProposalId uint                          `json:"create_project_proposal_id"`
 }
 
 type RejectProposalData struct {

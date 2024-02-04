@@ -149,6 +149,10 @@ type Proposal struct {
 
 	Sip int `gorm:"index"`
 
+	// AssociateProposalId saves associated proposal record with this proposal,
+	// which is using for rejecting and closing project for now
+	AssociateProposalId uint
+
 	VoteTimeProperties
 }
 
