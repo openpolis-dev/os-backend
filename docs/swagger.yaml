@@ -79,6 +79,24 @@ definitions:
     type: object
   city_hall.CityHallDetailReply:
     properties:
+      ApprovalLink:
+        type: string
+      Budgets:
+        type: string
+      Category:
+        type: string
+      ContantWay:
+        type: string
+      Deliverable:
+        type: string
+      OfficialLink:
+        type: string
+      OverLink:
+        type: string
+      PlanTime:
+        type: string
+      SIP:
+        type: string
       budgets:
         items:
           $ref: '#/definitions/model.ProjectBudget'
@@ -223,6 +241,10 @@ definitions:
     type: object
   guild.CreateReq:
     properties:
+      ContantWay:
+        type: string
+      OfficalLink:
+        type: string
       budgets:
         items:
           $ref: '#/definitions/guild.BudgetParam'
@@ -252,6 +274,10 @@ definitions:
     type: object
   guild.DetailReply:
     properties:
+      ContantWay:
+        type: string
+      OfficalLink:
+        type: string
       budgets:
         items:
           $ref: '#/definitions/model.GuildBudget'
@@ -300,6 +326,10 @@ definitions:
     type: object
   guild.UpdateReq:
     properties:
+      ContantWay:
+        type: string
+      OfficalLink:
+        type: string
       desc:
         type: string
       intro:
@@ -519,6 +549,10 @@ definitions:
     type: object
   model.Guild:
     properties:
+      ContantWay:
+        type: string
+      OfficalLink:
+        type: string
       create_ts:
         type: integer
       creator:
@@ -609,6 +643,24 @@ definitions:
     type: object
   model.Project:
     properties:
+      ApprovalLink:
+        type: string
+      Budgets:
+        type: string
+      Category:
+        type: string
+      ContantWay:
+        type: string
+      Deliverable:
+        type: string
+      OfficialLink:
+        type: string
+      OverLink:
+        type: string
+      PlanTime:
+        type: string
+      SIP:
+        type: string
       create_ts:
         type: integer
       creator:
@@ -796,6 +848,22 @@ definitions:
     type: object
   project.CreateReq:
     properties:
+      ApprovalLink:
+        type: string
+      Category:
+        type: string
+      ContantWay:
+        type: string
+      Deliverable:
+        type: string
+      OfficialLink:
+        type: string
+      OverLink:
+        type: string
+      PlanTime:
+        type: string
+      SIP:
+        type: string
       budgets:
         items:
           $ref: '#/definitions/project.BudgetParam'
@@ -824,6 +892,24 @@ definitions:
     type: object
   project.DetailReply:
     properties:
+      ApprovalLink:
+        type: string
+      Budgets:
+        type: string
+      Category:
+        type: string
+      ContantWay:
+        type: string
+      Deliverable:
+        type: string
+      OfficialLink:
+        type: string
+      OverLink:
+        type: string
+      PlanTime:
+        type: string
+      SIP:
+        type: string
       budgets:
         items:
           $ref: '#/definitions/model.ProjectBudget'
@@ -882,14 +968,23 @@ definitions:
     type: object
   project.UpdateReq:
     properties:
-      desc:
+      ContantWay:
         type: string
-      intro:
+      OfficialLink:
+        type: string
+      OverLink:
+        type: string
+      desc:
+        description: |-
+          Name    string `json:"name"`
+          Intro   string `json:"intro"`
         type: string
       logo:
         type: string
-      name:
-        type: string
+      sponsors:
+        items:
+          type: string
+        type: array
     type: object
   project.UpdateStaffsReq:
     properties:

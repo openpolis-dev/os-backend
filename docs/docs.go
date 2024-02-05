@@ -3231,6 +3231,33 @@ const docTemplate = `{
         "city_hall.CityHallDetailReply": {
             "type": "object",
             "properties": {
+                "ApprovalLink": {
+                    "type": "string"
+                },
+                "Budgets": {
+                    "type": "string"
+                },
+                "Category": {
+                    "type": "string"
+                },
+                "ContantWay": {
+                    "type": "string"
+                },
+                "Deliverable": {
+                    "type": "string"
+                },
+                "OfficialLink": {
+                    "type": "string"
+                },
+                "OverLink": {
+                    "type": "string"
+                },
+                "PlanTime": {
+                    "type": "string"
+                },
+                "SIP": {
+                    "type": "string"
+                },
                 "budgets": {
                     "type": "array",
                     "items": {
@@ -3452,6 +3479,12 @@ const docTemplate = `{
         "guild.CreateReq": {
             "type": "object",
             "properties": {
+                "ContantWay": {
+                    "type": "string"
+                },
+                "OfficalLink": {
+                    "type": "string"
+                },
                 "budgets": {
                     "type": "array",
                     "items": {
@@ -3494,6 +3527,12 @@ const docTemplate = `{
         "guild.DetailReply": {
             "type": "object",
             "properties": {
+                "ContantWay": {
+                    "type": "string"
+                },
+                "OfficalLink": {
+                    "type": "string"
+                },
                 "budgets": {
                     "type": "array",
                     "items": {
@@ -3569,6 +3608,12 @@ const docTemplate = `{
         "guild.UpdateReq": {
             "type": "object",
             "properties": {
+                "ContantWay": {
+                    "type": "string"
+                },
+                "OfficalLink": {
+                    "type": "string"
+                },
                 "desc": {
                     "type": "string"
                 },
@@ -3891,6 +3936,12 @@ const docTemplate = `{
         "model.Guild": {
             "type": "object",
             "properties": {
+                "ContantWay": {
+                    "type": "string"
+                },
+                "OfficalLink": {
+                    "type": "string"
+                },
                 "create_ts": {
                     "type": "integer"
                 },
@@ -4028,6 +4079,33 @@ const docTemplate = `{
         "model.Project": {
             "type": "object",
             "properties": {
+                "ApprovalLink": {
+                    "type": "string"
+                },
+                "Budgets": {
+                    "type": "string"
+                },
+                "Category": {
+                    "type": "string"
+                },
+                "ContantWay": {
+                    "type": "string"
+                },
+                "Deliverable": {
+                    "type": "string"
+                },
+                "OfficialLink": {
+                    "type": "string"
+                },
+                "OverLink": {
+                    "type": "string"
+                },
+                "PlanTime": {
+                    "type": "string"
+                },
+                "SIP": {
+                    "type": "string"
+                },
                 "create_ts": {
                     "type": "integer"
                 },
@@ -4310,6 +4388,30 @@ const docTemplate = `{
         "project.CreateReq": {
             "type": "object",
             "properties": {
+                "ApprovalLink": {
+                    "type": "string"
+                },
+                "Category": {
+                    "type": "string"
+                },
+                "ContantWay": {
+                    "type": "string"
+                },
+                "Deliverable": {
+                    "type": "string"
+                },
+                "OfficialLink": {
+                    "type": "string"
+                },
+                "OverLink": {
+                    "type": "string"
+                },
+                "PlanTime": {
+                    "type": "string"
+                },
+                "SIP": {
+                    "type": "string"
+                },
                 "budgets": {
                     "type": "array",
                     "items": {
@@ -4352,6 +4454,33 @@ const docTemplate = `{
         "project.DetailReply": {
             "type": "object",
             "properties": {
+                "ApprovalLink": {
+                    "type": "string"
+                },
+                "Budgets": {
+                    "type": "string"
+                },
+                "Category": {
+                    "type": "string"
+                },
+                "ContantWay": {
+                    "type": "string"
+                },
+                "Deliverable": {
+                    "type": "string"
+                },
+                "OfficialLink": {
+                    "type": "string"
+                },
+                "OverLink": {
+                    "type": "string"
+                },
+                "PlanTime": {
+                    "type": "string"
+                },
+                "SIP": {
+                    "type": "string"
+                },
                 "budgets": {
                     "type": "array",
                     "items": {
@@ -4442,17 +4571,27 @@ const docTemplate = `{
         "project.UpdateReq": {
             "type": "object",
             "properties": {
-                "desc": {
+                "ContantWay": {
                     "type": "string"
                 },
-                "intro": {
+                "OfficialLink": {
+                    "type": "string"
+                },
+                "OverLink": {
+                    "type": "string"
+                },
+                "desc": {
+                    "description": "Name    string ` + "`" + `json:\"name\"` + "`" + `\nIntro   string ` + "`" + `json:\"intro\"` + "`" + `",
                     "type": "string"
                 },
                 "logo": {
                     "type": "string"
                 },
-                "name": {
-                    "type": "string"
+                "sponsors": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },
