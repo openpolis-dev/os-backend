@@ -326,15 +326,15 @@ func Update(ctx *gin.Context) {
 	}
 
 	// update logo and name
-	//sponsors := lo.Map[string](req.Sponsors, func(item string, _ int) string {
-	//	return common.FormatUserWallet(item)
-	//})
+	sponsors := lo.Map[string](req.Sponsors, func(item string, _ int) string {
+		return common.FormatUserWallet(item)
+	})
 
 	proj.Logo = logoUrl
 	proj.Name = req.Name
 	proj.Intro = req.Intro
 	proj.Desc = req.Desc
-	//proj.Sponsors = sponsors
+	proj.Sponsors = sponsors
 	proj.OverLink = req.OverLink
 	proj.ContantWay = req.ContantWay
 	proj.OfficialLink = req.OfficialLink
