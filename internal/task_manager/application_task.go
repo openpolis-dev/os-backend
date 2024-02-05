@@ -82,36 +82,36 @@ func CreateAppBundleTaskFromMotivationComponent(db *gorm.DB, job *model.CronJob,
 			execResult = err.Error()
 			jobFailed = true
 		} else {
-			// TODO: Duplicated code *NewAppBundleAndApplication*
-			// Create AppBundle
-			appBundle := model.AppBundle{
-				Applicant:    common.FormatUserWallet(params.Applicant),
-				SeasonId:     currentSeason.ID,
-				State:        model.ApplicationStateOpen,
-				ShadowRecord: false,
-				CreateTs:     model.GetCurrentUtcEpochSecond(),
-				UpdateTs:     model.GetCurrentUtcEpochSecond(),
-				Type:         "NEW_REWARD",
-			}
-			err = db.Model(model.AppBundle{}).Create(&appBundle).Error
-			if err != nil {
-				log.Error().Msgf("Create app bundle records error: %+v", err)
-				execResult = err.Error()
-				jobFailed = true
-			} else {
-				// Create Applications inside the bundle
-				ratio, _ := decimal.NewFromString("1")
-				if (voteType == model.ProposalVoteTypeNumericAvg) || (voteType == model.ProposalVoteTypeNumericSingle) {
-					ratio, err = decimal.NewFromString(voteResult)
-					if err != nil {
-						log.Error().Msgf("parse value %s to decimal error: %+v", voteResult, err)
-					}
+			ratio, _ := decimal.NewFromString("1")
+			if (voteType == model.ProposalVoteTypeNumericAvg) || (voteType == model.ProposalVoteTypeNumericSingle) {
+				ratio, err = decimal.NewFromString(voteResult)
+				if err != nil {
+					log.Error().Msgf("parse value %s to decimal error: %+v", voteResult, err)
 				}
+			}
 
-				if ratio.IsZero() {
-					execResult = "vote result is zero, no need to create applications"
-					jobFailed = false
+			if ratio.IsZero() {
+				execResult = "vote result is zero, no need to create applications"
+				jobFailed = false
+			} else {
+				// TODO: Duplicated code *NewAppBundleAndApplication*
+				// Create AppBundle
+				appBundle := model.AppBundle{
+					Applicant:    common.FormatUserWallet(params.Applicant),
+					SeasonId:     currentSeason.ID,
+					State:        model.ApplicationStateOpen,
+					ShadowRecord: false,
+					CreateTs:     model.GetCurrentUtcEpochSecond(),
+					UpdateTs:     model.GetCurrentUtcEpochSecond(),
+					Type:         "NEW_REWARD",
+				}
+				err = db.Model(model.AppBundle{}).Create(&appBundle).Error
+				if err != nil {
+					log.Error().Msgf("Create app bundle records error: %+v", err)
+					execResult = err.Error()
+					jobFailed = true
 				} else {
+					// Create Applications inside the bundle
 					err = db.Transaction(func(tx *gorm.DB) error {
 						appBundle.AppRecords = lo.Map(params.Records, func(appDetail *MotivationDetail, index int) *model.Application {
 							assetAmount, err := decimal.NewFromString(appDetail.Amount)
