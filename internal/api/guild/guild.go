@@ -34,8 +34,8 @@ type (
 
 		Budgets []*BudgetParam `json:"budgets"`
 
-		ContantWay  string `json:"ContantWay"`
-		OfficalLink string `json:"OfficalLink"`
+		ContantWay   string `json:"ContantWay"`
+		OfficialLink string `json:"OfficialLink"`
 	}
 	BudgetParam struct {
 		Name        string          `json:"name"`
@@ -43,12 +43,12 @@ type (
 	}
 	UpdateReq struct {
 		LogoStr string `json:"logo"`
-		Name    string `json:"name"`
-		Intro   string `json:"intro"`
-		Desc    string `json:"desc"`
+		// Name    string `json:"name"`
+		// Intro   string `json:"intro"`
+		Desc string `json:"desc"`
 
-		ContantWay  string `json:"ContantWay"`
-		OfficalLink string `json:"OfficalLink"`
+		ContantWay   string `json:"ContantWay"`
+		OfficialLink string `json:"OfficialLink"`
 	}
 	DetailReply struct {
 		model.Guild
@@ -143,8 +143,10 @@ func Create(ctx *gin.Context) {
 		CreateTs:  model.GetCurrentUtcEpochSecond(),
 		UpdateTs:  model.GetCurrentUtcEpochSecond(),
 
-		ContantWay:  req.ContantWay,
-		OfficalLink: req.OfficalLink,
+		Status: model.ProjectStatusOpen,
+
+		ContantWay:   req.ContantWay,
+		OfficialLink: req.OfficialLink,
 	}
 	err = model.GuildModel.CreateOrUpdate(tx, &guild)
 	if err != nil {
@@ -307,12 +309,12 @@ func Update(ctx *gin.Context) {
 
 	// update name
 	guild.Logo = logoUrl
-	guild.Name = req.Name
-	guild.Intro = req.Intro
+	// guild.Name = req.Name
+	// guild.Intro = req.Intro
 	guild.Desc = req.Desc
 
 	guild.ContantWay = req.ContantWay
-	guild.OfficalLink = req.OfficalLink
+	guild.OfficialLink = req.OfficialLink
 
 	guild.UpdateTs = model.GetCurrentUtcEpochSecond()
 	guild.UpdatedAt = time.Now().In(internal.ProjectTimezone)
