@@ -321,6 +321,7 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		guildGroup.POST("/:id/update_staffs", guild.UpdateStaffs)
 		guildGroup.POST("/:id/update_budget", guild.UpdateBudget)
 		guildGroup.POST("/:id/add_related_proposal", guild.AddRelatedProposal)
+		guildGroup.POST("/:id/close", guild.Close)
 		// my guilds
 		authorizedGroup.GET("/my_guilds", guild.MyGuilds)
 
