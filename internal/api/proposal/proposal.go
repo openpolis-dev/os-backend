@@ -800,8 +800,10 @@ func createJobToUpdateNoVoteProposalToNextState(db *gorm.DB, proposal *model.Pro
 			return err
 		}
 	} else {
-		log.Debug().Msgf("automation for updating state has already created, return")
-		return nil
+		if proposal.VoteType != model.ProposalVoteTypeNone {
+			log.Debug().Msgf("automation for updating state has already created, return")
+			return nil
+		}
 	}
 
 	updateProposalStateTaskParams := map[string]any{
@@ -834,7 +836,9 @@ func createJobToUpdateNoVoteProposalToNextState(db *gorm.DB, proposal *model.Pro
 	createTaskTx := db.Where(model.CronJob{
 		HandlerName:               internal.TaskUpdateProposalState,
 		ProposalComponentRecordId: int(proposalComponentRecord.ID),
-		ProposalId:                proposal.ID}).
+		ProposalId:                proposal.ID,
+		NextExecTs:                jobExecTs,
+	}).
 		Assign(&finTask).FirstOrCreate(&finTask)
 
 	if createTaskTx.Error != nil {
