@@ -153,6 +153,8 @@ func main() {
 	task_manager.InitTaskManager(db, 5, cfg)
 	task_manager.GetTaskManager().StartRunner()
 
+	storage.SetConfig(cfg)
+
 	r := setupRouter(cfg, db, enforcer, pushSDK)
 	_ = r.Run()
 }

@@ -67,6 +67,7 @@ func RefreshVotingProposalInfoJob(db *gorm.DB, job *model.CronJob, jobParams str
 					jobFailed = true
 					break
 				}
+				time.Sleep(1 * time.Second)
 			}
 		}
 	}
