@@ -79,6 +79,24 @@ definitions:
     type: object
   city_hall.CityHallDetailReply:
     properties:
+      ApprovalLink:
+        type: string
+      Budgets:
+        type: string
+      Category:
+        type: string
+      ContantWay:
+        type: string
+      Deliverable:
+        type: string
+      OfficialLink:
+        type: string
+      OverLink:
+        type: string
+      PlanTime:
+        type: string
+      SIP:
+        type: string
       budgets:
         items:
           $ref: '#/definitions/model.ProjectBudget'
@@ -223,6 +241,10 @@ definitions:
     type: object
   guild.CreateReq:
     properties:
+      ContantWay:
+        type: string
+      OfficalLink:
+        type: string
       budgets:
         items:
           $ref: '#/definitions/guild.BudgetParam'
@@ -252,6 +274,10 @@ definitions:
     type: object
   guild.DetailReply:
     properties:
+      ContantWay:
+        type: string
+      OfficalLink:
+        type: string
       budgets:
         items:
           $ref: '#/definitions/model.GuildBudget'
@@ -300,6 +326,10 @@ definitions:
     type: object
   guild.UpdateReq:
     properties:
+      ContantWay:
+        type: string
+      OfficalLink:
+        type: string
       desc:
         type: string
       intro:
@@ -519,6 +549,10 @@ definitions:
     type: object
   model.Guild:
     properties:
+      ContantWay:
+        type: string
+      OfficalLink:
+        type: string
       create_ts:
         type: integer
       creator:
@@ -609,6 +643,24 @@ definitions:
     type: object
   model.Project:
     properties:
+      ApprovalLink:
+        type: string
+      Budgets:
+        type: string
+      Category:
+        type: string
+      ContantWay:
+        type: string
+      Deliverable:
+        type: string
+      OfficialLink:
+        type: string
+      OverLink:
+        type: string
+      PlanTime:
+        type: string
+      SIP:
+        type: string
       create_ts:
         type: integer
       creator:
@@ -796,6 +848,22 @@ definitions:
     type: object
   project.CreateReq:
     properties:
+      ApprovalLink:
+        type: string
+      Category:
+        type: string
+      ContantWay:
+        type: string
+      Deliverable:
+        type: string
+      OfficialLink:
+        type: string
+      OverLink:
+        type: string
+      PlanTime:
+        type: string
+      SIP:
+        type: string
       budgets:
         items:
           $ref: '#/definitions/project.BudgetParam'
@@ -824,6 +892,24 @@ definitions:
     type: object
   project.DetailReply:
     properties:
+      ApprovalLink:
+        type: string
+      Budgets:
+        type: string
+      Category:
+        type: string
+      ContantWay:
+        type: string
+      Deliverable:
+        type: string
+      OfficialLink:
+        type: string
+      OverLink:
+        type: string
+      PlanTime:
+        type: string
+      SIP:
+        type: string
       budgets:
         items:
           $ref: '#/definitions/model.ProjectBudget'
@@ -882,14 +968,23 @@ definitions:
     type: object
   project.UpdateReq:
     properties:
-      desc:
+      ContantWay:
         type: string
-      intro:
+      OfficialLink:
+        type: string
+      OverLink:
+        type: string
+      desc:
+        description: |-
+          Name    string `json:"name"`
+          Intro   string `json:"intro"`
         type: string
       logo:
         type: string
-      name:
-        type: string
+      sponsors:
+        items:
+          type: string
+        type: array
     type: object
   project.UpdateStaffsReq:
     properties:
@@ -969,6 +1064,8 @@ definitions:
         items:
           $ref: '#/definitions/proposal.FrontendContentBlockRecord'
         type: array
+      create_project_proposal_id:
+        type: integer
       editor_type:
         type: integer
       metaforo_access_token:
@@ -1116,6 +1213,8 @@ definitions:
         type: boolean
       proposal_category_id:
         type: integer
+      publicity_ts:
+        type: integer
       reject_metaforo_comment_id:
         type: integer
       reject_reason:
@@ -1126,6 +1225,8 @@ definitions:
         type: string
       reviewer_avatar:
         type: string
+      sip:
+        type: integer
       state:
         type: string
       template_name:
@@ -1172,6 +1273,8 @@ definitions:
       create_ts:
         type: integer
       id:
+        type: integer
+      sip:
         type: integer
       state:
         type: string
@@ -2608,6 +2711,10 @@ paths:
       - description: state of proposal, for multiple states, use comma as separator
         in: query
         name: state
+        type: string
+      - description: whether query only proposals with SIP number
+        in: query
+        name: sip
         type: string
       - description: filter proposal records with specified category
         in: query

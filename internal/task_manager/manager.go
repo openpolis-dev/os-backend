@@ -134,7 +134,8 @@ func (t *TaskManager) ActivateRefreshVoteStateJobIfRequired() error {
 
 	if err = t.DatabaseClient.Model(&model.CronJob{}).
 		Where("handler_name = ?", internal.TaskRefreshVotingProposalVoteInfo).
-		Updates(&refreshProposalInfoJob).Error; err != nil {
+		Updates(&refreshProposalInfoJob).
+		Updates(map[string]any{"last_exec_ts": 0, "state": model.CronJobStateActive}).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return t.DatabaseClient.Create(&refreshProposalInfoJob).Error
 		} else {

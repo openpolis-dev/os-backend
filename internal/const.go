@@ -93,3 +93,9 @@ const (
 )
 
 const ContentBlockTitleCreateProjectName = "立项信息"
+
+const ExtraCheckRuleMetricSeed = "seed"
+const ExtraCheckRuleMetricCurrentSeasonNode = "cs_node"
+
+const ExtraCheckRuleTypeRatio = "ratio"
+const ExtraCheckRuleTypeCount = "count"

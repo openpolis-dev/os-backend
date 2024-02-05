@@ -1753,6 +1753,12 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
+                        "type": "string",
+                        "description": "whether query only proposals with SIP number",
+                        "name": "sip",
+                        "in": "query"
+                    },
+                    {
                         "type": "integer",
                         "description": "filter proposal records with specified category",
                         "name": "category_id",
@@ -3225,6 +3231,33 @@ const docTemplate = `{
         "city_hall.CityHallDetailReply": {
             "type": "object",
             "properties": {
+                "ApprovalLink": {
+                    "type": "string"
+                },
+                "Budgets": {
+                    "type": "string"
+                },
+                "Category": {
+                    "type": "string"
+                },
+                "ContantWay": {
+                    "type": "string"
+                },
+                "Deliverable": {
+                    "type": "string"
+                },
+                "OfficialLink": {
+                    "type": "string"
+                },
+                "OverLink": {
+                    "type": "string"
+                },
+                "PlanTime": {
+                    "type": "string"
+                },
+                "SIP": {
+                    "type": "string"
+                },
                 "budgets": {
                     "type": "array",
                     "items": {
@@ -3446,6 +3479,12 @@ const docTemplate = `{
         "guild.CreateReq": {
             "type": "object",
             "properties": {
+                "ContantWay": {
+                    "type": "string"
+                },
+                "OfficalLink": {
+                    "type": "string"
+                },
                 "budgets": {
                     "type": "array",
                     "items": {
@@ -3488,6 +3527,12 @@ const docTemplate = `{
         "guild.DetailReply": {
             "type": "object",
             "properties": {
+                "ContantWay": {
+                    "type": "string"
+                },
+                "OfficalLink": {
+                    "type": "string"
+                },
                 "budgets": {
                     "type": "array",
                     "items": {
@@ -3563,6 +3608,12 @@ const docTemplate = `{
         "guild.UpdateReq": {
             "type": "object",
             "properties": {
+                "ContantWay": {
+                    "type": "string"
+                },
+                "OfficalLink": {
+                    "type": "string"
+                },
                 "desc": {
                     "type": "string"
                 },
@@ -3885,6 +3936,12 @@ const docTemplate = `{
         "model.Guild": {
             "type": "object",
             "properties": {
+                "ContantWay": {
+                    "type": "string"
+                },
+                "OfficalLink": {
+                    "type": "string"
+                },
                 "create_ts": {
                     "type": "integer"
                 },
@@ -4022,6 +4079,33 @@ const docTemplate = `{
         "model.Project": {
             "type": "object",
             "properties": {
+                "ApprovalLink": {
+                    "type": "string"
+                },
+                "Budgets": {
+                    "type": "string"
+                },
+                "Category": {
+                    "type": "string"
+                },
+                "ContantWay": {
+                    "type": "string"
+                },
+                "Deliverable": {
+                    "type": "string"
+                },
+                "OfficialLink": {
+                    "type": "string"
+                },
+                "OverLink": {
+                    "type": "string"
+                },
+                "PlanTime": {
+                    "type": "string"
+                },
+                "SIP": {
+                    "type": "string"
+                },
                 "create_ts": {
                     "type": "integer"
                 },
@@ -4304,6 +4388,30 @@ const docTemplate = `{
         "project.CreateReq": {
             "type": "object",
             "properties": {
+                "ApprovalLink": {
+                    "type": "string"
+                },
+                "Category": {
+                    "type": "string"
+                },
+                "ContantWay": {
+                    "type": "string"
+                },
+                "Deliverable": {
+                    "type": "string"
+                },
+                "OfficialLink": {
+                    "type": "string"
+                },
+                "OverLink": {
+                    "type": "string"
+                },
+                "PlanTime": {
+                    "type": "string"
+                },
+                "SIP": {
+                    "type": "string"
+                },
                 "budgets": {
                     "type": "array",
                     "items": {
@@ -4346,6 +4454,33 @@ const docTemplate = `{
         "project.DetailReply": {
             "type": "object",
             "properties": {
+                "ApprovalLink": {
+                    "type": "string"
+                },
+                "Budgets": {
+                    "type": "string"
+                },
+                "Category": {
+                    "type": "string"
+                },
+                "ContantWay": {
+                    "type": "string"
+                },
+                "Deliverable": {
+                    "type": "string"
+                },
+                "OfficialLink": {
+                    "type": "string"
+                },
+                "OverLink": {
+                    "type": "string"
+                },
+                "PlanTime": {
+                    "type": "string"
+                },
+                "SIP": {
+                    "type": "string"
+                },
                 "budgets": {
                     "type": "array",
                     "items": {
@@ -4436,17 +4571,27 @@ const docTemplate = `{
         "project.UpdateReq": {
             "type": "object",
             "properties": {
-                "desc": {
+                "ContantWay": {
                     "type": "string"
                 },
-                "intro": {
+                "OfficialLink": {
+                    "type": "string"
+                },
+                "OverLink": {
+                    "type": "string"
+                },
+                "desc": {
+                    "description": "Name    string ` + "`" + `json:\"name\"` + "`" + `\nIntro   string ` + "`" + `json:\"intro\"` + "`" + `",
                     "type": "string"
                 },
                 "logo": {
                     "type": "string"
                 },
-                "name": {
-                    "type": "string"
+                "sponsors": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },
@@ -4568,6 +4713,9 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/proposal.FrontendContentBlockRecord"
                     }
+                },
+                "create_project_proposal_id": {
+                    "type": "integer"
                 },
                 "editor_type": {
                     "type": "integer"
@@ -4785,6 +4933,9 @@ const docTemplate = `{
                 "proposal_category_id": {
                     "type": "integer"
                 },
+                "publicity_ts": {
+                    "type": "integer"
+                },
                 "reject_metaforo_comment_id": {
                     "type": "integer"
                 },
@@ -4799,6 +4950,9 @@ const docTemplate = `{
                 },
                 "reviewer_avatar": {
                     "type": "string"
+                },
+                "sip": {
+                    "type": "integer"
                 },
                 "state": {
                     "type": "string"
@@ -4870,6 +5024,9 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "id": {
+                    "type": "integer"
+                },
+                "sip": {
                     "type": "integer"
                 },
                 "state": {

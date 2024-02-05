@@ -40,12 +40,11 @@ type NewRewardTaskParam struct {
 type MotivationDetail struct {
 	TargetUserWallet string `json:"address"`
 	Amount           string `json:"amount"`
-	DetailedType     string `json:"issue"`
-	Comment          string `json:"memo"`
+	Comment          string `json:"description"`
 	AssetInfo        struct {
 		Id   int    `json:"id"`
 		Name string `json:"name"`
-	} `json:"type"`
+	} `json:"assetInfo"`
 }
 
 type MotivationTaskParam struct {
@@ -83,100 +82,104 @@ func CreateAppBundleTaskFromMotivationComponent(db *gorm.DB, job *model.CronJob,
 			execResult = err.Error()
 			jobFailed = true
 		} else {
-			// TODO: Duplicated code *NewAppBundleAndApplication*
-			// Create AppBundle
-			appBundle := model.AppBundle{
-				Applicant:    common.FormatUserWallet(params.Applicant),
-				SeasonId:     currentSeason.ID,
-				State:        model.ApplicationStateOpen,
-				ShadowRecord: false,
-				CreateTs:     model.GetCurrentUtcEpochSecond(),
-				UpdateTs:     model.GetCurrentUtcEpochSecond(),
-				Type:         "NEW_REWARD",
-			}
-			err = db.Model(model.AppBundle{}).Create(&appBundle).Error
-			if err != nil {
-				log.Error().Msgf("Create app bundle records error: %+v", err)
-				execResult = err.Error()
-				jobFailed = true
-			} else {
-				// Create Applications inside the bundle
-				ratio, _ := decimal.NewFromString("1")
-				if (voteType == model.ProposalVoteTypeNumericAvg) || (voteType == model.ProposalVoteTypeNumericSingle) {
-					ratio, err = decimal.NewFromString(voteResult)
-					if err != nil {
-						log.Error().Msgf("parse value %s to decimal error: %+v", voteResult, err)
-					}
-				}
-
-				err = db.Transaction(func(tx *gorm.DB) error {
-					appBundle.AppRecords = lo.Map(params.Records, func(appDetail *MotivationDetail, index int) *model.Application {
-						assetAmount, err := decimal.NewFromString(appDetail.Amount)
-						if err != nil {
-							log.Warn().Msgf("parse asset amount error: %+v", err)
-							execResult = err.Error()
-							jobFailed = true
-							return nil
-						} else {
-							return &model.Application{
-								Type:             model.ApplicationNewReward,
-								Applicant:        common.FormatUserWallet(params.Applicant),
-								State:            model.ApplicationStateOpen,
-								CreatedAt:        time.Now().In(internal.ProjectTimezone),
-								UpdatedAt:        time.Now().In(internal.ProjectTimezone),
-								CreateTs:         model.GetCurrentUtcEpochSecond(),
-								UpdateTs:         model.GetCurrentUtcEpochSecond(),
-								DetailedType:     appDetail.DetailedType,
-								Comment:          appDetail.Comment,
-								TargetUserWallet: appDetail.TargetUserWallet,
-								AssetName:        appDetail.AssetInfo.Name,
-								AssetAmount:      assetAmount.Mul(ratio),
-								EntityType:       appBundle.EntityType,
-								EntityId:         appBundle.EntityId,
-								SeasonId:         currentSeason.ID,
-							}
-						}
-					})
-
-					err = tx.Save(&appBundle).Error
-					if err != nil {
-						log.Error().Msgf("update app_bundle record error: %+v", err)
-						return err
-					}
-
-					// Create application audit logs
-					appAuditLogs := lo.Map(appBundle.AppRecords, func(app *model.Application, _ int) *model.ApplicationAuditLog {
-						return &model.ApplicationAuditLog{
-							ApplicationID: app.ID,
-							LogTs:         model.GetCurrentUtcEpochSecond(),
-							Operation:     model.AuditActionNew,
-							Operator:      common.FormatUserWallet(params.Applicant),
-							PreState:      "",
-							PostState:     model.ApplicationStateOpen,
-						}
-					})
-					err = tx.Model(model.ApplicationAuditLog{}).Create(&appAuditLogs).Error
-					if err != nil {
-						log.Error().Msgf("Create application audit log records error: %+v", err)
-						return err
-					}
-
-					return tx.Model(model.AppBundleAuditLog{}).Create(&model.AppBundleAuditLog{
-						AppBundleId: appBundle.ID,
-						AppBundle:   appBundle,
-						LogTs:       model.GetCurrentUtcEpochSecond(),
-						Operation:   model.AuditActionNew,
-						Operator:    common.FormatUserWallet(params.Applicant),
-						PreState:    "",
-						PostState:   model.ApplicationStateOpen,
-						ExtraData:   "",
-					}).Error
-				})
-
+			ratio, _ := decimal.NewFromString("1")
+			if (voteType == model.ProposalVoteTypeNumericAvg) || (voteType == model.ProposalVoteTypeNumericSingle) {
+				ratio, err = decimal.NewFromString(voteResult)
 				if err != nil {
-					log.Error().Msgf("Transaction error: %+v", err)
+					log.Error().Msgf("parse value %s to decimal error: %+v", voteResult, err)
+				}
+			}
+
+			if ratio.IsZero() {
+				execResult = "vote result is zero, no need to create applications"
+				jobFailed = false
+			} else {
+				// TODO: Duplicated code *NewAppBundleAndApplication*
+				// Create AppBundle
+				appBundle := model.AppBundle{
+					Applicant:    common.FormatUserWallet(params.Applicant),
+					SeasonId:     currentSeason.ID,
+					State:        model.ApplicationStateOpen,
+					ShadowRecord: false,
+					CreateTs:     model.GetCurrentUtcEpochSecond(),
+					UpdateTs:     model.GetCurrentUtcEpochSecond(),
+					Type:         "NEW_REWARD",
+				}
+				err = db.Model(model.AppBundle{}).Create(&appBundle).Error
+				if err != nil {
+					log.Error().Msgf("Create app bundle records error: %+v", err)
 					execResult = err.Error()
 					jobFailed = true
+				} else {
+					// Create Applications inside the bundle
+					err = db.Transaction(func(tx *gorm.DB) error {
+						appBundle.AppRecords = lo.Map(params.Records, func(appDetail *MotivationDetail, index int) *model.Application {
+							assetAmount, err := decimal.NewFromString(appDetail.Amount)
+							if err != nil {
+								log.Warn().Msgf("parse asset amount error: %+v", err)
+								execResult = err.Error()
+								jobFailed = true
+								return nil
+							} else {
+								return &model.Application{
+									Type:             model.ApplicationNewReward,
+									Applicant:        common.FormatUserWallet(params.Applicant),
+									State:            model.ApplicationStateOpen,
+									CreatedAt:        time.Now().In(internal.ProjectTimezone),
+									UpdatedAt:        time.Now().In(internal.ProjectTimezone),
+									CreateTs:         model.GetCurrentUtcEpochSecond(),
+									UpdateTs:         model.GetCurrentUtcEpochSecond(),
+									Comment:          appDetail.Comment,
+									TargetUserWallet: appDetail.TargetUserWallet,
+									AssetName:        appDetail.AssetInfo.Name,
+									AssetAmount:      assetAmount.Mul(ratio),
+									EntityType:       appBundle.EntityType,
+									EntityId:         appBundle.EntityId,
+									SeasonId:         currentSeason.ID,
+								}
+							}
+						})
+
+						err = tx.Save(&appBundle).Error
+						if err != nil {
+							log.Error().Msgf("update app_bundle record error: %+v", err)
+							return err
+						}
+
+						// Create application audit logs
+						appAuditLogs := lo.Map(appBundle.AppRecords, func(app *model.Application, _ int) *model.ApplicationAuditLog {
+							return &model.ApplicationAuditLog{
+								ApplicationID: app.ID,
+								LogTs:         model.GetCurrentUtcEpochSecond(),
+								Operation:     model.AuditActionNew,
+								Operator:      common.FormatUserWallet(params.Applicant),
+								PreState:      "",
+								PostState:     model.ApplicationStateOpen,
+							}
+						})
+						err = tx.Model(model.ApplicationAuditLog{}).Create(&appAuditLogs).Error
+						if err != nil {
+							log.Error().Msgf("Create application audit log records error: %+v", err)
+							return err
+						}
+
+						return tx.Model(model.AppBundleAuditLog{}).Create(&model.AppBundleAuditLog{
+							AppBundleId: appBundle.ID,
+							AppBundle:   appBundle,
+							LogTs:       model.GetCurrentUtcEpochSecond(),
+							Operation:   model.AuditActionNew,
+							Operator:    common.FormatUserWallet(params.Applicant),
+							PreState:    "",
+							PostState:   model.ApplicationStateOpen,
+							ExtraData:   "",
+						}).Error
+					})
+
+					if err != nil {
+						log.Error().Msgf("Transaction error: %+v", err)
+						execResult = err.Error()
+						jobFailed = true
+					}
 				}
 			}
 		}

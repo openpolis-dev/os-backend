@@ -33,6 +33,9 @@ type (
 		Proposals []string `json:"proposals"`
 
 		Budgets []*BudgetParam `json:"budgets"`
+
+		ContantWay  string `json:"ContantWay"`
+		OfficalLink string `json:"OfficalLink"`
 	}
 	BudgetParam struct {
 		Name        string          `json:"name"`
@@ -43,6 +46,9 @@ type (
 		Name    string `json:"name"`
 		Intro   string `json:"intro"`
 		Desc    string `json:"desc"`
+
+		ContantWay  string `json:"ContantWay"`
+		OfficalLink string `json:"OfficalLink"`
 	}
 	DetailReply struct {
 		model.Guild
@@ -96,14 +102,30 @@ func Create(ctx *gin.Context) {
 
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
-	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), internal.ObjGuild, internal.ActCreate)
+	// ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), internal.ObjGuild, internal.ActCreate)
+	// if err != nil {
+	// 	sdk.LogServerErrorToSentry(ctx, err)
+	// 	ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
+	// 	return
+	// }
+	// if !ok {
+	// 	sdk.LogForbiddenError(ctx, user.Wallet, internal.ObjGuild, internal.ActCreate)
+	// 	ctx.JSON(http.StatusForbidden, api.Forbidden())
+	// 	return
+	// }
+
+	//  check permission
+	ok, err := enforcer.HasRoleForUser(common.FormatUserWallet(user.Wallet), internal.RoleHall)
 	if err != nil {
+		log.Error().Msgf("check permission error %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall permission error")))
 		return
 	}
+
 	if !ok {
-		sdk.LogForbiddenError(ctx, user.Wallet, internal.ObjGuild, internal.ActCreate)
+		log.Warn().Msgf("permission deny for user %s", common.FormatUserWallet(user.Wallet))
+		sdk.LogForbiddenError(ctx, user.Wallet, internal.RoleHall, "access")
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
@@ -120,6 +142,9 @@ func Create(ctx *gin.Context) {
 		Creator:   common.FormatUserWallet(user.Wallet),
 		CreateTs:  model.GetCurrentUtcEpochSecond(),
 		UpdateTs:  model.GetCurrentUtcEpochSecond(),
+
+		ContantWay:  req.ContantWay,
+		OfficalLink: req.OfficalLink,
 	}
 	err = model.GuildModel.CreateOrUpdate(tx, &guild)
 	if err != nil {
@@ -233,15 +258,31 @@ func Update(ctx *gin.Context) {
 
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
-	permObject := buildGuildPermObject(id)
-	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), permObject, internal.ActModify)
+	// permObject := buildGuildPermObject(id)
+	// ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), permObject, internal.ActModify)
+	// if err != nil {
+	// 	sdk.LogServerErrorToSentry(ctx, err)
+	// 	ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
+	// 	return
+	// }
+	// if !ok {
+	// 	sdk.LogForbiddenError(ctx, user.Wallet, permObject, internal.ActModify)
+	// 	ctx.JSON(http.StatusForbidden, api.Forbidden())
+	// 	return
+	// }
+
+	//  check permission
+	ok, err := enforcer.HasRoleForUser(common.FormatUserWallet(user.Wallet), internal.RoleHall)
 	if err != nil {
+		log.Error().Msgf("check permission error %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall permission error")))
 		return
 	}
+
 	if !ok {
-		sdk.LogForbiddenError(ctx, user.Wallet, permObject, internal.ActModify)
+		log.Warn().Msgf("permission deny for user %s", common.FormatUserWallet(user.Wallet))
+		sdk.LogForbiddenError(ctx, user.Wallet, internal.RoleHall, "access")
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
@@ -269,6 +310,10 @@ func Update(ctx *gin.Context) {
 	guild.Name = req.Name
 	guild.Intro = req.Intro
 	guild.Desc = req.Desc
+
+	guild.ContantWay = req.ContantWay
+	guild.OfficalLink = req.OfficalLink
+
 	guild.UpdateTs = model.GetCurrentUtcEpochSecond()
 	guild.UpdatedAt = time.Now().In(internal.ProjectTimezone)
 	err = model.GuildModel.CreateOrUpdate(db, guild)
