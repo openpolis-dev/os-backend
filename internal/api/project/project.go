@@ -1,6 +1,7 @@
 package project
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -34,13 +35,12 @@ type (
 		Members   []string `json:"members"`
 		Proposals []string `json:"proposals"`
 
-		// Budgets []*BudgetParam `json:"budgets"`
+		Budgets []*BudgetParam `json:"budgets"`
 
 		SIP          string `json:"SIP"`
 		Category     string `json:"Category"`
 		ApprovalLink string `json:"ApprovalLink"`
 		OverLink     string `json:"OverLink"`
-		Budget       string `json:"Budget"`
 		Deliverable  string `json:"Deliverable"`
 		PlanTime     string `json:"PlanTime"`
 		ContantWay   string `json:"ContantWay"`
@@ -104,6 +104,9 @@ func Create(ctx *gin.Context) {
 	// remove duplicate proposals
 	proposals := lo.Uniq[string](req.Proposals)
 
+	// budgets
+	budgets, _ := json.Marshal(req.Budgets)
+
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
 	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), internal.ObjProj, internal.ActCreate)
@@ -138,7 +141,7 @@ func Create(ctx *gin.Context) {
 		Category:     req.Category,
 		ApprovalLink: req.ApprovalLink,
 		OverLink:     req.OverLink,
-		Budget:       req.Budget,
+		Budgets:      string(budgets),
 		Deliverable:  req.Deliverable,
 		PlanTime:     req.PlanTime,
 		ContantWay:   req.ContantWay,

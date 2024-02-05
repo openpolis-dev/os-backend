@@ -51,7 +51,7 @@ type Project struct {
 	Category     string `json:"Category"`
 	ApprovalLink string `json:"ApprovalLink"`
 	OverLink     string `json:"OverLink"`
-	Budget       string `json:"Budget"`
+	Budgets      string `json:"Budgets"`
 	Deliverable  string `json:"Deliverable"`
 	PlanTime     string `json:"PlanTime"`
 	ContantWay   string `json:"ContantWay"`
