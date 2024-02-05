@@ -161,7 +161,7 @@ func Detail(ctx *gin.Context) {
 //	@Param		JsonBody	body		CreateOrUpdateProposalData	true	"request json body"
 //	@success	200			{object}	api.Reply{}
 func Update(ctx *gin.Context) {
-	user, enforcer, db, cfg := api.ForContext(ctx)
+	user, _, db, cfg := api.ForContext(ctx)
 	proposalIdStr := ctx.Param("id")
 	proposalRcd, err := GetProposalFromStringId(db, proposalIdStr)
 	if err != nil {
@@ -195,22 +195,6 @@ func Update(ctx *gin.Context) {
 		return
 	}
 
-	// Verify permission that only hall member can update proposal without template ID
-	if reqData.TemplateId == 0 {
-		ok, err := enforcer.HasRoleForUser(common.FormatUserWallet(user.Wallet), internal.RoleHall)
-		if err != nil {
-			sdk.LogServerErrorToSentry(ctx, err)
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get permission error")))
-			return
-		}
-
-		if !ok {
-			sdk.LogForbiddenError(ctx, user.Wallet, internal.RoleHall, "access")
-			ctx.JSON(http.StatusForbidden, api.Forbidden())
-			return
-		}
-	}
-
 	proposalRecord, err := SaveProposalRecordToDB(db, &reqData, user.Wallet, ctx.Param("id"), cfg)
 	if err != nil {
 		log.Error().Msgf("create proposal error: %+v", err)
@@ -235,6 +219,12 @@ func Update(ctx *gin.Context) {
 			_, err = updateProposalState(db, user, proposalIdStr, model.ProposalStateApproved, cfg)
 		} else if proposalRecord.VoteType == model.ProposalVoteTypeNone {
 			if err = createJobToUpdateNoVoteProposalToNextState(db, proposalRecord, proposalRecord.CreateTs+proposalRecord.PublicitySecond, model.ProposalStateApproved); err != nil {
+				log.Error().Msgf("create proposal state change error: %+v", err)
+				sdk.LogServerErrorToSentry(ctx, err)
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
+				return
+			}
+			if err = createJobToUpdateNoVoteProposalToNextState(db, proposalRecord, proposalRecord.CreateTs+proposalRecord.PublicitySecond+proposalRecord.PendingExecutionSecond, model.ProposalStateExecuted); err != nil {
 				log.Error().Msgf("create proposal state change error: %+v", err)
 				sdk.LogServerErrorToSentry(ctx, err)
 				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
@@ -272,21 +262,7 @@ func Create(ctx *gin.Context) {
 		return
 	}
 
-	user, enforcer, db, cfg := api.ForContext(ctx)
-	if reqData.TemplateId == 0 {
-		ok, err := enforcer.HasRoleForUser(common.FormatUserWallet(user.Wallet), internal.RoleHall)
-		if err != nil {
-			sdk.LogServerErrorToSentry(ctx, err)
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get permission error")))
-			return
-		}
-
-		if !ok {
-			sdk.LogForbiddenError(ctx, user.Wallet, internal.RoleHall, "access")
-			ctx.JSON(http.StatusForbidden, api.Forbidden())
-			return
-		}
-	}
+	user, _, db, cfg := api.ForContext(ctx)
 
 	proposalRecord, err := SaveProposalRecordToDB(db, &reqData, user.Wallet, "", cfg)
 	if err != nil {
