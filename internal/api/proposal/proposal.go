@@ -224,6 +224,12 @@ func Update(ctx *gin.Context) {
 				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
 				return
 			}
+			if err = createJobToUpdateNoVoteProposalToNextState(db, proposalRecord, proposalRecord.CreateTs+proposalRecord.PublicitySecond+proposalRecord.PendingExecutionSecond, model.ProposalStateExecuted); err != nil {
+				log.Error().Msgf("create proposal state change error: %+v", err)
+				sdk.LogServerErrorToSentry(ctx, err)
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
+				return
+			}
 		}
 	}
 
