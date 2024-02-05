@@ -40,12 +40,11 @@ type NewRewardTaskParam struct {
 type MotivationDetail struct {
 	TargetUserWallet string `json:"address"`
 	Amount           string `json:"amount"`
-	DetailedType     string `json:"issue"`
-	Comment          string `json:"memo"`
+	Comment          string `json:"description"`
 	AssetInfo        struct {
 		Id   int    `json:"id"`
 		Name string `json:"name"`
-	} `json:"type"`
+	} `json:"assetInfo"`
 }
 
 type MotivationTaskParam struct {
@@ -126,7 +125,6 @@ func CreateAppBundleTaskFromMotivationComponent(db *gorm.DB, job *model.CronJob,
 								UpdatedAt:        time.Now().In(internal.ProjectTimezone),
 								CreateTs:         model.GetCurrentUtcEpochSecond(),
 								UpdateTs:         model.GetCurrentUtcEpochSecond(),
-								DetailedType:     appDetail.DetailedType,
 								Comment:          appDetail.Comment,
 								TargetUserWallet: appDetail.TargetUserWallet,
 								AssetName:        appDetail.AssetInfo.Name,
