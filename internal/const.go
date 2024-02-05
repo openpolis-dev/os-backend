@@ -28,6 +28,8 @@ const SeedContractAddr = "0x30093266E34a816a53e302bE3e59a93B52792FD4"
 const SeasonSBTContractType = "erc1155"
 const SeasonSBTContractAddr = "0x9d34D407D8586478b3e4c39BE633ED3D7be1c80C"
 
+const CityHallTokenId = "70"
+
 var CityhallGroupNames = map[string]bool{"G_GOVERNANCE": true, "G_BRANDING": true, "G_TECH": true}
 
 // Proposal related const data
