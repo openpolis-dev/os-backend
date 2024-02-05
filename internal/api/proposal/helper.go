@@ -639,7 +639,7 @@ func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcd *mod
 		err = db.Where(&model.Proposal{ProposalRecordId: dbProposalRcd.ProposalRecordId}).Order("version DESC").Find(&dbProposals).Error
 		if err == nil && len(dbProposals) > 0 {
 			err = db.Transaction(func(tx *gorm.DB) error {
-				for idx := 0; idx < metaforoProposal.Thread.EditHistory.Count; idx++ {
+				for idx := 0; idx < min(metaforoProposal.Thread.EditHistory.Count, len(dbProposals)); idx++ {
 					tx.Model(&dbProposals[idx]).Update("arweave_hash", metaforoProposal.Thread.EditHistory.Lists[idx].Arweave)
 					if idx == 0 {
 						// Save arwave hash data to record for setting it correctly in response
