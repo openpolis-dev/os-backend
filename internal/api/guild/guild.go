@@ -16,6 +16,7 @@ import (
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk"
+	"gorm.io/gorm"
 )
 
 // ------ ------ ------ ------ ------ ------ ------ ------ ------
@@ -66,6 +67,111 @@ type (
 		TotalAmount decimal.Decimal `json:"total_amount"`
 	}
 )
+
+// Close
+// POST /guild/:id/close
+//
+//	@summary		Close a project
+//	@description	This api close specified project, admin permission is required for this operation
+//	@router			/guild/:id/close [post]
+//	@tags			Guild
+//	@param			id	path		number	true	"project ID"
+//	@success		200	{object}	api.Reply
+func Close(ctx *gin.Context) {
+	idParam := ctx.Param("id")
+	id, err := strconv.Atoi(idParam)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
+		return
+	}
+
+	user, enforcer, db, _ := api.ForContext(ctx)
+	//  check permission
+	// ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), internal.ObjProj, internal.ActClose)
+	// if err != nil {
+	// 	sdk.LogServerErrorToSentry(ctx, err)
+	// 	ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
+	// 	return
+	// }
+	// if !ok {
+	// 	sdk.LogForbiddenError(ctx, user.Wallet, internal.ObjProj, internal.ActClose)
+	// 	ctx.JSON(http.StatusForbidden, api.Forbidden())
+	// 	return
+	// }
+
+	//  check permission
+	ok, err := enforcer.HasRoleForUser(common.FormatUserWallet(user.Wallet), internal.RoleHall)
+	if err != nil {
+		log.Error().Msgf("check permission error %+v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall permission error")))
+		return
+	}
+
+	if !ok {
+		log.Warn().Msgf("permission deny for user %s", common.FormatUserWallet(user.Wallet))
+		sdk.LogForbiddenError(ctx, user.Wallet, internal.RoleHall, "access")
+		ctx.JSON(http.StatusForbidden, api.Forbidden())
+		return
+	}
+
+	guild, err := model.GuildModel.Detail(db, uint(id))
+	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get guild error")))
+		return
+	}
+	if guild == nil {
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("guild %d not exist", id)))
+		return
+	}
+
+	// project, err := model.ProjectModel.Detail(db, uint(id))
+	// if err != nil {
+	// 	sdk.LogServerErrorToSentry(ctx, err)
+	// 	ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get project error")))
+	// 	return
+	// }
+	// if project == nil {
+	// 	ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("project %d not exist", id)))
+	// 	return
+	// }
+
+	if guild.Status != model.ProjectStatusOpen {
+		err := fmt.Errorf("guild %d current status %s is not suit for closing", id, guild.Status)
+		sdk.LogUserSideError(ctx, err)
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
+	}
+
+	err = db.Transaction(func(tx *gorm.DB) error {
+		application := model.Application{
+			Type:       model.ApplicationCloseProject,
+			Applicant:  common.FormatUserWallet(user.Wallet),
+			State:      model.ApplicationStateOpen,
+			CreatedAt:  time.Now().In(internal.ProjectTimezone),
+			UpdatedAt:  time.Now().In(internal.ProjectTimezone),
+			CreateTs:   model.GetCurrentUtcEpochSecond(),
+			UpdateTs:   model.GetCurrentUtcEpochSecond(),
+			EntityType: "guild",
+			EntityId:   guild.ID,
+		}
+		err = model.NewApplicationRecord(tx, &application)
+		if err != nil {
+			return err
+		}
+		guild.Status = model.ProjectStatusPendingClose
+		guild.UpdatedAt = time.Now().In(internal.ProjectTimezone)
+		guild.UpdateTs = model.GetCurrentUtcEpochSecond()
+		return tx.Save(guild).Error
+	})
+
+	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("close guild failed")))
+	}
+
+	ctx.JSON(http.StatusOK, api.Success(nil))
+}
 
 // Create a guild
 //
