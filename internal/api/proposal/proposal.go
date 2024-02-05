@@ -161,7 +161,7 @@ func Detail(ctx *gin.Context) {
 //	@Param		JsonBody	body		CreateOrUpdateProposalData	true	"request json body"
 //	@success	200			{object}	api.Reply{}
 func Update(ctx *gin.Context) {
-	user, enforcer, db, cfg := api.ForContext(ctx)
+	user, _, db, cfg := api.ForContext(ctx)
 	proposalIdStr := ctx.Param("id")
 	proposalRcd, err := GetProposalFromStringId(db, proposalIdStr)
 	if err != nil {
@@ -193,22 +193,6 @@ func Update(ctx *gin.Context) {
 		sdk.LogUserSideError(ctx, err)
 		ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("parse request data error: %+v", err)))
 		return
-	}
-
-	// Verify permission that only hall member can update proposal without template ID
-	if reqData.TemplateId == 0 {
-		ok, err := enforcer.HasRoleForUser(common.FormatUserWallet(user.Wallet), internal.RoleHall)
-		if err != nil {
-			sdk.LogServerErrorToSentry(ctx, err)
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get permission error")))
-			return
-		}
-
-		if !ok {
-			sdk.LogForbiddenError(ctx, user.Wallet, internal.RoleHall, "access")
-			ctx.JSON(http.StatusForbidden, api.Forbidden())
-			return
-		}
 	}
 
 	proposalRecord, err := SaveProposalRecordToDB(db, &reqData, user.Wallet, ctx.Param("id"), cfg)
