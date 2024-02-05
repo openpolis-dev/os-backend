@@ -531,6 +531,9 @@ type ProposalTemplate struct {
 
 	// Identify whether this template is custom template
 	IsCustomTemplate bool
+
+	// Hide some template for some reason
+	IsHidden bool
 }
 
 type ExtraResultCheckRuleData struct {

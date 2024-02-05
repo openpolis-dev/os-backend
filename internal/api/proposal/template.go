@@ -26,6 +26,7 @@ pt.type = ? as is_closing_project,
 pt.vote_type
 from proposal_templates pt
 left join proposal_categories pc on pt.proposal_category_id =pc.id
+where pt.is_hidden=false
 order by pc.display_index, pt.display_index`
 
 type TemplateResponse struct {
