@@ -153,6 +153,10 @@ type Proposal struct {
 	// which is using for rejecting and closing project for now
 	AssociateProposalId uint
 
+	// ExtraResultCheckRule saves extra rules for checking vote result in json format.
+	// The data is defined in template record and will be saved to proposal when proposal is created
+	ExtraResultCheckRule []*ExtraResultCheckRuleData `gorm:"serializer:json"`
+
 	VoteTimeProperties
 }
 
@@ -516,6 +520,10 @@ type ProposalTemplate struct {
 	// VoteGates saves gate info of voting on proposal created by this template
 	VoteGates []*ProposalVoteGate `gorm:"many2many:proposal_voting_gates;"`
 
+	// ExtraResultCheckRule saves extra rules for checking vote result in json format.
+	// The data will be saved to proposal record when created
+	ExtraResultCheckRule []*ExtraResultCheckRuleData `gorm:"serializer:json"`
+
 	VoteTimeProperties
 
 	// Specify the display index while returning to frontend
@@ -523,4 +531,10 @@ type ProposalTemplate struct {
 
 	// Identify whether this template is custom template
 	IsCustomTemplate bool
+}
+
+type ExtraResultCheckRuleData struct {
+	Metric    string `json:"metric"`     // Data used for this rule
+	CheckType string `json:"check_type"` // Check type, ratio or count
+	Value     string `json:"value"`      // Value for the rule
 }

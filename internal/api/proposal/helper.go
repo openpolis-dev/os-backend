@@ -158,14 +158,12 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 			CanBeVetoed:             pCategory.CanBeVetoed,
 			IsBasedOnCustomTemplate: pTemplate.IsCustomTemplate,
 			AssociateProposalId:     reqData.CreateProjectProposalId,
+			ProposalTemplateID:      &reqData.TemplateId,
+			ExtraResultCheckRule:    pTemplate.ExtraResultCheckRule,
 		}
 		proposalRecord.PublicitySecond = voteTimeProps.PublicitySecond
 		proposalRecord.PendingExecutionSecond = voteTimeProps.PendingExecutionSecond
 		proposalRecord.VoteDurationSecond = voteTimeProps.VoteDurationSecond
-
-		if reqData.TemplateId != 0 {
-			proposalRecord.ProposalTemplateID = &reqData.TemplateId
-		}
 
 		if err := db.Create(&proposalRecord).Error; err != nil {
 			log.Error().Msgf("create proposal error: %+v", err)
@@ -796,17 +794,13 @@ func UpdateProposalStateBasedOnVoteResult(db *gorm.DB, proposalVoteRecord *model
 			proposalFinalState = model.ProposalStateVoteFailed
 		} else {
 			approvedCount := 0
-			rejectedCounter := 0
 			for _, r := range voteOptRcds {
-				switch r.Text {
-				case internal.ProposalDecisionApprove:
+				if r.Text == internal.ProposalDecisionApprove {
 					approvedCount = r.VoterCount
-				case internal.ProposalDecisionReject:
-					rejectedCounter = r.VoterCount
 				}
 			}
 
-			if approvedCount > rejectedCounter {
+			if approvedCount > totalVoterCount/2 {
 				proposalFinalState = model.ProposalStateVotePassed
 				voteResult = "1"
 			} else {
@@ -889,6 +883,15 @@ func UpdateProposalStateBasedOnVoteResult(db *gorm.DB, proposalVoteRecord *model
 	default:
 		log.Warn().Msgf("unknown proposal type, no logic to set the proposal state")
 		return err
+	}
+
+	if proposalFinalState == model.ProposalStateVotePassed && dbProposalRcd.ExtraResultCheckRule != nil {
+		currSeason, err := model.GetCurrentSeason(db)
+		if err != nil {
+			log.Error().Msgf("get current season error: %+v", err)
+			return err
+		}
+		proposalFinalState = updateProposalStateByExtraCheckRule(dbProposalRcd.ExtraResultCheckRule, totalVoterCount, currSeason.Idx)
 	}
 
 	dbProposalRcd.State = int(proposalFinalState)
@@ -1022,4 +1025,44 @@ func createCronJob(db *gorm.DB, dbProposal *model.Proposal, actionName string, j
 	}
 
 	return nil
+}
+
+func updateProposalStateByExtraCheckRule(checkRules []*model.ExtraResultCheckRuleData, totalVoterCount int, seasonIdx uint) model.ProposalState {
+	indexClient := sdk.GetIndexerClient()
+	checkPassed := false
+	for _, r := range checkRules {
+		ruleValue, err := strconv.ParseFloat(r.Value, 64)
+		if err != nil {
+			log.Warn().Msgf("error value in checking rule: %+v", r)
+			continue
+		}
+		valueToBeCompared := 0
+		switch r.Metric {
+		case internal.ExtraCheckRuleMetricSeed:
+			valueToBeCompared = indexClient.GetCurrentSeedHolderCount()
+		case internal.ExtraCheckRuleMetricCurrentSeasonNode:
+			valueToBeCompared = indexClient.GetCurrentSeasonNodeCount(fmt.Sprintf("%d", seasonIdx))
+		default:
+			log.Warn().Msgf("unknown metric: %s", r.Metric)
+		}
+
+		switch r.CheckType {
+		case internal.ExtraCheckRuleTypeRatio:
+			checkPassed = float64(totalVoterCount*100.0/valueToBeCompared) > ruleValue
+		case internal.ExtraCheckRuleTypeCount:
+			checkPassed = float64(totalVoterCount) > ruleValue
+		default:
+			log.Warn().Msgf("unknown extra check type: %s", r.CheckType)
+		}
+
+		if !checkPassed {
+			break
+		}
+	}
+
+	if checkPassed {
+		return model.ProposalStateVotePassed
+	} else {
+		return model.ProposalStateVoteFailed
+	}
 }
