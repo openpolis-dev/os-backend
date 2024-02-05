@@ -823,7 +823,7 @@ func UpdateProposalStateBasedOnVoteResult(db *gorm.DB, proposalVoteRecord *model
 			// then go through the sorted vote options to find records with duplicated voter count
 			recordsForCalcResults := []*model.ProposalVoteOptionRecord{voteOptRcds[0]}
 			maxVoterCount := voteOptRcds[0].VoterCount
-			for _, rcd := range voteOptRcds {
+			for _, rcd := range voteOptRcds[1:] {
 				if rcd.VoterCount < maxVoterCount {
 					// The record's voter count is less than max value, break out and do calc with saved records
 					break
