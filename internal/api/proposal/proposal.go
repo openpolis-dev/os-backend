@@ -272,21 +272,7 @@ func Create(ctx *gin.Context) {
 		return
 	}
 
-	user, enforcer, db, cfg := api.ForContext(ctx)
-	if reqData.TemplateId == 0 {
-		ok, err := enforcer.HasRoleForUser(common.FormatUserWallet(user.Wallet), internal.RoleHall)
-		if err != nil {
-			sdk.LogServerErrorToSentry(ctx, err)
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get permission error")))
-			return
-		}
-
-		if !ok {
-			sdk.LogForbiddenError(ctx, user.Wallet, internal.RoleHall, "access")
-			ctx.JSON(http.StatusForbidden, api.Forbidden())
-			return
-		}
-	}
+	user, _, db, cfg := api.ForContext(ctx)
 
 	proposalRecord, err := SaveProposalRecordToDB(db, &reqData, user.Wallet, "", cfg)
 	if err != nil {
