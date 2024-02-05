@@ -243,7 +243,7 @@ definitions:
     properties:
       ContantWay:
         type: string
-      OfficalLink:
+      OfficialLink:
         type: string
       budgets:
         items:
@@ -276,7 +276,7 @@ definitions:
     properties:
       ContantWay:
         type: string
-      OfficalLink:
+      OfficialLink:
         type: string
       budgets:
         items:
@@ -328,15 +328,14 @@ definitions:
     properties:
       ContantWay:
         type: string
-      OfficalLink:
+      OfficialLink:
         type: string
       desc:
-        type: string
-      intro:
+        description: |-
+          Name    string `json:"name"`
+          Intro   string `json:"intro"`
         type: string
       logo:
-        type: string
-      name:
         type: string
     type: object
   guild.UpdateStaffsReq:
@@ -551,7 +550,7 @@ definitions:
     properties:
       ContantWay:
         type: string
-      OfficalLink:
+      OfficialLink:
         type: string
       create_ts:
         type: integer
@@ -1916,6 +1915,24 @@ paths:
         for downloading
       tags:
       - Application
+  /guild/:id/close:
+    post:
+      description: This api close specified project, admin permission is required
+        for this operation
+      parameters:
+      - description: project ID
+        in: path
+        name: id
+        required: true
+        type: number
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.Reply'
+      summary: Close a project
+      tags:
+      - Guild
   /guilds:
     get:
       consumes:
