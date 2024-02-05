@@ -52,9 +52,9 @@ type (
 	}
 	UpdateReq struct {
 		LogoStr string `json:"logo"`
-		// Name    string `json:"name"`
-		// Intro   string `json:"intro"`
-		Desc string `json:"desc"`
+		Name    string `json:"name"`
+		Intro   string `json:"intro"`
+		Desc    string `json:"desc"`
 
 		Sponsors     []string `json:"sponsors"`
 		OverLink     string   `json:"OverLink"`
@@ -331,8 +331,8 @@ func Update(ctx *gin.Context) {
 	//})
 
 	proj.Logo = logoUrl
-	// proj.Name = req.Name
-	// proj.Intro = req.Intro
+	proj.Name = req.Name
+	proj.Intro = req.Intro
 	proj.Desc = req.Desc
 	//proj.Sponsors = sponsors
 	proj.OverLink = req.OverLink
