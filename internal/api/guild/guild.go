@@ -16,7 +16,6 @@ import (
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk"
-	"gorm.io/gorm"
 )
 
 // ------ ------ ------ ------ ------ ------ ------ ------ ------
@@ -143,27 +142,10 @@ func Close(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
 	}
 
-	err = db.Transaction(func(tx *gorm.DB) error {
-		application := model.Application{
-			Type:       model.ApplicationCloseProject,
-			Applicant:  common.FormatUserWallet(user.Wallet),
-			State:      model.ApplicationStateOpen,
-			CreatedAt:  time.Now().In(internal.ProjectTimezone),
-			UpdatedAt:  time.Now().In(internal.ProjectTimezone),
-			CreateTs:   model.GetCurrentUtcEpochSecond(),
-			UpdateTs:   model.GetCurrentUtcEpochSecond(),
-			EntityType: "guild",
-			EntityId:   guild.ID,
-		}
-		err = model.NewApplicationRecord(tx, &application)
-		if err != nil {
-			return err
-		}
-		guild.Status = model.ProjectStatusPendingClose
-		guild.UpdatedAt = time.Now().In(internal.ProjectTimezone)
-		guild.UpdateTs = model.GetCurrentUtcEpochSecond()
-		return tx.Save(guild).Error
-	})
+	guild.Status = model.ProjectStatusClosed
+	guild.UpdateTs = model.GetCurrentUtcEpochSecond()
+	guild.UpdatedAt = time.Now().In(internal.ProjectTimezone)
+	err = model.GuildModel.CreateOrUpdate(db, guild)
 
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
