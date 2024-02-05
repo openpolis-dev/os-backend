@@ -102,14 +102,30 @@ func Create(ctx *gin.Context) {
 
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
-	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), internal.ObjGuild, internal.ActCreate)
+	// ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), internal.ObjGuild, internal.ActCreate)
+	// if err != nil {
+	// 	sdk.LogServerErrorToSentry(ctx, err)
+	// 	ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
+	// 	return
+	// }
+	// if !ok {
+	// 	sdk.LogForbiddenError(ctx, user.Wallet, internal.ObjGuild, internal.ActCreate)
+	// 	ctx.JSON(http.StatusForbidden, api.Forbidden())
+	// 	return
+	// }
+
+	//  check permission
+	ok, err := enforcer.HasRoleForUser(common.FormatUserWallet(user.Wallet), internal.RoleHall)
 	if err != nil {
+		log.Error().Msgf("check permission error %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall permission error")))
 		return
 	}
+
 	if !ok {
-		sdk.LogForbiddenError(ctx, user.Wallet, internal.ObjGuild, internal.ActCreate)
+		log.Warn().Msgf("permission deny for user %s", common.FormatUserWallet(user.Wallet))
+		sdk.LogForbiddenError(ctx, user.Wallet, internal.RoleHall, "access")
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
@@ -242,15 +258,31 @@ func Update(ctx *gin.Context) {
 
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
-	permObject := buildGuildPermObject(id)
-	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), permObject, internal.ActModify)
+	// permObject := buildGuildPermObject(id)
+	// ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), permObject, internal.ActModify)
+	// if err != nil {
+	// 	sdk.LogServerErrorToSentry(ctx, err)
+	// 	ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
+	// 	return
+	// }
+	// if !ok {
+	// 	sdk.LogForbiddenError(ctx, user.Wallet, permObject, internal.ActModify)
+	// 	ctx.JSON(http.StatusForbidden, api.Forbidden())
+	// 	return
+	// }
+
+	//  check permission
+	ok, err := enforcer.HasRoleForUser(common.FormatUserWallet(user.Wallet), internal.RoleHall)
 	if err != nil {
+		log.Error().Msgf("check permission error %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall permission error")))
 		return
 	}
+
 	if !ok {
-		sdk.LogForbiddenError(ctx, user.Wallet, permObject, internal.ActModify)
+		log.Warn().Msgf("permission deny for user %s", common.FormatUserWallet(user.Wallet))
+		sdk.LogForbiddenError(ctx, user.Wallet, internal.RoleHall, "access")
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
