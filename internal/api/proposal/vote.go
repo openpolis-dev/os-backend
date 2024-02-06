@@ -242,15 +242,14 @@ func canUserVoteOnThread(db *gorm.DB, userWallet string, proposalIdString string
 	pTmplDbRcd := model.ProposalTemplate{
 		ID: *proposal.ProposalTemplateID,
 	}
-	err = db.Model(&model.ProposalTemplate{}).Association("VoteGates").Find(&voteGates)
+
+	err = db.Model(&pTmplDbRcd).Association("VoteGates").Find(&voteGates)
 	if err != nil {
 		log.Error().Msgf("get proposal template error: %+v", err)
 		return false, err
 	}
 
-	api.PrintStructAsJson(voteGates, "TTT: proposal vote gates")
-
-	permArray := lo.Map(pTmplDbRcd.VoteGates, func(r *model.ProposalVoteGate, _ int) bool {
+	permArray := lo.Map(voteGates, func(r *model.ProposalVoteGate, _ int) bool {
 		return IsUserMetVoteGate(seepassData, r)
 	})
 
