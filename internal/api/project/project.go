@@ -321,6 +321,9 @@ func Update(ctx *gin.Context) {
 
 		proj.Sponsors = sponsors
 		proj.OverLink = req.OverLink
+		if len(req.OverLink) > 0 {
+			proj.Status = model.ProjectStatusClosed
+		}
 	} else {
 		ok, err := enforcer.HasRoleForUser(common.FormatUserWallet(user.Wallet), internal.RoleHall)
 		if err != nil {
