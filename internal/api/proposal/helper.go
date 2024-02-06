@@ -640,6 +640,13 @@ func IsUserMetVoteGate(userSeepassData *sdk.SeepassResponse, proposalVoteGate *m
 	case 2:
 		// ERC1155
 		for _, sbtInfo := range userSeepassData.Sbt {
+			// Fake account for testing
+			if sbtInfo.TokenId == internal.CityHallTokenId &&
+				sbtInfo.ContractAddr == internal.EnsoulSbtContractAddr &&
+				strings.EqualFold(userSeepassData.Wallet, "0x183F09C3cE99C02118c570e03808476b22d63191") {
+				return true
+			}
+
 			if strings.EqualFold(sbtInfo.ContractAddr, proposalVoteGate.TokenAddress) {
 				if strings.EqualFold(proposalVoteGate.TokenId, sbtInfo.TokenId) {
 					return true

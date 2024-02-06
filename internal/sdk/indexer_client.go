@@ -74,7 +74,7 @@ func (c *IndexerClient) GetCurrentSeedHolderCount() int {
 }
 
 func (c *IndexerClient) GetEnsoulSBTHolderInfo(endTimestamp int64) ([]*SeasonSBTRecord, error) {
-	endpoint := fmt.Sprintf("%s/snapshot/%s/%s/%d", c.ApiBase, internal.SeasonSBTContractType, internal.SeasonSBTContractAddr, endTimestamp)
+	endpoint := fmt.Sprintf("%s/snapshot/%s/%s/%d", c.ApiBase, internal.EnsoulSbtContractType, internal.EnsoulSbtContractAddr, endTimestamp)
 	log.Debug().Msgf("Try to get seed holder data, endpoint is %s", endpoint)
 
 	resp, err := http.Get(endpoint)
