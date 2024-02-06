@@ -238,10 +238,20 @@ func canUserVoteOnThread(db *gorm.DB, userWallet string, proposalIdString string
 		return false, err
 	}
 
-	var proposalCategory *model.ProposalCategory
-	err = db.Model(&model.ProposalCategory{}).
-		Joins("ProposalVoteGate").
-		Where(model.ProposalCategory{ID: proposal.ProposalCategoryID}).First(&proposalCategory).Error
+	var pTmplDbRcd model.ProposalTemplate
+	err = db.Model(&model.ProposalTemplate{}).Find(&pTmplDbRcd, proposal.ProposalTemplateID).Error
+	if err != nil {
+		log.Error().Msgf("get proposal template error: %+v", err)
+		return false, err
+	}
 
-	return IsUserMetVoteGate(seepassData, proposalCategory.ProposalVoteGate), nil
+	permArray := lo.Map(pTmplDbRcd.VoteGates, func(r *model.ProposalVoteGate, _ int) bool {
+		return IsUserMetVoteGate(seepassData, r)
+	})
+
+	permResult := lo.Reduce(permArray, func(rslt bool, r bool, _ int) bool {
+		return rslt && r
+	}, true)
+
+	return permResult, nil
 }
