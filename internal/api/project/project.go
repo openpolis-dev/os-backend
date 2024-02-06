@@ -299,6 +299,7 @@ func Update(ctx *gin.Context) {
 	}
 
 	//  check permission
+	overProject := false
 	if (len(req.OverLink) > 0) || (len(req.Sponsors) > 0) {
 		ok, err := enforcer.HasRoleForUser(common.FormatUserWallet(user.Wallet), internal.RoleHall)
 		if err != nil {
@@ -321,6 +322,9 @@ func Update(ctx *gin.Context) {
 
 		proj.Sponsors = sponsors
 		proj.OverLink = req.OverLink
+		if len(req.OverLink) > 0 {
+			overProject = true
+		}
 	} else {
 		ok, err := enforcer.HasRoleForUser(common.FormatUserWallet(user.Wallet), internal.RoleHall)
 		if err != nil {
@@ -366,6 +370,10 @@ func Update(ctx *gin.Context) {
 	proj.Desc = req.Desc
 	proj.ContantWay = req.ContantWay
 	proj.OfficialLink = req.OfficialLink
+
+	if overProject {
+		proj.Status = model.ProjectStatusClosed
+	}
 
 	proj.UpdateTs = model.GetCurrentUtcEpochSecond()
 	proj.UpdatedAt = time.Now().In(internal.ProjectTimezone)
