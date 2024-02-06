@@ -22,6 +22,9 @@ var ApplicationDownloadHeader = map[string]string{
 	"en": "Receiver,Add Assets,Season,Content,Budget Source,Operator,State",
 }
 
+const ScrContractType = "erc20"
+const ScrContractAddr = "0xc74DEE15a4700D5df797bDD3982EE649A3Bb8c6C"
+
 const SeedContractType = "erc721"
 const SeedContractAddr = "0x30093266E34a816a53e302bE3e59a93B52792FD4"
 

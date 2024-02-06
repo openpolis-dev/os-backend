@@ -601,6 +601,7 @@ func BuildMetaforoVoteFormDataBytes(voteRecords []*model.ProposalVoteRecord, osV
 	return voteDataBytes, nil
 }
 
+// TODO: Change to use indexer data
 func IsUserMetVoteGate(userSeepassData *sdk.SeepassResponse, proposalVoteGate *model.ProposalVoteGate) bool {
 	if userSeepassData == nil {
 		return false
@@ -611,19 +612,47 @@ func IsUserMetVoteGate(userSeepassData *sdk.SeepassResponse, proposalVoteGate *m
 		return true
 	}
 
-	for _, sbtInfo := range userSeepassData.Sbt {
-		if strings.EqualFold(sbtInfo.ContractAddr, proposalVoteGate.TokenAddress) {
+	// Check ERC20 amount
+	switch proposalVoteGate.TokenType {
+	case 0:
+		//ERC20
+		if strings.EqualFold(proposalVoteGate.TokenAddress, internal.ScrContractAddr) {
+			userScrAmount, err := decimal.NewFromString(userSeepassData.Scr.Amount)
+			if err != nil {
+				log.Error().Msgf("parse user scr amount error: %+v", err)
+				return true
+			}
+
+			gateAmount, _ := decimal.NewFromString(proposalVoteGate.Amount)
+			return userScrAmount.GreaterThanOrEqual(gateAmount)
+		} else {
+			log.Warn().Msgf("unknown erc20 token, mark as true")
+			return true
+		}
+	case 1:
+		// ERC721
+		if strings.EqualFold(proposalVoteGate.TokenAddress, internal.SeedContractAddr) {
+			return len(userSeepassData.Seed) > 1
+		} else {
+			log.Warn().Msgf("unknown erc721 token, mark ask true")
+			return true
+		}
+	case 2:
+		// ERC1155
+		for _, sbtInfo := range userSeepassData.Sbt {
 			if strings.EqualFold(sbtInfo.ContractAddr, proposalVoteGate.TokenAddress) {
-				if proposalVoteGate.TokenTypeName() == "ERC1155" {
-					if strings.EqualFold(proposalVoteGate.TokenId, sbtInfo.TokenId) {
-						return true
-					}
-				} else {
+				if strings.EqualFold(proposalVoteGate.TokenId, sbtInfo.TokenId) {
 					return true
+				} else {
+					return false
 				}
 			}
 		}
+	default:
+		log.Error().Msgf("unknown token type, mark as has perm")
+		return true
 	}
+
 	return false
 }
 
