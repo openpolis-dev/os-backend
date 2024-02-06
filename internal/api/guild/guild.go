@@ -34,8 +34,8 @@ type (
 
 		Budgets []*BudgetParam `json:"budgets"`
 
-		ContantWay  string `json:"ContantWay"`
-		OfficalLink string `json:"OfficalLink"`
+		ContantWay   string `json:"ContantWay"`
+		OfficialLink string `json:"OfficialLink"`
 	}
 	BudgetParam struct {
 		Name        string          `json:"name"`
@@ -43,12 +43,12 @@ type (
 	}
 	UpdateReq struct {
 		LogoStr string `json:"logo"`
-		Name    string `json:"name"`
-		Intro   string `json:"intro"`
-		Desc    string `json:"desc"`
+		// Name    string `json:"name"`
+		// Intro   string `json:"intro"`
+		Desc string `json:"desc"`
 
-		ContantWay  string `json:"ContantWay"`
-		OfficalLink string `json:"OfficalLink"`
+		ContantWay   string `json:"ContantWay"`
+		OfficialLink string `json:"OfficialLink"`
 	}
 	DetailReply struct {
 		model.Guild
@@ -66,6 +66,94 @@ type (
 		TotalAmount decimal.Decimal `json:"total_amount"`
 	}
 )
+
+// Close
+// POST /guild/:id/close
+//
+//	@summary		Close a project
+//	@description	This api close specified project, admin permission is required for this operation
+//	@router			/guild/:id/close [post]
+//	@tags			Guild
+//	@param			id	path		number	true	"project ID"
+//	@success		200	{object}	api.Reply
+func Close(ctx *gin.Context) {
+	idParam := ctx.Param("id")
+	id, err := strconv.Atoi(idParam)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
+		return
+	}
+
+	user, enforcer, db, _ := api.ForContext(ctx)
+	//  check permission
+	// ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), internal.ObjProj, internal.ActClose)
+	// if err != nil {
+	// 	sdk.LogServerErrorToSentry(ctx, err)
+	// 	ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
+	// 	return
+	// }
+	// if !ok {
+	// 	sdk.LogForbiddenError(ctx, user.Wallet, internal.ObjProj, internal.ActClose)
+	// 	ctx.JSON(http.StatusForbidden, api.Forbidden())
+	// 	return
+	// }
+
+	//  check permission
+	ok, err := enforcer.HasRoleForUser(common.FormatUserWallet(user.Wallet), internal.RoleHall)
+	if err != nil {
+		log.Error().Msgf("check permission error %+v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall permission error")))
+		return
+	}
+
+	if !ok {
+		log.Warn().Msgf("permission deny for user %s", common.FormatUserWallet(user.Wallet))
+		sdk.LogForbiddenError(ctx, user.Wallet, internal.RoleHall, "access")
+		ctx.JSON(http.StatusForbidden, api.Forbidden())
+		return
+	}
+
+	guild, err := model.GuildModel.Detail(db, uint(id))
+	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get guild error")))
+		return
+	}
+	if guild == nil {
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("guild %d not exist", id)))
+		return
+	}
+
+	// project, err := model.ProjectModel.Detail(db, uint(id))
+	// if err != nil {
+	// 	sdk.LogServerErrorToSentry(ctx, err)
+	// 	ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get project error")))
+	// 	return
+	// }
+	// if project == nil {
+	// 	ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("project %d not exist", id)))
+	// 	return
+	// }
+
+	if guild.Status != model.ProjectStatusOpen {
+		err := fmt.Errorf("guild %d current status %s is not suit for closing", id, guild.Status)
+		sdk.LogUserSideError(ctx, err)
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
+	}
+
+	guild.Status = model.ProjectStatusClosed
+	guild.UpdateTs = model.GetCurrentUtcEpochSecond()
+	guild.UpdatedAt = time.Now().In(internal.ProjectTimezone)
+	err = model.GuildModel.CreateOrUpdate(db, guild)
+
+	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("close guild failed")))
+	}
+
+	ctx.JSON(http.StatusOK, api.Success(nil))
+}
 
 // Create a guild
 //
@@ -143,8 +231,10 @@ func Create(ctx *gin.Context) {
 		CreateTs:  model.GetCurrentUtcEpochSecond(),
 		UpdateTs:  model.GetCurrentUtcEpochSecond(),
 
-		ContantWay:  req.ContantWay,
-		OfficalLink: req.OfficalLink,
+		Status: model.ProjectStatusOpen,
+
+		ContantWay:   req.ContantWay,
+		OfficialLink: req.OfficialLink,
 	}
 	err = model.GuildModel.CreateOrUpdate(tx, &guild)
 	if err != nil {
@@ -307,12 +397,12 @@ func Update(ctx *gin.Context) {
 
 	// update name
 	guild.Logo = logoUrl
-	guild.Name = req.Name
-	guild.Intro = req.Intro
+	// guild.Name = req.Name
+	// guild.Intro = req.Intro
 	guild.Desc = req.Desc
 
 	guild.ContantWay = req.ContantWay
-	guild.OfficalLink = req.OfficalLink
+	guild.OfficialLink = req.OfficialLink
 
 	guild.UpdateTs = model.GetCurrentUtcEpochSecond()
 	guild.UpdatedAt = time.Now().In(internal.ProjectTimezone)

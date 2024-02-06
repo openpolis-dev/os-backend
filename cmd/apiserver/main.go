@@ -153,6 +153,8 @@ func main() {
 	task_manager.InitTaskManager(db, 5, cfg)
 	task_manager.GetTaskManager().StartRunner()
 
+	storage.SetConfig(cfg)
+
 	r := setupRouter(cfg, db, enforcer, pushSDK)
 	_ = r.Run()
 }
@@ -321,6 +323,7 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		guildGroup.POST("/:id/update_staffs", guild.UpdateStaffs)
 		guildGroup.POST("/:id/update_budget", guild.UpdateBudget)
 		guildGroup.POST("/:id/add_related_proposal", guild.AddRelatedProposal)
+		guildGroup.POST("/:id/close", guild.Close)
 		// my guilds
 		authorizedGroup.GET("/my_guilds", guild.MyGuilds)
 

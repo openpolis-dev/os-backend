@@ -216,7 +216,7 @@ func Update(ctx *gin.Context) {
 		// If the publicity second is 0, update the db proposal to voting state
 		if proposalRecord.PublicitySecond == 0 {
 			log.Debug().Msgf("proposal has no publicity time, change to approved status directly")
-			_, err = updateProposalState(db, user, proposalIdStr, model.ProposalStateApproved, cfg)
+			_, err = UpdateProposalStateAndLaunchStateChangeActions(db, user, proposalIdStr, model.ProposalStateApproved, cfg)
 		} else if proposalRecord.VoteType == model.ProposalVoteTypeNone {
 			if err = createJobToUpdateNoVoteProposalToNextState(db, proposalRecord, proposalRecord.CreateTs+proposalRecord.PublicitySecond, model.ProposalStateApproved); err != nil {
 				log.Error().Msgf("create proposal state change error: %+v", err)
@@ -277,7 +277,7 @@ func Create(ctx *gin.Context) {
 		// If the publicity second is 0, update the db proposal to voting state or pending execution state, and handle SIP data
 		if proposalRecord.PublicitySecond == 0 {
 			log.Debug().Msgf("proposal has no publicity time, change to approved status directly")
-			_, err = updateProposalState(db, user, fmt.Sprintf("%d", proposalRecord.ID), model.ProposalStateApproved, cfg)
+			_, err = UpdateProposalStateAndLaunchStateChangeActions(db, user, fmt.Sprintf("%d", proposalRecord.ID), model.ProposalStateApproved, cfg)
 		} else if proposalRecord.VoteType == model.ProposalVoteTypeNone {
 			if err = createJobToUpdateNoVoteProposalToNextState(db, proposalRecord, proposalRecord.CreateTs+proposalRecord.PublicitySecond, model.ProposalStateApproved); err != nil {
 				log.Error().Msgf("create proposal state change error: %+v", err)
@@ -314,7 +314,7 @@ func Create(ctx *gin.Context) {
 func Withdraw(ctx *gin.Context) {
 	user, _, db, cfg := api.ForContext(ctx)
 	proposalIdStr := ctx.Param("id")
-	_, err := updateProposalState(db, user, proposalIdStr, model.ProposalStateWithdrawn, cfg)
+	_, err := UpdateProposalStateAndLaunchStateChangeActions(db, user, proposalIdStr, model.ProposalStateWithdrawn, cfg)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			log.Warn().Msgf("proposal %s not found", proposalIdStr)
@@ -356,7 +356,7 @@ func Approve(ctx *gin.Context) {
 	}
 
 	proposalIdStr := ctx.Param("id")
-	_, err = updateProposalState(db, user, proposalIdStr, model.ProposalStateApproved, cfg)
+	_, err = UpdateProposalStateAndLaunchStateChangeActions(db, user, proposalIdStr, model.ProposalStateApproved, cfg)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			log.Warn().Msgf("proposal %s not found", proposalIdStr)
@@ -413,7 +413,7 @@ func Reject(ctx *gin.Context) {
 	}
 
 	proposalIdStr := ctx.Param("id")
-	proposalRecord, err := updateProposalState(db, user, proposalIdStr, model.ProposalStateRejected, cfg)
+	proposalRecord, err := UpdateProposalStateAndLaunchStateChangeActions(db, user, proposalIdStr, model.ProposalStateRejected, cfg)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			log.Warn().Msgf("proposal %s not found", proposalIdStr)
@@ -584,8 +584,8 @@ func GetProposalsUsedForCreatingProjects(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, api.Success(resultRowsWithSipRecords))
 }
 
-// Internal function to handle duplicated logic of updating proposal state
-func updateProposalState(db *gorm.DB, user *middleware.CurUser, proposalStrId string, newState model.ProposalState, cfg *config.Config) (*model.Proposal, error) {
+// UpdateProposalStateAndLaunchStateChangeActions changes proposal state and launch specified actions associated with state change
+func UpdateProposalStateAndLaunchStateChangeActions(db *gorm.DB, user *middleware.CurUser, proposalStrId string, newState model.ProposalState, cfg *config.Config) (*model.Proposal, error) {
 	proposalRecord, err := GetProposalFromStringId(db, proposalStrId)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -597,7 +597,7 @@ func updateProposalState(db *gorm.DB, user *middleware.CurUser, proposalStrId st
 	// Check whether user has permission to the change the proposal state
 	switch newState {
 	case model.ProposalStateWithdrawn:
-		if !strings.EqualFold(user.Wallet, proposalRecord.Applicant) {
+		if user == nil || !strings.EqualFold(user.Wallet, proposalRecord.Applicant) {
 			return nil, errors.New("proposal can only be withdrawn by applicant")
 		}
 
@@ -723,6 +723,14 @@ func updateProposalState(db *gorm.DB, user *middleware.CurUser, proposalStrId st
 			log.Error().Msgf("change proposal to rejected error")
 			return nil, err
 		}
+	case model.ProposalStateExecuted:
+		proposalRecord.State = int(model.ProposalStateExecuted)
+		// TODO: launch automation tasks here
+		err = db.Save(&proposalRecord).Error
+		if err != nil {
+			log.Error().Msgf("change proposal to executed error")
+			return nil, err
+		}
 	default:
 		return nil, fmt.Errorf("changing proposal from state %s to %s is not approved", proposalRecord.StateName(), model.ProposalStateName[newState])
 	}
@@ -788,8 +796,10 @@ func createJobToUpdateNoVoteProposalToNextState(db *gorm.DB, proposal *model.Pro
 			return err
 		}
 	} else {
-		log.Debug().Msgf("automation for updating state has already created, return")
-		return nil
+		if proposal.VoteType != model.ProposalVoteTypeNone {
+			log.Debug().Msgf("automation for updating state has already created, return")
+			return nil
+		}
 	}
 
 	updateProposalStateTaskParams := map[string]any{
@@ -822,7 +832,9 @@ func createJobToUpdateNoVoteProposalToNextState(db *gorm.DB, proposal *model.Pro
 	createTaskTx := db.Where(model.CronJob{
 		HandlerName:               internal.TaskUpdateProposalState,
 		ProposalComponentRecordId: int(proposalComponentRecord.ID),
-		ProposalId:                proposal.ID}).
+		ProposalId:                proposal.ID,
+		NextExecTs:                jobExecTs,
+	}).
 		Assign(&finTask).FirstOrCreate(&finTask)
 
 	if createTaskTx.Error != nil {

@@ -6,7 +6,9 @@ import (
 	"strings"
 
 	"github.com/rs/zerolog/log"
+	"github.com/theseed-labs/os-backend/internal/api/proposal"
 	"github.com/theseed-labs/os-backend/internal/model"
+	"github.com/theseed-labs/os-backend/internal/storage"
 	"gorm.io/gorm"
 )
 
@@ -119,18 +121,17 @@ func UpdateProposalSateTask(db *gorm.DB, job *model.CronJob, jobParams string) {
 		execResult = err.Error()
 		jobFailed = true
 	} else {
-		proposal := model.Proposal{ID: params.ProposalId}
-		log.Debug().Msgf("update proposal %d from state %d to %d", proposal.ID, proposal.State, params.State)
-		if proposal.IsInFinState() {
-			err := fmt.Errorf("proposal %d is already in final state %d", proposal.ID, proposal.State)
+		dbProposalRcd := model.Proposal{ID: params.ProposalId}
+		log.Debug().Msgf("update dbProposalRcd %d from state %d to %d", dbProposalRcd.ID, dbProposalRcd.State, params.State)
+		if dbProposalRcd.IsInFinState() {
+			err := fmt.Errorf("dbProposalRcd %d is already in final state %d", dbProposalRcd.ID, dbProposalRcd.State)
 			log.Warn().Msgf(err.Error())
 			execResult = err.Error()
 			jobFailed = true
 		} else {
-			proposal.State = params.State
-			err = db.Updates(&proposal).Error
+			_, err = proposal.UpdateProposalStateAndLaunchStateChangeActions(db, nil, fmt.Sprintf("%d", dbProposalRcd.ID), model.ProposalState(params.State), storage.GetConfig())
 			if err != nil {
-				log.Warn().Msgf("update proposal state error: %+v", err)
+				log.Warn().Msgf("update dbProposalRcd state error: %+v", err)
 				execResult = err.Error()
 				jobFailed = true
 			}

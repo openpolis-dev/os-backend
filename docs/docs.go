@@ -443,6 +443,32 @@ const docTemplate = `{
                 }
             }
         },
+        "/guild/:id/close": {
+            "post": {
+                "description": "This api close specified project, admin permission is required for this operation",
+                "tags": [
+                    "Guild"
+                ],
+                "summary": "Close a project",
+                "parameters": [
+                    {
+                        "type": "number",
+                        "description": "project ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.Reply"
+                        }
+                    }
+                }
+            }
+        },
         "/guilds": {
             "get": {
                 "consumes": [
@@ -3482,7 +3508,7 @@ const docTemplate = `{
                 "ContantWay": {
                     "type": "string"
                 },
-                "OfficalLink": {
+                "OfficialLink": {
                     "type": "string"
                 },
                 "budgets": {
@@ -3530,7 +3556,7 @@ const docTemplate = `{
                 "ContantWay": {
                     "type": "string"
                 },
-                "OfficalLink": {
+                "OfficialLink": {
                     "type": "string"
                 },
                 "budgets": {
@@ -3611,19 +3637,14 @@ const docTemplate = `{
                 "ContantWay": {
                     "type": "string"
                 },
-                "OfficalLink": {
+                "OfficialLink": {
                     "type": "string"
                 },
                 "desc": {
-                    "type": "string"
-                },
-                "intro": {
+                    "description": "Name    string ` + "`" + `json:\"name\"` + "`" + `\nIntro   string ` + "`" + `json:\"intro\"` + "`" + `",
                     "type": "string"
                 },
                 "logo": {
-                    "type": "string"
-                },
-                "name": {
                     "type": "string"
                 }
             }
@@ -3939,7 +3960,7 @@ const docTemplate = `{
                 "ContantWay": {
                     "type": "string"
                 },
-                "OfficalLink": {
+                "OfficialLink": {
                     "type": "string"
                 },
                 "create_ts": {

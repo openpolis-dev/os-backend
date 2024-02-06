@@ -136,7 +136,13 @@ func ListTemplatesWithPerm(ctx *gin.Context) {
 			return nil
 		}
 
-		permArray := lo.Map(tmplDbRcd.UseTemplateGates, func(r *model.ProposalVoteGate, _ int) bool {
+		var useTemplateVoteGates []*model.ProposalVoteGate
+		if err = db.Model(&tmplDbRcd).Association("UseTemplateGates").Find(&useTemplateVoteGates); err != nil {
+			log.Warn().Msgf("try to fetch template record  %d error: %+v", r.ID, err)
+			return nil
+		}
+
+		permArray := lo.Map(useTemplateVoteGates, func(r *model.ProposalVoteGate, _ int) bool {
 			return IsUserMetVoteGate(userSeepassData, r)
 		})
 

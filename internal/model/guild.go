@@ -29,8 +29,8 @@ type Guild struct {
 	CreateTs int64 `json:"create_ts" gorm:"index"`
 	UpdateTs int64 `json:"update_ts" gorm:"index"`
 
-	ContantWay  string `json:"ContantWay"`
-	OfficalLink string `json:"OfficalLink"`
+	ContantWay   string `json:"ContantWay"`
+	OfficialLink string `json:"OfficialLink"`
 }
 
 type guildModel struct{}

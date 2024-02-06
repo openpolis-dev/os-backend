@@ -52,9 +52,9 @@ type (
 	}
 	UpdateReq struct {
 		LogoStr string `json:"logo"`
-		Name    string `json:"name"`
-		Intro   string `json:"intro"`
-		Desc    string `json:"desc"`
+		// Name    string `json:"name"`
+		// Intro   string `json:"intro"`
+		Desc string `json:"desc"`
 
 		Sponsors     []string `json:"sponsors"`
 		OverLink     string   `json:"OverLink"`
@@ -286,21 +286,6 @@ func Update(ctx *gin.Context) {
 	// 	ctx.JSON(http.StatusForbidden, api.Forbidden())
 	// 	return
 	// }
-	//  check permission
-	ok, err := enforcer.HasRoleForUser(common.FormatUserWallet(user.Wallet), internal.RoleHall)
-	if err != nil {
-		log.Error().Msgf("check permission error %+v", err)
-		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall permission error")))
-		return
-	}
-
-	if !ok {
-		log.Warn().Msgf("permission deny for user %s", common.FormatUserWallet(user.Wallet))
-		sdk.LogForbiddenError(ctx, user.Wallet, internal.RoleHall, "access")
-		ctx.JSON(http.StatusForbidden, api.Forbidden())
-		return
-	}
 
 	proj, err := model.ProjectModel.Detail(db, uint(id))
 	if err != nil {
@@ -311,6 +296,55 @@ func Update(ctx *gin.Context) {
 	if proj == nil {
 		ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("project %d not exist", id)))
 		return
+	}
+
+	//  check permission
+	if (len(req.OverLink) > 0) || (len(req.Sponsors) > 0) {
+		ok, err := enforcer.HasRoleForUser(common.FormatUserWallet(user.Wallet), internal.RoleHall)
+		if err != nil {
+			log.Error().Msgf("check permission error %+v", err)
+			sdk.LogServerErrorToSentry(ctx, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall permission error")))
+			return
+		}
+
+		if !ok {
+			log.Warn().Msgf("permission deny for user %s", common.FormatUserWallet(user.Wallet))
+			sdk.LogForbiddenError(ctx, user.Wallet, internal.RoleHall, "access")
+			ctx.JSON(http.StatusForbidden, api.Forbidden())
+			return
+		}
+
+		sponsors := lo.Map[string](req.Sponsors, func(item string, _ int) string {
+			return common.FormatUserWallet(item)
+		})
+
+		proj.Sponsors = sponsors
+		proj.OverLink = req.OverLink
+	} else {
+		ok, err := enforcer.HasRoleForUser(common.FormatUserWallet(user.Wallet), internal.RoleHall)
+		if err != nil {
+			log.Error().Msgf("check permission error %+v", err)
+			sdk.LogServerErrorToSentry(ctx, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall permission error")))
+			return
+		}
+
+		if !ok {
+			if len(proj.Sponsors) > 0 {
+				if common.FormatUserWallet(proj.Sponsors[0]) != common.FormatUserWallet(user.Wallet) {
+					log.Warn().Msgf("permission deny for user %s", common.FormatUserWallet(user.Wallet))
+					sdk.LogForbiddenError(ctx, user.Wallet, "RoleSponsors", "access")
+					ctx.JSON(http.StatusForbidden, api.Forbidden())
+					return
+				}
+			} else {
+				log.Warn().Msgf("permission deny for user %s", common.FormatUserWallet(user.Wallet))
+				sdk.LogForbiddenError(ctx, user.Wallet, internal.RoleHall, "access")
+				ctx.JSON(http.StatusForbidden, api.Forbidden())
+				return
+			}
+		}
 	}
 
 	// project can be updated only when its status is 'open'
@@ -326,16 +360,10 @@ func Update(ctx *gin.Context) {
 	}
 
 	// update logo and name
-	//sponsors := lo.Map[string](req.Sponsors, func(item string, _ int) string {
-	//	return common.FormatUserWallet(item)
-	//})
-
 	proj.Logo = logoUrl
-	proj.Name = req.Name
-	proj.Intro = req.Intro
+	// proj.Name = req.Name
+	// proj.Intro = req.Intro
 	proj.Desc = req.Desc
-	//proj.Sponsors = sponsors
-	proj.OverLink = req.OverLink
 	proj.ContantWay = req.ContantWay
 	proj.OfficialLink = req.OfficialLink
 

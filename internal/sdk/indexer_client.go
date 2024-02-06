@@ -73,8 +73,8 @@ func (c *IndexerClient) GetCurrentSeedHolderCount() int {
 	}
 }
 
-func (c *IndexerClient) GetSeasonNodeHolderData(endTimestamp int64) ([]*SeasonSBTRecord, error) {
-	endpoint := fmt.Sprintf("%s/snapshot/%s/%s/%d", c.ApiBase, internal.SeasonSBTContractType, internal.SeasonSBTContractAddr, endTimestamp)
+func (c *IndexerClient) GetEnsoulSBTHolderInfo(endTimestamp int64) ([]*SeasonSBTRecord, error) {
+	endpoint := fmt.Sprintf("%s/snapshot/%s/%s/%d", c.ApiBase, internal.EnsoulSbtContractType, internal.EnsoulSbtContractAddr, endTimestamp)
 	log.Debug().Msgf("Try to get seed holder data, endpoint is %s", endpoint)
 
 	resp, err := http.Get(endpoint)
@@ -98,7 +98,7 @@ func (c *IndexerClient) GetSeasonNodeHolderData(endTimestamp int64) ([]*SeasonSB
 }
 
 func (c *IndexerClient) GetCurrentSeasonNodeCount(seasonNumberStr string) int {
-	nodeSbtHolderRecords, err := c.GetSeasonNodeHolderData(time.Now().UTC().Unix())
+	nodeSbtHolderRecords, err := c.GetEnsoulSBTHolderInfo(time.Now().UTC().Unix())
 
 	if err != nil {
 		log.Error().Msgf("get node SBT holder info error: %+v", err)
@@ -107,6 +107,23 @@ func (c *IndexerClient) GetCurrentSeasonNodeCount(seasonNumberStr string) int {
 		resultCount := 0
 		for _, record := range nodeSbtHolderRecords {
 			if lo.Contains(record.Ids, seasonNumberStr) {
+				resultCount += 1
+			}
+		}
+		return resultCount
+	}
+}
+
+func (c *IndexerClient) GetCurrentCityHallCount() int {
+	nodeSbtHolderRecords, err := c.GetEnsoulSBTHolderInfo(time.Now().UTC().Unix())
+
+	if err != nil {
+		log.Error().Msgf("get cityhall holder info error: %+v", err)
+		return 0
+	} else {
+		resultCount := 0
+		for _, record := range nodeSbtHolderRecords {
+			if lo.Contains(record.Ids, internal.CityHallTokenId) {
 				resultCount += 1
 			}
 		}

@@ -512,13 +512,13 @@ type ProposalTemplate struct {
 	ProposalCategory   *ProposalCategory
 
 	// UseTemplateGates saves gate for creating proposal based on this template
-	UseTemplateGates []*ProposalVoteGate `gorm:"many2many:template_usage_gates;"`
+	UseTemplateGates []*ProposalVoteGate `gorm:"many2many:m2m_template_usage_gates;"`
 
 	//////////
 	// Vote related information
 	//////////
 	// VoteGates saves gate info of voting on proposal created by this template
-	VoteGates []*ProposalVoteGate `gorm:"many2many:proposal_voting_gates;"`
+	VoteGates []*ProposalVoteGate `gorm:"many2many:m2m_proposal_voting_gates;"`
 
 	// ExtraResultCheckRule saves extra rules for checking vote result in json format.
 	// The data will be saved to proposal record when created
