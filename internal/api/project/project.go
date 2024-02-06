@@ -286,6 +286,18 @@ func Update(ctx *gin.Context) {
 	// 	ctx.JSON(http.StatusForbidden, api.Forbidden())
 	// 	return
 	// }
+
+	proj, err := model.ProjectModel.Detail(db, uint(id))
+	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get project error")))
+		return
+	}
+	if proj == nil {
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("project %d not exist", id)))
+		return
+	}
+
 	//  check permission
 	if (len(req.OverLink) > 0) || (len(req.Sponsors) > 0) {
 		ok, err := enforcer.HasRoleForUser(common.FormatUserWallet(user.Wallet), internal.RoleHall)
@@ -303,7 +315,7 @@ func Update(ctx *gin.Context) {
 			return
 		}
 	} else {
-		ok, err := enforcer.HasRoleForUser(common.FormatUserWallet(user.Wallet), internal.RoleHall, internal.RoleProjSponsorPrefix)
+		ok, err := enforcer.HasRoleForUser(common.FormatUserWallet(user.Wallet), internal.RoleHall)
 		if err != nil {
 			log.Error().Msgf("check permission error %+v", err)
 			sdk.LogServerErrorToSentry(ctx, err)
@@ -312,22 +324,20 @@ func Update(ctx *gin.Context) {
 		}
 
 		if !ok {
-			log.Warn().Msgf("permission deny for user %s", common.FormatUserWallet(user.Wallet))
-			sdk.LogForbiddenError(ctx, user.Wallet, internal.RoleHall, "access")
-			ctx.JSON(http.StatusForbidden, api.Forbidden())
-			return
+			if len(proj.Sponsors) > 0 {
+				if common.FormatUserWallet(proj.Sponsors[0]) != common.FormatUserWallet(user.Wallet) {
+					log.Warn().Msgf("permission deny for user %s", common.FormatUserWallet(user.Wallet))
+					sdk.LogForbiddenError(ctx, user.Wallet, "RoleSponsors", "access")
+					ctx.JSON(http.StatusForbidden, api.Forbidden())
+					return
+				}
+			} else {
+				log.Warn().Msgf("permission deny for user %s", common.FormatUserWallet(user.Wallet))
+				sdk.LogForbiddenError(ctx, user.Wallet, internal.RoleHall, "access")
+				ctx.JSON(http.StatusForbidden, api.Forbidden())
+				return
+			}
 		}
-	}
-
-	proj, err := model.ProjectModel.Detail(db, uint(id))
-	if err != nil {
-		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get project error")))
-		return
-	}
-	if proj == nil {
-		ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("project %d not exist", id)))
-		return
 	}
 
 	// project can be updated only when its status is 'open'
