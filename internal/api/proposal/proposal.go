@@ -684,7 +684,7 @@ func UpdateProposalStateAndLaunchStateChangeActions(db *gorm.DB, user *middlewar
 					}
 
 					if err = tx.Model(&model.ProposalComponentRecord{}).
-						Delete(&model.ProposalComponentRecord{}, &model.ProposalComponentRecord{ProposalID: proposalRecord.ID, ComponentID: 0}).Error; err != nil {
+						Delete(&model.ProposalComponentRecord{}, map[string]any{"proposal_id": proposalRecord.ID, "component_id": 0}).Error; err != nil {
 						log.Error().Msgf("create proposal state change error: %+v", err)
 						return err
 					}
