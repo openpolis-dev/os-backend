@@ -256,12 +256,12 @@ type associatedProposalData struct {
 
 func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal, startPostId int, accessToken string, metaforoGroupName string) (*FrontendProposalDetailRecord, error) {
 	var proposalBlocks []*model.ProposalContentBlock
-	if err := db.Where(&model.ProposalContentBlock{ProposalID: proposal.ID}).Find(&proposalBlocks).Error; err != nil {
+	if err := db.Where(&model.ProposalContentBlock{ProposalID: proposal.ID}).Order("id").Find(&proposalBlocks).Error; err != nil {
 		return nil, err
 	}
 
 	var proposalComponentRecords []*model.ProposalComponentRecord
-	if err := db.Where(&model.ProposalComponentRecord{ProposalID: proposal.ID}).Find(&proposalComponentRecords).Error; err != nil {
+	if err := db.Where(&model.ProposalComponentRecord{ProposalID: proposal.ID}).Order("id").Find(&proposalComponentRecords).Error; err != nil {
 		return nil, err
 	}
 
