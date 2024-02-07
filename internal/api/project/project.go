@@ -514,6 +514,8 @@ func Detail(ctx *gin.Context) {
 //	@router			/projects [get]
 //	@tags			Project
 //	@param			status		query		string	false	"status array, e.g. 'open,pending_close'"	Enum(open pending_close closed)
+//	@param		    keywords    query		string	false	"search keywords"
+//	@param		    wallet      query		string	false	"search wallet"
 //	@param			page		query		string	false	"which page"
 //	@param			size		query		string	false	"size of each page"
 //	@param			sort_field	query		string	false	"sort by which field"
@@ -528,7 +530,19 @@ func List(ctx *gin.Context) {
 	showSpecialProjectsParam := ctx.Query("show_special")
 	showSpecialProjectFlag := strings.EqualFold(showSpecialProjectsParam, "true")
 
-	projects, total, err := model.ProjectModel.List(db, status, page, showSpecialProjectFlag)
+	keywords := ctx.Query("keywords")
+	var k *string
+	if keywords != "" {
+		k = &keywords
+	}
+
+	wallet := ctx.Query("wallet")
+	var w *string
+	if wallet != "" {
+		w = &wallet
+	}
+
+	projects, total, err := model.ProjectModel.ListWithSearch(db, status, k, w, page, showSpecialProjectFlag)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("list projects error")))
