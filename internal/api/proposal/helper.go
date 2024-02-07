@@ -1084,9 +1084,9 @@ func updateProposalStateByExtraCheckRule(checkRules []*model.ExtraResultCheckRul
 
 		switch r.CheckType {
 		case internal.ExtraCheckRuleTypeRatio:
-			checkPassed = float64(totalVoterCount*100.0/valueToBeCompared) > ruleValue
+			checkPassed = float64(totalVoterCount*100.0/valueToBeCompared) >= ruleValue
 		case internal.ExtraCheckRuleTypeCount:
-			checkPassed = float64(totalVoterCount) > ruleValue
+			checkPassed = float64(totalVoterCount) >= ruleValue
 		default:
 			log.Warn().Msgf("unknown extra check type: %s", r.CheckType)
 		}

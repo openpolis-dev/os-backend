@@ -97,6 +97,41 @@ func (*projectModel) List(db *gorm.DB, status string, page *gormfind.Page, showS
 	return data, total, nil
 }
 
+func (*projectModel) ListWithSearch(db *gorm.DB, status string, keywords *string, wallet *string, page *gormfind.Page, showSpecialProjectFlag bool) (data []*Project, total int64, err error) {
+	querySeg := db.Table("projects")
+	if !showSpecialProjectFlag {
+		querySeg = querySeg.Where("is_special = false")
+	}
+	if status != "" {
+		if strings.Contains(status, ",") {
+			querySeg = querySeg.Where("status IN ?", strings.Split(status, ","))
+		} else {
+			querySeg = querySeg.Where("status = ?", status)
+		}
+	}
+	// <--- search conditions --->
+	if keywords != nil {
+		querySeg.Where(fmt.Sprintf("name ILIKE '%%%s%%'", *keywords))
+	}
+	if wallet != nil {
+		w := fmt.Sprintf("%%\"%s\"%%", *wallet) // value is: `%0x123%`
+		querySeg.Where(fmt.Sprintf("sponsors::text ILIKE '%%%s%%'", w))
+	}
+	// <--- search conditions --->
+
+	total, err = gormfind.Count(querySeg)
+	if err != nil {
+		return
+	}
+
+	data, err = QueryRows[Project](querySeg, page)
+	if err != nil {
+		return
+	}
+
+	return data, total, nil
+}
+
 func (*projectModel) ListBySponsorOrMember(db *gorm.DB, wallet string, page *gormfind.Page) (data []*Project, total int64, err error) {
 	w := fmt.Sprintf("%%\"%s\"%%", wallet) // value is: `%"0x123"%`
 	// MySQL version

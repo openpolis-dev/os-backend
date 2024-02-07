@@ -473,6 +473,8 @@ func Detail(ctx *gin.Context) {
 //	@tags		Guild
 //	@accept		json
 //	@produce	json
+//	@param		keywords    query		string	false	"search keywords"
+//	@param		wallet      query		string	false	"search wallet"
 //	@param		page		query		int		false	"page number, default: 1"
 //	@param		size		query		int		false	"page size, default: 10"
 //	@param		sort_field	query		string	false	"sort field, default: create_ts"
@@ -484,7 +486,19 @@ func List(ctx *gin.Context) {
 
 	page := api.ParseAndConvertPageParam(ctx)
 
-	guilds, total, err := model.GuildModel.List(db, page)
+	keywords := ctx.Query("keywords")
+	var k *string
+	if keywords != "" {
+		k = &keywords
+	}
+
+	wallet := ctx.Query("wallet")
+	var w *string
+	if wallet != "" {
+		w = &wallet
+	}
+
+	guilds, total, err := model.GuildModel.ListWithSearch(db, k, w, page)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("list guilds error")))
