@@ -586,6 +586,7 @@ func GetProposalsUsedForCreatingProjects(ctx *gin.Context) {
 
 // UpdateProposalStateAndLaunchStateChangeActions changes proposal state and launch specified actions associated with state change
 func UpdateProposalStateAndLaunchStateChangeActions(db *gorm.DB, user *middleware.CurUser, proposalStrId string, newState model.ProposalState, cfg *config.Config) (*model.Proposal, error) {
+	log.Error().Msgf("TTT: enter UpdateProposalStateAndLaunchStateChangeActions")
 	proposalRecord, err := GetProposalFromStringId(db, proposalStrId)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -770,15 +771,6 @@ func generateFrontendProposalRecords(db *gorm.DB, querySql string, page *gormfin
 }
 
 // TODO: Temporary solution to get open project proposal info while creating close project proposal
-
-type createProjectProposalContentBlockStruct struct {
-	ComponentId int    `json:"component_id"`
-	Name        string `json:"name"`
-	Schema      string `json:"schema"`
-	Data        any    `json:"data"`
-	Id          int    `json:"id,omitempty"`
-	CreateTs    int    `json:"create_ts,omitempty"`
-}
 
 func createJobToUpdateNoVoteProposalToNextState(db *gorm.DB, proposal *model.Proposal, jobExecTs int64, nextState model.ProposalState) error {
 	var err error

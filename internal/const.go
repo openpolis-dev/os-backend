@@ -97,6 +97,14 @@ const (
 	TaskUpdateProposalState  = "proposal/update_state"
 )
 
+const (
+	ComponentNameBudgetP1      = "budget_p1"
+	ComponentNameBudget        = "budget"
+	ComponentNameDeliverables  = "deliverables"
+	ComponentNameDeadline      = "deadline"
+	ComponentNameCreateProject = "create_project"
+)
+
 const ContentBlockTitleCreateProjectName = "立项信息"
 
 const ExtraCheckRuleMetricSeed = "seed"
