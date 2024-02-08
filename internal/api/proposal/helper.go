@@ -33,6 +33,21 @@ type proposalComponentActions struct {
 	RejectActionName          string `json:"reject_action_name"`
 }
 
+type budgetComponentData struct {
+	Amount     string `json:"amount"`
+	Applicant  string `json:"applicant"`
+	ProposalId string `json:"proposal_id"`
+	AssetInfo  struct {
+		Id   int    `json:"id"`
+		Name string `json:"name"`
+	} `json:"typeTest"`
+}
+
+type projectBudgetData struct {
+	Name        string `json:"name"`
+	TotalAmount string `json:"total_amount"`
+}
+
 type commonCreateProjectRelatedData struct {
 	Desc string `json:"description"`
 }
@@ -1194,7 +1209,22 @@ func CreateProjectFromAutoTasks(db *gorm.DB, proposal *model.Proposal) (*model.P
 		api.PrintStructAsJson(pComponentRecord, "TTT: component record")
 		if compName, found := getProposalComponentIdNameMapping(db)[pComponentRecord.ComponentID]; found {
 			if compName == internal.ComponentNameBudget || compName == internal.ComponentNameBudgetP1 {
-				newProjectData.Budgets = pComponentRecord.Data
+				var budgetParams budgetComponentData
+				err := json.Unmarshal([]byte(pComponentRecord.Data), &budgetParams)
+				if err != nil {
+					log.Error().Msgf("unmarshal project deliverables data error: %+v", err)
+					return nil, err
+				}
+				projectBudgetRcd := projectBudgetData{
+					Name:        fmt.Sprintf("%s%s", budgetParams.Amount, budgetParams.AssetInfo.Name),
+					TotalAmount: "0",
+				}
+				prjBudgetBytes, err := json.Marshal(projectBudgetRcd)
+				if err != nil {
+					log.Error().Msgf("unmarshal project deliverables data error: %+v", err)
+					return nil, err
+				}
+				newProjectData.Budgets = string(prjBudgetBytes)
 			} else if compName == internal.ComponentNameDeliverables {
 				var deliverableParams commonCreateProjectRelatedData
 				err := json.Unmarshal([]byte(pComponentRecord.Data), &deliverableParams)
