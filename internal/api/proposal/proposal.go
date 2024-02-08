@@ -586,11 +586,18 @@ func GetProposalsUsedForCreatingProjects(ctx *gin.Context) {
 
 // UpdateProposalStateAndLaunchStateChangeActions changes proposal state and launch specified actions associated with state change
 func UpdateProposalStateAndLaunchStateChangeActions(db *gorm.DB, user *middleware.CurUser, proposalStrId string, newState model.ProposalState, cfg *config.Config) (*model.Proposal, error) {
+	log.Error().Msgf("TTT: enter UpdateProposalStateAndLaunchStateChangeActions")
 	proposalRecord, err := GetProposalFromStringId(db, proposalStrId)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			log.Warn().Msgf("proposal %s not found", proposalStrId)
 		}
+		return nil, err
+	}
+
+	var pTemplate *model.ProposalTemplate
+	if err := db.Model(&proposalRecord).Association("ProposalTemplate").Find(&pTemplate); err != nil {
+		log.Error().Msgf("get proposal template error: %+v", err)
 		return nil, err
 	}
 
@@ -633,12 +640,6 @@ func UpdateProposalStateAndLaunchStateChangeActions(db *gorm.DB, user *middlewar
 		return nil, db.Transaction(func(tx *gorm.DB) error {
 			proposalRecord.State = int(model.ProposalStateApproved)
 
-			var pTemplate *model.ProposalTemplate
-			if err := tx.Model(&proposalRecord).Association("ProposalTemplate").Find(&pTemplate); err != nil {
-				log.Error().Msgf("get proposal template error: %+v", err)
-				return err
-			}
-
 			if pTemplate != nil && pTemplate.Type == model.ProposalTemplateTypeCloseProject {
 				createProjectProposal := model.Proposal{ID: proposalRecord.AssociateProposalId}
 				if err = db.Find(&createProjectProposal).Error; err != nil {
@@ -647,18 +648,7 @@ func UpdateProposalStateAndLaunchStateChangeActions(db *gorm.DB, user *middlewar
 				}
 				proposalRecord.Sip = createProjectProposal.Sip
 			} else {
-				var maxSipVal int
-				if err := db.Model(&model.Proposal{}).Select("max(sip)").Limit(1).Pluck("sip", &maxSipVal).Error; err != nil {
-					log.Error().Msgf("get vote records error: %+v", err)
-					return err
-				}
-
-				if maxSipVal != 0 {
-					proposalRecord.Sip = maxSipVal + 1
-				} else {
-					log.Error().Msgf("TTT: init sip val: %d", cfg.ProposalData.SipInitNumber)
-					proposalRecord.Sip = cfg.ProposalData.SipInitNumber
-				}
+				proposalRecord.Sip = getNextSipValue(db, cfg.ProposalData.SipInitNumber)
 			}
 
 			err = tx.Updates(&proposalRecord).Error
@@ -672,6 +662,17 @@ func UpdateProposalStateAndLaunchStateChangeActions(db *gorm.DB, user *middlewar
 			if proposalRecord.VoteType == model.ProposalVoteTypeNone {
 				if proposalRecord.PendingExecutionSecond == 0 {
 					proposalRecord.State = int(model.ProposalStateExecuted)
+
+					// Additional tasks for executed proposal
+					if pTemplate.Type == model.ProposalTemplateTypeNewProject {
+						// Get create project params from proposal components
+						prjRecord, err := CreateProjectFromAutoTasks(tx, proposalRecord)
+						if err != nil {
+							log.Error().Msgf("create project error: %+v", err)
+							return err
+						}
+						api.PrintStructAsJson(prjRecord, "TTT: Create Project After approving no vote and no pending execution proposal")
+					}
 				} else {
 					proposalRecord.State = int(model.ProposalStatePendingExecution)
 					// Delete cronjob created while creating for updating proposal state to approved
@@ -725,12 +726,24 @@ func UpdateProposalStateAndLaunchStateChangeActions(db *gorm.DB, user *middlewar
 		}
 	case model.ProposalStateExecuted:
 		proposalRecord.State = int(model.ProposalStateExecuted)
-		// TODO: launch automation tasks here
 		err = db.Save(&proposalRecord).Error
 		if err != nil {
 			log.Error().Msgf("change proposal to executed error")
 			return nil, err
 		}
+
+		// Additional tasks for executed proposal
+		if pTemplate.Type == model.ProposalTemplateTypeNewProject {
+			// Get create project params from proposal components
+			prjRecord, err := CreateProjectFromAutoTasks(db, proposalRecord)
+			if err != nil {
+				log.Error().Msgf("create project error: %+v", err)
+				return nil, err
+			}
+			api.PrintStructAsJson(prjRecord, "TTT: Create Project After approving no vote and no pending execution proposal")
+			proposalRecord.State = int(model.ProposalStateExecuted)
+		}
+
 	default:
 		return nil, fmt.Errorf("changing proposal from state %s to %s is not approved", proposalRecord.StateName(), model.ProposalStateName[newState])
 	}
@@ -770,15 +783,6 @@ func generateFrontendProposalRecords(db *gorm.DB, querySql string, page *gormfin
 }
 
 // TODO: Temporary solution to get open project proposal info while creating close project proposal
-
-type createProjectProposalContentBlockStruct struct {
-	ComponentId int    `json:"component_id"`
-	Name        string `json:"name"`
-	Schema      string `json:"schema"`
-	Data        any    `json:"data"`
-	Id          int    `json:"id,omitempty"`
-	CreateTs    int    `json:"create_ts,omitempty"`
-}
 
 func createJobToUpdateNoVoteProposalToNextState(db *gorm.DB, proposal *model.Proposal, jobExecTs int64, nextState model.ProposalState) error {
 	var err error

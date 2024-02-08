@@ -9,6 +9,7 @@ import (
 	"github.com/go-co-op/gocron/v2"
 	"github.com/rs/zerolog/log"
 	"github.com/theseed-labs/os-backend/internal"
+	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/config"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"gorm.io/gorm"
@@ -166,8 +167,12 @@ func (t *TaskManager) TaskDispatcher() {
 		//case internal.TaskCloseGuild:
 		//case internal.TaskRewardNewApplication:
 		//case internal.TaskCreateGuild:
-		//case internal.TaskCloseProject:
-		//case internal.TaskCreateProject:
+		case internal.TaskCloseProject:
+			api.PrintStructAsJson(task, "TTT: Close project")
+			go CloseProjectTask(t.DatabaseClient, task, task.JobParams)
+		case internal.TaskCreateProject:
+			api.PrintStructAsJson(task, "TTT: Create project")
+			go CreateProjectTask(t.DatabaseClient, task, task.JobParams)
 		default:
 			// Handle unknown task
 			log.Warn().Msgf("unknown task name: %s task detail: %+v", task.HandlerName, task)

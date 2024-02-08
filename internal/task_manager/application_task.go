@@ -9,6 +9,7 @@ import (
 	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
 	"github.com/theseed-labs/os-backend/internal"
+	"github.com/theseed-labs/os-backend/internal/api/proposal"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"gorm.io/gorm"
@@ -189,7 +190,21 @@ func CreateAppBundleTaskFromMotivationComponent(db *gorm.DB, job *model.CronJob,
 		if jobFailed {
 			db.Model(&model.Proposal{}).Where("id = ?", proposalId).Update("state", model.ProposalStateExecutionFailed)
 		} else {
-			db.Model(&model.Proposal{}).Where("id = ?", proposalId).Update("state", model.ProposalStateExecuted)
+			var pDbRcd model.Proposal
+			if err := db.Model(&model.Proposal{}).Where("id = ?", proposalId).Find(&pDbRcd).Error; err != nil {
+				log.Error().Msgf("find proposal error: %+v", err)
+				jobFailed = true
+				execResult = err.Error()
+			} else {
+				err := proposal.CloseProjectFromAutoTasks(db, &pDbRcd)
+				if err != nil {
+					log.Error().Msgf("close project error: %+v", err)
+					jobFailed = true
+					execResult = err.Error()
+				} else {
+					db.Model(&model.Proposal{}).Where("id = ?", proposalId).Update("state", model.ProposalStateExecuted)
+				}
+			}
 		}
 	}
 
