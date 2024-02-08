@@ -142,8 +142,6 @@ func ListTemplatesWithPerm(ctx *gin.Context) {
 			return nil
 		}
 
-		api.PrintStructAsJson(useTemplateVoteGates, fmt.Sprintf("TTT: tmpl gates for %s", tmplDbRcd.Name))
-
 		permArray := lo.Map(useTemplateVoteGates, func(r *model.ProposalVoteGate, _ int) bool {
 			return IsUserMetVoteGate(userSeepassData, r)
 		})

@@ -682,11 +682,10 @@ func IsUserMetVoteGate(userSeepassData *sdk.SeepassResponse, proposalVoteGate *m
 			if strings.EqualFold(sbtInfo.ContractAddr, proposalVoteGate.TokenAddress) {
 				if strings.EqualFold(proposalVoteGate.TokenId, sbtInfo.TokenId) {
 					return true
-				} else {
-					return false
 				}
 			}
 		}
+		return false
 	default:
 		log.Error().Msgf("unknown token type, mark as has perm")
 		return true
