@@ -261,7 +261,9 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 	}
 
 	var proposalComponentRecords []*model.ProposalComponentRecord
-	if err := db.Where(&model.ProposalComponentRecord{ProposalID: proposal.ID}).Order("id").Find(&proposalComponentRecords).Error; err != nil {
+	if err := db.Where(&model.ProposalComponentRecord{ProposalID: proposal.ID}).
+		Where("component_id != ?", 0).
+		Order("id").Find(&proposalComponentRecords).Error; err != nil {
 		return nil, err
 	}
 
