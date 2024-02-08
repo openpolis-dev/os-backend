@@ -1250,19 +1250,6 @@ func CreateProjectFromAutoTasks(db *gorm.DB, proposal *model.Proposal) (*model.P
 		}
 	}
 
-	// Load content data to description
-	var pContentBlocks []*model.ProposalContentBlock
-	if err = db.Model(&proposal).Association("ContentBlocks").Find(&pContentBlocks); err != nil {
-		log.Error().Msgf("fetch proposal content block error: %+v", err)
-	}
-	for _, block := range pContentBlocks {
-		if block.Title == internal.ContentBlockContentName {
-			newProjectData.Desc = block.Content
-		}
-	}
-
-	api.PrintStructAsJson(newProjectData, "TTT: new project param")
-
 	if err = db.Create(&newProjectData).Error; err != nil {
 		log.Error().Msgf("create project error: %+v", err)
 		return nil, err
