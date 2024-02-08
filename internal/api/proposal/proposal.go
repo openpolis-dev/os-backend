@@ -648,18 +648,7 @@ func UpdateProposalStateAndLaunchStateChangeActions(db *gorm.DB, user *middlewar
 				}
 				proposalRecord.Sip = createProjectProposal.Sip
 			} else {
-				var maxSipVal int
-				if err := db.Model(&model.Proposal{}).Select("max(sip)").Limit(1).Pluck("sip", &maxSipVal).Error; err != nil {
-					log.Error().Msgf("get vote records error: %+v", err)
-					return err
-				}
-
-				if maxSipVal != 0 {
-					proposalRecord.Sip = maxSipVal + 1
-				} else {
-					log.Error().Msgf("TTT: init sip val: %d", cfg.ProposalData.SipInitNumber)
-					proposalRecord.Sip = cfg.ProposalData.SipInitNumber
-				}
+				proposalRecord.Sip = getNextSipValue(db, cfg.ProposalData.SipInitNumber)
 			}
 
 			err = tx.Updates(&proposalRecord).Error
