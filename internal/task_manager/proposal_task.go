@@ -122,7 +122,7 @@ func UpdateProposalSateTask(db *gorm.DB, job *model.CronJob, jobParams string) {
 		jobFailed = true
 	} else {
 		dbProposalRcd := model.Proposal{ID: params.ProposalId}
-		log.Debug().Msgf("update dbProposalRcd %d from state %d to %d", dbProposalRcd.ID, dbProposalRcd.State, params.State)
+		log.Debug().Msgf("prepare to update dbProposalRcd %d from state %d to %d", dbProposalRcd.ID, dbProposalRcd.State, params.State)
 		if dbProposalRcd.IsInFinState() {
 			err := fmt.Errorf("dbProposalRcd %d is already in final state %d", dbProposalRcd.ID, dbProposalRcd.State)
 			log.Warn().Msgf(err.Error())
