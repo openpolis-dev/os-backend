@@ -787,6 +787,7 @@ func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcd *mod
 		if poll.Status == "open" {
 			if !dbProposalRcd.IsInFinState() {
 				dbProposalRcd.State = int(model.ProposalStateVoting)
+				dbProposalRcd.Sip = getNextSipValue(db, storage.GetConfig().ProposalData.SipInitNumber)
 				db.Updates(dbProposalRcd)
 			}
 		} else if poll.Status == "close" {
@@ -1267,4 +1268,19 @@ func CloseProjectFromAutoTasks(db *gorm.DB, proposal *model.Proposal) error {
 		Update("status", model.ProjectStatusClosed).
 		Update("over_link", fmt.Sprintf("/proposal/thread/%d", proposal.ID)).
 		Error
+}
+
+func getNextSipValue(db *gorm.DB, defaultVal int) int {
+	var maxSipVal int
+	if err := db.Model(&model.Proposal{}).Select("max(sip)").Limit(1).Pluck("sip", &maxSipVal).Error; err != nil {
+		log.Error().Msgf("get vote records error: %+v", err)
+		return defaultVal
+	}
+
+	if maxSipVal != 0 {
+		return maxSipVal + 1
+	} else {
+		log.Error().Msgf("TTT: init sip val: %d", defaultVal)
+		return defaultVal
+	}
 }
