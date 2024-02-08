@@ -33,7 +33,7 @@ type proposalComponentActions struct {
 	RejectActionName          string `json:"reject_action_name"`
 }
 
-type budgetComponentData struct {
+type budgetComponentDataP1 struct {
 	Amount     string `json:"amount"`
 	Applicant  string `json:"applicant"`
 	ProposalId string `json:"proposal_id"`
@@ -41,6 +41,20 @@ type budgetComponentData struct {
 		Id   int    `json:"id"`
 		Name string `json:"name"`
 	} `json:"typeTest"`
+}
+
+type budgetComponentData struct {
+	Applicant  string `json:"applicant"`
+	BudgetList []struct {
+		Amount      string `json:"amount"`
+		Description string `json:"description"`
+		Proportion  string `json:"proportion"`
+		AssetInfo   struct {
+			Id   int    `json:"id"`
+			Name string `json:"name"`
+		} `json:"typeTest"`
+	} `json:"budgetList"`
+	ProposalId string `json:"proposal_id"`
 }
 
 type projectBudgetData struct {
@@ -1209,8 +1223,8 @@ func CreateProjectFromAutoTasks(db *gorm.DB, proposal *model.Proposal) (*model.P
 	for _, pComponentRecord := range pComponents {
 		api.PrintStructAsJson(pComponentRecord, "TTT: component record")
 		if compName, found := getProposalComponentIdNameMapping(db)[pComponentRecord.ComponentID]; found {
-			if compName == internal.ComponentNameBudget || compName == internal.ComponentNameBudgetP1 {
-				var budgetParams budgetComponentData
+			if compName == internal.ComponentNameBudgetP1 {
+				var budgetParams budgetComponentDataP1
 				err := json.Unmarshal([]byte(pComponentRecord.Data), &budgetParams)
 				if err != nil {
 					log.Error().Msgf("unmarshal project deliverables data error: %+v", err)
@@ -1221,6 +1235,28 @@ func CreateProjectFromAutoTasks(db *gorm.DB, proposal *model.Proposal) (*model.P
 					TotalAmount: "0",
 				}
 				prjBudgetBytes, err := json.Marshal([]projectBudgetData{projectBudgetRcd})
+				if err != nil {
+					log.Error().Msgf("unmarshal project deliverables data error: %+v", err)
+					return nil, err
+				}
+				newProjectData.Budgets = string(prjBudgetBytes)
+			} else if compName == internal.ComponentNameBudget {
+				var budgetParams budgetComponentData
+				err := json.Unmarshal([]byte(pComponentRecord.Data), &budgetParams)
+				if err != nil {
+					log.Error().Msgf("unmarshal project deliverables data error: %+v", err)
+					return nil, err
+				}
+
+				projectBudgetRcds := make([]*projectBudgetData, 0)
+				for _, item := range budgetParams.BudgetList {
+					projectBudgetRcds = append(projectBudgetRcds, &projectBudgetData{
+						Name:        fmt.Sprintf("%s %s", item.Amount, item.AssetInfo.Name),
+						TotalAmount: "0",
+					})
+				}
+
+				prjBudgetBytes, err := json.Marshal(projectBudgetRcds)
 				if err != nil {
 					log.Error().Msgf("unmarshal project deliverables data error: %+v", err)
 					return nil, err
