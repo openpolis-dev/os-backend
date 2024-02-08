@@ -225,7 +225,7 @@ func getProposalsCanBeVetoed(db *gorm.DB) ([]*WidgetDataResponse, error) {
 		model.ProposalStateVotePassed,
 		model.ProposalStatePendingExecution,
 	)
-	querySql += fmt.Sprintf(" ORDER BY id ASC")
+	querySql += fmt.Sprintf(" ORDER BY create_ts DESC")
 
 	err := db.Raw(querySql).Find(&rcds).Error
 	if err != nil {
