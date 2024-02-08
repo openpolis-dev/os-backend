@@ -798,8 +798,24 @@ func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcd *mod
 		// TODO: Update the check logic of vote result with voter user limitations
 		if poll.Status == "open" {
 			if !dbProposalRcd.IsInFinState() {
+				var pTemplate *model.ProposalTemplate
+				if err := db.Model(&dbProposalRcd).Association("ProposalTemplate").Find(&pTemplate); err != nil {
+					log.Error().Msgf("get proposal template error: %+v", err)
+					return err
+				}
+
+				if pTemplate != nil && pTemplate.Type == model.ProposalTemplateTypeCloseProject {
+					createProjectProposal := model.Proposal{ID: dbProposalRcd.AssociateProposalId}
+					if err = db.Find(&createProjectProposal).Error; err != nil {
+						log.Error().Msgf("get creating project proposal error: %+v", err)
+						return err
+					}
+					dbProposalRcd.Sip = createProjectProposal.Sip
+				} else {
+					dbProposalRcd.Sip = getNextSipValue(db, storage.GetConfig().ProposalData.SipInitNumber)
+				}
+
 				dbProposalRcd.State = int(model.ProposalStateVoting)
-				dbProposalRcd.Sip = getNextSipValue(db, storage.GetConfig().ProposalData.SipInitNumber)
 				db.Updates(dbProposalRcd)
 			}
 		} else if poll.Status == "close" {
