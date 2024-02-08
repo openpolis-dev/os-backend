@@ -1117,6 +1117,48 @@ func updateProposalStateByExtraCheckRule(checkRules []*model.ExtraResultCheckRul
 	}
 }
 
+func getProposalComponentIdNameMapping(db *gorm.DB) map[uint]string {
+	rsltBytes, err := storage.GetCachedData("component_name_id_mapping")
+	if err == nil {
+		rslt := map[uint]string{}
+		if err = json.Unmarshal(rsltBytes, &rslt); err != nil {
+			log.Error().Msgf("unmarshal component name id mapping error: %+v", err)
+			return map[uint]string{}
+		}
+		return rslt
+	}
+
+	if !errors.Is(err, bigcache.ErrEntryNotFound) {
+		log.Error().Msgf("fetch component name id mapping error: %+v", err)
+		return map[uint]string{}
+	}
+
+	// Cache missing
+
+	var components []*model.ProposalComponent
+	if err := db.Model(&model.ProposalComponent{}).Find(&components).Error; err != nil {
+		log.Error().Msgf("fetch proposal component error: %+v", err)
+		return make(map[uint]string)
+	}
+
+	rslt := make(map[uint]string)
+	for _, c := range components {
+		rslt[c.ID] = c.Name
+	}
+
+	rsltBytes, err = json.Marshal(rslt)
+	if err != nil {
+		log.Error().Msgf("marshal component name id mapping error: %+v", err)
+		return rslt
+	}
+	if err = storage.StoreCachedData("component_name_id_mapping", rsltBytes); err != nil {
+		log.Error().Msgf("store component name id mapping error: %+v", err)
+		return rslt
+	}
+
+	return rslt
+}
+
 func CreateProjectFromAutoTasks(db *gorm.DB, proposal *model.Proposal) (*model.Project, error) {
 	var err error
 
@@ -1183,44 +1225,9 @@ func CreateProjectFromAutoTasks(db *gorm.DB, proposal *model.Proposal) (*model.P
 	return &newProjectData, nil
 }
 
-func getProposalComponentIdNameMapping(db *gorm.DB) map[uint]string {
-	rsltBytes, err := storage.GetCachedData("component_name_id_mapping")
-	if err == nil {
-		rslt := map[uint]string{}
-		if err = json.Unmarshal(rsltBytes, &rslt); err != nil {
-			log.Error().Msgf("unmarshal component name id mapping error: %+v", err)
-			return map[uint]string{}
-		}
-		return rslt
+func CloseProjectFromAutoTasks(db *gorm.DB, proposal *model.Proposal) error {
+	prjDbRcd := model.Project{
+		SIP: fmt.Sprintf("%d", proposal.Sip),
 	}
-
-	if !errors.Is(err, bigcache.ErrEntryNotFound) {
-		log.Error().Msgf("fetch component name id mapping error: %+v", err)
-		return map[uint]string{}
-	}
-
-	// Cache missing
-
-	var components []*model.ProposalComponent
-	if err := db.Model(&model.ProposalComponent{}).Find(&components).Error; err != nil {
-		log.Error().Msgf("fetch proposal component error: %+v", err)
-		return make(map[uint]string)
-	}
-
-	rslt := make(map[uint]string)
-	for _, c := range components {
-		rslt[c.ID] = c.Name
-	}
-
-	rsltBytes, err = json.Marshal(rslt)
-	if err != nil {
-		log.Error().Msgf("marshal component name id mapping error: %+v", err)
-		return rslt
-	}
-	if err = storage.StoreCachedData("component_name_id_mapping", rsltBytes); err != nil {
-		log.Error().Msgf("store component name id mapping error: %+v", err)
-		return rslt
-	}
-
-	return rslt
+	return db.Model(&prjDbRcd).Where(&prjDbRcd).Update("status", model.ProjectStatusClosed).Error
 }

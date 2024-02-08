@@ -683,10 +683,6 @@ func UpdateProposalStateAndLaunchStateChangeActions(db *gorm.DB, user *middlewar
 							return err
 						}
 						api.PrintStructAsJson(prjRecord, "TTT: Create Project After approving no vote and no pending execution proposal")
-						proposalRecord.State = int(model.ProposalStateExecuted)
-					} else if pTemplate.Type == model.ProposalTemplateTypeCloseProject {
-						// TODO: Test with close project
-						proposalRecord.State = int(model.ProposalStateExecuted)
 					}
 				} else {
 					proposalRecord.State = int(model.ProposalStatePendingExecution)
@@ -757,9 +753,6 @@ func UpdateProposalStateAndLaunchStateChangeActions(db *gorm.DB, user *middlewar
 			}
 			api.PrintStructAsJson(prjRecord, "TTT: Create Project After approving no vote and no pending execution proposal")
 			proposalRecord.State = int(model.ProposalStateExecuted)
-		} else if pTemplate.Type == model.ProposalTemplateTypeCloseProject {
-			proposalRecord.State = int(model.ProposalStateExecuted)
-			// TODO: Test with close project
 		}
 
 	default:
