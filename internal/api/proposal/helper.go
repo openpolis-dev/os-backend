@@ -659,14 +659,12 @@ func IsUserMetVoteGate(userSeepassData *sdk.SeepassResponse, proposalVoteGate *m
 			return true
 		}
 	case 2:
+		// Fake account for testing
+		if strings.EqualFold(userSeepassData.Wallet, "0x183F09C3cE99C02118c570e03808476b22d63191") {
+			return true
+		}
 		// ERC1155
 		for _, sbtInfo := range userSeepassData.Sbt {
-			// Fake account for testing
-			if sbtInfo.TokenId == internal.CityHallTokenId &&
-				sbtInfo.ContractAddr == internal.EnsoulSbtContractAddr &&
-				strings.EqualFold(userSeepassData.Wallet, "0x183F09C3cE99C02118c570e03808476b22d63191") {
-				return true
-			}
 
 			if strings.EqualFold(sbtInfo.ContractAddr, proposalVoteGate.TokenAddress) {
 				if strings.EqualFold(proposalVoteGate.TokenId, sbtInfo.TokenId) {
@@ -1185,13 +1183,14 @@ func CreateProjectFromAutoTasks(db *gorm.DB, proposal *model.Proposal) (*model.P
 	}
 
 	newProjectData := model.Project{
-		Proposals: []string{fmt.Sprintf("%d", proposal.ID)},
-		Name:      proposal.Title,
-		SIP:       fmt.Sprintf("%d", proposal.Sip),
-		CreateTs:  model.GetCurrentUtcEpochSecond(),
-		UpdateTs:  model.GetCurrentUtcEpochSecond(),
-		Status:    model.ProjectStatusOpen,
-		Category:  pTemplate.Name,
+		Proposals:    []string{fmt.Sprintf("%d", proposal.ID)},
+		Name:         proposal.Title,
+		SIP:          fmt.Sprintf("%d", proposal.Sip),
+		ApprovalLink: fmt.Sprintf("/proposal/thread/%d", proposal.ID),
+		CreateTs:     model.GetCurrentUtcEpochSecond(),
+		UpdateTs:     model.GetCurrentUtcEpochSecond(),
+		Status:       model.ProjectStatusOpen,
+		Category:     pTemplate.Name,
 		Sponsors: []string{
 			common.FormatUserWallet(proposal.Applicant),
 		},
@@ -1199,6 +1198,7 @@ func CreateProjectFromAutoTasks(db *gorm.DB, proposal *model.Proposal) (*model.P
 
 	log.Error().Msgf("TTT: project record: %+v", newProjectData)
 
+	// Load data from component records
 	var pComponents []*model.ProposalComponentRecord
 	if err = db.Model(&proposal).Association("Components").Find(&pComponents); err != nil {
 		log.Error().Msgf("fetch proposal components error: %+v", err)
@@ -1219,7 +1219,7 @@ func CreateProjectFromAutoTasks(db *gorm.DB, proposal *model.Proposal) (*model.P
 					Name:        fmt.Sprintf("%s%s", budgetParams.Amount, budgetParams.AssetInfo.Name),
 					TotalAmount: "0",
 				}
-				prjBudgetBytes, err := json.Marshal(projectBudgetRcd)
+				prjBudgetBytes, err := json.Marshal([]projectBudgetData{projectBudgetRcd})
 				if err != nil {
 					log.Error().Msgf("unmarshal project deliverables data error: %+v", err)
 					return nil, err
@@ -1240,8 +1240,24 @@ func CreateProjectFromAutoTasks(db *gorm.DB, proposal *model.Proposal) (*model.P
 					log.Error().Msgf("unmarshal project deadline data error: %+v", err)
 					return nil, err
 				}
-				newProjectData.PlanTime = deadlineParams.Desc
+				deadlineTs, err := time.Parse(time.RFC3339, deadlineParams.Desc)
+				if err != nil {
+					log.Error().Msgf("parse deadline date error: %+v", err)
+					return nil, err
+				}
+				newProjectData.PlanTime = fmt.Sprintf("%d", deadlineTs.UTC().UnixMilli())
 			}
+		}
+	}
+
+	// Load content data to description
+	var pContentBlocks []*model.ProposalContentBlock
+	if err = db.Model(&proposal).Association("ContentBlocks").Find(&pContentBlocks); err != nil {
+		log.Error().Msgf("fetch proposal content block error: %+v", err)
+	}
+	for _, block := range pContentBlocks {
+		if block.Title == internal.ContentBlockContentName {
+			newProjectData.Desc = block.Content
 		}
 	}
 
@@ -1259,5 +1275,9 @@ func CloseProjectFromAutoTasks(db *gorm.DB, proposal *model.Proposal) error {
 	prjDbRcd := model.Project{
 		SIP: fmt.Sprintf("%d", proposal.Sip),
 	}
-	return db.Model(&prjDbRcd).Where(&prjDbRcd).Update("status", model.ProjectStatusClosed).Error
+	return db.Model(&prjDbRcd).
+		Where(&prjDbRcd).
+		Update("status", model.ProjectStatusClosed).
+		Update("over_link", fmt.Sprintf("/proposal/thread/%d", proposal.ID)).
+		Error
 }

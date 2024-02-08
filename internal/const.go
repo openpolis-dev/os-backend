@@ -103,6 +103,8 @@ const (
 	ComponentNameDeliverables  = "deliverables"
 	ComponentNameDeadline      = "deadline"
 	ComponentNameCreateProject = "create_project"
+
+	ContentBlockContentName = "内容"
 )
 
 const ContentBlockTitleCreateProjectName = "立项信息"
