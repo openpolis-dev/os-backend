@@ -1218,6 +1218,13 @@ func CreateProjectFromAutoTasks(db *gorm.DB, proposal *model.Proposal) (*model.P
 		return nil, err
 	}
 
+	var pCategory model.ProposalCategory
+	err = db.Find(&pCategory, pTemplate.ProposalCategoryID).Error
+	if err != nil {
+		log.Error().Msgf("get proposal template error: %+v", err)
+		return nil, err
+	}
+
 	newProjectData := model.Project{
 		Proposals:    []string{fmt.Sprintf("%d", proposal.ID)},
 		Name:         proposal.Title,
@@ -1226,7 +1233,7 @@ func CreateProjectFromAutoTasks(db *gorm.DB, proposal *model.Proposal) (*model.P
 		CreateTs:     model.GetCurrentUtcEpochSecond(),
 		UpdateTs:     model.GetCurrentUtcEpochSecond(),
 		Status:       model.ProjectStatusOpen,
-		Category:     pTemplate.Name,
+		Category:     pCategory.Name,
 		Sponsors: []string{
 			common.FormatUserWallet(proposal.Applicant),
 		},
