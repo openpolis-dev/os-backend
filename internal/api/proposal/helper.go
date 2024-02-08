@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/allegro/bigcache/v3"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
@@ -21,6 +22,7 @@ import (
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk"
 	"github.com/theseed-labs/os-backend/internal/sdk/metaforo"
+	"github.com/theseed-labs/os-backend/internal/storage"
 	"gorm.io/gorm"
 )
 
@@ -29,6 +31,10 @@ type proposalComponentActions struct {
 	ComponentParams           string `json:"component_params"`
 	ApproveActionName         string `json:"approve_action_name"`
 	RejectActionName          string `json:"reject_action_name"`
+}
+
+type commonCreateProjectRelatedData struct {
+	Desc string `json:"description"`
 }
 
 func GetProposalFromStringId(db *gorm.DB, idStr string) (*model.Proposal, error) {
@@ -930,6 +936,7 @@ func UpdateProposalStateBasedOnVoteResult(db *gorm.DB, proposalVoteRecord *model
 		proposalFinalState = updateProposalStateByExtraCheckRule(dbProposalRcd.ExtraResultCheckRule, totalVoterCount, currSeason.Idx)
 	}
 
+	log.Debug().Msgf("update proposal state from %d to %+v", dbProposalRcd.State, proposalFinalState)
 	dbProposalRcd.State = int(proposalFinalState)
 	err = db.Where(&model.Proposal{ID: dbProposalRcd.ID}).Updates(&dbProposalRcd).Error
 	api.PrintStructAsJson(dbProposalRcd, "TTT: proposal record after update")
@@ -947,6 +954,7 @@ func UpdateProposalStateBasedOnVoteResult(db *gorm.DB, proposalVoteRecord *model
 
 // createProposalAutomationTasks creates automation tasks after proposal finished (passed or failed)
 func createProposalAutomationTasks(db *gorm.DB, proposal *model.Proposal, finState model.ProposalState, voteResult string, voteType int) {
+	log.Debug().Msgf("enter createProposalAutomationTasks proposal: %+v, finState: %+v", proposal, finState)
 	sqlQuery := QueryComponentActionNameBaseSQL + " WHERE proposal_id = ?"
 	var proposalComponentActions []*proposalComponentActions
 	err := db.Raw(sqlQuery, proposal.ID).Find(&proposalComponentActions).Error
@@ -959,6 +967,12 @@ func createProposalAutomationTasks(db *gorm.DB, proposal *model.Proposal, finSta
 		// No automation action found for the proposal, check whether the proposal has pending execution time
 		// If yes, change the proposal state to pending execution, and create a new cron job to update proposal state after pending execution second
 		// If no, change the proposal state to executed directly
+		var pTemplate *model.ProposalTemplate
+		if err = db.Model(&proposal).Association("ProposalTemplate").Find(&pTemplate); err != nil {
+			log.Error().Msgf("find proposal template error: %+v", err)
+			return
+		}
+
 		if proposal.PendingExecutionSecond != 0 {
 			var proposalComponentRecord model.ProposalComponentRecord
 			if err = db.Model(&proposalComponentRecord).
@@ -1101,4 +1115,112 @@ func updateProposalStateByExtraCheckRule(checkRules []*model.ExtraResultCheckRul
 	} else {
 		return model.ProposalStateVoteFailed
 	}
+}
+
+func CreateProjectFromAutoTasks(db *gorm.DB, proposal *model.Proposal) (*model.Project, error) {
+	var err error
+
+	var pTemplate model.ProposalTemplate
+	err = db.Find(&pTemplate, proposal.ProposalTemplateID).Error
+	if err != nil {
+		log.Error().Msgf("get proposal template error: %+v", err)
+		return nil, err
+	}
+
+	newProjectData := model.Project{
+		Proposals: []string{fmt.Sprintf("%d", proposal.ID)},
+		Name:      proposal.Title,
+		SIP:       fmt.Sprintf("%d", proposal.Sip),
+		CreateTs:  model.GetCurrentUtcEpochSecond(),
+		UpdateTs:  model.GetCurrentUtcEpochSecond(),
+		Status:    model.ProjectStatusOpen,
+		Category:  pTemplate.Name,
+		Sponsors: []string{
+			common.FormatUserWallet(proposal.Applicant),
+		},
+	}
+
+	log.Error().Msgf("TTT: project record: %+v", newProjectData)
+
+	var pComponents []*model.ProposalComponentRecord
+	if err = db.Model(&proposal).Association("Components").Find(&pComponents); err != nil {
+		log.Error().Msgf("fetch proposal components error: %+v", err)
+		return nil, err
+	}
+
+	for _, pComponentRecord := range pComponents {
+		api.PrintStructAsJson(pComponentRecord, "TTT: component record")
+		if compName, found := getProposalComponentIdNameMapping(db)[pComponentRecord.ComponentID]; found {
+			if compName == internal.ComponentNameBudget || compName == internal.ComponentNameBudgetP1 {
+				newProjectData.Budgets = pComponentRecord.Data
+			} else if compName == internal.ComponentNameDeliverables {
+				var deliverableParams commonCreateProjectRelatedData
+				err := json.Unmarshal([]byte(pComponentRecord.Data), &deliverableParams)
+				if err != nil {
+					log.Error().Msgf("unmarshal project deliverables data error: %+v", err)
+					return nil, err
+				}
+				newProjectData.Deliverable = deliverableParams.Desc
+			} else if compName == internal.ComponentNameDeadline {
+				var deadlineParams commonCreateProjectRelatedData
+				err := json.Unmarshal([]byte(pComponentRecord.Data), &deadlineParams)
+				if err != nil {
+					log.Error().Msgf("unmarshal project deadline data error: %+v", err)
+					return nil, err
+				}
+				newProjectData.PlanTime = deadlineParams.Desc
+			}
+		}
+	}
+
+	api.PrintStructAsJson(newProjectData, "TTT: new project param")
+
+	if err = db.Create(&newProjectData).Error; err != nil {
+		log.Error().Msgf("create project error: %+v", err)
+		return nil, err
+	}
+
+	return &newProjectData, nil
+}
+
+func getProposalComponentIdNameMapping(db *gorm.DB) map[uint]string {
+	rsltBytes, err := storage.GetCachedData("component_name_id_mapping")
+	if err == nil {
+		rslt := map[uint]string{}
+		if err = json.Unmarshal(rsltBytes, &rslt); err != nil {
+			log.Error().Msgf("unmarshal component name id mapping error: %+v", err)
+			return map[uint]string{}
+		}
+		return rslt
+	}
+
+	if !errors.Is(err, bigcache.ErrEntryNotFound) {
+		log.Error().Msgf("fetch component name id mapping error: %+v", err)
+		return map[uint]string{}
+	}
+
+	// Cache missing
+
+	var components []*model.ProposalComponent
+	if err := db.Model(&model.ProposalComponent{}).Find(&components).Error; err != nil {
+		log.Error().Msgf("fetch proposal component error: %+v", err)
+		return make(map[uint]string)
+	}
+
+	rslt := make(map[uint]string)
+	for _, c := range components {
+		rslt[c.ID] = c.Name
+	}
+
+	rsltBytes, err = json.Marshal(rslt)
+	if err != nil {
+		log.Error().Msgf("marshal component name id mapping error: %+v", err)
+		return rslt
+	}
+	if err = storage.StoreCachedData("component_name_id_mapping", rsltBytes); err != nil {
+		log.Error().Msgf("store component name id mapping error: %+v", err)
+		return rslt
+	}
+
+	return rslt
 }
