@@ -103,6 +103,7 @@ func CreateAppBundleTaskFromMotivationComponent(db *gorm.DB, job *model.CronJob,
 				prjDbRcd := model.Project{
 					SIP: fmt.Sprintf("%d", proposalDbRcd.Sip),
 				}
+				db.Model(&prjDbRcd).Where(&prjDbRcd).First(&prjDbRcd)
 
 				// TODO: Duplicated code *NewAppBundleAndApplication*
 				// Create AppBundle
