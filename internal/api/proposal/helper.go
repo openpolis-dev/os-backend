@@ -679,7 +679,6 @@ func IsUserMetVoteGate(userSeepassData *sdk.SeepassResponse, proposalVoteGate *m
 		}
 		// ERC1155
 		for _, sbtInfo := range userSeepassData.Sbt {
-
 			if strings.EqualFold(sbtInfo.ContractAddr, proposalVoteGate.TokenAddress) {
 				if strings.EqualFold(proposalVoteGate.TokenId, sbtInfo.TokenId) {
 					return true
@@ -1231,7 +1230,7 @@ func CreateProjectFromAutoTasks(db *gorm.DB, proposal *model.Proposal) (*model.P
 					return nil, err
 				}
 				projectBudgetRcd := projectBudgetData{
-					Name:        fmt.Sprintf("%s%s", budgetParams.Amount, budgetParams.AssetInfo.Name),
+					Name:        fmt.Sprintf("%s %s", budgetParams.Amount, budgetParams.AssetInfo.Name),
 					TotalAmount: "0",
 				}
 				prjBudgetBytes, err := json.Marshal([]projectBudgetData{projectBudgetRcd})
