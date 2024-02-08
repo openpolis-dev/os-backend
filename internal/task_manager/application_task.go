@@ -2,6 +2,7 @@ package task_manager
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 	"time"
 
@@ -95,6 +96,14 @@ func CreateAppBundleTaskFromMotivationComponent(db *gorm.DB, job *model.CronJob,
 				execResult = "vote result is zero, no need to create applications"
 				jobFailed = false
 			} else {
+				proposalId := strings.Replace(params.ProposalId, "os-", "", -1)
+				var proposalDbRcd *model.Proposal
+				db.First(&proposalDbRcd, proposalId)
+
+				prjDbRcd := model.Project{
+					SIP: fmt.Sprintf("%d", proposalDbRcd.Sip),
+				}
+
 				// TODO: Duplicated code *NewAppBundleAndApplication*
 				// Create AppBundle
 				appBundle := model.AppBundle{
@@ -105,6 +114,8 @@ func CreateAppBundleTaskFromMotivationComponent(db *gorm.DB, job *model.CronJob,
 					CreateTs:     model.GetCurrentUtcEpochSecond(),
 					UpdateTs:     model.GetCurrentUtcEpochSecond(),
 					Type:         "NEW_REWARD",
+					EntityType:   "project",
+					EntityId:     prjDbRcd.ID,
 				}
 				err = db.Model(model.AppBundle{}).Create(&appBundle).Error
 				if err != nil {
