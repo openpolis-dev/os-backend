@@ -79,6 +79,7 @@ func List(ctx *gin.Context) {
 	rcds, total, err := model.GenerateFrontendApplicationRecords(db, &queryParams, true)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
+		log.Error().Msgf("list application API error: %+v", err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("query result error")))
 		return
 	}

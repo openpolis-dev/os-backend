@@ -36,8 +36,12 @@ func BuildGormClient(dbSchema string, dsn string, logLevel logger.LogLevel) (*go
 
 // InitGormDB inits gorm database connector
 func InitGormDB(dsn string, dbSchema string) {
+	InitGormDBWithLoggerLevel(dsn, dbSchema, logger.Info)
+}
+
+func InitGormDBWithLoggerLevel(dsn string, dbSchema string, logLevel logger.LogLevel) {
 	var err error
-	gormDB, err = BuildGormClient(dbSchema, dsn, logger.Info)
+	gormDB, err = BuildGormClient(dbSchema, dsn, logLevel)
 	if err != nil {
 		panic(fmt.Errorf("init gorm connection error: %+v", err))
 	}
@@ -54,6 +58,7 @@ func MigrateTables(db *gorm.DB) error {
 		&model.ProjectBudget{},
 		&model.Guild{},
 		&model.GuildBudget{},
+		&model.CommonBudgetSource{},
 		&model.AppBundle{},
 		&model.AppBundleAuditLog{},
 		&model.Season{},

@@ -797,26 +797,28 @@ func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcd *mod
 
 		// TODO: Update the check logic of vote result with voter user limitations
 		if poll.Status == "open" {
-			if !dbProposalRcd.IsInFinState() {
-				var pTemplate *model.ProposalTemplate
-				if err := db.Model(&dbProposalRcd).Association("ProposalTemplate").Find(&pTemplate); err != nil {
-					log.Error().Msgf("get proposal template error: %+v", err)
-					return err
-				}
-
-				if pTemplate != nil && pTemplate.Type == model.ProposalTemplateTypeCloseProject {
-					createProjectProposal := model.Proposal{ID: dbProposalRcd.AssociateProposalId}
-					if err = db.Find(&createProjectProposal).Error; err != nil {
-						log.Error().Msgf("get creating project proposal error: %+v", err)
+			if dbProposalRcd.Sip == 0 {
+				if !dbProposalRcd.IsInFinState() {
+					var pTemplate *model.ProposalTemplate
+					if err := db.Model(&dbProposalRcd).Association("ProposalTemplate").Find(&pTemplate); err != nil {
+						log.Error().Msgf("get proposal template error: %+v", err)
 						return err
 					}
-					dbProposalRcd.Sip = createProjectProposal.Sip
-				} else {
-					dbProposalRcd.Sip = getNextSipValue(db, storage.GetConfig().ProposalData.SipInitNumber)
-				}
 
-				dbProposalRcd.State = int(model.ProposalStateVoting)
-				db.Updates(dbProposalRcd)
+					if pTemplate != nil && pTemplate.Type == model.ProposalTemplateTypeCloseProject {
+						createProjectProposal := model.Proposal{ID: dbProposalRcd.AssociateProposalId}
+						if err = db.Find(&createProjectProposal).Error; err != nil {
+							log.Error().Msgf("get creating project proposal error: %+v", err)
+							return err
+						}
+						dbProposalRcd.Sip = createProjectProposal.Sip
+					} else {
+						dbProposalRcd.Sip = getNextSipValue(db, storage.GetConfig().ProposalData.SipInitNumber)
+					}
+
+					dbProposalRcd.State = int(model.ProposalStateVoting)
+					db.Updates(dbProposalRcd)
+				}
 			}
 		} else if poll.Status == "close" {
 			// In current logic, only one vote can be existing in proposal, so if got one close state vote, exit the loop
@@ -1120,12 +1122,14 @@ func createCronJob(db *gorm.DB, dbProposal *model.Proposal, actionName string, j
 }
 
 func updateProposalStateByExtraCheckRule(checkRules []*model.ExtraResultCheckRuleData, totalVoterCount int, seasonIdx uint) model.ProposalState {
+	log.Debug().Msgf("enter updatePropsalStateByExtraCheckRule: %+v, totalVoter: %d", checkRules, totalVoterCount)
 	indexClient := sdk.GetIndexerClient()
 	checkPassed := false
 	for _, r := range checkRules {
+		log.Debug().Msgf("updateProposalStateByExtraCheckRule: check rule: %+v", r)
 		ruleValue, err := strconv.ParseFloat(r.Value, 64)
 		if err != nil {
-			log.Warn().Msgf("error value in checking rule: %+v", r)
+			log.Warn().Msgf("updateProposalStateByExtraCheckRule: error value in checking rule: %+v", r)
 			continue
 		}
 		valueToBeCompared := 0
@@ -1135,8 +1139,9 @@ func updateProposalStateByExtraCheckRule(checkRules []*model.ExtraResultCheckRul
 		case internal.ExtraCheckRuleMetricCurrentSeasonNode:
 			valueToBeCompared = indexClient.GetCurrentSeasonNodeCount(fmt.Sprintf("%d", seasonIdx))
 		default:
-			log.Warn().Msgf("unknown metric: %s", r.Metric)
+			log.Warn().Msgf("updateProposalStateByExtraCheckRule: unknown metric: %s", r.Metric)
 		}
+		log.Debug().Msgf("updateProposalStateByExtraCheckRule: value to be compared: %+v", valueToBeCompared)
 
 		switch r.CheckType {
 		case internal.ExtraCheckRuleTypeRatio:
@@ -1144,8 +1149,10 @@ func updateProposalStateByExtraCheckRule(checkRules []*model.ExtraResultCheckRul
 		case internal.ExtraCheckRuleTypeCount:
 			checkPassed = float64(totalVoterCount) >= ruleValue
 		default:
-			log.Warn().Msgf("unknown extra check type: %s", r.CheckType)
+			log.Warn().Msgf("updateProposalStateByExtraCheckRule: unknown extra check type: %s", r.CheckType)
 		}
+
+		log.Debug().Msgf("updateProposalStateByExtraCheckRule: check passed: %+v", checkPassed)
 
 		if !checkPassed {
 			break
@@ -1211,6 +1218,13 @@ func CreateProjectFromAutoTasks(db *gorm.DB, proposal *model.Proposal) (*model.P
 		return nil, err
 	}
 
+	var pCategory model.ProposalCategory
+	err = db.Find(&pCategory, pTemplate.ProposalCategoryID).Error
+	if err != nil {
+		log.Error().Msgf("get proposal template error: %+v", err)
+		return nil, err
+	}
+
 	newProjectData := model.Project{
 		Proposals:    []string{fmt.Sprintf("%d", proposal.ID)},
 		Name:         proposal.Title,
@@ -1219,7 +1233,7 @@ func CreateProjectFromAutoTasks(db *gorm.DB, proposal *model.Proposal) (*model.P
 		CreateTs:     model.GetCurrentUtcEpochSecond(),
 		UpdateTs:     model.GetCurrentUtcEpochSecond(),
 		Status:       model.ProjectStatusOpen,
-		Category:     pTemplate.Name,
+		Category:     pCategory.Name,
 		Sponsors: []string{
 			common.FormatUserWallet(proposal.Applicant),
 		},
@@ -1321,6 +1335,7 @@ func CloseProjectFromAutoTasks(db *gorm.DB, proposal *model.Proposal) error {
 }
 
 func getNextSipValue(db *gorm.DB, defaultVal int) int {
+	log.Debug().Msgf("invoke get next sip")
 	var maxSipVal int
 	if err := db.Model(&model.Proposal{}).Select("max(sip)").Limit(1).Pluck("sip", &maxSipVal).Error; err != nil {
 		log.Error().Msgf("get vote records error: %+v", err)
