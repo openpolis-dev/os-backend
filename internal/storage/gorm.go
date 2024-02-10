@@ -54,6 +54,7 @@ func MigrateTables(db *gorm.DB) error {
 		&model.ProjectBudget{},
 		&model.Guild{},
 		&model.GuildBudget{},
+		&model.CommonBudgetSource{},
 		&model.AppBundle{},
 		&model.AppBundleAuditLog{},
 		&model.Season{},

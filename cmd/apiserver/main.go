@@ -8,6 +8,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/pkgerrors"
 	"github.com/theseed-labs/os-backend/internal"
+	"github.com/theseed-labs/os-backend/internal/api/common_budget_sources"
 	"github.com/theseed-labs/os-backend/internal/api/cron_jobs"
 	"github.com/theseed-labs/os-backend/internal/api/proposal"
 	"github.com/theseed-labs/os-backend/internal/common"
@@ -217,6 +218,9 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		guildGroup := v1.Group("/guilds")
 		guildGroup.GET("/", guild.List)
 		guildGroup.GET("/:id", guild.Detail)
+
+		commonBudgetSourceGroup := v1.Group("/common_budget_sources")
+		commonBudgetSourceGroup.GET("/", common_budget_sources.List)
 
 		// application routers
 		applicationGroup := v1.Group("/applications")
