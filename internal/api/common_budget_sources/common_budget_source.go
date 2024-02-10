@@ -19,6 +19,7 @@ func List(ctx *gin.Context) {
 
 	keywords := ctx.Query("keywords")
 	wallet := ctx.Query("wallet")
+	openOnly := ctx.Query("open_only")
 
 	querySeg := db.Model(&model.CommonBudgetSource{})
 	if keywords != "" {
@@ -27,6 +28,10 @@ func List(ctx *gin.Context) {
 	if wallet != "" {
 		w := fmt.Sprintf("%%\"%s\"%%", wallet) // value is: `%0x123%`
 		querySeg.Where(fmt.Sprintf("sponsors::text ILIKE '%%%s%%'", w))
+	}
+
+	if openOnly == "true" {
+		querySeg = querySeg.Where("state=open")
 	}
 
 	total, err := gormfind.Count(querySeg)
