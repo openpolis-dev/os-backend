@@ -47,6 +47,8 @@ type Project struct {
 	CreateTs  int64     `json:"create_ts" gorm:"index"`
 	UpdateTs  int64     `json:"update_ts" gorm:"index"`
 
+	Label string `json:"label"`
+
 	SIP          string `json:"SIP"`
 	Category     string `json:"Category"`
 	ApprovalLink string `json:"ApprovalLink"`
