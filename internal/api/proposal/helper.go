@@ -1333,17 +1333,6 @@ func CreateProjectFromAutoTasks(db *gorm.DB, proposal *model.Proposal) (*model.P
 	return &newProjectData, nil
 }
 
-func CloseProjectFromAutoTasks(db *gorm.DB, proposal *model.Proposal) error {
-	prjDbRcd := model.Project{
-		SIP: fmt.Sprintf("%d", proposal.Sip),
-	}
-	return db.Model(&prjDbRcd).
-		Where(&prjDbRcd).
-		Update("status", model.ProjectStatusClosed).
-		Update("over_link", fmt.Sprintf("/proposal/thread/%d", proposal.ID)).
-		Error
-}
-
 func getNextSipValue(db *gorm.DB, defaultVal int) int {
 	log.Debug().Msgf("invoke get next sip")
 	var maxSipVal int

@@ -10,7 +10,6 @@ import (
 	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
 	"github.com/theseed-labs/os-backend/internal"
-	"github.com/theseed-labs/os-backend/internal/api/proposal"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"gorm.io/gorm"
@@ -110,8 +109,10 @@ func CreateAppBundleTaskFromMotivationComponent(db *gorm.DB, job *model.CronJob,
 					EntityType: "project",
 					EntityId:   prjDbRcd.ID,
 				}
-				var rowAffected int64 = db.Model(&existingAppBundle).Where(&existingAppBundle).Scan(&existingAppBundle).RowsAffected
-				if rowAffected > 0 {
+
+				var appBundleRecordsCount int64
+				db.Model(&existingAppBundle).Where(&existingAppBundle).Count(&appBundleRecordsCount)
+				if appBundleRecordsCount > 0 {
 					log.Error().Msgf("appliation bundle with sip %d is already exist", prjDbRcd.SIP)
 					execResult = fmt.Sprintf("already create app bundle for project %d", prjDbRcd.ID)
 					jobFailed = true
@@ -211,20 +212,32 @@ func CreateAppBundleTaskFromMotivationComponent(db *gorm.DB, job *model.CronJob,
 
 		proposalId := strings.Replace(params.ProposalId, "os-", "", -1)
 
+		var proposal model.Proposal
+		db.Find(&proposal, proposalId)
+
+		// Get project database record and update project status based on proposal execution result
+		prjDbRcd := model.Project{
+			SIP: fmt.Sprintf("%d", proposal.Sip),
+		}
+
 		if jobFailed {
 			db.Model(&model.Proposal{}).Where("id = ?", proposalId).Update("state", model.ProposalStateExecutionFailed)
+			db.Model(&prjDbRcd).Where(&prjDbRcd).Update("status", model.ProjectStatusCloseFailed)
 		} else {
 			var pDbRcd model.Proposal
 			if err := db.Model(&model.Proposal{}).Where("id = ?", proposalId).Find(&pDbRcd).Error; err != nil {
 				log.Error().Msgf("find proposal error: %+v", err)
 				jobFailed = true
 				execResult = err.Error()
+				db.Model(&prjDbRcd).Where(&prjDbRcd).Update("status", model.ProjectStatusCloseFailed)
 			} else {
-				err := proposal.CloseProjectFromAutoTasks(db, &pDbRcd)
-				if err != nil {
+				if err := db.Model(&prjDbRcd).Where(&prjDbRcd).
+					Update("status", model.ProjectStatusClosed).
+					Update("over_link", fmt.Sprintf("/proposal/thread/%d", proposal.ID)).Error; err != nil {
 					log.Error().Msgf("close project error: %+v", err)
 					jobFailed = true
 					execResult = err.Error()
+					db.Model(&prjDbRcd).Where(&prjDbRcd).Update("status", model.ProjectStatusCloseFailed)
 				} else {
 					db.Model(&model.Proposal{}).Where("id = ?", proposalId).Update("state", model.ProposalStateExecuted)
 				}
