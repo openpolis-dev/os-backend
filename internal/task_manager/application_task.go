@@ -105,6 +105,18 @@ func CreateAppBundleTaskFromMotivationComponent(db *gorm.DB, job *model.CronJob,
 				}
 				db.Model(&prjDbRcd).Where(&prjDbRcd).First(&prjDbRcd)
 
+				// Limit only one motivation component record for one proposal
+				existingAppBundle := model.AppBundle{
+					EntityType: "project",
+					EntityId:   prjDbRcd.ID,
+				}
+				var rowAffected int64 = db.Model(&existingAppBundle).Where(&existingAppBundle).Scan(&existingAppBundle).RowsAffected
+				if rowAffected > 0 {
+					log.Error().Msgf("appliation bundle with sip %d is already exist", prjDbRcd.SIP)
+					execResult = fmt.Sprintf("already create app bundle for project %d", prjDbRcd.ID)
+					jobFailed = true
+				}
+
 				// TODO: Duplicated code *NewAppBundleAndApplication*
 				// Create AppBundle
 				appBundle := model.AppBundle{
