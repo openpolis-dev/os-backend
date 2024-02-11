@@ -94,6 +94,8 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 	//        * create blocks with new proposal.
 	//   4. In this case, the proposal must be updated to metaforo without checking the Submit flag
 
+	log.Debug().Msgf("save proposal record to DB: %+v, proposalIdStr: %s, user wallet: %s", reqData, proposalIdStr, userWallet)
+
 	// Update title for testing
 	if !strings.HasPrefix(reqData.Title, cfg.MetaforoData.ProposalPrefix) {
 		reqData.Title = cfg.MetaforoData.ProposalPrefix + reqData.Title
@@ -159,7 +161,7 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 		}
 
 		// Move vote record from original proposal to new one
-		if err = db.Model(&model.ProposalVoteRecord{}).Where(&model.ProposalVoteRecord{ProposalID: dbProposalRcd.ID}).Updates(&model.ProposalVoteRecord{ProposalID: proposalRcd.ID}).Error; err != nil {
+		if err = db.Model(&model.ProposalVoteRecord{}).Where("proposal_id = ?", proposalIdStr).Updates(&model.ProposalVoteRecord{ProposalID: proposalRcd.ID}).Error; err != nil {
 			log.Error().Msgf("move proposal vote record error: %+v", err)
 			return nil, err
 		}
@@ -433,6 +435,7 @@ func SaveProposalComponentRecords(db *gorm.DB, proposalId uint, applicantWallet 
 // Otherwise, copy the proposal to new record with ver+1, update the metaforo data, and save back as a new record,
 // and the metaforo API invoked here is updateProposal.
 func SaveProposalToMetaforo(db *gorm.DB, origProposalRecord *model.Proposal, voteType int, customVoteOptions []string, metaforoAccessToken string, EditorType int, metaforoGroupName string) error {
+	log.Debug().Msgf("enter save proposal to metaforo: %+v", origProposalRecord)
 	var err error
 
 	// Load current proposal data
@@ -459,9 +462,9 @@ func SaveProposalToMetaforo(db *gorm.DB, origProposalRecord *model.Proposal, vot
 	updatedProposalRecord := origProposalRecord
 
 	// Vote start and end time, used for create and update proposal
-	// TODO: The default vote start delay should be saved into proposal category record
 	voteStartTime := time.Now().UTC().Add(origProposalRecord.PublicityDuration() - time.Minute)
 	voteEndTime := time.Now().UTC().Add(origProposalRecord.PublicityDuration() + origProposalRecord.VoteDuration())
+	log.Debug().Msgf("vote start time: %s, vote end time: %s", voteStartTime.Format(time.RFC3339), voteEndTime.Format(time.RFC3339))
 
 	if origProposalRecord.ProposalRecordId != "" {
 		// DB Record has ProposalRecordId, this is updating metaforo proposal action, which contains
@@ -484,9 +487,18 @@ func SaveProposalToMetaforo(db *gorm.DB, origProposalRecord *model.Proposal, vot
 			return err
 		}
 
+		var voteRecords []*model.ProposalVoteRecord
+		err = db.Model(updatedProposalRecord).Association("VoteRecords").Find(&voteRecords)
+		if err != nil {
+			log.Error().Msgf("get vote records error: %+v", err)
+			return err
+		}
+
+		api.PrintStructAsJson(voteRecords, "TTT: vote records")
+
 		// Get vote record from original record and update the timestamp
 		// The updated vote record will be saved by response in GetProposal function
-		for _, record := range origProposalRecord.VoteRecords {
+		for _, record := range voteRecords {
 			err = metaforo.UpdateVoteTime(
 				metaforoAccessToken,
 				metaforoGroupName,
@@ -690,8 +702,6 @@ func IsUserMetVoteGate(userSeepassData *sdk.SeepassResponse, proposalVoteGate *m
 		log.Error().Msgf("unknown token type, mark as has perm")
 		return true
 	}
-
-	return false
 }
 
 // UpdateDbRecordsFromMetaforoProposalResponse updates proposal data with db records. For now, it contains:
