@@ -508,7 +508,8 @@ func MyList(ctx *gin.Context) {
 	}))
 }
 
-// GetProposalsUsedForCreatingProjects returns proposals that is created by request user and from creating proposal template
+// GetProposalsUsedForCreatingProjects returns proposals that is created by request user and from creating proposal template.
+// The projects returned will be used for close project component
 //
 //	@summary	Returns creating project and executed proposals created by login user, if category_id is not specified, all proposals for opening project will be returned
 //	@tags		Proposal
@@ -557,13 +558,16 @@ func GetProposalsUsedForCreatingProjects(ctx *gin.Context) {
 		return
 	}
 
-	querySql := fmt.Sprintf("%s WHERE applicant = '%s' AND proposal_template_id IN (%s) AND state = %d",
+	querySql := fmt.Sprintf("%s WHERE applicant = '%s' AND proposal_template_id IN (%s) AND state = %d AND p2.status = (%s)",
 		ListProposalsSQL,
 		common.FormatUserWallet(user.Wallet),
 		strings.Join(lo.Map(newProjectTemplateIds, func(tmpId uint, _ int) string {
 			return fmt.Sprintf("%d", tmpId)
 		}), ","),
 		model.ProposalStateExecuted,
+		strings.Join(lo.Map([]model.ProjectStatus{model.ProjectStatusOpen, model.ProjectStatusCloseFailed}, func(projectStatus model.ProjectStatus, _ int) string {
+			return fmt.Sprintf("%s", projectStatus)
+		}), ","),
 	)
 
 	_, resultRows, err := generateFrontendProposalRecords(db, querySql, nil)

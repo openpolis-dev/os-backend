@@ -23,6 +23,8 @@ const (
 	ProjectStatusOpen         ProjectStatus = "open"
 	ProjectStatusPendingClose               = "pending_close"
 	ProjectStatusClosed                     = "closed"
+	ProjectStatusClosing                    = "closing"
+	ProjectStatusCloseFailed                = "close_failed"
 )
 
 type Project struct {

@@ -18,6 +18,7 @@ SELECT p.id,
        pc.name  as category_name,
        p.create_ts,
        p.sip,
+       projects.status as project_status,
        p.version,
        p.state as state_id
 FROM proposals p
@@ -26,7 +27,8 @@ FROM proposals p
                GROUP BY proposal_record_id) t2
               ON p.proposal_record_id = t2.proposal_record_id AND p.version = t2.max_version
          JOIN proposal_categories pc ON p.proposal_category_id = pc.id
-         JOIN users u ON p.applicant = u.wallet`
+         JOIN users u ON p.applicant = u.wallet
+         JOIN projects ON projects.s_ip = p.sip::text`
 
 const QueryMetaforoUserWithOsUserBaseSQL = `
 SELECT u.wallet            AS wallet,
