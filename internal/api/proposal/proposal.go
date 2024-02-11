@@ -558,7 +558,7 @@ func GetProposalsUsedForCreatingProjects(ctx *gin.Context) {
 		return
 	}
 
-	querySql := fmt.Sprintf("%s WHERE applicant = '%s' AND proposal_template_id IN (%s) AND state = %d AND p2.status = (%s)",
+	querySql := fmt.Sprintf("%s WHERE applicant = '%s' AND proposal_template_id IN (%s) AND state = %d AND projects.status IN (%s)",
 		ListProposalsSQL,
 		common.FormatUserWallet(user.Wallet),
 		strings.Join(lo.Map(newProjectTemplateIds, func(tmpId uint, _ int) string {
@@ -566,7 +566,7 @@ func GetProposalsUsedForCreatingProjects(ctx *gin.Context) {
 		}), ","),
 		model.ProposalStateExecuted,
 		strings.Join(lo.Map([]model.ProjectStatus{model.ProjectStatusOpen, model.ProjectStatusCloseFailed}, func(projectStatus model.ProjectStatus, _ int) string {
-			return fmt.Sprintf("%s", projectStatus)
+			return fmt.Sprintf("'%s'", projectStatus)
 		}), ","),
 	)
 
