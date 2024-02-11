@@ -22,6 +22,7 @@ import (
 	"github.com/theseed-labs/os-backend/internal/sdk/metaforo"
 	"github.com/xiaosongfu/gormfind"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // List handles the HTTP request to list proposals.
@@ -203,9 +204,14 @@ func Update(ctx *gin.Context) {
 		return
 	}
 
-	// FIXME: refactor here: If not submitting to metaforo, a new version will be created in DB but no metaforo record.
-	// FIXME: Do we need to force passing the metaforo access token if not in pending submit state?
 	if reqData.SubmitToMetaforo {
+		if err := updateProposalAssociatedProjectStatus(db, reqData); err != nil {
+			log.Error().Msgf("associate mushrooms: %+v", err)
+			sdk.LogServerErrorToSentry(ctx, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
+			return
+		}
+
 		if err := SaveProposalToMetaforo(db, proposalRecord, proposalRecord.VoteType, reqData.VoteOptions, reqData.MetaforoAccessToken, reqData.EditorType, cfg.MetaforoData.GroupName); err != nil {
 			log.Error().Msgf("create metaforo proposal error: %+v", err)
 			sdk.LogServerErrorToSentry(ctx, err)
@@ -267,6 +273,13 @@ func Create(ctx *gin.Context) {
 	}
 
 	if reqData.SubmitToMetaforo {
+		if err := updateProposalAssociatedProjectStatus(db, reqData); err != nil {
+			log.Error().Msgf("associate mushrooms: %+v", err)
+			sdk.LogServerErrorToSentry(ctx, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
+			return
+		}
+
 		if err := SaveProposalToMetaforo(db, proposalRecord, reqData.VoteType, reqData.VoteOptions, reqData.MetaforoAccessToken, reqData.EditorType, cfg.MetaforoData.GroupName); err != nil {
 			log.Error().Msgf("create metaforo proposal error: %+v", err)
 			sdk.LogServerErrorToSentry(ctx, err)
@@ -852,5 +865,40 @@ func createJobToUpdateNoVoteProposalToNextState(db *gorm.DB, proposal *model.Pro
 		log.Warn().Msgf("proposal fin task already exists: %+v", finTask)
 	}
 
+	return nil
+}
+
+func updateProposalAssociatedProjectStatus(db *gorm.DB, reqData CreateOrUpdateProposalData) error {
+	var err error
+
+	var pTemplate model.ProposalTemplate
+	err = db.Find(&pTemplate, reqData.TemplateId).Error
+	if err != nil {
+		log.Error().Msgf("get proposal template error: %+v", err)
+		return err
+	}
+
+	// In close project proposal, update related project to closing
+	if pTemplate.Type == model.ProposalTemplateTypeCloseProject {
+		var createProjectProposal model.Proposal
+		if err = db.Find(&createProjectProposal, reqData.CreateProjectProposalId).Error; err != nil {
+			log.Error().Msgf("get create project proposal error: %+v", err)
+			return err
+		}
+
+		createdProject := model.Project{
+			SIP: fmt.Sprintf("%d", createProjectProposal.Sip),
+		}
+
+		updateTx := db.Clauses(clause.Locking{Strength: "UPDATE"}).Model(&createdProject).Where(&createdProject).Update("status", model.ProjectStatusClosing)
+		if err = updateTx.Error; err != nil {
+			log.Error().Msgf("close project error: %+v", err)
+			return err
+		} else if updateTx.RowsAffected == 0 {
+			log.Error().Msgf("project not in correct status for updating to %+v", model.ProjectStatusClosing)
+		} else {
+			log.Debug().Msgf("complete vase")
+		}
+	}
 	return nil
 }
