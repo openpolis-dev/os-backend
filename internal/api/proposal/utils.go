@@ -161,7 +161,7 @@ func GetProposalCommentsWithOsUserData(db *gorm.DB, metaforoComments []metaforo.
 			Wallet:              userWallet,
 			Avatar:              userAvatar,
 			ReplyMetaforoPostId: metaforoComment.ReplyPid,
-			Deleted:             metaforoComment.Deleted == 1,
+			Deleted:             metaforoComment.DeletedBy == nil,
 			Children:            childrenRecords,
 			ProposalTitle:       proposalTitle,
 			ProposalTs:          proposalTs,
