@@ -58,6 +58,9 @@ func CreateVetoProposalTask(db *gorm.DB, job *model.CronJob, jobParams string) {
 
 	var params VoteProposalParams
 	err = json.Unmarshal([]byte(jobParams), &params)
+
+	vetoProposalId := strings.Replace(params.VetoProposalId, "os-", "", -1)
+
 	if err != nil {
 		log.Warn().Msgf("veto proposal job params error: %+v", err)
 		execResult = err.Error()
@@ -93,7 +96,7 @@ func CreateVetoProposalTask(db *gorm.DB, job *model.CronJob, jobParams string) {
 
 			// Mark project associated to proposal be vetoed to close_failed
 			var dbProposalRcd model.Proposal
-			if err = tx.Find(&dbProposalRcd, params.VetoProposalId).Error; err != nil {
+			if err = tx.Find(&dbProposalRcd, vetoProposalId).Error; err != nil {
 				log.Warn().Msgf("fetch veto proposal data error: %+v", err)
 				execResult = err.Error()
 				jobFailed = true
@@ -129,8 +132,6 @@ func CreateVetoProposalTask(db *gorm.DB, job *model.CronJob, jobParams string) {
 	job.LastExecutionFailed = jobFailed
 	job.State = model.CronJobStateDone
 	db.Updates(&job)
-
-	vetoProposalId := strings.Replace(params.VetoProposalId, "os-", "", -1)
 
 	if jobFailed {
 		db.Model(&model.Proposal{}).Where("id = ?", vetoProposalId).Update("state", model.ProposalStateExecutionFailed)
