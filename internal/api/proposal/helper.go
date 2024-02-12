@@ -874,6 +874,9 @@ func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcd *mod
 
 func UpdateProposalStateBasedOnVoteResult(db *gorm.DB, proposalVoteRecord *model.ProposalVoteRecord, dbProposalRcd *model.Proposal) error {
 	log.Debug().Msgf("update proposal %d state based on vote result: %+v", dbProposalRcd.ID, proposalVoteRecord)
+	api.PrintStructAsJson(dbProposalRcd, "TTT: before update")
+	db.First(&dbProposalRcd, dbProposalRcd.ID)
+	api.PrintStructAsJson(dbProposalRcd, "TTT: after update")
 	if dbProposalRcd.IsInFinState() || dbProposalRcd.State == int(model.ProposalStatePendingExecution) {
 		log.Warn().Msgf("proposal %d in state %d, not need to apply post job.", dbProposalRcd.ID, dbProposalRcd.State)
 		return nil
