@@ -839,8 +839,7 @@ func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcd *mod
 						Model(&dbProposalRcd).
 						Where(&dbProposalRcd).
 						Where("sip = 0").
-						Update("sip", proposalSip).
-						Update("state", model.ProposalStateVoting)
+						Updates(&model.Proposal{Sip: proposalSip, State: int(model.ProposalStateVoting)})
 					if err = updateTx.Error; err != nil {
 						log.Error().Msgf("update proposal state error: %+v", err)
 						return err
