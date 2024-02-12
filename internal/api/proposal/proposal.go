@@ -723,7 +723,11 @@ func UpdateProposalStateAndLaunchStateChangeActions(db *gorm.DB, user *middlewar
 				}
 				proposalRecord.Sip = createProjectProposal.Sip
 			} else {
-				proposalRecord.Sip = getNextSipValue(db, cfg.ProposalData.SipInitNumber)
+				proposalRecord.Sip, err = model.GetNextSipValue(tx)
+				if err != nil {
+					log.Error().Msgf("get next sip value error: %+v", err)
+					return err
+				}
 			}
 
 			err = tx.Updates(&proposalRecord).Error
