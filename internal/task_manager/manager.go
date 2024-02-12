@@ -160,7 +160,7 @@ func (t *TaskManager) TaskDispatcher() {
 			go CreateVetoProposalTask(t.DatabaseClient, task, task.JobParams)
 		case internal.TaskNewMotivationReward:
 			log.Debug().Msgf("motivation task")
-			go CreateAppBundleTaskFromMotivationComponent(t.DatabaseClient, task, task.JobParams, task.VoteType, task.VoteResult)
+			CreateAppBundleTaskFromMotivationComponent(t.DatabaseClient, task, task.JobParams, task.VoteType, task.VoteResult)
 		case internal.TaskUpdateProposalState:
 			log.Debug().Msgf("update proposal state task")
 			go UpdateProposalSateTask(t.DatabaseClient, task, task.JobParams)
