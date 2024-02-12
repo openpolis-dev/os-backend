@@ -234,7 +234,7 @@ func Update(ctx *gin.Context) {
 	}
 
 	if reqData.SubmitToMetaforo {
-		if err := updateProposalAssociatedProjectStatus(db, reqData); err != nil {
+		if err := updateProposalAssociatedProjectStatusInCloseProjectToClosing(db, reqData); err != nil {
 			log.Error().Msgf("associate mushrooms: %+v", err)
 			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
@@ -331,7 +331,7 @@ func Create(ctx *gin.Context) {
 	}
 
 	if reqData.SubmitToMetaforo {
-		if err := updateProposalAssociatedProjectStatus(db, reqData); err != nil {
+		if err := updateProposalAssociatedProjectStatusInCloseProjectToClosing(db, reqData); err != nil {
 			log.Error().Msgf("associate mushrooms: %+v", err)
 			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
@@ -970,7 +970,7 @@ func verifyProjectCanBeClosed(db *gorm.DB, createProjectProposalId uint) (bool, 
 	return dbPrjRcd.Status == model.ProjectStatusOpen || dbPrjRcd.Status == model.ProjectStatusCloseFailed, nil
 }
 
-func updateProposalAssociatedProjectStatus(db *gorm.DB, reqData CreateOrUpdateProposalData) error {
+func updateProposalAssociatedProjectStatusInCloseProjectToClosing(db *gorm.DB, reqData CreateOrUpdateProposalData) error {
 	var err error
 
 	pTmplType, err := getProposalTemplateType(db, reqData.TemplateId)
@@ -992,12 +992,18 @@ func updateProposalAssociatedProjectStatus(db *gorm.DB, reqData CreateOrUpdatePr
 			SIP: fmt.Sprintf("%d", createProjectProposal.Sip),
 		}
 
-		updateTx := db.Clauses(clause.Locking{Strength: "UPDATE"}).Model(&createdProject).Where(&createdProject).Update("status", model.ProjectStatusClosing)
+		updateTx := db.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Model(&createdProject).
+			Where(&createdProject).
+			Where("status IN ('open', 'close_failed')").
+			Update("status", model.ProjectStatusClosing)
 		if err = updateTx.Error; err != nil {
 			log.Error().Msgf("close project error: %+v", err)
 			return err
 		} else if updateTx.RowsAffected == 0 {
-			log.Error().Msgf("project not in correct status for updating to %+v", model.ProjectStatusClosing)
+			err = fmt.Errorf("project not in correct status for updating to %+v", model.ProjectStatusClosing)
+			log.Error().Msgf(err.Error())
+			return err
 		} else {
 			log.Debug().Msgf("complete vase")
 		}
