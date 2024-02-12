@@ -196,6 +196,35 @@ func Update(ctx *gin.Context) {
 		return
 	}
 
+	// In close project proposal, verify whether the project to be closed is in open or closed_failed state,
+	// and only set project to closing in those status. For other cases, return error
+	pTmplType, err := getProposalTemplateType(db, reqData.TemplateId)
+	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
+		log.Error().Msgf("get proposal template error: %+v", err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
+		return
+	}
+
+	// In close project proposal, verify whether the project to be closed is in open or closed_failed state,
+	// and only set project to closing in those status. For other cases, return error
+	if pTmplType == model.ProposalTemplateTypeCloseProject {
+		projectCanBeClosed, err := verifyProjectCanBeClosed(db, reqData.CreateProjectProposalId)
+		if err != nil {
+			sdk.LogServerErrorToSentry(ctx, err)
+			log.Error().Msgf("get proposal created project error: %+v", err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
+			return
+		}
+
+		if !projectCanBeClosed {
+			sdk.LogUserSideError(ctx, err)
+			log.Error().Msgf("project in status can't be closed")
+			ctx.JSON(http.StatusBadRequest, api.ServerError(errors.New("related project can't be closed")))
+			return
+		}
+	}
+
 	proposalRecord, err := SaveProposalRecordToDB(db, &reqData, user.Wallet, ctx.Param("id"), cfg)
 	if err != nil {
 		log.Error().Msgf("create proposal error: %+v", err)
@@ -263,6 +292,35 @@ func Create(ctx *gin.Context) {
 	}
 
 	user, _, db, cfg := api.ForContext(ctx)
+
+	// Get proposal template data, if it is a close project proposal, try to get project info and check whether it is in open or closed_failed state
+	pTmplType, err := getProposalTemplateType(db, reqData.TemplateId)
+	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
+		log.Error().Msgf("get proposal template error: %+v", err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
+		return
+	}
+
+	// In close project proposal, verify whether the project to be closed is in open or closed_failed state,
+	// and only set project to closing in those status. For other cases, return error
+	if pTmplType == model.ProposalTemplateTypeCloseProject {
+		projectCanBeClosed, err := verifyProjectCanBeClosed(db, reqData.CreateProjectProposalId)
+		if err != nil {
+			sdk.LogServerErrorToSentry(ctx, err)
+			log.Error().Msgf("get proposal created project error: %+v", err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
+			return
+		}
+
+		if !projectCanBeClosed {
+			err := fmt.Errorf("project %d can't be closed", reqData.CreateProjectProposalId)
+			sdk.LogUserSideError(ctx, err)
+			log.Error().Msgf(err.Error())
+			ctx.JSON(http.StatusBadRequest, api.ServerError(errors.New("related project can't be closed")))
+			return
+		}
+	}
 
 	proposalRecord, err := SaveProposalRecordToDB(db, &reqData, user.Wallet, "", cfg)
 	if err != nil {
@@ -868,18 +926,62 @@ func createJobToUpdateNoVoteProposalToNextState(db *gorm.DB, proposal *model.Pro
 	return nil
 }
 
+func getProposalTemplateType(db *gorm.DB, templateId uint) (model.ProposalTemplateType, error) {
+	var pTemplate model.ProposalTemplate
+	err := db.Find(&pTemplate, templateId).Error
+	if err != nil {
+		log.Error().Msgf("get proposal template error: %+v", err)
+		return 0, err
+	}
+	return pTemplate.Type, nil
+}
+
+func findProjectCreatedByProposal(db *gorm.DB, proposalId uint) (*model.Project, error) {
+	log.Debug().Msgf("find project created by proposal: %d", proposalId)
+	var createProjectProposal model.Proposal
+	if err := db.Find(&createProjectProposal, proposalId).Error; err != nil {
+		log.Error().Msgf("get create project proposal error: %+v", err)
+		return nil, err
+	}
+
+	createdProject := model.Project{
+		SIP: fmt.Sprintf("%d", createProjectProposal.Sip),
+	}
+	if err := db.Clauses(clause.Locking{
+		Strength: "UPDATE",
+		Options:  "NOWAIT",
+	}).Model(&createdProject).Where("s_ip = ?", createdProject.SIP).First(&createdProject).Error; err != nil {
+		log.Error().Msgf("get create project proposal error: %+v", err)
+		return nil, err
+	}
+
+	return &createdProject, nil
+}
+
+// verifyProjectCanBeClosed verifies whether project related to proposal is in open or close_failed status
+func verifyProjectCanBeClosed(db *gorm.DB, createProjectProposalId uint) (bool, error) {
+	log.Debug().Msgf("verify project can be closed: %d", createProjectProposalId)
+	dbPrjRcd, err := findProjectCreatedByProposal(db, createProjectProposalId)
+	if err != nil {
+		log.Error().Msgf("find project created by proposal error: %+v", err)
+		return false, err
+	}
+	log.Debug().Msgf("project created by proposal: %+v", dbPrjRcd)
+	return dbPrjRcd.Status == model.ProjectStatusOpen || dbPrjRcd.Status == model.ProjectStatusCloseFailed, nil
+}
+
 func updateProposalAssociatedProjectStatus(db *gorm.DB, reqData CreateOrUpdateProposalData) error {
 	var err error
 
-	var pTemplate model.ProposalTemplate
-	err = db.Find(&pTemplate, reqData.TemplateId).Error
+	pTmplType, err := getProposalTemplateType(db, reqData.TemplateId)
 	if err != nil {
 		log.Error().Msgf("get proposal template error: %+v", err)
 		return err
 	}
 
-	// In close project proposal, update related project to closing
-	if pTemplate.Type == model.ProposalTemplateTypeCloseProject {
+	// In close project proposal, verify whether the project to be closed is in open or closed_failed state,
+	// and only set project to closing in those status. For other cases, return error
+	if pTmplType == model.ProposalTemplateTypeCloseProject {
 		var createProjectProposal model.Proposal
 		if err = db.Find(&createProjectProposal, reqData.CreateProjectProposalId).Error; err != nil {
 			log.Error().Msgf("get create project proposal error: %+v", err)
