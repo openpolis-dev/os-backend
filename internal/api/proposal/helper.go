@@ -838,7 +838,7 @@ func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcd *mod
 					updateTx := db.Clauses(clause.Locking{Strength: "UPDATE"}).
 						Model(&dbProposalRcd).
 						Where(&dbProposalRcd).
-						Where("sip == 0").
+						Where("sip = 0").
 						Update("sip", proposalSip).
 						Update("state", model.ProposalStateVoting)
 					if err = updateTx.Error; err != nil {
@@ -1014,7 +1014,7 @@ func UpdateProposalStateBasedOnVoteResult(db *gorm.DB, proposalVoteRecord *model
 		proposalFinalState = updateProposalStateByExtraCheckRule(dbProposalRcd.ExtraResultCheckRule, totalVoterCount, currSeason.Idx)
 	}
 
-	log.Debug().Msgf("update proposal state from %d to %+v", dbProposalRcd.State, proposalFinalState)
+	log.Debug().Msgf("update proposal %d state from %d to %+v", dbProposalRcd.ID, dbProposalRcd.State, proposalFinalState)
 	dbProposalRcd.State = int(proposalFinalState)
 	err = db.Where(&model.Proposal{ID: dbProposalRcd.ID}).Updates(&dbProposalRcd).Error
 	api.PrintStructAsJson(dbProposalRcd, "TTT: proposal record after update")
