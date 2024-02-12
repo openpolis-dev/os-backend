@@ -1043,118 +1043,111 @@ func createProposalAutomationTasks(db *gorm.DB, proposal *model.Proposal, finSta
 
 	log.Debug().Msgf("proposal %d component actions: %+v", proposal.ID, proposalComponentActions)
 
-	if len(proposalComponentActions) == 0 {
-		log.Debug().Msgf("proposal %d has no component actions", proposal.ID)
-		// No automation action found for the proposal, check whether the proposal has pending execution time
-		// If yes, change the proposal state to pending execution, and create a new cron job to update proposal state after pending execution second
-		// If no, change the proposal state to executed directly
-		// 2024.02.12: for now, only create project proposal can reach this branch
-		var pTemplate *model.ProposalTemplate
-		if err = db.Model(&proposal).Association("ProposalTemplate").Find(&pTemplate); err != nil {
-			log.Error().Msgf("find proposal template error: %+v", err)
-			return
-		}
+	switch finState {
+	case model.ProposalStateVotePassed:
+		if len(proposalComponentActions) == 0 {
+			log.Debug().Msgf("proposal %d has no component actions", proposal.ID)
+			// No automation action found for the proposal, check whether the proposal has pending execution time
+			// If yes, change the proposal state to pending execution, and create a new cron job to update proposal state after pending execution second
+			// If no, change the proposal state to executed directly
+			// 2024.02.12: for now, only create project proposal can reach this branch
+			var pTemplate *model.ProposalTemplate
+			if err = db.Model(&proposal).Association("ProposalTemplate").Find(&pTemplate); err != nil {
+				log.Error().Msgf("find proposal template error: %+v", err)
+				return
+			}
 
-		if proposal.PendingExecutionSecond != 0 {
-			var proposalComponentRecord model.ProposalComponentRecord
-			if err = db.Model(&proposalComponentRecord).
-				Where(map[string]any{"proposal_id": proposal.ID, "component_id": 0}). // Note: 0 won't be passed to query if using struct data
-				First(&proposalComponentRecord).Error; err != nil {
-				if errors.Is(err, gorm.ErrRecordNotFound) {
-					db.Create(&proposalComponentRecord)
+			if proposal.PendingExecutionSecond != 0 {
+				var proposalComponentRecord model.ProposalComponentRecord
+				if err = db.Model(&proposalComponentRecord).
+					Where(map[string]any{"proposal_id": proposal.ID, "component_id": 0}). // Note: 0 won't be passed to query if using struct data
+					First(&proposalComponentRecord).Error; err != nil {
+					if errors.Is(err, gorm.ErrRecordNotFound) {
+						proposalComponentRecord.ProposalID = proposal.ID
+						proposalComponentRecord.ComponentID = 0
+						db.Create(&proposalComponentRecord)
+					} else {
+						log.Error().Msgf("create proposal component record error: %+v", err)
+						return
+					}
 				} else {
-					log.Error().Msgf("create proposal component record error: %+v", err)
+					log.Debug().Msgf("automation for updating state has already created, return")
+					return
+				}
+
+				updateProposalStateTaskParams := map[string]any{
+					"proposal_id": proposal.ID,
+					"state":       int(model.ProposalStateExecuted),
+				}
+
+				jobParamsStr, err := json.Marshal(updateProposalStateTaskParams)
+				if err != nil {
+					log.Error().Msgf("marshal update proposal state params error: %+v", err)
+					return
+				}
+				err = createCronJob(db, proposal, internal.TaskUpdateProposalState, string(jobParamsStr), "", 0, int(proposalComponentRecord.ID))
+				if err != nil {
+					log.Error().Msgf("marshal update proposal state params error: %+v", err)
+					return
+				}
+				proposal.State = int(model.ProposalStatePendingExecution)
+				if err = db.Model(&proposal).Updates(&proposal).Error; err != nil {
+					log.Error().Msgf("update proposal %d state to pending execution error", proposal.ID)
 					return
 				}
 			} else {
-				log.Debug().Msgf("automation for updating state has already created, return")
-				return
+				proposal.State = int(model.ProposalStateExecuted)
+				err = db.Updates(&proposal).Error
+				if err != nil {
+					log.Error().Msgf("update proposal %d state to executed error", proposal.ID)
+				}
+			}
+		}
+
+		for _, componentAction := range proposalComponentActions {
+			log.Debug().Msgf("proposal %d vote finState: %+v, action: %+v", proposal.ID, finState, componentAction)
+			var actionName string
+			actionName = componentAction.ApproveActionName
+			err = createCronJob(db, proposal, actionName, componentAction.ComponentParams, voteResult, voteType, componentAction.ProposalComponentRecordId)
+			if err != nil {
+				log.Error().Msgf("create cron job error: %+v", err)
 			}
 
-			updateProposalStateTaskParams := map[string]any{
-				"proposal_id": proposal.ID,
-				"state":       int(model.ProposalStateExecuted),
-			}
-
-			jobParamsStr, err := json.Marshal(updateProposalStateTaskParams)
-			if err != nil {
-				log.Error().Msgf("marshal update proposal state params error: %+v", err)
-				return
-			}
-			err = createCronJob(db, proposal, internal.TaskUpdateProposalState, string(jobParamsStr), "", 0, int(proposalComponentRecord.ID))
-			if err != nil {
-				log.Error().Msgf("marshal update proposal state params error: %+v", err)
-				return
-			}
+			// Update proposal state to PendingExecution, the next state change will be launched by cron job or veto proposal
 			proposal.State = int(model.ProposalStatePendingExecution)
-			if err = db.Model(&proposal).Updates(&proposal).Error; err != nil {
-				log.Error().Msgf("update proposal %d state to pending execution error", proposal.ID)
-				return
-			}
-		} else {
-			proposal.State = int(model.ProposalStateExecuted)
 			err = db.Updates(&proposal).Error
 			if err != nil {
-				log.Error().Msgf("update proposal %d state to executed error", proposal.ID)
+				log.Error().Msgf("update proposl state to pending execution error: %+v", err)
 			}
 		}
-	}
-
-	for _, componentAction := range proposalComponentActions {
-		log.Debug().Msgf("proposal %d vote finState: %+v, action: %+v", proposal.ID, finState, componentAction)
-		var actionName string
-		switch finState {
-		case model.ProposalStateVotePassed:
-			actionName = componentAction.ApproveActionName
-		case model.ProposalStateVoteFailed:
-			actionName = componentAction.RejectActionName
-			log.Warn().Msgf("no cronjob generated for failed proposal")
-
-			//For close project proposal, need to change the project status to close_failed
-			proposalIsForClosingProject, project, err := IsProposalIsForClosingProject(db, proposal)
-			if err != nil {
-				log.Error().Msgf("checking proposal is for closing project failed, err: %+v", err)
-				continue
-			}
-
-			if !proposalIsForClosingProject {
-				log.Debug().Msgf("proposal is not for closing project")
-				continue
-			}
-
-			log.Debug().Msgf("proposal %d is for closing project: %+v", proposal.ID, proposalIsForClosingProject)
-
-			updateTx := db.Model(&project).
-				Where("status = 'closing'").
-				Update("status", model.ProjectStatusCloseFailed)
-
-			if err = updateTx.Error; err != nil {
-				log.Error().Msgf("close project error: %+v", err)
-				continue
-			} else if updateTx.RowsAffected == 0 {
-				err = fmt.Errorf("project not in correct status for updating to %+v", model.ProjectStatusCloseFailed)
-				log.Error().Msgf(err.Error())
-				continue
-			} else {
-				log.Debug().Msgf("complete project status update")
-			}
-			return
-		default:
-			log.Error().Msgf("unknown proposal state: %d", finState)
-			return
-		}
-
-		err = createCronJob(db, proposal, actionName, componentAction.ComponentParams, voteResult, voteType, componentAction.ProposalComponentRecordId)
+	case model.ProposalStateVoteFailed:
+		//For close project proposal, need to change the project status to close_failed
+		proposalIsForClosingProject, project, err := IsProposalIsForClosingProject(db, proposal)
 		if err != nil {
-			log.Error().Msgf("create cron job error: %+v", err)
+			log.Error().Msgf("checking proposal is for closing project failed, err: %+v", err)
 		}
 
-		// Update proposal state to PendingExecution, the next state change will be launched by cron job or veto proposal
-		proposal.State = int(model.ProposalStatePendingExecution)
-		err = db.Updates(&proposal).Error
-		if err != nil {
-			log.Error().Msgf("update proposl state to pending execution error: %+v", err)
+		if !proposalIsForClosingProject {
+			log.Debug().Msgf("proposal is not for closing project")
 		}
+
+		log.Debug().Msgf("proposal %d is for closing project: %+v", proposal.ID, proposalIsForClosingProject)
+
+		updateTx := db.Model(&project).
+			Where("status = 'closing'").
+			Update("status", model.ProjectStatusCloseFailed)
+
+		if err = updateTx.Error; err != nil {
+			log.Error().Msgf("close project error: %+v", err)
+		} else if updateTx.RowsAffected == 0 {
+			err = fmt.Errorf("project not in correct status for updating to %+v", model.ProjectStatusCloseFailed)
+			log.Error().Msgf(err.Error())
+		} else {
+			log.Debug().Msgf("complete project status update")
+		}
+	default:
+		log.Error().Msgf("unknown proposal state: %d", finState)
+		return
 	}
 }
 
