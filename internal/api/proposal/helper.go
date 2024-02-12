@@ -463,7 +463,7 @@ func SaveProposalToMetaforo(db *gorm.DB, origProposalRecord *model.Proposal, vot
 	updatedProposalRecord := origProposalRecord
 
 	// Vote start and end time, used for create and update proposal
-	voteStartTime := time.Now().UTC().Add(origProposalRecord.PublicityDuration() - time.Minute)
+	voteStartTime := time.Now().UTC().Add(origProposalRecord.PublicityDuration())
 	voteEndTime := time.Now().UTC().Add(origProposalRecord.PublicityDuration() + origProposalRecord.VoteDuration())
 	log.Debug().Msgf("vote start time: %s, vote end time: %s", voteStartTime.Format(time.RFC3339), voteEndTime.Format(time.RFC3339))
 
