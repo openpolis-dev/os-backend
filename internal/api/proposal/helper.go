@@ -873,6 +873,7 @@ func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcd *mod
 }
 
 func UpdateProposalStateBasedOnVoteResult(db *gorm.DB, proposalVoteRecord *model.ProposalVoteRecord, dbProposalRcd *model.Proposal) error {
+	log.Debug().Msgf("update proposal %d state based on vote result: %+v", dbProposalRcd.ID, proposalVoteRecord)
 	if dbProposalRcd.IsInFinState() || dbProposalRcd.State == int(model.ProposalStatePendingExecution) {
 		log.Warn().Msgf("proposal %d in state %d, not need to apply post job.", dbProposalRcd.ID, dbProposalRcd.State)
 		return nil
@@ -1022,7 +1023,7 @@ func UpdateProposalStateBasedOnVoteResult(db *gorm.DB, proposalVoteRecord *model
 		return err
 	}
 
-	if !dbProposalRcd.IsInFinState() {
+	if dbProposalRcd.IsInFinState() {
 		go createProposalAutomationTasks(db, dbProposalRcd, proposalFinalState, voteResult, dbProposalRcd.VoteType)
 	}
 
@@ -1040,7 +1041,10 @@ func createProposalAutomationTasks(db *gorm.DB, proposal *model.Proposal, finSta
 		return
 	}
 
+	log.Debug().Msgf("proposal %d component actions: %+v", proposal.ID, proposalComponentActions)
+
 	if len(proposalComponentActions) == 0 {
+		log.Debug().Msgf("proposal %d has no component actions", proposal.ID)
 		// No automation action found for the proposal, check whether the proposal has pending execution time
 		// If yes, change the proposal state to pending execution, and create a new cron job to update proposal state after pending execution second
 		// If no, change the proposal state to executed directly
@@ -1097,6 +1101,7 @@ func createProposalAutomationTasks(db *gorm.DB, proposal *model.Proposal, finSta
 	}
 
 	for _, componentAction := range proposalComponentActions {
+		log.Debug().Msgf("proposal %d vote finState: %+v, action: %+v", proposal.ID, finState, componentAction)
 		var actionName string
 		switch finState {
 		case model.ProposalStateVotePassed:
@@ -1117,6 +1122,8 @@ func createProposalAutomationTasks(db *gorm.DB, proposal *model.Proposal, finSta
 				continue
 			}
 
+			log.Debug().Msgf("proposal %d is for closing project: %+v", proposal.ID, proposalIsForClosingProject)
+
 			updateTx := db.Model(&project).
 				Where("status = 'closing'").
 				Update("status", model.ProjectStatusCloseFailed)
@@ -1131,6 +1138,7 @@ func createProposalAutomationTasks(db *gorm.DB, proposal *model.Proposal, finSta
 			} else {
 				log.Debug().Msgf("complete project status update")
 			}
+			return
 		default:
 			log.Error().Msgf("unknown proposal state: %d", finState)
 			return
@@ -1384,7 +1392,7 @@ func CreateProjectFromAutoTasks(db *gorm.DB, proposal *model.Proposal) (*model.P
 }
 
 func IsProposalIsForClosingProject(db *gorm.DB, proposal *model.Proposal) (bool, *model.Project, error) {
-	pTmplType, err := getProposalTemplateType(db, proposal.ID)
+	pTmplType, err := getProposalTemplateType(db, *proposal.ProposalTemplateID)
 	if err != nil {
 		log.Error().Msgf("get proposal template error: %+v", err)
 		return false, nil, err
