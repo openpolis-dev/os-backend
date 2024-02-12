@@ -838,7 +838,7 @@ func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcd *mod
 					updateTx := db.Clauses(clause.Locking{Strength: "UPDATE"}).
 						Model(&dbProposalRcd).
 						Where(&dbProposalRcd).
-						Where("sip != 0").
+						Where("sip == 0").
 						Update("sip", proposalSip).
 						Update("state", model.ProposalStateVoting)
 					if err = updateTx.Error; err != nil {
