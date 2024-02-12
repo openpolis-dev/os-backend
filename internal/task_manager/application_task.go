@@ -213,34 +213,44 @@ func CreateAppBundleTaskFromMotivationComponent(db *gorm.DB, job *model.CronJob,
 		proposalId := strings.Replace(params.ProposalId, "os-", "", -1)
 
 		var proposal model.Proposal
-		db.Find(&proposal, proposalId)
-
-		// Get project database record and update project status based on proposal execution result
-		prjDbRcd := model.Project{
-			SIP: fmt.Sprintf("%d", proposal.Sip),
-		}
-
-		if jobFailed {
-			db.Model(&model.Proposal{}).Where("id = ?", proposalId).Update("state", model.ProposalStateExecutionFailed)
-			db.Model(&prjDbRcd).Where(&prjDbRcd).Update("status", model.ProjectStatusCloseFailed)
+		if err = db.Find(&proposal, proposalId).Error; err != nil {
+			log.Error().Msgf("get proposal %d error: %+v", proposalId, err)
+			execResult = err.Error()
+			jobFailed = true
 		} else {
-			var pDbRcd model.Proposal
-			if err := db.Model(&model.Proposal{}).Where("id = ?", proposalId).Find(&pDbRcd).Error; err != nil {
-				log.Error().Msgf("find proposal error: %+v", err)
-				jobFailed = true
-				execResult = err.Error()
-				db.Model(&prjDbRcd).Where(&prjDbRcd).Update("status", model.ProjectStatusCloseFailed)
-			} else {
-				if err := db.Model(&prjDbRcd).Where(&prjDbRcd).
-					Update("status", model.ProjectStatusClosed).
-					Update("over_link", fmt.Sprintf("/proposal/thread/%d", proposal.ID)).Error; err != nil {
-					log.Error().Msgf("close project error: %+v", err)
-					jobFailed = true
-					execResult = err.Error()
-					db.Model(&prjDbRcd).Where(&prjDbRcd).Update("status", model.ProjectStatusCloseFailed)
+			// Get project database record and update project status based on proposal execution result
+			prjDbRcd := model.Project{
+				SIP: fmt.Sprintf("%d", proposal.Sip),
+			}
+
+			if err = db.Transaction(func(tx *gorm.DB) error {
+				if jobFailed {
+					tx.Model(&model.Proposal{}).Where("id = ?", proposalId).Update("state", model.ProposalStateExecutionFailed)
+					tx.Model(&prjDbRcd).Where(&prjDbRcd).Update("status", model.ProjectStatusCloseFailed)
 				} else {
-					db.Model(&model.Proposal{}).Where("id = ?", proposalId).Update("state", model.ProposalStateExecuted)
+					var pDbRcd model.Proposal
+					if err := tx.Model(&model.Proposal{}).Where("id = ?", proposalId).Find(&pDbRcd).Error; err != nil {
+						log.Error().Msgf("find proposal error: %+v", err)
+						jobFailed = true
+						execResult = err.Error()
+						tx.Model(&prjDbRcd).Where(&prjDbRcd).Update("status", model.ProjectStatusCloseFailed)
+					} else {
+						if err := tx.Model(&prjDbRcd).Where(&prjDbRcd).
+							Update("status", model.ProjectStatusClosed).
+							Update("over_link", fmt.Sprintf("/proposal/thread/%d", proposal.ID)).Error; err != nil {
+							log.Error().Msgf("close project error: %+v", err)
+							jobFailed = true
+							execResult = err.Error()
+							tx.Model(&prjDbRcd).Where(&prjDbRcd).Update("status", model.ProjectStatusCloseFailed)
+						} else {
+							tx.Model(&model.Proposal{}).Where("id = ?", proposalId).Update("state", model.ProposalStateExecuted)
+						}
+					}
 				}
+				return nil
+			}); err != nil {
+				log.Error().Msgf("update proposa or project state error: %+v", err)
+				jobFailed = true
 			}
 		}
 	}
