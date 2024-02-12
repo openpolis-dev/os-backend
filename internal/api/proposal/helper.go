@@ -1023,7 +1023,7 @@ func UpdateProposalStateBasedOnVoteResult(db *gorm.DB, proposalVoteRecord *model
 		return err
 	}
 
-	if dbProposalRcd.IsInFinState() {
+	if !dbProposalRcd.IsInFinState() {
 		go createProposalAutomationTasks(db, dbProposalRcd, proposalFinalState, voteResult, dbProposalRcd.VoteType)
 	}
 
