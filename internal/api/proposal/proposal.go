@@ -1009,7 +1009,7 @@ func updateProposalAssociatedProjectStatusInCloseProjectToClosing(db *gorm.DB, r
 			log.Error().Msgf(err.Error())
 			return err
 		} else {
-			log.Debug().Msgf("complete vase")
+			log.Debug().Msgf("complete updating project status")
 		}
 	}
 	return nil

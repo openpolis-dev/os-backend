@@ -24,6 +24,7 @@ import (
 	"github.com/theseed-labs/os-backend/internal/sdk/metaforo"
 	"github.com/theseed-labs/os-backend/internal/storage"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type proposalComponentActions struct {
@@ -808,12 +809,14 @@ func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcd *mod
 		// TODO: Update the check logic of vote result with voter user limitations
 		if poll.Status == "open" {
 			if dbProposalRcd.Sip == 0 {
-				if !dbProposalRcd.IsInFinState() {
+				if !dbProposalRcd.IsInFinState() && dbProposalRcd.State != int(model.ProposalStateVoting) {
 					var pTemplate *model.ProposalTemplate
 					if err := db.Model(&dbProposalRcd).Association("ProposalTemplate").Find(&pTemplate); err != nil {
 						log.Error().Msgf("get proposal template error: %+v", err)
 						return err
 					}
+
+					var proposalSip = 0
 
 					if pTemplate != nil && pTemplate.Type == model.ProposalTemplateTypeCloseProject {
 						createProjectProposal := model.Proposal{ID: dbProposalRcd.AssociateProposalId}
@@ -821,13 +824,33 @@ func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcd *mod
 							log.Error().Msgf("get creating project proposal error: %+v", err)
 							return err
 						}
-						dbProposalRcd.Sip = createProjectProposal.Sip
+						proposalSip = createProjectProposal.Sip
 					} else {
-						dbProposalRcd.Sip = getNextSipValue(db, storage.GetConfig().ProposalData.SipInitNumber)
+						// TODO: The GetNextSipValue may be invoked more than once, need preventing it by lock or others
+						proposalSip, err = model.GetNextSipValue(db)
+						log.Error().Msgf("TTT: get next sip value: %d", proposalSip)
+						if err != nil {
+							log.Error().Msgf("get next sip value error: %+v", err)
+							return err
+						}
 					}
 
-					dbProposalRcd.State = int(model.ProposalStateVoting)
-					db.Updates(dbProposalRcd)
+					updateTx := db.Clauses(clause.Locking{Strength: "UPDATE"}).
+						Model(&dbProposalRcd).
+						Where(&dbProposalRcd).
+						Where("sip != 0").
+						Update("sip", proposalSip).
+						Update("state", model.ProposalStateVoting)
+					if err = updateTx.Error; err != nil {
+						log.Error().Msgf("update proposal state error: %+v", err)
+						return err
+					} else if updateTx.RowsAffected == 0 {
+						err = fmt.Errorf("proposal %d already has a sip value, no update will be performed", dbProposalRcd.ID)
+						log.Error().Msgf(err.Error())
+						return err
+					} else {
+						log.Debug().Msgf("complete update proposal status")
+					}
 				}
 			}
 		} else if poll.Status == "close" {
@@ -1021,6 +1044,7 @@ func createProposalAutomationTasks(db *gorm.DB, proposal *model.Proposal, finSta
 		// No automation action found for the proposal, check whether the proposal has pending execution time
 		// If yes, change the proposal state to pending execution, and create a new cron job to update proposal state after pending execution second
 		// If no, change the proposal state to executed directly
+		// 2024.02.12: for now, only create project proposal can reach this branch
 		var pTemplate *model.ProposalTemplate
 		if err = db.Model(&proposal).Association("ProposalTemplate").Find(&pTemplate); err != nil {
 			log.Error().Msgf("find proposal template error: %+v", err)
@@ -1080,7 +1104,33 @@ func createProposalAutomationTasks(db *gorm.DB, proposal *model.Proposal, finSta
 		case model.ProposalStateVoteFailed:
 			actionName = componentAction.RejectActionName
 			log.Warn().Msgf("no cronjob generated for failed proposal")
-			continue
+
+			//For close project proposal, need to change the project status to close_failed
+			proposalIsForClosingProject, project, err := IsProposalIsForClosingProject(db, proposal)
+			if err != nil {
+				log.Error().Msgf("checking proposal is for closing project failed, err: %+v", err)
+				continue
+			}
+
+			if !proposalIsForClosingProject {
+				log.Debug().Msgf("proposal is not for closing project")
+				continue
+			}
+
+			updateTx := db.Model(&project).
+				Where("status = 'closing'").
+				Update("status", model.ProjectStatusCloseFailed)
+
+			if err = updateTx.Error; err != nil {
+				log.Error().Msgf("close project error: %+v", err)
+				continue
+			} else if updateTx.RowsAffected == 0 {
+				err = fmt.Errorf("project not in correct status for updating to %+v", model.ProjectStatusCloseFailed)
+				log.Error().Msgf(err.Error())
+				continue
+			} else {
+				log.Debug().Msgf("complete project status update")
+			}
 		default:
 			log.Error().Msgf("unknown proposal state: %d", finState)
 			return
@@ -1333,18 +1383,34 @@ func CreateProjectFromAutoTasks(db *gorm.DB, proposal *model.Proposal) (*model.P
 	return &newProjectData, nil
 }
 
-func getNextSipValue(db *gorm.DB, defaultVal int) int {
-	log.Debug().Msgf("invoke get next sip")
-	var maxSipVal int
-	if err := db.Model(&model.Proposal{}).Select("max(sip)").Limit(1).Pluck("sip", &maxSipVal).Error; err != nil {
-		log.Error().Msgf("get vote records error: %+v", err)
-		return defaultVal
+func IsProposalIsForClosingProject(db *gorm.DB, proposal *model.Proposal) (bool, *model.Project, error) {
+	pTmplType, err := getProposalTemplateType(db, proposal.ID)
+	if err != nil {
+		log.Error().Msgf("get proposal template error: %+v", err)
+		return false, nil, err
 	}
 
-	if maxSipVal != 0 {
-		return maxSipVal + 1
-	} else {
-		log.Error().Msgf("TTT: init sip val: %d", defaultVal)
-		return defaultVal
+	if pTmplType != model.ProposalTemplateTypeCloseProject {
+		return false, nil, nil
 	}
+
+	createProjectProposal := model.Proposal{ID: proposal.AssociateProposalId}
+	if err = db.Find(&createProjectProposal).Error; err != nil {
+		log.Error().Msgf("get creating project proposal error: %+v", err)
+		return false, nil, err
+	}
+
+	createdProject := model.Project{
+		SIP: fmt.Sprintf("%d", createProjectProposal.Sip),
+	}
+
+	updateTx := db.Clauses(clause.Locking{
+		Strength: "UPDATE",
+		Options:  "NOWAIT",
+	}).Model(&createdProject).Where(&createdProject).First(&createdProject)
+	if err = updateTx.Error; err != nil {
+		log.Error().Msgf("get associated project error: %+v", err)
+		return false, nil, err
+	}
+	return true, &createdProject, nil
 }

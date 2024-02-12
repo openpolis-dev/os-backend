@@ -67,25 +67,61 @@ func CreateVetoProposalTask(db *gorm.DB, job *model.CronJob, jobParams string) {
 		// 1. Mark cronjob related to the specified proposal to terminated
 		// 2. Mark the proposal to vetoed state
 		var proposalTasks []*model.CronJob
-		err := db.Raw(queryCronJobRecordFromProposalIdSQL, params.BeVetoedProposalInfo.Id).Find(&proposalTasks).Error
-		if err != nil {
-			log.Warn().Msgf("fetch be vetoed proposal data error: %+v", err)
-			execResult = err.Error()
-			jobFailed = true
-		} else {
-			for _, r := range proposalTasks {
-				r.State = model.CronJobStateTerminated
-				r.UpdateTs = model.GetCurrentUtcEpochSecond()
-				db.Updates(r)
-			}
-			db.Updates(&proposalTasks)
-
-			err = db.Model(&model.Proposal{}).Where("id = ?", params.BeVetoedProposalInfo.Id).Update("state", model.ProposalStateVetoed).Error
+		if err := db.Transaction(func(tx *gorm.DB) error {
+			err = tx.Raw(queryCronJobRecordFromProposalIdSQL, params.BeVetoedProposalInfo.Id).Find(&proposalTasks).Error
 			if err != nil {
 				log.Warn().Msgf("fetch be vetoed proposal data error: %+v", err)
 				execResult = err.Error()
 				jobFailed = true
+				return err
 			}
+
+			for _, r := range proposalTasks {
+				r.State = model.CronJobStateTerminated
+				r.UpdateTs = model.GetCurrentUtcEpochSecond()
+				tx.Updates(r)
+			}
+			tx.Updates(&proposalTasks)
+
+			err = tx.Model(&model.Proposal{}).Where("id = ?", params.BeVetoedProposalInfo.Id).Update("state", model.ProposalStateVetoed).Error
+			if err != nil {
+				log.Warn().Msgf("fetch be vetoed proposal data error: %+v", err)
+				execResult = err.Error()
+				jobFailed = true
+				return err
+			}
+
+			// Mark project associated to proposal be vetoed to close_failed
+			var dbProposalRcd model.Proposal
+			if err = tx.Find(&dbProposalRcd, params.VetoProposalId).Error; err != nil {
+				log.Warn().Msgf("fetch veto proposal data error: %+v", err)
+				execResult = err.Error()
+				jobFailed = true
+				return err
+			}
+
+			proposalIsForClosingProject, project, err := proposal.IsProposalIsForClosingProject(tx, &dbProposalRcd)
+			if err != nil {
+				log.Warn().Msgf("check proposal is closing project error: %+v", err)
+				execResult = err.Error()
+				jobFailed = true
+				return err
+			}
+
+			if proposalIsForClosingProject {
+				log.Debug().Msgf("proposal %d is for closing project %v", dbProposalRcd.ID, project)
+				if err = tx.Model(&project).Update("status", model.ProjectStatusCloseFailed).Error; err != nil {
+					log.Warn().Msgf("update project status to close_failed error: %+v", err)
+					execResult = err.Error()
+					jobFailed = true
+					return err
+				}
+			}
+
+			return nil
+		}); err != nil {
+			log.Error().Msgf("update vetoed proposal error")
+			jobFailed = true
 		}
 	}
 	job.LastExecTs = model.GetCurrentUtcEpochSecond()
