@@ -630,7 +630,7 @@ func GetProposalsUsedForCreatingProjects(ctx *gin.Context) {
 	}
 
 	querySql := fmt.Sprintf("%s WHERE applicant = '%s' AND proposal_template_id IN (%s) AND state = %d AND projects.status IN (%s)",
-		ListProposalsSQL,
+		ListProposalsSQLForGettingCreatingProjectProposal,
 		common.FormatUserWallet(user.Wallet),
 		strings.Join(lo.Map(newProjectTemplateIds, func(tmpId uint, _ int) string {
 			return fmt.Sprintf("%d", tmpId)
