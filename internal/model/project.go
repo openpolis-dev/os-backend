@@ -142,7 +142,7 @@ func (*projectModel) ListBySponsorOrMember(db *gorm.DB, wallet string, page *gor
 	//querySeg := db.Table("projects").Where("sponsors LIKE ?", w).Or("members LIKE ?", w)
 
 	// PgVersion
-	querySeg := db.Table("projects").Where(fmt.Sprintf("sponsors::text ILIKE '%%%s%%'", w)).Or(fmt.Sprintf("members::text ILIKE '%%%s%%'", w))
+	querySeg := db.Table("projects").Where(fmt.Sprintf("sponsors::text ILIKE '%%%s%%'", w)).Or(fmt.Sprintf("members::text ILIKE '%%%s%%'", w)).Where("is_special = false")
 
 	total, err = gormfind.Count(querySeg)
 	if err != nil {
