@@ -590,7 +590,9 @@ func SaveProposalToMetaforo(db *gorm.DB, origProposalRecordId uint, voteType int
 
 	// Save data backed from metaforo API response to DB
 	// TODO: Use single transaction function to update proposal
-	if err := db.Model(&updatedProposalRecord).Where("id = ?", updatedProposalRecord.ID).Update("state", updatedProposalRecord.State).Error; err != nil {
+	if err := db.Model(&updatedProposalRecord).
+		Where("id = ?", updatedProposalRecord.ID).
+		Updates(&model.Proposal{ProposalRecordId: updatedProposalRecord.ProposalRecordId, State: updatedProposalRecord.State}).Error; err != nil {
 		log.Error().Msgf("update proposal error: %+v", err)
 		return err
 	}
