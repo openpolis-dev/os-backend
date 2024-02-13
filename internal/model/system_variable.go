@@ -35,5 +35,33 @@ func GetNextSipValue(db *gorm.DB) (int, error) {
 		return 0, err
 	}
 
+	log.Debug().Msgf("get next sip value return %d", sipValue[0])
+	return sipValue[0], nil
+}
+func RollbackSipValueByOne(db *gorm.DB) (int, error) {
+	log.Debug().Msgf("rollback sip value by 1")
+	var sipValue []int
+	err := db.Transaction(func(tx *gorm.DB) error {
+		err := tx.Model(&SystemVariable{}).Where("name='sip'").Update("num_value", gorm.Expr("num_value - ?", 1)).Error
+		if err != nil {
+			log.Error().Msgf("rollback sip value error: %+v", err)
+			return err
+		}
+		if err = tx.Model(&SystemVariable{}).Limit(1).Pluck("num_value", &sipValue).Error; err != nil {
+			log.Error().Msgf("rollback sip value error: %+v", err)
+			return err
+		}
+		return nil
+	})
+
+	if err != nil {
+		log.Error().Msgf("get sip value error: %+v", err)
+		return 0, err
+	} else if len(sipValue) < 1 {
+		log.Error().Msgf("no sip value found")
+		return 0, err
+	}
+
+	log.Debug().Msgf("rollbacked sip value return %d", sipValue[0])
 	return sipValue[0], nil
 }

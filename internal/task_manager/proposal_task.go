@@ -103,7 +103,7 @@ func CreateVetoProposalTask(db *gorm.DB, job *model.CronJob, jobParams string) {
 				return err
 			}
 
-			proposalIsForClosingProject, project, err := proposal.IsProposalIsForClosingProject(tx, &dbProposalRcd)
+			proposalIsForClosingProject, project, err := proposal.IsProposalIsForClosingProject(tx, dbProposalRcd.ID)
 			if err != nil {
 				log.Warn().Msgf("check proposal is closing project error: %+v", err)
 				execResult = err.Error()
