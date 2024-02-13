@@ -254,14 +254,14 @@ type associatedProposalData struct {
 // Some converter functions
 ///////////////////////
 
-func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal, startPostId int, accessToken string, metaforoGroupName string) (*FrontendProposalDetailRecord, error) {
+func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposalId uint, startPostId int, accessToken string, metaforoGroupName string) (*FrontendProposalDetailRecord, error) {
 	var proposalBlocks []*model.ProposalContentBlock
-	if err := db.Where(&model.ProposalContentBlock{ProposalID: proposal.ID}).Order("id").Find(&proposalBlocks).Error; err != nil {
+	if err := db.Where(&model.ProposalContentBlock{ProposalID: proposalId}).Order("id").Find(&proposalBlocks).Error; err != nil {
 		return nil, err
 	}
 
 	var proposalComponentRecords []*model.ProposalComponentRecord
-	if err := db.Where(&model.ProposalComponentRecord{ProposalID: proposal.ID}).
+	if err := db.Where(&model.ProposalComponentRecord{ProposalID: proposalId}).
 		Where("component_id != ?", 0).
 		Order("id").Find(&proposalComponentRecords).Error; err != nil {
 		return nil, err
@@ -328,6 +328,12 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 		}
 	})
 
+	var proposal model.Proposal
+	if err := db.Find(&proposal, proposalId).Error; err != nil {
+		log.Error().Msgf("query proposal %d from DB error: %+v", proposalId, err)
+		return nil, err
+	}
+
 	var applicantAvatarLink string
 	db.Model(model.User{}).Where("wallet = ?", common.FormatUserWallet(proposal.Applicant)).First(&applicantAvatarLink)
 
@@ -346,13 +352,13 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 		commentCount = metaforoProposal.Thread.PostsCount
 		votes = metaforoProposal.Thread.Polls
 
-		err = UpdateDbRecordsFromMetaforoProposalResponse(db, proposal, metaforoProposal)
+		err = UpdateDbRecordsFromMetaforoProposalResponse(db, proposalId, metaforoProposal)
 		if err != nil {
 			return nil, err
 		}
 		// TODO: Query UserVoteRecord and update isVoted field
 
-		err = db.Model(model.ProposalComment{}).Where("proposal_id = ? AND is_reject_comment = ?", proposal.ID, true).First(&rejectedComment).Error
+		err = db.Model(model.ProposalComment{}).Where("proposal_id = ? AND is_reject_comment = ?", proposalId, true).First(&rejectedComment).Error
 		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, err
 		}
@@ -407,7 +413,7 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 
 	proposalExecTs := int64(0)
 	var proposalCronJobs []*model.CronJob
-	if err = db.Where(&model.CronJob{ProposalId: proposal.ID}).Find(&proposalCronJobs).Error; err != nil {
+	if err = db.Where(&model.CronJob{ProposalId: proposalId}).Find(&proposalCronJobs).Error; err != nil {
 		log.Error().Msgf("get proposal cronjob error: %+v", err)
 	}
 
@@ -429,8 +435,13 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 		}
 	}
 
+	// Refresh proposal record
+	if err = db.Find(&proposal, proposalId).Error; err != nil {
+		log.Error().Msgf("fetch proposal error: %+v", err)
+		return nil, err
+	}
 	return &FrontendProposalDetailRecord{
-		ID:                      proposal.ID,
+		ID:                      proposalId,
 		Title:                   proposal.Title,
 		ContentBlocks:           proposalContentResponse,
 		ProposalCategoryId:      proposal.ProposalCategoryID,

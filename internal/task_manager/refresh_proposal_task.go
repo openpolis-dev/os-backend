@@ -62,7 +62,7 @@ func RefreshVotingProposalInfoJob(db *gorm.DB, job *model.CronJob, jobParams str
 					continue
 				}
 
-				err = proposal.UpdateDbRecordsFromMetaforoProposalResponse(db, dbRcd, metaforoProposalData)
+				err = proposal.UpdateDbRecordsFromMetaforoProposalResponse(db, dbRcd.ID, metaforoProposalData)
 				if err != nil {
 					log.Warn().Msgf("update propsal with metaforo response error: %+v", err)
 					jobFailed = true

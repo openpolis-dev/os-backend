@@ -435,9 +435,15 @@ func SaveProposalComponentRecords(db *gorm.DB, proposalId uint, applicantWallet 
 //
 // Otherwise, copy the proposal to new record with ver+1, update the metaforo data, and save back as a new record,
 // and the metaforo API invoked here is updateProposal.
-func SaveProposalToMetaforo(db *gorm.DB, origProposalRecord *model.Proposal, voteType int, customVoteOptions []string, metaforoAccessToken string, EditorType int, metaforoGroupName string) error {
-	log.Debug().Msgf("enter save proposal to metaforo: %+v", origProposalRecord)
+func SaveProposalToMetaforo(db *gorm.DB, origProposalRecordId uint, voteType int, customVoteOptions []string, metaforoAccessToken string, EditorType int, metaforoGroupName string) error {
+	log.Debug().Msgf("enter save proposal to metaforo: %d", origProposalRecordId)
 	var err error
+
+	var origProposalRecord model.Proposal
+	if err = db.Find(&origProposalRecord, origProposalRecordId).Error; err != nil {
+		log.Error().Msgf("find proposal error: %+v", err)
+		return err
+	}
 
 	// Load current proposal data
 	var proposalCategory *model.ProposalCategory
@@ -448,7 +454,7 @@ func SaveProposalToMetaforo(db *gorm.DB, origProposalRecord *model.Proposal, vot
 	}
 
 	var contentBlocks []*model.ProposalContentBlock
-	err = db.Where(&model.ProposalContentBlock{ProposalID: origProposalRecord.ID}).Find(&contentBlocks).Error
+	err = db.Where(&model.ProposalContentBlock{ProposalID: origProposalRecordId}).Find(&contentBlocks).Error
 	if err != nil {
 		log.Error().Msgf("get proposal content block error: %+v", err)
 		return err
@@ -518,7 +524,7 @@ func SaveProposalToMetaforo(db *gorm.DB, origProposalRecord *model.Proposal, vot
 			return err
 		}
 
-		err = UpdateDbRecordsFromMetaforoProposalResponse(db, updatedProposalRecord, metaforoProposalResponse)
+		err = UpdateDbRecordsFromMetaforoProposalResponse(db, updatedProposalRecord.ID, metaforoProposalResponse)
 		if err != nil {
 			log.Error().Msgf("update db records from metaforoProposalResponse error: %+v", err)
 		}
@@ -565,7 +571,7 @@ func SaveProposalToMetaforo(db *gorm.DB, origProposalRecord *model.Proposal, vot
 			return err
 		}
 
-		err = UpdateDbRecordsFromMetaforoProposalResponse(db, updatedProposalRecord, metaforoProposalResponse)
+		err = UpdateDbRecordsFromMetaforoProposalResponse(db, updatedProposalRecord.ID, metaforoProposalResponse)
 		if err != nil {
 			log.Error().Msgf("update db records from metaforoProposalResponse error: %+v", err)
 		}
@@ -575,7 +581,7 @@ func SaveProposalToMetaforo(db *gorm.DB, origProposalRecord *model.Proposal, vot
 	}
 
 	updatedProposalRecord.ProposalRecordId = model.BuildProposalRecordIdFromMetaforoThreadId(metaforoProposalResponse.Thread.Id)
-	err = UpdateDbRecordsFromMetaforoProposalResponse(db, updatedProposalRecord, metaforoProposalResponse)
+	err = UpdateDbRecordsFromMetaforoProposalResponse(db, updatedProposalRecord.ID, metaforoProposalResponse)
 	if err != nil {
 		log.Error().Msgf("update db proposal record with metaforo response error: %+v", err)
 		return err
@@ -707,8 +713,11 @@ func IsUserMetVoteGate(userSeepassData *sdk.SeepassResponse, proposalVoteGate *m
 
 // UpdateDbRecordsFromMetaforoProposalResponse updates proposal data with db records. For now, it contains:
 // * Arweave hash: current and historical versions
-func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcd *model.Proposal, metaforoProposal *metaforo.ProposalResponse) error {
+func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcdId uint, metaforoProposal *metaforo.ProposalResponse) error {
 	var err error
+
+	var dbProposalRcd *model.Proposal
+	db.Find(&dbProposalRcd, dbProposalRcdId)
 
 	// Save all version proposal arweave hash
 	proposalRecordId := model.BuildProposalRecordIdFromMetaforoThreadId(metaforoProposal.Thread.Id)
@@ -721,7 +730,7 @@ func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcd *mod
 					tx.Model(&dbProposals[idx]).Update("arweave_hash", metaforoProposal.Thread.EditHistory.Lists[idx].Arweave)
 					if idx == 0 {
 						// Save arwave hash data to record for setting it correctly in response
-						tx.Where(&model.Proposal{ID: dbProposalRcd.ID}).Updates(model.Proposal{ArweaveHash: metaforoProposal.Thread.EditHistory.Lists[idx].Arweave})
+						tx.Where(&model.Proposal{ID: dbProposalRcdId}).Updates(model.Proposal{ArweaveHash: metaforoProposal.Thread.EditHistory.Lists[idx].Arweave})
 					}
 				}
 				return nil
@@ -759,7 +768,7 @@ func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcd *mod
 			Title:      poll.Title,
 			StartTs:    poll.PollStartAt.UTC().Unix(),
 			EndTs:      poll.CloseAt.UTC().Unix(),
-			ProposalID: dbProposalRcd.ID,
+			ProposalID: dbProposalRcdId,
 			VoteType:   dbProposalRcd.VoteType,
 		}).FirstOrCreate(&proposalVoteRecord).Error
 		if err != nil {
@@ -808,6 +817,8 @@ func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcd *mod
 
 		// TODO: Update the check logic of vote result with voter user limitations
 		if poll.Status == "open" {
+			// Refresh dbProposal record
+			db.Find(&dbProposalRcd, dbProposalRcd.ID)
 			if dbProposalRcd.Sip == 0 {
 				if !dbProposalRcd.IsInFinState() && dbProposalRcd.State != int(model.ProposalStateVoting) {
 					var pTemplate *model.ProposalTemplate
@@ -1027,33 +1038,39 @@ func UpdateProposalStateBasedOnVoteResult(db *gorm.DB, proposalVoteRecord *model
 	}
 
 	if !dbProposalRcd.IsInFinState() {
-		go createProposalAutomationTasks(db, dbProposalRcd, proposalFinalState, voteResult, dbProposalRcd.VoteType)
+		go createProposalAutomationTasks(db, dbProposalRcd.ID, proposalFinalState, voteResult, dbProposalRcd.VoteType)
 	}
 
 	return nil
 }
 
 // createProposalAutomationTasks creates automation tasks after proposal finished (passed or failed)
-func createProposalAutomationTasks(db *gorm.DB, proposal *model.Proposal, finState model.ProposalState, voteResult string, voteType int) {
-	log.Debug().Msgf("enter createProposalAutomationTasks proposal: %+v, finState: %+v", proposal, finState)
+func createProposalAutomationTasks(db *gorm.DB, proposalId uint, finState model.ProposalState, voteResult string, voteType int) {
+	log.Debug().Msgf("enter createProposalAutomationTasks proposal id: %d, finState: %+v", proposalId, finState)
 	sqlQuery := QueryComponentActionNameBaseSQL + " WHERE proposal_id = ?"
 	var proposalComponentActions []*proposalComponentActions
-	err := db.Raw(sqlQuery, proposal.ID).Find(&proposalComponentActions).Error
+	err := db.Raw(sqlQuery, proposalId).Find(&proposalComponentActions).Error
 	if err != nil {
 		log.Error().Msgf("fetch proposal component actions error: %+v", err)
 		return
 	}
 
-	log.Debug().Msgf("proposal %d component actions: %+v", proposal.ID, proposalComponentActions)
+	log.Debug().Msgf("proposal %d component actions: %+v", proposalId, proposalComponentActions)
 
 	switch finState {
 	case model.ProposalStateVotePassed:
 		if len(proposalComponentActions) == 0 {
-			log.Debug().Msgf("proposal %d has no component actions", proposal.ID)
+			log.Debug().Msgf("proposal %d has no component actions", proposalId)
 			// No automation action found for the proposal, check whether the proposal has pending execution time
 			// If yes, change the proposal state to pending execution, and create a new cron job to update proposal state after pending execution second
 			// If no, change the proposal state to executed directly
 			// 2024.02.12: for now, only create project proposal can reach this branch
+
+			var proposal model.Proposal
+			if err = db.Find(&proposal, proposalId).Error; err != nil {
+				log.Error().Msgf("find proposal error: %+v", err)
+				return
+			}
 			var pTemplate *model.ProposalTemplate
 			if err = db.Model(&proposal).Association("ProposalTemplate").Find(&pTemplate); err != nil {
 				log.Error().Msgf("find proposal template error: %+v", err)
@@ -1079,7 +1096,7 @@ func createProposalAutomationTasks(db *gorm.DB, proposal *model.Proposal, finSta
 				}
 
 				updateProposalStateTaskParams := map[string]any{
-					"proposal_id": proposal.ID,
+					"proposal_id": proposalId,
 					"state":       int(model.ProposalStateExecuted),
 				}
 
@@ -1088,17 +1105,19 @@ func createProposalAutomationTasks(db *gorm.DB, proposal *model.Proposal, finSta
 					log.Error().Msgf("marshal update proposal state params error: %+v", err)
 					return
 				}
-				err = createCronJob(db, proposal, internal.TaskUpdateProposalState, string(jobParamsStr), "", 0, int(proposalComponentRecord.ID))
+				err = createCronJob(db, proposal.ID, proposal.PendingExecutionSecond, internal.TaskUpdateProposalState, string(jobParamsStr), "", 0, int(proposalComponentRecord.ID))
 				if err != nil {
 					log.Error().Msgf("marshal update proposal state params error: %+v", err)
 					return
 				}
+				// TODO: Merge to single state transit function
 				proposal.State = int(model.ProposalStatePendingExecution)
-				if err = db.Model(&proposal).Updates(&proposal).Error; err != nil {
+				if err = db.Updates(&proposal).Error; err != nil {
 					log.Error().Msgf("update proposal %d state to pending execution error", proposal.ID)
 					return
 				}
 			} else {
+				// TODO: Merge to single state transit function
 				proposal.State = int(model.ProposalStateExecuted)
 				err = db.Updates(&proposal).Error
 				if err != nil {
@@ -1107,11 +1126,16 @@ func createProposalAutomationTasks(db *gorm.DB, proposal *model.Proposal, finSta
 			}
 		}
 
+		var proposal model.Proposal
+		if err = db.Find(&proposal, proposalId).Error; err != nil {
+			log.Error().Msgf("find proposal error: %+v", err)
+			return
+		}
 		for _, componentAction := range proposalComponentActions {
-			log.Debug().Msgf("proposal %d vote finState: %+v, action: %+v", proposal.ID, finState, componentAction)
+			log.Debug().Msgf("proposal %d vote finState: %+v, action: %+v", proposalId, finState, componentAction)
 			var actionName string
 			actionName = componentAction.ApproveActionName
-			err = createCronJob(db, proposal, actionName, componentAction.ComponentParams, voteResult, voteType, componentAction.ProposalComponentRecordId)
+			err = createCronJob(db, proposal.ID, proposal.PendingExecutionSecond, actionName, componentAction.ComponentParams, voteResult, voteType, componentAction.ProposalComponentRecordId)
 			if err != nil {
 				log.Error().Msgf("create cron job error: %+v", err)
 			}
@@ -1124,8 +1148,14 @@ func createProposalAutomationTasks(db *gorm.DB, proposal *model.Proposal, finSta
 			}
 		}
 	case model.ProposalStateVoteFailed:
+		var proposal model.Proposal
+		if err = db.Find(&proposal, proposalId).Error; err != nil {
+			log.Error().Msgf("find proposal error: %+v", err)
+			return
+		}
+
 		//For close project proposal, need to change the project status to close_failed
-		proposalIsForClosingProject, project, err := IsProposalIsForClosingProject(db, proposal)
+		proposalIsForClosingProject, project, err := IsProposalIsForClosingProject(db, &proposal)
 		if err != nil {
 			log.Error().Msgf("checking proposal is for closing project failed, err: %+v", err)
 		}
@@ -1154,16 +1184,16 @@ func createProposalAutomationTasks(db *gorm.DB, proposal *model.Proposal, finSta
 	}
 }
 
-func createCronJob(db *gorm.DB, dbProposal *model.Proposal, actionName string, jobParams string, voteResult string, voteType int, pComponentRecordId int) error {
+func createCronJob(db *gorm.DB, dbProposalId uint, proposalPendingExecutionSecond int64, actionName string, jobParams string, voteResult string, voteType int, pComponentRecordId int) error {
 	currentTs := time.Now().UTC().Unix()
-	proposalExecutionTs := currentTs + dbProposal.PendingExecutionSecond
+	proposalExecutionTs := currentTs + proposalPendingExecutionSecond
 
 	finTask := &model.CronJob{
 		CreateTs:                  currentTs,
 		UpdateTs:                  currentTs,
 		HandlerName:               actionName,
 		ProposalComponentRecordId: pComponentRecordId,
-		ProposalId:                dbProposal.ID,
+		ProposalId:                dbProposalId,
 		LastExecTs:                0,
 		NextExecTs:                proposalExecutionTs,
 		JobParams:                 jobParams,
@@ -1172,7 +1202,7 @@ func createCronJob(db *gorm.DB, dbProposal *model.Proposal, actionName string, j
 		State:                     model.CronJobStateActive,
 		LastExecResult:            "",
 	}
-	createTaskTx := db.Where(model.CronJob{HandlerName: actionName, ProposalComponentRecordId: pComponentRecordId, ProposalId: dbProposal.ID}).
+	createTaskTx := db.Where(model.CronJob{HandlerName: actionName, ProposalComponentRecordId: pComponentRecordId, ProposalId: dbProposalId}).
 		Assign(&finTask).FirstOrCreate(&finTask)
 
 	if createTaskTx.Error != nil {
