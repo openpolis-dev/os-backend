@@ -590,7 +590,7 @@ func SaveProposalToMetaforo(db *gorm.DB, origProposalRecordId uint, voteType int
 
 	// Save data backed from metaforo API response to DB
 	// TODO: Use single transaction function to update proposal
-	if err := db.Model(&updatedProposalRecord).Update("state", updatedProposalRecord.State).Error; err != nil {
+	if err := db.Model(&updatedProposalRecord).Where("id = ?", updatedProposalRecord.ID).Update("state", updatedProposalRecord.State).Error; err != nil {
 		log.Error().Msgf("update proposal error: %+v", err)
 		return err
 	}
@@ -729,10 +729,10 @@ func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcdId ui
 		if err == nil && len(dbProposals) > 0 {
 			err = db.Transaction(func(tx *gorm.DB) error {
 				for idx := 0; idx < min(metaforoProposal.Thread.EditHistory.Count, len(dbProposals)); idx++ {
-					tx.Model(&dbProposals[idx]).Update("arweave_hash", metaforoProposal.Thread.EditHistory.Lists[idx].Arweave)
+					tx.Model(&dbProposals[idx]).Where("id = ?", dbProposals[idx].ID).Update("arweave_hash", metaforoProposal.Thread.EditHistory.Lists[idx].Arweave)
 					if idx == 0 {
 						// Save arwave hash data to record for setting it correctly in response
-						tx.Where(&model.Proposal{ID: dbProposalRcdId}).Updates(model.Proposal{ArweaveHash: metaforoProposal.Thread.EditHistory.Lists[idx].Arweave})
+						tx.Model(&model.Proposal{}).Where(&model.Proposal{ID: dbProposalRcdId}).Updates(model.Proposal{ArweaveHash: metaforoProposal.Thread.EditHistory.Lists[idx].Arweave})
 					}
 				}
 				return nil
@@ -800,7 +800,7 @@ func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcdId ui
 					return err
 				}
 
-				err = tx.Model(&proposalVoteOptionRecord).Updates(&model.ProposalVoteOptionRecord{VoterCount: voteOpt.Voters}).Error
+				err = tx.Model(&proposalVoteOptionRecord).Where("id = ?", proposalVoteOptionRecord.ID).Updates(&model.ProposalVoteOptionRecord{VoterCount: voteOpt.Voters}).Error
 				if err != nil {
 					log.Warn().Msgf("save DB proposal vote option error: %+v", err)
 					return err
@@ -1113,14 +1113,14 @@ func createProposalAutomationTasks(db *gorm.DB, proposalId uint, finState model.
 					return
 				}
 				// TODO: Merge to single state transit function
-				if err = db.Model(&proposal).Update("state", model.ProposalStatePendingExecution).Error; err != nil {
+				if err = db.Model(&proposal).Where("id = ?", proposal.ID).Update("state", model.ProposalStatePendingExecution).Error; err != nil {
 					log.Error().Msgf("update proposal %d state to pending execution error", proposal.ID)
 					return
 				}
 			} else {
 				// TODO: Merge to single state transit function
 				proposal.State = int(model.ProposalStateExecuted)
-				if err = db.Model(&proposal).Update("state", model.ProposalStateExecuted).Error; err != nil {
+				if err = db.Model(&proposal).Where("id = ?", proposal.ID).Update("state", model.ProposalStateExecuted).Error; err != nil {
 					if err != nil {
 						log.Error().Msgf("update proposal %d state to executed error", proposal.ID)
 					}
@@ -1145,7 +1145,7 @@ func createProposalAutomationTasks(db *gorm.DB, proposalId uint, finState model.
 
 			// Update proposal state to PendingExecution, the next state change will be launched by cron job or veto proposal
 			// TODO: Change to single state transaction function
-			err = db.Model(&proposal).Update("state", int(model.ProposalStatePendingExecution)).Error
+			err = db.Model(&proposal).Where("id = ?", proposal.ID).Update("state", int(model.ProposalStatePendingExecution)).Error
 			if err != nil {
 				log.Error().Msgf("update proposl state to pending execution error: %+v", err)
 			}

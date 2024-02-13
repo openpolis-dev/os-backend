@@ -531,7 +531,7 @@ func Reject(ctx *gin.Context) {
 	}
 
 	// Comment currently is fetched from Metaforo directly, so only RejectReason is saved in local DB
-	db.Model(&rejectComment).Update("metaforo_comment_id", fmt.Sprintf("%d", commentData.Id))
+	db.Model(&rejectComment).Where("id = ?", rejectComment.ID).Update("metaforo_comment_id", fmt.Sprintf("%d", commentData.Id))
 
 	ctx.JSON(http.StatusOK, api.Success(nil))
 }
@@ -712,7 +712,7 @@ func UpdateProposalStateAndLaunchStateChangeActions(db *gorm.DB, user *middlewar
 			}
 		}
 
-		err = db.Model(&proposalRecord).Update("state", model.ProposalStateWithdrawn).Error
+		err = db.Model(&proposalRecord).Where("id = ?", proposalRecord.ID).Update("state", model.ProposalStateWithdrawn).Error
 		// TODO: Update Metaforo Label: Remove old label and add new, verify whether metaforo can handle this
 		if err != nil {
 			log.Error().Msgf("change proposal to withdrawn error")
@@ -737,9 +737,9 @@ func UpdateProposalStateAndLaunchStateChangeActions(db *gorm.DB, user *middlewar
 				}
 			}
 
-			err = tx.Updates(&model.Proposal{State: proposalRecord.State, Sip: proposalRecord.Sip}).Error
+			err = tx.Model(&proposalRecord).Where("id = ?", proposalRecord.ID).Updates(&model.Proposal{State: proposalRecord.State, Sip: proposalRecord.Sip}).Error
 			var voteRecords []*model.ProposalVoteRecord
-			err = tx.Model(proposalRecord).Association("VoteRecords").Find(&voteRecords)
+			err = tx.Model(&proposalRecord).Association("VoteRecords").Find(&voteRecords)
 			if err != nil {
 				log.Error().Msgf("get vote records error: %+v", err)
 				return err
@@ -795,7 +795,7 @@ func UpdateProposalStateAndLaunchStateChangeActions(db *gorm.DB, user *middlewar
 				}
 				proposalRecord.State = int(model.ProposalStateVoting)
 			}
-			err = tx.Model(&proposalRecord).Update("state", proposalRecord.State).Error
+			err = tx.Model(&proposalRecord).Where("id = ?", proposalRecord.ID).Update("state", proposalRecord.State).Error
 			if err != nil {
 				log.Error().Msgf("change proposal to approved error")
 				return err
@@ -804,14 +804,14 @@ func UpdateProposalStateAndLaunchStateChangeActions(db *gorm.DB, user *middlewar
 		})
 	case model.ProposalStateRejected:
 		// TODO: Update Metaforo Label: Remove old label and add new, verify whether metaforo can handle this
-		err = db.Model(&proposalRecord).Update("state", model.ProposalStateRejected).Error
+		err = db.Model(&proposalRecord).Where("id = ?", proposalRecord.ID).Update("state", model.ProposalStateRejected).Error
 		if err != nil {
 			log.Error().Msgf("change proposal to rejected error")
 			return 0, err
 		}
 	case model.ProposalStateExecuted:
 		proposalRecord.State = int(model.ProposalStateExecuted)
-		err = db.Model(&proposalRecord).Update("state", model.ProposalStateExecuted).Error
+		err = db.Model(&proposalRecord).Where("id = ?", proposalRecord.ID).Update("state", model.ProposalStateExecuted).Error
 		if err != nil {
 			log.Error().Msgf("change proposal to executed error")
 			return 0, err
