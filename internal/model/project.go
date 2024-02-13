@@ -23,6 +23,8 @@ const (
 	ProjectStatusOpen         ProjectStatus = "open"
 	ProjectStatusPendingClose               = "pending_close"
 	ProjectStatusClosed                     = "closed"
+	ProjectStatusClosing                    = "closing"
+	ProjectStatusCloseFailed                = "close_failed"
 )
 
 type Project struct {
@@ -46,6 +48,8 @@ type Project struct {
 	UpdatedAt time.Time `json:"-"`
 	CreateTs  int64     `json:"create_ts" gorm:"index"`
 	UpdateTs  int64     `json:"update_ts" gorm:"index"`
+
+	Label string `json:"label"`
 
 	SIP          string `json:"SIP"`
 	Category     string `json:"Category"`
@@ -138,7 +142,9 @@ func (*projectModel) ListBySponsorOrMember(db *gorm.DB, wallet string, page *gor
 	//querySeg := db.Table("projects").Where("sponsors LIKE ?", w).Or("members LIKE ?", w)
 
 	// PgVersion
-	querySeg := db.Table("projects").Where(fmt.Sprintf("sponsors::text ILIKE '%%%s%%'", w)).Or(fmt.Sprintf("members::text ILIKE '%%%s%%'", w))
+	querySeg := db.Table("projects").Where("is_special = false").Where(
+		db.Table("projects").Where(fmt.Sprintf("sponsors::text ILIKE '%%%s%%'", w)).Or(fmt.Sprintf("members::text ILIKE '%%%s%%'", w)),
+	)
 
 	total, err = gormfind.Count(querySeg)
 	if err != nil {

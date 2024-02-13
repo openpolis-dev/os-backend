@@ -24,6 +24,7 @@ import (
 	"github.com/theseed-labs/os-backend/internal/sdk/metaforo"
 	"github.com/theseed-labs/os-backend/internal/storage"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type proposalComponentActions struct {
@@ -94,6 +95,8 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 	//        * create blocks with new proposal.
 	//   4. In this case, the proposal must be updated to metaforo without checking the Submit flag
 
+	log.Debug().Msgf("save proposal record to DB: %+v, proposalIdStr: %s, user wallet: %s", reqData, proposalIdStr, userWallet)
+
 	// Update title for testing
 	if !strings.HasPrefix(reqData.Title, cfg.MetaforoData.ProposalPrefix) {
 		reqData.Title = cfg.MetaforoData.ProposalPrefix + reqData.Title
@@ -159,7 +162,7 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 		}
 
 		// Move vote record from original proposal to new one
-		if err = db.Model(&model.ProposalVoteRecord{}).Where(&model.ProposalVoteRecord{ProposalID: dbProposalRcd.ID}).Updates(&model.ProposalVoteRecord{ProposalID: proposalRcd.ID}).Error; err != nil {
+		if err = db.Model(&model.ProposalVoteRecord{}).Where("proposal_id = ?", proposalIdStr).Updates(&model.ProposalVoteRecord{ProposalID: proposalRcd.ID}).Error; err != nil {
 			log.Error().Msgf("move proposal vote record error: %+v", err)
 			return nil, err
 		}
@@ -433,6 +436,7 @@ func SaveProposalComponentRecords(db *gorm.DB, proposalId uint, applicantWallet 
 // Otherwise, copy the proposal to new record with ver+1, update the metaforo data, and save back as a new record,
 // and the metaforo API invoked here is updateProposal.
 func SaveProposalToMetaforo(db *gorm.DB, origProposalRecord *model.Proposal, voteType int, customVoteOptions []string, metaforoAccessToken string, EditorType int, metaforoGroupName string) error {
+	log.Debug().Msgf("enter save proposal to metaforo: %+v", origProposalRecord)
 	var err error
 
 	// Load current proposal data
@@ -459,9 +463,9 @@ func SaveProposalToMetaforo(db *gorm.DB, origProposalRecord *model.Proposal, vot
 	updatedProposalRecord := origProposalRecord
 
 	// Vote start and end time, used for create and update proposal
-	// TODO: The default vote start delay should be saved into proposal category record
-	voteStartTime := time.Now().UTC().Add(origProposalRecord.PublicityDuration() - time.Minute)
+	voteStartTime := time.Now().UTC().Add(origProposalRecord.PublicityDuration())
 	voteEndTime := time.Now().UTC().Add(origProposalRecord.PublicityDuration() + origProposalRecord.VoteDuration())
+	log.Debug().Msgf("vote start time: %s, vote end time: %s", voteStartTime.Format(time.RFC3339), voteEndTime.Format(time.RFC3339))
 
 	if origProposalRecord.ProposalRecordId != "" {
 		// DB Record has ProposalRecordId, this is updating metaforo proposal action, which contains
@@ -484,9 +488,18 @@ func SaveProposalToMetaforo(db *gorm.DB, origProposalRecord *model.Proposal, vot
 			return err
 		}
 
+		var voteRecords []*model.ProposalVoteRecord
+		err = db.Model(updatedProposalRecord).Association("VoteRecords").Find(&voteRecords)
+		if err != nil {
+			log.Error().Msgf("get vote records error: %+v", err)
+			return err
+		}
+
+		api.PrintStructAsJson(voteRecords, "TTT: vote records")
+
 		// Get vote record from original record and update the timestamp
 		// The updated vote record will be saved by response in GetProposal function
-		for _, record := range origProposalRecord.VoteRecords {
+		for _, record := range voteRecords {
 			err = metaforo.UpdateVoteTime(
 				metaforoAccessToken,
 				metaforoGroupName,
@@ -690,8 +703,6 @@ func IsUserMetVoteGate(userSeepassData *sdk.SeepassResponse, proposalVoteGate *m
 		log.Error().Msgf("unknown token type, mark as has perm")
 		return true
 	}
-
-	return false
 }
 
 // UpdateDbRecordsFromMetaforoProposalResponse updates proposal data with db records. For now, it contains:
@@ -798,12 +809,14 @@ func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcd *mod
 		// TODO: Update the check logic of vote result with voter user limitations
 		if poll.Status == "open" {
 			if dbProposalRcd.Sip == 0 {
-				if !dbProposalRcd.IsInFinState() {
+				if !dbProposalRcd.IsInFinState() && dbProposalRcd.State != int(model.ProposalStateVoting) {
 					var pTemplate *model.ProposalTemplate
 					if err := db.Model(&dbProposalRcd).Association("ProposalTemplate").Find(&pTemplate); err != nil {
 						log.Error().Msgf("get proposal template error: %+v", err)
 						return err
 					}
+
+					var proposalSip = 0
 
 					if pTemplate != nil && pTemplate.Type == model.ProposalTemplateTypeCloseProject {
 						createProjectProposal := model.Proposal{ID: dbProposalRcd.AssociateProposalId}
@@ -811,13 +824,33 @@ func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcd *mod
 							log.Error().Msgf("get creating project proposal error: %+v", err)
 							return err
 						}
-						dbProposalRcd.Sip = createProjectProposal.Sip
+						proposalSip = createProjectProposal.Sip
 					} else {
-						dbProposalRcd.Sip = getNextSipValue(db, storage.GetConfig().ProposalData.SipInitNumber)
+						// TODO: The GetNextSipValue may be invoked more than once, need preventing it by lock or others
+						proposalSip, err = model.GetNextSipValue(db)
+						log.Error().Msgf("TTT: get next sip value: %d", proposalSip)
+						if err != nil {
+							log.Error().Msgf("get next sip value error: %+v", err)
+							return err
+						}
 					}
 
-					dbProposalRcd.State = int(model.ProposalStateVoting)
-					db.Updates(dbProposalRcd)
+					updateTx := db.Clauses(clause.Locking{Strength: "UPDATE"}).
+						Model(&dbProposalRcd).
+						Where(&dbProposalRcd).
+						Where("sip = 0").
+						Updates(&model.Proposal{Sip: proposalSip, State: int(model.ProposalStateVoting)})
+
+					if err = updateTx.Error; err != nil {
+						log.Error().Msgf("update proposal state error: %+v", err)
+						return err
+					} else if updateTx.RowsAffected == 0 {
+						err = fmt.Errorf("proposal %d already has a sip value, no update will be performed", dbProposalRcd.ID)
+						log.Error().Msgf(err.Error())
+						return err
+					} else {
+						log.Debug().Msgf("complete update proposal status")
+					}
 				}
 			}
 		} else if poll.Status == "close" {
@@ -840,6 +873,10 @@ func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcd *mod
 }
 
 func UpdateProposalStateBasedOnVoteResult(db *gorm.DB, proposalVoteRecord *model.ProposalVoteRecord, dbProposalRcd *model.Proposal) error {
+	log.Debug().Msgf("update proposal %d state based on vote result: %+v", dbProposalRcd.ID, proposalVoteRecord)
+	api.PrintStructAsJson(dbProposalRcd, "TTT: before update")
+	db.First(&dbProposalRcd, dbProposalRcd.ID)
+	api.PrintStructAsJson(dbProposalRcd, "TTT: after update")
 	if dbProposalRcd.IsInFinState() || dbProposalRcd.State == int(model.ProposalStatePendingExecution) {
 		log.Warn().Msgf("proposal %d in state %d, not need to apply post job.", dbProposalRcd.ID, dbProposalRcd.State)
 		return nil
@@ -980,7 +1017,7 @@ func UpdateProposalStateBasedOnVoteResult(db *gorm.DB, proposalVoteRecord *model
 		proposalFinalState = updateProposalStateByExtraCheckRule(dbProposalRcd.ExtraResultCheckRule, totalVoterCount, currSeason.Idx)
 	}
 
-	log.Debug().Msgf("update proposal state from %d to %+v", dbProposalRcd.State, proposalFinalState)
+	log.Debug().Msgf("update proposal %d state from %d to %+v", dbProposalRcd.ID, dbProposalRcd.State, proposalFinalState)
 	dbProposalRcd.State = int(proposalFinalState)
 	err = db.Where(&model.Proposal{ID: dbProposalRcd.ID}).Updates(&dbProposalRcd).Error
 	api.PrintStructAsJson(dbProposalRcd, "TTT: proposal record after update")
@@ -1007,86 +1044,113 @@ func createProposalAutomationTasks(db *gorm.DB, proposal *model.Proposal, finSta
 		return
 	}
 
-	if len(proposalComponentActions) == 0 {
-		// No automation action found for the proposal, check whether the proposal has pending execution time
-		// If yes, change the proposal state to pending execution, and create a new cron job to update proposal state after pending execution second
-		// If no, change the proposal state to executed directly
-		var pTemplate *model.ProposalTemplate
-		if err = db.Model(&proposal).Association("ProposalTemplate").Find(&pTemplate); err != nil {
-			log.Error().Msgf("find proposal template error: %+v", err)
-			return
-		}
+	log.Debug().Msgf("proposal %d component actions: %+v", proposal.ID, proposalComponentActions)
 
-		if proposal.PendingExecutionSecond != 0 {
-			var proposalComponentRecord model.ProposalComponentRecord
-			if err = db.Model(&proposalComponentRecord).
-				Where(map[string]any{"proposal_id": proposal.ID, "component_id": 0}). // Note: 0 won't be passed to query if using struct data
-				First(&proposalComponentRecord).Error; err != nil {
-				if errors.Is(err, gorm.ErrRecordNotFound) {
-					db.Create(&proposalComponentRecord)
+	switch finState {
+	case model.ProposalStateVotePassed:
+		if len(proposalComponentActions) == 0 {
+			log.Debug().Msgf("proposal %d has no component actions", proposal.ID)
+			// No automation action found for the proposal, check whether the proposal has pending execution time
+			// If yes, change the proposal state to pending execution, and create a new cron job to update proposal state after pending execution second
+			// If no, change the proposal state to executed directly
+			// 2024.02.12: for now, only create project proposal can reach this branch
+			var pTemplate *model.ProposalTemplate
+			if err = db.Model(&proposal).Association("ProposalTemplate").Find(&pTemplate); err != nil {
+				log.Error().Msgf("find proposal template error: %+v", err)
+				return
+			}
+
+			if proposal.PendingExecutionSecond != 0 {
+				var proposalComponentRecord model.ProposalComponentRecord
+				if err = db.Model(&proposalComponentRecord).
+					Where(map[string]any{"proposal_id": proposal.ID, "component_id": 0}). // Note: 0 won't be passed to query if using struct data
+					First(&proposalComponentRecord).Error; err != nil {
+					if errors.Is(err, gorm.ErrRecordNotFound) {
+						proposalComponentRecord.ProposalID = proposal.ID
+						proposalComponentRecord.ComponentID = 0
+						db.Create(&proposalComponentRecord)
+					} else {
+						log.Error().Msgf("create proposal component record error: %+v", err)
+						return
+					}
 				} else {
-					log.Error().Msgf("create proposal component record error: %+v", err)
+					log.Debug().Msgf("automation for updating state has already created, return")
+					return
+				}
+
+				updateProposalStateTaskParams := map[string]any{
+					"proposal_id": proposal.ID,
+					"state":       int(model.ProposalStateExecuted),
+				}
+
+				jobParamsStr, err := json.Marshal(updateProposalStateTaskParams)
+				if err != nil {
+					log.Error().Msgf("marshal update proposal state params error: %+v", err)
+					return
+				}
+				err = createCronJob(db, proposal, internal.TaskUpdateProposalState, string(jobParamsStr), "", 0, int(proposalComponentRecord.ID))
+				if err != nil {
+					log.Error().Msgf("marshal update proposal state params error: %+v", err)
+					return
+				}
+				proposal.State = int(model.ProposalStatePendingExecution)
+				if err = db.Model(&proposal).Updates(&proposal).Error; err != nil {
+					log.Error().Msgf("update proposal %d state to pending execution error", proposal.ID)
 					return
 				}
 			} else {
-				log.Debug().Msgf("automation for updating state has already created, return")
-				return
+				proposal.State = int(model.ProposalStateExecuted)
+				err = db.Updates(&proposal).Error
+				if err != nil {
+					log.Error().Msgf("update proposal %d state to executed error", proposal.ID)
+				}
+			}
+		}
+
+		for _, componentAction := range proposalComponentActions {
+			log.Debug().Msgf("proposal %d vote finState: %+v, action: %+v", proposal.ID, finState, componentAction)
+			var actionName string
+			actionName = componentAction.ApproveActionName
+			err = createCronJob(db, proposal, actionName, componentAction.ComponentParams, voteResult, voteType, componentAction.ProposalComponentRecordId)
+			if err != nil {
+				log.Error().Msgf("create cron job error: %+v", err)
 			}
 
-			updateProposalStateTaskParams := map[string]any{
-				"proposal_id": proposal.ID,
-				"state":       int(model.ProposalStateExecuted),
-			}
-
-			jobParamsStr, err := json.Marshal(updateProposalStateTaskParams)
-			if err != nil {
-				log.Error().Msgf("marshal update proposal state params error: %+v", err)
-				return
-			}
-			err = createCronJob(db, proposal, internal.TaskUpdateProposalState, string(jobParamsStr), "", 0, int(proposalComponentRecord.ID))
-			if err != nil {
-				log.Error().Msgf("marshal update proposal state params error: %+v", err)
-				return
-			}
+			// Update proposal state to PendingExecution, the next state change will be launched by cron job or veto proposal
 			proposal.State = int(model.ProposalStatePendingExecution)
-			if err = db.Model(&proposal).Updates(&proposal).Error; err != nil {
-				log.Error().Msgf("update proposal %d state to pending execution error", proposal.ID)
-				return
-			}
-		} else {
-			proposal.State = int(model.ProposalStateExecuted)
 			err = db.Updates(&proposal).Error
 			if err != nil {
-				log.Error().Msgf("update proposal %d state to executed error", proposal.ID)
+				log.Error().Msgf("update proposl state to pending execution error: %+v", err)
 			}
 		}
-	}
-
-	for _, componentAction := range proposalComponentActions {
-		var actionName string
-		switch finState {
-		case model.ProposalStateVotePassed:
-			actionName = componentAction.ApproveActionName
-		case model.ProposalStateVoteFailed:
-			actionName = componentAction.RejectActionName
-			log.Warn().Msgf("no cronjob generated for failed proposal")
-			continue
-		default:
-			log.Error().Msgf("unknown proposal state: %d", finState)
-			return
-		}
-
-		err = createCronJob(db, proposal, actionName, componentAction.ComponentParams, voteResult, voteType, componentAction.ProposalComponentRecordId)
+	case model.ProposalStateVoteFailed:
+		//For close project proposal, need to change the project status to close_failed
+		proposalIsForClosingProject, project, err := IsProposalIsForClosingProject(db, proposal)
 		if err != nil {
-			log.Error().Msgf("create cron job error: %+v", err)
+			log.Error().Msgf("checking proposal is for closing project failed, err: %+v", err)
 		}
 
-		// Update proposal state to PendingExecution, the next state change will be launched by cron job or veto proposal
-		proposal.State = int(model.ProposalStatePendingExecution)
-		err = db.Updates(&proposal).Error
-		if err != nil {
-			log.Error().Msgf("update proposl state to pending execution error: %+v", err)
+		if !proposalIsForClosingProject {
+			log.Debug().Msgf("proposal is not for closing project")
 		}
+
+		log.Debug().Msgf("proposal %d is for closing project: %+v", proposal.ID, proposalIsForClosingProject)
+
+		updateTx := db.Model(&project).
+			Where("status = 'closing'").
+			Update("status", model.ProjectStatusCloseFailed)
+
+		if err = updateTx.Error; err != nil {
+			log.Error().Msgf("close project error: %+v", err)
+		} else if updateTx.RowsAffected == 0 {
+			err = fmt.Errorf("project not in correct status for updating to %+v", model.ProjectStatusCloseFailed)
+			log.Error().Msgf(err.Error())
+		} else {
+			log.Debug().Msgf("complete project status update")
+		}
+	default:
+		log.Error().Msgf("unknown proposal state: %d", finState)
+		return
 	}
 }
 
@@ -1323,29 +1387,34 @@ func CreateProjectFromAutoTasks(db *gorm.DB, proposal *model.Proposal) (*model.P
 	return &newProjectData, nil
 }
 
-func CloseProjectFromAutoTasks(db *gorm.DB, proposal *model.Proposal) error {
-	prjDbRcd := model.Project{
-		SIP: fmt.Sprintf("%d", proposal.Sip),
-	}
-	return db.Model(&prjDbRcd).
-		Where(&prjDbRcd).
-		Update("status", model.ProjectStatusClosed).
-		Update("over_link", fmt.Sprintf("/proposal/thread/%d", proposal.ID)).
-		Error
-}
-
-func getNextSipValue(db *gorm.DB, defaultVal int) int {
-	log.Debug().Msgf("invoke get next sip")
-	var maxSipVal int
-	if err := db.Model(&model.Proposal{}).Select("max(sip)").Limit(1).Pluck("sip", &maxSipVal).Error; err != nil {
-		log.Error().Msgf("get vote records error: %+v", err)
-		return defaultVal
+func IsProposalIsForClosingProject(db *gorm.DB, proposal *model.Proposal) (bool, *model.Project, error) {
+	pTmplType, err := getProposalTemplateType(db, *proposal.ProposalTemplateID)
+	if err != nil {
+		log.Error().Msgf("get proposal template error: %+v", err)
+		return false, nil, err
 	}
 
-	if maxSipVal != 0 {
-		return maxSipVal + 1
-	} else {
-		log.Error().Msgf("TTT: init sip val: %d", defaultVal)
-		return defaultVal
+	if pTmplType != model.ProposalTemplateTypeCloseProject {
+		return false, nil, nil
 	}
+
+	createProjectProposal := model.Proposal{ID: proposal.AssociateProposalId}
+	if err = db.Find(&createProjectProposal).Error; err != nil {
+		log.Error().Msgf("get creating project proposal error: %+v", err)
+		return false, nil, err
+	}
+
+	createdProject := model.Project{
+		SIP: fmt.Sprintf("%d", createProjectProposal.Sip),
+	}
+
+	updateTx := db.Clauses(clause.Locking{
+		Strength: "UPDATE",
+		Options:  "NOWAIT",
+	}).Model(&createdProject).Where(&createdProject).First(&createdProject)
+	if err = updateTx.Error; err != nil {
+		log.Error().Msgf("get associated project error: %+v", err)
+		return false, nil, err
+	}
+	return true, &createdProject, nil
 }

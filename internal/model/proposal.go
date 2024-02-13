@@ -178,10 +178,11 @@ func (p *Proposal) TaskStartDelay() time.Duration {
 	return time.Duration(p.PendingExecutionSecond) * time.Second
 }
 
+// IsInFinState returns bool value indicates whether this proposal is in fin state,
+// which means the no more actions should be performed to the proposal
+// VoteFailed may require additional actions, so it is not in here
 func (p *Proposal) IsInFinState() bool {
-	return p.State == int(ProposalStateVoteFailed) ||
-		p.State == int(ProposalStateExecuted) ||
-		p.State == int(ProposalStateVetoed)
+	return p.State == int(ProposalStateExecuted) || p.State == int(ProposalStateVetoed)
 }
 
 // StateIsUpdatable returns bool value indicates whether this proposal can be updated.

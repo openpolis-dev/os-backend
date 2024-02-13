@@ -242,6 +242,9 @@ func getProposalsCanBeVetoed(db *gorm.DB) ([]*WidgetDataResponse, error) {
 
 func convertFrontendEndProposalListRecordToWidgetDataResponse(proposalRcds []*proposal.FrontendProposalListRecord) []*WidgetDataResponse {
 	return lo.Map(proposalRcds, func(r *proposal.FrontendProposalListRecord, _ int) *WidgetDataResponse {
+		if r.Sip != 0 {
+			r.Title = fmt.Sprintf("SIP-%d: %s", r.Sip, r.Title)
+		}
 		return &WidgetDataResponse{
 			ID:                   r.ID,
 			Name:                 r.Title,

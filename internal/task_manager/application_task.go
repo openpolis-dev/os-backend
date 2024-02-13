@@ -10,7 +10,6 @@ import (
 	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
 	"github.com/theseed-labs/os-backend/internal"
-	"github.com/theseed-labs/os-backend/internal/api/proposal"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"gorm.io/gorm"
@@ -105,93 +104,110 @@ func CreateAppBundleTaskFromMotivationComponent(db *gorm.DB, job *model.CronJob,
 				}
 				db.Model(&prjDbRcd).Where(&prjDbRcd).First(&prjDbRcd)
 
-				// TODO: Duplicated code *NewAppBundleAndApplication*
-				// Create AppBundle
-				appBundle := model.AppBundle{
-					Applicant:    common.FormatUserWallet(params.Applicant),
-					SeasonId:     currentSeason.ID,
-					State:        model.ApplicationStateOpen,
-					ShadowRecord: false,
-					CreateTs:     model.GetCurrentUtcEpochSecond(),
-					UpdateTs:     model.GetCurrentUtcEpochSecond(),
-					Type:         "NEW_REWARD",
-					EntityType:   "project",
-					EntityId:     prjDbRcd.ID,
+				// Limit only one motivation component record for one proposal
+				existingAppBundle := model.AppBundle{
+					EntityType: "project",
+					EntityId:   prjDbRcd.ID,
 				}
-				err = db.Model(model.AppBundle{}).Create(&appBundle).Error
-				if err != nil {
-					log.Error().Msgf("Create app bundle records error: %+v", err)
-					execResult = err.Error()
+
+				var appBundleRecordsCount int64
+				db.Model(&existingAppBundle).Where(&existingAppBundle).Count(&appBundleRecordsCount)
+				log.Debug().Msgf("Found %d records for app bundle", appBundleRecordsCount)
+				if appBundleRecordsCount > 0 {
+					log.Error().Msgf("appliation bundle with sip %s is already exist", prjDbRcd.SIP)
+					execResult = fmt.Sprintf("app bundle for project %d is existing", prjDbRcd.ID)
 					jobFailed = true
-				} else {
-					// Create Applications inside the bundle
-					err = db.Transaction(func(tx *gorm.DB) error {
-						appBundle.AppRecords = lo.Map(params.Records, func(appDetail *MotivationDetail, index int) *model.Application {
-							assetAmount, err := decimal.NewFromString(appDetail.Amount)
-							if err != nil {
-								log.Warn().Msgf("parse asset amount error: %+v", err)
-								execResult = err.Error()
-								jobFailed = true
-								return nil
-							} else {
-								return &model.Application{
-									Type:             model.ApplicationNewReward,
-									Applicant:        common.FormatUserWallet(params.Applicant),
-									State:            model.ApplicationStateOpen,
-									CreatedAt:        time.Now().In(internal.ProjectTimezone),
-									UpdatedAt:        time.Now().In(internal.ProjectTimezone),
-									CreateTs:         model.GetCurrentUtcEpochSecond(),
-									UpdateTs:         model.GetCurrentUtcEpochSecond(),
-									Comment:          appDetail.Comment,
-									TargetUserWallet: appDetail.TargetUserWallet,
-									AssetName:        appDetail.AssetInfo.Name,
-									AssetAmount:      assetAmount.Mul(ratio),
-									EntityType:       appBundle.EntityType,
-									EntityId:         appBundle.EntityId,
-									SeasonId:         currentSeason.ID,
-								}
-							}
-						})
+				}
 
-						err = tx.Save(&appBundle).Error
-						if err != nil {
-							log.Error().Msgf("update app_bundle record error: %+v", err)
-							return err
-						}
-
-						// Create application audit logs
-						appAuditLogs := lo.Map(appBundle.AppRecords, func(app *model.Application, _ int) *model.ApplicationAuditLog {
-							return &model.ApplicationAuditLog{
-								ApplicationID: app.ID,
-								LogTs:         model.GetCurrentUtcEpochSecond(),
-								Operation:     model.AuditActionNew,
-								Operator:      common.FormatUserWallet(params.Applicant),
-								PreState:      "",
-								PostState:     model.ApplicationStateOpen,
-							}
-						})
-						err = tx.Model(model.ApplicationAuditLog{}).Create(&appAuditLogs).Error
-						if err != nil {
-							log.Error().Msgf("Create application audit log records error: %+v", err)
-							return err
-						}
-
-						return tx.Model(model.AppBundleAuditLog{}).Create(&model.AppBundleAuditLog{
-							AppBundleId: appBundle.ID,
-							AppBundle:   appBundle,
-							LogTs:       model.GetCurrentUtcEpochSecond(),
-							Operation:   model.AuditActionNew,
-							Operator:    common.FormatUserWallet(params.Applicant),
-							PreState:    "",
-							PostState:   model.ApplicationStateOpen,
-							ExtraData:   "",
-						}).Error
-					})
-
+				if !jobFailed {
+					// TODO: Duplicated code *NewAppBundleAndApplication*
+					// Create AppBundle
+					appBundle := model.AppBundle{
+						Applicant:    common.FormatUserWallet(params.Applicant),
+						SeasonId:     currentSeason.ID,
+						State:        model.ApplicationStateOpen,
+						ShadowRecord: false,
+						CreateTs:     model.GetCurrentUtcEpochSecond(),
+						UpdateTs:     model.GetCurrentUtcEpochSecond(),
+						Type:         "NEW_REWARD",
+						EntityType:   "project",
+						EntityId:     prjDbRcd.ID,
+					}
+					err = db.Model(model.AppBundle{}).Create(&appBundle).Error
 					if err != nil {
-						log.Error().Msgf("Transaction error: %+v", err)
+						log.Error().Msgf("Create app bundle records error: %+v", err)
 						execResult = err.Error()
 						jobFailed = true
+					} else {
+						// Create Applications inside the bundle
+						err = db.Transaction(func(tx *gorm.DB) error {
+							appBundle.AppRecords = lo.Map(params.Records, func(appDetail *MotivationDetail, index int) *model.Application {
+								assetAmount, err := decimal.NewFromString(appDetail.Amount)
+								if err != nil {
+									log.Warn().Msgf("parse asset amount error: %+v", err)
+									execResult = err.Error()
+									jobFailed = true
+									return nil
+								} else {
+									return &model.Application{
+										Type:             model.ApplicationNewReward,
+										Applicant:        common.FormatUserWallet(params.Applicant),
+										State:            model.ApplicationStateOpen,
+										CreatedAt:        time.Now().In(internal.ProjectTimezone),
+										UpdatedAt:        time.Now().In(internal.ProjectTimezone),
+										CreateTs:         model.GetCurrentUtcEpochSecond(),
+										UpdateTs:         model.GetCurrentUtcEpochSecond(),
+										Comment:          appDetail.Comment,
+										TargetUserWallet: appDetail.TargetUserWallet,
+										AssetName:        appDetail.AssetInfo.Name,
+										AssetAmount:      assetAmount.Mul(ratio),
+										EntityType:       appBundle.EntityType,
+										EntityId:         appBundle.EntityId,
+										SeasonId:         currentSeason.ID,
+									}
+								}
+							})
+
+							err = tx.Save(&appBundle).Error
+							if err != nil {
+								log.Error().Msgf("update app_bundle record error: %+v", err)
+								return err
+							}
+
+							// Create application audit logs
+							appAuditLogs := lo.Map(appBundle.AppRecords, func(app *model.Application, _ int) *model.ApplicationAuditLog {
+								return &model.ApplicationAuditLog{
+									ApplicationID: app.ID,
+									LogTs:         model.GetCurrentUtcEpochSecond(),
+									Operation:     model.AuditActionNew,
+									Operator:      common.FormatUserWallet(params.Applicant),
+									PreState:      "",
+									PostState:     model.ApplicationStateOpen,
+								}
+							})
+							err = tx.Model(model.ApplicationAuditLog{}).Create(&appAuditLogs).Error
+							if err != nil {
+								log.Error().Msgf("Create application audit log records error: %+v", err)
+								return err
+							}
+
+							return tx.Model(model.AppBundleAuditLog{}).Create(&model.AppBundleAuditLog{
+								AppBundleId: appBundle.ID,
+								AppBundle:   appBundle,
+								LogTs:       model.GetCurrentUtcEpochSecond(),
+								Operation:   model.AuditActionNew,
+								Operator:    common.FormatUserWallet(params.Applicant),
+								PreState:    "",
+								PostState:   model.ApplicationStateOpen,
+								ExtraData:   "",
+							}).Error
+						})
+
+						if err != nil {
+							log.Error().Msgf("Transaction error: %+v", err)
+							execResult = err.Error()
+							jobFailed = true
+						}
 					}
 				}
 			}
@@ -199,23 +215,45 @@ func CreateAppBundleTaskFromMotivationComponent(db *gorm.DB, job *model.CronJob,
 
 		proposalId := strings.Replace(params.ProposalId, "os-", "", -1)
 
-		if jobFailed {
-			db.Model(&model.Proposal{}).Where("id = ?", proposalId).Update("state", model.ProposalStateExecutionFailed)
+		var proposal model.Proposal
+		if err = db.Find(&proposal, proposalId).Error; err != nil {
+			log.Error().Msgf("get proposal %d error: %+v", proposalId, err)
+			execResult = err.Error()
+			jobFailed = true
 		} else {
-			var pDbRcd model.Proposal
-			if err := db.Model(&model.Proposal{}).Where("id = ?", proposalId).Find(&pDbRcd).Error; err != nil {
-				log.Error().Msgf("find proposal error: %+v", err)
-				jobFailed = true
-				execResult = err.Error()
-			} else {
-				err := proposal.CloseProjectFromAutoTasks(db, &pDbRcd)
-				if err != nil {
-					log.Error().Msgf("close project error: %+v", err)
-					jobFailed = true
-					execResult = err.Error()
+			// Get project database record and update project status based on proposal execution result
+			prjDbRcd := model.Project{
+				SIP: fmt.Sprintf("%d", proposal.Sip),
+			}
+
+			if err = db.Transaction(func(tx *gorm.DB) error {
+				if jobFailed {
+					tx.Model(&model.Proposal{}).Where("id = ?", proposalId).Update("state", model.ProposalStateExecutionFailed)
+					tx.Model(&prjDbRcd).Where(&prjDbRcd).Update("status", model.ProjectStatusCloseFailed)
 				} else {
-					db.Model(&model.Proposal{}).Where("id = ?", proposalId).Update("state", model.ProposalStateExecuted)
+					var pDbRcd model.Proposal
+					if err := tx.Model(&model.Proposal{}).Where("id = ?", proposalId).Find(&pDbRcd).Error; err != nil {
+						log.Error().Msgf("find proposal error: %+v", err)
+						jobFailed = true
+						execResult = err.Error()
+						tx.Model(&prjDbRcd).Where(&prjDbRcd).Update("status", model.ProjectStatusCloseFailed)
+					} else {
+						if err := tx.Model(&prjDbRcd).Where(&prjDbRcd).
+							Update("status", model.ProjectStatusClosed).
+							Update("over_link", fmt.Sprintf("/proposal/thread/%d", proposal.ID)).Error; err != nil {
+							log.Error().Msgf("close project error: %+v", err)
+							jobFailed = true
+							execResult = err.Error()
+							tx.Model(&prjDbRcd).Where(&prjDbRcd).Update("status", model.ProjectStatusCloseFailed)
+						} else {
+							tx.Model(&model.Proposal{}).Where("id = ?", proposalId).Update("state", model.ProposalStateExecuted)
+						}
+					}
 				}
+				return nil
+			}); err != nil {
+				log.Error().Msgf("update proposa or project state error: %+v", err)
+				jobFailed = true
 			}
 		}
 	}
