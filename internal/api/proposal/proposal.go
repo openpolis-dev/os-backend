@@ -139,7 +139,7 @@ func Detail(ctx *gin.Context) {
 		}
 	}
 
-	responseData, err := ConvertProposalToFrontendDetailRecord(db, proposalRecord, startPostId, metaforoAccessToken, cfg.MetaforoData.GroupName)
+	responseData, err := ConvertProposalToFrontendDetailRecord(db, proposalRecord.ID, startPostId, metaforoAccessToken, cfg.MetaforoData.GroupName)
 	if err != nil {
 		log.Error().Msgf("convert proposal to frontend format error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
@@ -241,7 +241,7 @@ func Update(ctx *gin.Context) {
 			return
 		}
 
-		if err := SaveProposalToMetaforo(db, proposalRecord, proposalRecord.VoteType, reqData.VoteOptions, reqData.MetaforoAccessToken, reqData.EditorType, cfg.MetaforoData.GroupName); err != nil {
+		if err := SaveProposalToMetaforo(db, proposalRecord.ID, proposalRecord.VoteType, reqData.VoteOptions, reqData.MetaforoAccessToken, reqData.EditorType, cfg.MetaforoData.GroupName); err != nil {
 			log.Error().Msgf("create metaforo proposal error: %+v", err)
 			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
@@ -253,7 +253,7 @@ func Update(ctx *gin.Context) {
 			log.Debug().Msgf("proposal has no publicity time, change to approved status directly")
 			_, err = UpdateProposalStateAndLaunchStateChangeActions(db, user, proposalIdStr, model.ProposalStateApproved, cfg)
 		} else if proposalRecord.VoteType == model.ProposalVoteTypeNone {
-			if err = createJobToUpdateNoVoteProposalToNextState(db, proposalRecord, proposalRecord.CreateTs+proposalRecord.PublicitySecond, model.ProposalStateApproved); err != nil {
+			if err = createJobToUpdateNoVoteProposalToNextState(db, proposalRecord.ID, proposalRecord.VoteType, proposalRecord.CreateTs+proposalRecord.PublicitySecond, model.ProposalStateApproved); err != nil {
 				log.Error().Msgf("create proposal state change error: %+v", err)
 				sdk.LogServerErrorToSentry(ctx, err)
 				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
@@ -262,7 +262,7 @@ func Update(ctx *gin.Context) {
 		}
 	}
 
-	responseData, err := ConvertProposalToFrontendDetailRecord(db, proposalRecord, 0, reqData.MetaforoAccessToken, cfg.MetaforoData.GroupName)
+	responseData, err := ConvertProposalToFrontendDetailRecord(db, proposalRecord.ID, 0, reqData.MetaforoAccessToken, cfg.MetaforoData.GroupName)
 	if err != nil {
 		log.Error().Msgf("convert proposal to frontend format error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
@@ -338,7 +338,7 @@ func Create(ctx *gin.Context) {
 			return
 		}
 
-		if err := SaveProposalToMetaforo(db, proposalRecord, reqData.VoteType, reqData.VoteOptions, reqData.MetaforoAccessToken, reqData.EditorType, cfg.MetaforoData.GroupName); err != nil {
+		if err := SaveProposalToMetaforo(db, proposalRecord.ID, reqData.VoteType, reqData.VoteOptions, reqData.MetaforoAccessToken, reqData.EditorType, cfg.MetaforoData.GroupName); err != nil {
 			log.Error().Msgf("create metaforo proposal error: %+v", err)
 			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
@@ -350,7 +350,7 @@ func Create(ctx *gin.Context) {
 			log.Debug().Msgf("proposal has no publicity time, change to approved status directly")
 			_, err = UpdateProposalStateAndLaunchStateChangeActions(db, user, fmt.Sprintf("%d", proposalRecord.ID), model.ProposalStateApproved, cfg)
 		} else if proposalRecord.VoteType == model.ProposalVoteTypeNone {
-			if err = createJobToUpdateNoVoteProposalToNextState(db, proposalRecord, proposalRecord.CreateTs+proposalRecord.PublicitySecond, model.ProposalStateApproved); err != nil {
+			if err = createJobToUpdateNoVoteProposalToNextState(db, proposalRecord.ID, proposalRecord.VoteType, proposalRecord.CreateTs+proposalRecord.PublicitySecond, model.ProposalStateApproved); err != nil {
 				log.Error().Msgf("create proposal state change error: %+v", err)
 				sdk.LogServerErrorToSentry(ctx, err)
 				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
@@ -361,7 +361,7 @@ func Create(ctx *gin.Context) {
 		db.First(&proposalRecord, proposalRecord.ID)
 	}
 
-	responseData, err := ConvertProposalToFrontendDetailRecord(db, proposalRecord, 0, reqData.MetaforoAccessToken, cfg.MetaforoData.GroupName)
+	responseData, err := ConvertProposalToFrontendDetailRecord(db, proposalRecord.ID, 0, reqData.MetaforoAccessToken, cfg.MetaforoData.GroupName)
 	if err != nil {
 		log.Error().Msgf("convert proposal to frontend format error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
@@ -484,7 +484,7 @@ func Reject(ctx *gin.Context) {
 	}
 
 	proposalIdStr := ctx.Param("id")
-	proposalRecord, err := UpdateProposalStateAndLaunchStateChangeActions(db, user, proposalIdStr, model.ProposalStateRejected, cfg)
+	proposalRecordId, err := UpdateProposalStateAndLaunchStateChangeActions(db, user, proposalIdStr, model.ProposalStateRejected, cfg)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			log.Warn().Msgf("proposal %s not found", proposalIdStr)
@@ -500,12 +500,20 @@ func Reject(ctx *gin.Context) {
 	rejectComment := model.ProposalComment{
 		CreateTs:        time.Now().Unix(),
 		UpdateTs:        time.Now().Unix(),
-		ProposalID:      proposalRecord.ID,
+		ProposalID:      proposalRecordId,
 		Content:         rejectRequestData.Reason,
 		IsHidden:        false,
 		IsRejectComment: true,
 	}
 	db.Save(&rejectComment)
+
+	proposalRecord, err := GetProposalFromStringId(db, proposalIdStr)
+	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
+		log.Error().Msgf("get proposal %s error: %+v", proposalIdStr, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get proposal error")))
+		return
+	}
 
 	// Add reject comment
 	commentData, err := metaforo.AddComment(
@@ -523,7 +531,7 @@ func Reject(ctx *gin.Context) {
 	}
 
 	// Comment currently is fetched from Metaforo directly, so only RejectReason is saved in local DB
-	db.Model(&rejectComment).Update("metaforo_comment_id", fmt.Sprintf("%d", commentData.Id))
+	db.Model(&rejectComment).Where("id = ?", rejectComment.ID).Update("metaforo_comment_id", fmt.Sprintf("%d", commentData.Id))
 
 	ctx.JSON(http.StatusOK, api.Success(nil))
 }
@@ -660,34 +668,34 @@ func GetProposalsUsedForCreatingProjects(ctx *gin.Context) {
 }
 
 // UpdateProposalStateAndLaunchStateChangeActions changes proposal state and launch specified actions associated with state change
-func UpdateProposalStateAndLaunchStateChangeActions(db *gorm.DB, user *middleware.CurUser, proposalStrId string, newState model.ProposalState, cfg *config.Config) (*model.Proposal, error) {
+func UpdateProposalStateAndLaunchStateChangeActions(db *gorm.DB, user *middleware.CurUser, proposalStrId string, newState model.ProposalState, cfg *config.Config) (uint, error) {
 	log.Error().Msgf("TTT: enter UpdateProposalStateAndLaunchStateChangeActions")
 	proposalRecord, err := GetProposalFromStringId(db, proposalStrId)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			log.Warn().Msgf("proposal %s not found", proposalStrId)
 		}
-		return nil, err
+		return 0, err
 	}
 
 	var pTemplate *model.ProposalTemplate
 	if err := db.Model(&proposalRecord).Association("ProposalTemplate").Find(&pTemplate); err != nil {
 		log.Error().Msgf("get proposal template error: %+v", err)
-		return nil, err
+		return 0, err
 	}
 
 	// Check whether user has permission to the change the proposal state
 	switch newState {
 	case model.ProposalStateWithdrawn:
 		if user == nil || !strings.EqualFold(user.Wallet, proposalRecord.Applicant) {
-			return nil, errors.New("proposal can only be withdrawn by applicant")
+			return 0, errors.New("proposal can only be withdrawn by applicant")
 		}
 
 		var voteRecords []*model.ProposalVoteRecord
 		err = db.Model(proposalRecord).Association("VoteRecords").Find(&voteRecords)
 		if err != nil {
 			log.Error().Msgf("get vote records error: %+v", err)
-			return nil, err
+			return 0, err
 		}
 
 		for _, record := range voteRecords {
@@ -700,19 +708,18 @@ func UpdateProposalStateAndLaunchStateChangeActions(db *gorm.DB, user *middlewar
 			)
 			if err != nil {
 				log.Error().Msgf("update vote information error: %+v", err)
-				return nil, err
+				return 0, err
 			}
 		}
 
-		proposalRecord.State = int(model.ProposalStateWithdrawn)
-		err = db.Save(&proposalRecord).Error
+		err = db.Model(&proposalRecord).Where("id = ?", proposalRecord.ID).Update("state", model.ProposalStateWithdrawn).Error
 		// TODO: Update Metaforo Label: Remove old label and add new, verify whether metaforo can handle this
 		if err != nil {
 			log.Error().Msgf("change proposal to withdrawn error")
-			return nil, err
+			return 0, err
 		}
 	case model.ProposalStateApproved:
-		return nil, db.Transaction(func(tx *gorm.DB) error {
+		return 0, db.Transaction(func(tx *gorm.DB) error {
 			proposalRecord.State = int(model.ProposalStateApproved)
 
 			if pTemplate != nil && pTemplate.Type == model.ProposalTemplateTypeCloseProject {
@@ -730,9 +737,9 @@ func UpdateProposalStateAndLaunchStateChangeActions(db *gorm.DB, user *middlewar
 				}
 			}
 
-			err = tx.Updates(&proposalRecord).Error
+			err = tx.Model(&proposalRecord).Where("id = ?", proposalRecord.ID).Updates(&model.Proposal{State: proposalRecord.State, Sip: proposalRecord.Sip}).Error
 			var voteRecords []*model.ProposalVoteRecord
-			err = tx.Model(proposalRecord).Association("VoteRecords").Find(&voteRecords)
+			err = tx.Model(&proposalRecord).Association("VoteRecords").Find(&voteRecords)
 			if err != nil {
 				log.Error().Msgf("get vote records error: %+v", err)
 				return err
@@ -745,7 +752,7 @@ func UpdateProposalStateAndLaunchStateChangeActions(db *gorm.DB, user *middlewar
 					// Additional tasks for executed proposal
 					if pTemplate.Type == model.ProposalTemplateTypeNewProject {
 						// Get create project params from proposal components
-						prjRecord, err := CreateProjectFromAutoTasks(tx, proposalRecord)
+						prjRecord, err := CreateProjectFromAutoTasks(tx, proposalRecord.ID)
 						if err != nil {
 							log.Error().Msgf("create project error: %+v", err)
 							return err
@@ -769,7 +776,7 @@ func UpdateProposalStateAndLaunchStateChangeActions(db *gorm.DB, user *middlewar
 						return err
 					}
 
-					if err = createJobToUpdateNoVoteProposalToNextState(tx, proposalRecord, model.GetCurrentUtcEpochSecond()+proposalRecord.PendingExecutionSecond, model.ProposalStateExecuted); err != nil {
+					if err = createJobToUpdateNoVoteProposalToNextState(tx, proposalRecord.ID, proposalRecord.VoteType, model.GetCurrentUtcEpochSecond()+proposalRecord.PendingExecutionSecond, model.ProposalStateExecuted); err != nil {
 						log.Error().Msgf("create proposal state change error: %+v", err)
 						return err
 					}
@@ -788,7 +795,7 @@ func UpdateProposalStateAndLaunchStateChangeActions(db *gorm.DB, user *middlewar
 				}
 				proposalRecord.State = int(model.ProposalStateVoting)
 			}
-			err = tx.Updates(&proposalRecord).Error
+			err = tx.Model(&proposalRecord).Where("id = ?", proposalRecord.ID).Update("state", proposalRecord.State).Error
 			if err != nil {
 				log.Error().Msgf("change proposal to approved error")
 				return err
@@ -797,36 +804,35 @@ func UpdateProposalStateAndLaunchStateChangeActions(db *gorm.DB, user *middlewar
 		})
 	case model.ProposalStateRejected:
 		// TODO: Update Metaforo Label: Remove old label and add new, verify whether metaforo can handle this
-		proposalRecord.State = int(model.ProposalStateRejected)
-		err = db.Save(&proposalRecord).Error
+		err = db.Model(&proposalRecord).Where("id = ?", proposalRecord.ID).Update("state", model.ProposalStateRejected).Error
 		if err != nil {
 			log.Error().Msgf("change proposal to rejected error")
-			return nil, err
+			return 0, err
 		}
 	case model.ProposalStateExecuted:
 		proposalRecord.State = int(model.ProposalStateExecuted)
-		err = db.Save(&proposalRecord).Error
+		err = db.Model(&proposalRecord).Where("id = ?", proposalRecord.ID).Update("state", model.ProposalStateExecuted).Error
 		if err != nil {
 			log.Error().Msgf("change proposal to executed error")
-			return nil, err
+			return 0, err
 		}
 
 		// Additional tasks for executed proposal
 		if pTemplate.Type == model.ProposalTemplateTypeNewProject {
 			// Get create project params from proposal components
-			prjRecord, err := CreateProjectFromAutoTasks(db, proposalRecord)
+			prjRecord, err := CreateProjectFromAutoTasks(db, proposalRecord.ID)
 			if err != nil {
 				log.Error().Msgf("create project error: %+v", err)
-				return nil, err
+				return 0, err
 			}
 			api.PrintStructAsJson(prjRecord, "TTT: Create Project After approving no vote and no pending execution proposal")
 			proposalRecord.State = int(model.ProposalStateExecuted)
 		}
 
 	default:
-		return nil, fmt.Errorf("changing proposal from state %s to %s is not approved", proposalRecord.StateName(), model.ProposalStateName[newState])
+		return 0, fmt.Errorf("changing proposal from state %s to %s is not approved", proposalRecord.StateName(), model.ProposalStateName[newState])
 	}
-	return proposalRecord, nil
+	return proposalRecord.ID, nil
 }
 
 func generateFrontendProposalRecords(db *gorm.DB, querySql string, page *gormfind.Page) (int64, []*FrontendProposalListRecord, error) {
@@ -863,14 +869,15 @@ func generateFrontendProposalRecords(db *gorm.DB, querySql string, page *gormfin
 
 // TODO: Temporary solution to get open project proposal info while creating close project proposal
 
-func createJobToUpdateNoVoteProposalToNextState(db *gorm.DB, proposal *model.Proposal, jobExecTs int64, nextState model.ProposalState) error {
+func createJobToUpdateNoVoteProposalToNextState(db *gorm.DB, proposalId uint, proposalVoteType int, jobExecTs int64, nextState model.ProposalState) error {
 	var err error
 	proposalComponentRecord := model.ProposalComponentRecord{
-		ProposalID:  proposal.ID,
+		ProposalID:  proposalId,
 		ComponentID: 0,
 	}
+
 	if err = db.Model(&proposalComponentRecord).
-		Where(map[string]any{"proposal_id": proposal.ID, "component_id": 0}). // Note: 0 won't be passed to query if using struct data
+		Where(map[string]any{"proposal_id": proposalId, "component_id": 0}). // Note: 0 won't be passed to query if using struct data
 		First(&proposalComponentRecord).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			db.Create(&proposalComponentRecord)
@@ -879,14 +886,14 @@ func createJobToUpdateNoVoteProposalToNextState(db *gorm.DB, proposal *model.Pro
 			return err
 		}
 	} else {
-		if proposal.VoteType != model.ProposalVoteTypeNone {
+		if proposalVoteType != model.ProposalVoteTypeNone {
 			log.Debug().Msgf("automation for updating state has already created, return")
 			return nil
 		}
 	}
 
 	updateProposalStateTaskParams := map[string]any{
-		"proposal_id": proposal.ID,
+		"proposal_id": proposalId,
 		"state":       int(nextState),
 	}
 
@@ -903,19 +910,19 @@ func createJobToUpdateNoVoteProposalToNextState(db *gorm.DB, proposal *model.Pro
 		UpdateTs:                  currentTs,
 		HandlerName:               internal.TaskUpdateProposalState,
 		ProposalComponentRecordId: int(proposalComponentRecord.ID),
-		ProposalId:                proposal.ID,
+		ProposalId:                proposalId,
 		LastExecTs:                0,
 		NextExecTs:                jobExecTs,
 		JobParams:                 string(jobParamsStr),
 		VoteResult:                "",
-		VoteType:                  proposal.VoteType,
+		VoteType:                  proposalVoteType,
 		State:                     model.CronJobStateActive,
 		LastExecResult:            "",
 	}
 	createTaskTx := db.Where(model.CronJob{
 		HandlerName:               internal.TaskUpdateProposalState,
 		ProposalComponentRecordId: int(proposalComponentRecord.ID),
-		ProposalId:                proposal.ID,
+		ProposalId:                proposalId,
 		NextExecTs:                jobExecTs,
 	}).
 		Assign(&finTask).FirstOrCreate(&finTask)

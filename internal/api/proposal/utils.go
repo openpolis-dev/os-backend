@@ -92,18 +92,18 @@ func GetMetaforoProposalByInternalId(db *gorm.DB, proposalIdStr string, metaforo
 		return nil, nil, err
 	}
 
-	metaforoProposalRcd, err := metaforo.GetProposal(osProposalRcd.GetMetaforoThreadId(), metaforoGroupName, "", 0)
+	metaforoProposalResponse, err := metaforo.GetProposal(osProposalRcd.GetMetaforoThreadId(), metaforoGroupName, "", 0)
 	if err != nil {
 		log.Error().Msgf("get metaforo proposal error: %+v", err)
 		return nil, nil, err
 	}
 
-	err = UpdateDbRecordsFromMetaforoProposalResponse(db, osProposalRcd, metaforoProposalRcd)
+	err = UpdateDbRecordsFromMetaforoProposalResponse(db, osProposalRcd.ID, metaforoProposalResponse)
 	if err != nil {
 		log.Error().Msgf("update db records from metaforoProposalResponse error: %+v", err)
 	}
 
-	return osProposalRcd, metaforoProposalRcd, nil
+	return osProposalRcd, metaforoProposalResponse, nil
 }
 
 func GetLocalEditHistoriesWithOsUserData(db *gorm.DB, proposalRecordId string) ([]*FrontendProposalEditHistoryRecord, error) {

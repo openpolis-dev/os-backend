@@ -166,7 +166,7 @@ func CloseVote(ctx *gin.Context) {
 	}
 
 	metaforoProposalResponse, err := metaforo.GetProposal(dbProposal.GetMetaforoThreadId(), cfg.MetaforoData.GroupName, "", 0)
-	err = UpdateDbRecordsFromMetaforoProposalResponse(db, dbProposal, metaforoProposalResponse)
+	err = UpdateDbRecordsFromMetaforoProposalResponse(db, dbProposal.ID, metaforoProposalResponse)
 	if err != nil {
 		log.Error().Msgf("update db proposal by response error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
