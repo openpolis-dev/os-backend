@@ -9,55 +9,78 @@ import (
 	"github.com/theseed-labs/os-backend/internal/config"
 )
 
+type QAInput struct {
+	Recipient               string
+	Amount                  string
+	Decimals                int
+	CurrencyName            string
+	CurrencyContractAddress string
+
+	// budgetSource 预算来源， 如 Xx项目
+	// session 季度名称，如 S5
+	// item 事项
+	// comment 备注
+	// applicant 申请人
+	// applyComment 申请说明
+	// reviewer 审核人
+	// reviewDate 审核时间
+	BudgetSource string
+	Session      string
+	Item         string
+	Comment      string
+	Applicant    string
+	ApplyComment string
+	Reviewer     string
+	ReviewDate   string
+}
+
 type (
-	SubmitPaymentRequestReq struct {
-		Rows               []*CreatePaymentRequestData `json:"rows"`
-		CategoryId         int                         `json:"category_id"`
-		CategoryName       string                      `json:"category_name"`
-		CategoryProperties []*CategoryProperty         `json:"category_properties"`
+	submitPaymentRequestReq struct {
+		Rows []*createPaymentRequestData `json:"rows"`
 	}
-	CreatePaymentRequestData struct {
-		Recipient               string `json:"recipient"`                 // 接收人
-		Amount                  string `json:"amount"`                    // 资产数量
-		Decimals                int    `json:"decimals"`                  // 资产 token 精度， 如 6
-		CurrencyName            string `json:"currency_name"`             // 资产 token 名称，如 USDT
-		CurrencyContractAddress string `json:"currency_contract_address"` // 资产 token 合约地址
+	createPaymentRequestData struct {
+		Recipient               string              `json:"recipient"`
+		Amount                  string              `json:"amount"`
+		Decimals                int                 `json:"decimals"`
+		CurrencyName            string              `json:"currency_name"`
+		CurrencyContractAddress string              `json:"currency_contract_address"`
+		CategoryId              int                 `json:"category_id"`
+		CategoryName            string              `json:"category_name"`
+		CategoryProperties      []*categoryProperty `json:"category_properties"`
 	}
-	CategoryProperty struct {
+	categoryProperty struct {
 		Name   string `json:"name"`
 		Type   string `json:"type"`
 		Values string `json:"values"`
 	}
 )
 
-// SubmitToQuickAccounting
-//
-// budgetSource 预算来源， 如 Xx项目
-// session 季度名称，如 S5
-// item 事项
-// comment 备注
-// applicant 申请人
-// applyComment 申请说明
-// reviewer 审核人
-// reviewDate 审核时间
-func SubmitToQuickAccounting(rows []*CreatePaymentRequestData, budgetSource, session, item, comment, applicant, applyComment, reviewer, reviewDate string, config *config.Config) error {
-	categoryProperties := make([]*CategoryProperty, 8)
-	categoryProperties[0] = &CategoryProperty{Name: "预算来源", Type: "Text", Values: budgetSource}
-	categoryProperties[1] = &CategoryProperty{Name: "季度", Type: "Text", Values: session}
-	categoryProperties[2] = &CategoryProperty{Name: "事项", Type: "Text", Values: item}
-	categoryProperties[3] = &CategoryProperty{Name: "备注", Type: "Text", Values: comment}
-	categoryProperties[4] = &CategoryProperty{Name: "申请人", Type: "Text", Values: applicant}
-	categoryProperties[5] = &CategoryProperty{Name: "申请说明", Type: "Text", Values: applyComment}
-	categoryProperties[6] = &CategoryProperty{Name: "审核人", Type: "Text", Values: reviewer}
-	categoryProperties[7] = &CategoryProperty{Name: "审核时间", Type: "Text", Values: reviewDate}
+func SubmitToQuickAccounting(inputs []*QAInput, config *config.Config) error {
+	rows := make([]*createPaymentRequestData, len(inputs))
+	for i, input := range inputs {
+		categoryProperties := make([]*categoryProperty, 8)
+		categoryProperties[0] = &categoryProperty{Name: "预算来源", Type: "Text", Values: input.BudgetSource}
+		categoryProperties[1] = &categoryProperty{Name: "季度", Type: "Text", Values: input.Session}
+		categoryProperties[2] = &categoryProperty{Name: "事项", Type: "Text", Values: input.Item}
+		categoryProperties[3] = &categoryProperty{Name: "备注", Type: "Text", Values: input.Comment}
+		categoryProperties[4] = &categoryProperty{Name: "申请人", Type: "Text", Values: input.Applicant}
+		categoryProperties[5] = &categoryProperty{Name: "申请说明", Type: "Text", Values: input.ApplyComment}
+		categoryProperties[6] = &categoryProperty{Name: "审核人", Type: "Text", Values: input.Reviewer}
+		categoryProperties[7] = &categoryProperty{Name: "审核时间", Type: "Text", Values: input.ReviewDate}
 
-	req := SubmitPaymentRequestReq{
-		Rows:               rows,
-		CategoryId:         config.QuickAccounting.CategoryId,
-		CategoryName:       config.QuickAccounting.CategoryName,
-		CategoryProperties: categoryProperties,
+		rows[i] = &createPaymentRequestData{
+			Recipient:               input.Recipient,
+			Amount:                  input.Amount,
+			Decimals:                input.Decimals,
+			CurrencyName:            input.CurrencyName,
+			CurrencyContractAddress: input.CurrencyContractAddress,
+			CategoryId:              config.QuickAccounting.CategoryId,
+			CategoryName:            config.QuickAccounting.CategoryName,
+			CategoryProperties:      categoryProperties,
+		}
 	}
-	body, _ := json.Marshal(req)
+
+	body, _ := json.Marshal(&submitPaymentRequestReq{rows})
 
 	resp, err := http.Post(fmt.Sprintf("%s/payment_request_share/__direct__/direct_submit/%d", config.QuickAccounting.Url, config.QuickAccounting.WorkspaceId), "application/json", bytes.NewBuffer(body))
 	if err != nil {
