@@ -11,6 +11,7 @@ import (
 	"github.com/theseed-labs/os-backend/internal/api/common_budget_sources"
 	"github.com/theseed-labs/os-backend/internal/api/cron_jobs"
 	"github.com/theseed-labs/os-backend/internal/api/proposal"
+	"github.com/theseed-labs/os-backend/internal/api/sns_invite"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/graph/generated"
 	"github.com/theseed-labs/os-backend/internal/graph/resolver"
@@ -423,6 +424,12 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		// Data services API
 		dataSrv := authorizedGroup.Group("/data_srv")
 		dataSrv.GET("/widget_data", data_srv.WidgetData)
+
+		// SNS invite
+		snsInvite := authorizedGroup.Group("/sns_invite")
+		snsInvite.GET("/my_sns_invite_code", sns_invite.GetMySnsInviteCode)
+		snsInvite.GET("/my_sns_invite_rewards", sns_invite.GetMySnsInviteRewards)
+		snsInvite.POST("/invited_by/:invite_code", sns_invite.SnsInvitedBy)
 	}
 	{
 		adminGroup := r.Group("/admin", middleware.AdminPermissionRequired)
