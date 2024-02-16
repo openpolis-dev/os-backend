@@ -151,9 +151,7 @@ func AuditApplication(db *gorm.DB, operatorWallet string, application *Applicati
 		}
 
 		// For close_project application, the project should be in pending_close state
-		// For new_reward application, the project should be in open state
-		if (application.Type == ApplicationCloseProject && project.Status != ProjectStatusPendingClose) ||
-			(application.Type == ApplicationNewReward && project.Status != ProjectStatusOpen) {
+		if application.Type == ApplicationCloseProject && project.Status != ProjectStatusPendingClose {
 			return fmt.Errorf("can not apply application type %s on project with status %s", application.Type, project.Status)
 		}
 	}
