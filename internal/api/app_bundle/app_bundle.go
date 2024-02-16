@@ -414,7 +414,7 @@ func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState
 
 	// send to QuickAccounting
 	var qaInputs []*sdk.QAInput
-	now := time.Now().Format(time.DateTime)
+	now := time.Now().In(internal.ProjectTimezone).Format(time.DateTime)
 
 	err = db.Transaction(func(tx *gorm.DB) error {
 		for _, appBundleRcd := range appBundleRcds {
@@ -490,7 +490,7 @@ func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState
 							CurrencyContractAddress: dc.Addr,
 							BudgetSource:            budgetSource,
 							Session:                 appRcd.Season.Name,
-							Item:                    appRcd.Comment,
+							Item:                    appRcd.DetailedType,
 							Comment:                 appRcd.Comment,
 							Applicant:               appRcd.Applicant,
 							ApplyComment:            appRcd.Comment,
@@ -515,6 +515,7 @@ func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState
 		// TODO when error occur should retry
 		err = sdk.SubmitToQuickAccounting(qaInputs, cfg)
 		if err != nil {
+			log.Error().Msgf("sumbit application to QuickAccounting error: %+v", err)
 			sdk.LogServerErrorToSentry(ctx, err)
 		}
 	}

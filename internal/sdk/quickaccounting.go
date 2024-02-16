@@ -56,6 +56,10 @@ type (
 )
 
 func SubmitToQuickAccounting(inputs []*QAInput, config *config.Config) error {
+	if config.QuickAccounting.Url == "" {
+		return nil // errors.New("'QuickAccounting.url' configuration is empty")
+	}
+
 	rows := make([]*createPaymentRequestData, len(inputs))
 	for i, input := range inputs {
 		categoryProperties := make([]*categoryProperty, 8)
