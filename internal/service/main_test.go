@@ -40,6 +40,11 @@ func TestMain(m *testing.M) {
 	err = conn.AutoMigrate(
 		&model.SnsInviteCode{},
 		&model.SnsInviteRecord{},
+		&model.Season{},
+		&model.AppBundle{},
+		&model.AppBundleAuditLog{},
+		&model.Application{},
+		&model.ApplicationAuditLog{},
 	)
 	if err != nil {
 		panic(err)

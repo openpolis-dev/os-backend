@@ -19,6 +19,7 @@ type (
 		InviteCode        string          `json:"invite_code"`
 		InviteUserWallet  string          `json:"invite_user_wallet" gorm:"type:varchar(256)"`
 		InviteeUserWallet string          `json:"invitee_user_wallet" gorm:"type:varchar(256)"`
+		Verified          bool            `json:"verified"`
 		SCRRewards        decimal.Decimal `json:"scr_rewards"`
 	}
 )
@@ -63,10 +64,26 @@ func (*snsInviteModel) FindInviteRecordByInviteUserWallet(db *gorm.DB, inviteUse
 	return
 }
 
+func (*snsInviteModel) FindInviteRecordByInviteUserWalletAndVerified(db *gorm.DB, inviteUserWallet string) (rows []*SnsInviteRecord, err error) {
+	err = db.Table(TableSnsInviteRecord).Where("invite_user_wallet = ? AND verified = ?", inviteUserWallet, true).Find(&rows).Error
+	return
+}
+
 func (*snsInviteModel) FindInviteRecordByInviteeUserWallet(db *gorm.DB, inviteeUserWallet string) (row *SnsInviteRecord, err error) {
 	err = db.Table(TableSnsInviteRecord).Where("invitee_user_wallet = ?", inviteeUserWallet).First(&row).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, nil
 	}
 	return
+}
+
+// ------ ------ ------
+
+func (*snsInviteModel) FindInviteRecordOfUnVerified(db *gorm.DB) (rows []*SnsInviteRecord, err error) {
+	err = db.Table(TableSnsInviteRecord).Where("verified = ?", false).Find(&rows).Error
+	return
+}
+
+func (*snsInviteModel) UpdateInviteRecordVerified(db *gorm.DB, inviteeUserWallet string) error {
+	return db.Table(TableSnsInviteRecord).Where("invitee_user_wallet = ?", inviteeUserWallet).Update("verified", true).Error
 }
