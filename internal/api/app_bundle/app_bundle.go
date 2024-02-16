@@ -360,7 +360,7 @@ func RejectAppBundles(ctx *gin.Context) {
 }
 
 func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState) {
-	db := api.ForContextOnlyDB(ctx)
+	db, cfg := api.ForContextDBAndConfig(ctx)
 	var idList []int
 	err := ctx.Bind(&idList)
 	if err != nil {
@@ -412,6 +412,10 @@ func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState
 		return
 	}
 
+	// send to QuickAccounting
+	var qaInputs []*sdk.QAInput
+	now := time.Now().In(internal.ProjectTimezone).Format(time.DateTime)
+
 	err = db.Transaction(func(tx *gorm.DB) error {
 		for _, appBundleRcd := range appBundleRcds {
 
@@ -460,6 +464,41 @@ func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState
 					tx.Rollback()
 					return err
 				}
+
+				// send to QuickAccounting
+				if newState == model.ApplicationStateApproved {
+					// only send support token to QuickAccounting
+					if dc, exist := internal.AssertDecimalsAndContractAddr[appRcd.AssetName]; exist {
+						budgetSource := "unknown budget source"
+						if appRcd.EntityType == "guild" {
+							guild, _ := model.GuildModel.Detail(db, appRcd.EntityId)
+							if guild != nil {
+								budgetSource = guild.Name
+							}
+						} else if appRcd.EntityType == "project" {
+							proj, _ := model.ProjectModel.Detail(db, appRcd.EntityId)
+							if proj != nil {
+								budgetSource = proj.Name
+							}
+						}
+
+						qaInputs = append(qaInputs, &sdk.QAInput{
+							Recipient:               appRcd.TargetUserWallet,
+							Amount:                  appRcd.AssetAmount.String(),
+							Decimals:                dc.Decimals,
+							CurrencyName:            appRcd.AssetName,
+							CurrencyContractAddress: dc.Addr,
+							BudgetSource:            budgetSource,
+							Session:                 appRcd.Season.Name,
+							Item:                    appRcd.DetailedType,
+							Comment:                 appRcd.Comment,
+							Applicant:               appRcd.Applicant,
+							ApplyComment:            appRcd.Comment,
+							Reviewer:                user.Wallet,
+							ReviewDate:              now,
+						})
+					}
+				}
 			}
 		}
 		return nil
@@ -469,6 +508,16 @@ func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("update app bundle state error")))
 		return
+	}
+
+	// send to QuickAccounting
+	if newState == model.ApplicationStateApproved {
+		// TODO when error occur should retry
+		err = sdk.SubmitToQuickAccounting(qaInputs, cfg)
+		if err != nil {
+			log.Error().Msgf("sumbit application to QuickAccounting error: %+v", err)
+			sdk.LogServerErrorToSentry(ctx, err)
+		}
 	}
 
 	ctx.JSON(http.StatusOK, api.Success(nil))

@@ -24,6 +24,7 @@ type Config struct {
 	MetaforoData     metaforoData    `json:"metaforoData" yaml:"metaforoData"`
 	Admin            adminData       `json:"admin" yaml:"admin"`
 	ProposalData     proposalData    `json:"proposalData" yaml:"proposalData"`
+	QuickAccounting  QuickAccounting `json:"quickAccounting" yaml:"quickAccounting"`
 }
 
 type (
@@ -99,6 +100,13 @@ type (
 
 	proposalData struct {
 		SipInitNumber int `json:"sipInitNumber" yaml:"sipInitNumber"`
+	}
+
+	QuickAccounting struct {
+		Url          string `json:"url" yaml:"url"`
+		WorkspaceId  int    `json:"workspaceId" yaml:"workspaceId"`
+		CategoryId   int    `json:"categoryId" yaml:"categoryId"`
+		CategoryName string `json:"categoryName" yaml:"categoryName"`
 	}
 )
 

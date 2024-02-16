@@ -51,3 +51,9 @@ publicData:
       wallet: 0x444C1Cf57b65C011abA9BaBEd05C6b13C11b03b5
     - chainId: 137
       wallet: 0x4876eaD85CE358133fb80276EB3631D192196e24
+
+quickAccounting:
+    url: https://qa-api.taoist.dev
+    workspaceId: 1
+    categoryId: 1
+    categoryName: SeeDAO
