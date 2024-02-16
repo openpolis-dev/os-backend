@@ -2,6 +2,9 @@ package service
 
 import (
 	"testing"
+	"time"
+
+	"github.com/theseed-labs/os-backend/internal"
 
 	"github.com/theseed-labs/os-backend/internal/model"
 )
@@ -68,6 +71,10 @@ func TestSnsInvitedBy(t *testing.T) {
 		t.Errorf("FindInviteRecordByInviteUserWallet() records[0].InviteeUserWallet = %s, want %s", records[0].InviteeUserWallet, wallet2)
 		return
 	}
+	if records[0].Verified {
+		t.Errorf("FindInviteRecordByInviteUserWallet() records[0].Verified = %v, want false", records[0].Verified)
+		return
+	}
 	if records[0].SCRRewards.String() != "100" {
 		t.Errorf("FindInviteRecordByInviteUserWallet() records[0].SCRRewards = %s, want 100", records[0].SCRRewards.String())
 		return
@@ -90,10 +97,13 @@ func TestGetMySnsInviteRewards(t *testing.T) {
 
 	_ = SnsInvitedBy(conn, wallet1Code, wallet2)
 	_ = SnsInvitedBy(conn, wallet1Code, wallet3)
+	// mark as verified
+	_ = model.SnsInviteModel.UpdateInviteRecordVerified(conn, wallet2)
+	_ = model.SnsInviteModel.UpdateInviteRecordVerified(conn, wallet3)
 
 	count1, rewards1, err := GetMySnsInviteRewards(conn, wallet1)
-	if count1 != 200 {
-		t.Errorf("GetMySnsInviteRewards() count = %d, want 200", count1)
+	if count1 != 2 {
+		t.Errorf("GetMySnsInviteRewards() count = %d, want 2", count1)
 		return
 	}
 	if err != nil {
@@ -107,10 +117,13 @@ func TestGetMySnsInviteRewards(t *testing.T) {
 
 	_ = SnsInvitedBy(conn, wallet2Code, wallet4)
 	_ = SnsInvitedBy(conn, wallet2Code, wallet5)
+	// mark as verified
+	_ = model.SnsInviteModel.UpdateInviteRecordVerified(conn, wallet4)
+	_ = model.SnsInviteModel.UpdateInviteRecordVerified(conn, wallet5)
 
 	count11, rewards11, _ := GetMySnsInviteRewards(conn, wallet1)
-	if count11 != 200 {
-		t.Errorf("GetMySnsInviteRewards() count = %d, want 200", count11)
+	if count11 != 2 {
+		t.Errorf("GetMySnsInviteRewards() count = %d, want 2", count11)
 		return
 	}
 	if rewards11.String() != "200" {
@@ -118,12 +131,52 @@ func TestGetMySnsInviteRewards(t *testing.T) {
 		return
 	}
 	count2, rewards2, _ := GetMySnsInviteRewards(conn, wallet2)
-	if count2 != 200 {
-		t.Errorf("GetMySnsInviteRewards() count = %d, want 200", count2)
+	if count2 != 2 {
+		t.Errorf("GetMySnsInviteRewards() count = %d, want 2", count2)
 		return
 	}
 	if rewards2.String() != "200" {
 		t.Errorf("GetMySnsInviteRewards() rewards = %s, want 200", rewards11.String())
+		return
+	}
+}
+
+func TestCheckAndUpdateUnverifiedSnsInvite(t *testing.T) {
+	// ---> prepare
+	truncateTable(model.TableSnsInviteCode)
+	truncateTable(model.TableSnsInviteRecord)
+	truncateTable("seasons")
+	truncateTable("app_bundles")
+	truncateTable("app_bundle_audit_logs")
+	truncateTable("applications")
+	truncateTable("application_audit_logs")
+
+	now := time.Now().In(internal.ProjectTimezone).Unix()
+	conn.Model(&model.Season{}).Create(&model.Season{Idx: 1, StartAt: now - 100, EndAt: now + 100})
+
+	wallet1Code, _ := GetMySnsInviteCode(conn, wallet1)
+
+	_ = SnsInvitedBy(conn, wallet1Code, "0x8C913aEc7443FE2018639133398955e0E17FB0C1") // has sns
+	_ = SnsInvitedBy(conn, wallet1Code, wallet2)                                      // no sns
+
+	// ---> test
+	err := CheckAndUpdateUnverifiedSnsInvite(conn)
+	if err != nil {
+		t.Errorf("CheckAndUpdateUnverifiedSnsInvite() error = %v", err)
+		return
+	}
+
+	count1, rewards1, err := GetMySnsInviteRewards(conn, wallet1)
+	if err != nil {
+		t.Errorf("GetMySnsInviteRewards() error = %v", err)
+		return
+	}
+	if count1 != 1 {
+		t.Errorf("GetMySnsInviteRewards() count = %d, want 1", count1)
+		return
+	}
+	if rewards1.String() != "100" {
+		t.Errorf("GetMySnsInviteRewards() rewards = %s, want 100", rewards1.String())
 		return
 	}
 }
