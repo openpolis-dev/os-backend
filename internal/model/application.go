@@ -153,6 +153,7 @@ func AuditApplication(db *gorm.DB, operatorWallet string, application *Applicati
 
 	err := userWalletRecordExisting(db, operatorWallet)
 	if err != nil {
+		log.Error().Msgf("Check user wallet error: %+v", err)
 		return err
 	}
 
