@@ -850,12 +850,11 @@ func generateFrontendProposalRecords(db *gorm.DB, querySql string, page *gormfin
 	}
 	total := countTx.RowsAffected
 
-	// Specify custom order by state
-	// Note: this is PG specified function
-	querySql += fmt.Sprintf("\nORDER BY array_position(array[%s], p.state), create_ts desc",
-		strings.Join(lo.Map(StateOrder, func(state model.ProposalState, _ int) string { return fmt.Sprintf("%d", state) }), ", "))
-
 	if page != nil {
+		// Specify custom order by state
+		// Note: this is PG specified function
+		querySql += fmt.Sprintf("\nORDER BY array_position(array[%s], p.state), create_ts desc",
+			strings.Join(lo.Map(StateOrder, func(state model.ProposalState, _ int) string { return fmt.Sprintf("%d", state) }), ", "))
 		querySql += fmt.Sprintf("\nLIMIT %d OFFSET %d", page.Size, (page.Page-1)*page.Size)
 	}
 
