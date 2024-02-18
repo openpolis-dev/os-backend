@@ -55,8 +55,8 @@ func (*snsInviteModel) FindInviteCodeByInviteCode(db *gorm.DB, inviteCode string
 
 // ------ ------ ------ ------ ------ ------ ------ ------ ------
 
-func (*snsInviteModel) CreateSnsInviteRecord(db *gorm.DB, snsInviteRecord *SnsInviteRecord) error {
-	return db.Create(snsInviteRecord).Error
+func (*snsInviteModel) CreateOrUpdateSnsInviteRecord(db *gorm.DB, snsInviteRecord *SnsInviteRecord) error {
+	return db.Save(snsInviteRecord).Error
 }
 
 func (*snsInviteModel) FindInviteRecordByInviteUserWallet(db *gorm.DB, inviteUserWallet string) (rows []*SnsInviteRecord, err error) {

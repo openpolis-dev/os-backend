@@ -48,12 +48,14 @@ func TestSnsInvitedBy(t *testing.T) {
 	truncateTable(model.TableSnsInviteRecord)
 
 	wallet1Code, _ := GetMySnsInviteCode(conn, wallet1)
+
+	// CASE: invite success
 	err := SnsInvitedBy(conn, wallet1Code, wallet2)
 	if err != nil {
 		t.Errorf("SnsInvitedBy() error = %v", err)
 		return
 	}
-
+	// verify result
 	records, err := model.SnsInviteModel.FindInviteRecordByInviteUserWallet(conn, wallet1)
 	if err != nil {
 		t.Errorf("FindInviteRecordByInviteUserWallet() error = %v", err)
@@ -65,6 +67,10 @@ func TestSnsInvitedBy(t *testing.T) {
 	}
 	if records[0].InviteCode != wallet1Code {
 		t.Errorf("FindInviteRecordByInviteUserWallet() records[0].InviteCode = %s, want %s", records[0].InviteCode, wallet2)
+		return
+	}
+	if records[0].InviteUserWallet != wallet1 {
+		t.Errorf("FindInviteRecordByInviteUserWallet() records[0].InviteUserWallet = %s, want %s", records[0].InviteUserWallet, wallet5)
 		return
 	}
 	if records[0].InviteeUserWallet != wallet2 {
@@ -80,6 +86,43 @@ func TestSnsInvitedBy(t *testing.T) {
 		return
 	}
 
+	// CASE: can change invite data when not verified
+	wallet5Code, _ := GetMySnsInviteCode(conn, wallet5)
+	err = SnsInvitedBy(conn, wallet5Code, wallet2)
+	// verify result
+	records2, err := model.SnsInviteModel.FindInviteRecordByInviteUserWallet(conn, wallet5)
+	if err != nil {
+		t.Errorf("FindInviteRecordByInviteUserWallet() error = %v", err)
+		return
+	}
+	if len(records2) != 1 {
+		t.Errorf("FindInviteRecordByInviteUserWallet() records = %v, want 1", len(records2))
+		return
+	}
+	if records2[0].InviteCode != wallet5Code {
+		t.Errorf("FindInviteRecordByInviteUserWallet() records[0].InviteCode = %s, want %s", records2[0].InviteCode, wallet2)
+		return
+	}
+	if records2[0].InviteUserWallet != wallet5 {
+		t.Errorf("FindInviteRecordByInviteUserWallet() records[0].InviteUserWallet = %s, want %s", records2[0].InviteUserWallet, wallet5)
+		return
+	}
+	if records2[0].InviteeUserWallet != wallet2 {
+		t.Errorf("FindInviteRecordByInviteUserWallet() records[0].InviteeUserWallet = %s, want %s", records2[0].InviteeUserWallet, wallet2)
+		return
+	}
+	if records2[0].Verified {
+		t.Errorf("FindInviteRecordByInviteUserWallet() records[0].Verified = %v, want false", records2[0].Verified)
+		return
+	}
+	if records2[0].SCRRewards.String() != "100" {
+		t.Errorf("FindInviteRecordByInviteUserWallet() records[0].SCRRewards = %s, want 100", records2[0].SCRRewards.String())
+		return
+	}
+
+	// CASE: can't change invite data when has verified
+	// mark as verified
+	_ = model.SnsInviteModel.UpdateInviteRecordVerified(conn, wallet2)
 	err = SnsInvitedBy(conn, wallet1Code, wallet2)
 	if err == nil || err.Error() != "already invited" {
 		t.Errorf("SnsInvitedBy() error = %v, want already invited", err)

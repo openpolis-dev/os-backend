@@ -43,7 +43,8 @@ func SnsInvitedBy(db *gorm.DB, inviteCode, inviteeUserWallet string) error {
 	if err != nil {
 		return err
 	}
-	if r != nil {
+	// record exists and has verified
+	if r != nil && r.Verified {
 		return ErrAlreadyInvited
 	}
 
@@ -55,14 +56,20 @@ func SnsInvitedBy(db *gorm.DB, inviteCode, inviteeUserWallet string) error {
 		return ErrInvalidInviteCode
 	}
 
-	inviteRecord := &model.SnsInviteRecord{
-		InviteCode:        inviteCode,
-		InviteUserWallet:  d.UserWallet,
-		InviteeUserWallet: inviteeUserWallet,
-		Verified:          false,
-		SCRRewards:        decimal.NewFromInt(100),
+	if r == nil {
+		r = &model.SnsInviteRecord{
+			InviteCode:        inviteCode,
+			InviteUserWallet:  d.UserWallet,
+			InviteeUserWallet: inviteeUserWallet,
+			Verified:          false,
+			SCRRewards:        decimal.NewFromInt(100),
+		}
+	} else {
+		r.InviteCode = inviteCode
+		r.InviteUserWallet = d.UserWallet
 	}
-	err = model.SnsInviteModel.CreateSnsInviteRecord(db, inviteRecord)
+
+	err = model.SnsInviteModel.CreateOrUpdateSnsInviteRecord(db, r)
 	if err != nil {
 		return err
 	}
