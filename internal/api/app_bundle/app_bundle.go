@@ -482,6 +482,13 @@ func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState
 							}
 						}
 
+						var seasonRecord *model.Season
+						if err = tx.Find(&seasonRecord, appRcd.SeasonId).Error; err != nil {
+							log.Error().Msgf("find season error: %+v", err)
+							tx.Rollback()
+							return err
+						}
+
 						qaInputs = append(qaInputs, &sdk.QAInput{
 							Recipient:               appRcd.TargetUserWallet,
 							Amount:                  appRcd.AssetAmount.String(),
@@ -489,7 +496,7 @@ func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState
 							CurrencyName:            appRcd.AssetName,
 							CurrencyContractAddress: dc.Addr,
 							BudgetSource:            budgetSource,
-							Session:                 appRcd.Season.Name,
+							Session:                 seasonRecord.Name,
 							Item:                    appRcd.DetailedType,
 							Comment:                 appRcd.Comment,
 							Applicant:               appRcd.Applicant,
