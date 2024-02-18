@@ -174,6 +174,7 @@ func BatchAuditApplication(db *gorm.DB, operatorWallet string, applications *[]A
 
 	err := userWalletRecordExisting(db, operatorWallet)
 	if err != nil {
+		log.Error().Msgf("Check user wallet error: %+v", err)
 		return err
 	}
 
