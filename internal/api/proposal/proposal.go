@@ -25,6 +25,11 @@ import (
 	"gorm.io/gorm/clause"
 )
 
+var StateOrder = []model.ProposalState{
+	model.ProposalStateVoting,
+	model.ProposalStateDraft,
+}
+
 // List handles the HTTP request to list proposals.
 //
 //	@summary	lists all proposals based on query params and return in JSON format
@@ -845,10 +850,13 @@ func generateFrontendProposalRecords(db *gorm.DB, querySql string, page *gormfin
 	}
 	total := countTx.RowsAffected
 
+	// Specify custom order by state
+	// Note: this is PG specified function
+	querySql += fmt.Sprintf("\nORDER BY array_position(array[%s], p.state), create_ts desc",
+		strings.Join(lo.Map(StateOrder, func(state model.ProposalState, _ int) string { return fmt.Sprintf("%d", state) }), ", "))
+
 	if page != nil {
-		orderByClause := fmt.Sprintf("%s %s ", *page.SortField, *page.Order)
-		querySql += fmt.Sprintf("\nORDER BY %s ", orderByClause)
-		querySql += fmt.Sprintf("LIMIT %d OFFSET %d", page.Size, (page.Page-1)*page.Size)
+		querySql += fmt.Sprintf("\nLIMIT %d OFFSET %d", page.Size, (page.Page-1)*page.Size)
 	}
 
 	var resultRows []*FrontendProposalListRecord
