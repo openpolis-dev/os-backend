@@ -422,8 +422,8 @@ func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState
 			appBundleRcd.State = newState
 			appBundleRcd.UpdateTs = model.GetCurrentUtcEpochSecond()
 			appBundleRcd.UpdatedAt = time.Now().In(internal.ProjectTimezone)
-			err = tx.Save(&appBundleRcd).Error
-			if err != nil {
+			if err = tx.Save(&appBundleRcd).Error; err != nil {
+				log.Error().Msgf("update application state error: %+v, app bundle: %+v", err, appBundleRcd)
 				return err
 			}
 
