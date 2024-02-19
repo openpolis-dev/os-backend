@@ -51,7 +51,7 @@ type Project struct {
 
 	Label string `json:"label"`
 
-	SIP          string `json:"SIP"`
+	SIP          string `json:"SIP" gorm:"index"`
 	Category     string `json:"Category"`
 	ApprovalLink string `json:"ApprovalLink"`
 	OverLink     string `json:"OverLink"`
