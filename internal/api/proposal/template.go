@@ -140,13 +140,17 @@ func ListTemplatesWithPerm(ctx *gin.Context) {
 			return nil
 		}
 
-		permArray := lo.Map(useTemplateVoteGates, func(r *model.ProposalVoteGate, _ int) bool {
-			return IsUserMetVoteGate(userSeepassData, r)
-		})
+		if userSeepassData == nil {
+			r.HasPermToUse = false
+		} else {
+			permArray := lo.Map(useTemplateVoteGates, func(r *model.ProposalVoteGate, _ int) bool {
+				return IsUserMetVoteGate(userSeepassData, r)
+			})
 
-		r.HasPermToUse = lo.Reduce(permArray, func(rslt bool, r bool, _ int) bool {
-			return rslt && r
-		}, true)
+			r.HasPermToUse = lo.Reduce(permArray, func(rslt bool, r bool, _ int) bool {
+				return rslt && r
+			}, true)
+		}
 
 		components := getTemplateComponents(&tmplDbRcd)
 
