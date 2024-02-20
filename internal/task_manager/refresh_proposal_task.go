@@ -42,6 +42,7 @@ func RefreshVotingProposalInfoJob(db *gorm.DB, job *model.CronJob, jobParams str
 		jobFailed = true
 	} else {
 		var proposals []*model.Proposal
+		// FIXME: Only get the max version record
 		querySql := `select distinct on (proposal_record_id) proposals.* FROM "proposals" WHERE state IN ?`
 		err = db.Raw(querySql, []model.ProposalState{
 			model.ProposalStateVoting,

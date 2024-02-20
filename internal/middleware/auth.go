@@ -40,6 +40,7 @@ func AuthRequired(ctx *gin.Context) {
 }
 
 func AdminPermissionRequired(ctx *gin.Context) {
+	// FIXME: check whether the admin token is existing, if not, always return 401
 	cfg := ctx.Value(CfgKey).(*config.Config)
 	authHeader := ctx.GetHeader("AdminAuth")
 	if authHeader != cfg.Admin.AuthToken {

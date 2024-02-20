@@ -12,9 +12,11 @@ import (
 )
 
 type Config struct {
-	DataSource       dataSource      `json:"dataSource" yaml:"dataSource"`
-	Jwt              jwt             `json:"jwt" yaml:"jwt"`
-	Auth             auth            `json:"auth" yaml:"auth"`
+	DataSource dataSource `json:"dataSource" yaml:"dataSource"`
+	Jwt        jwt        `json:"jwt" yaml:"jwt"`
+	// FIXME: remove Auth, it is for unipass [x]
+	Auth auth `json:"auth" yaml:"auth"`
+	// FIXME: remove Auth, it is for appstore [x]
 	PreviewMode      previewMode     `json:"previewMode" yaml:"previewMode"`
 	Casbin           casbin          `json:"casbin" yaml:"casbin"`
 	Push             push            `json:"push" yaml:"push"`
@@ -23,8 +25,9 @@ type Config struct {
 	PublicData       publicData      `json:"publicData" yaml:"publicData"`
 	MetaforoData     metaforoData    `json:"metaforoData" yaml:"metaforoData"`
 	Admin            adminData       `json:"admin" yaml:"admin"`
-	ProposalData     proposalData    `json:"proposalData" yaml:"proposalData"`
-	QuickAccounting  QuickAccounting `json:"quickAccounting" yaml:"quickAccounting"`
+	// FIXME: remove ProposalData since the data has been saved to DB [h]
+	ProposalData    proposalData    `json:"proposalData" yaml:"proposalData"`
+	QuickAccounting QuickAccounting `json:"quickAccounting" yaml:"quickAccounting"`
 }
 
 type (

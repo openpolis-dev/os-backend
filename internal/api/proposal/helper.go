@@ -98,6 +98,7 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 	log.Debug().Msgf("save proposal record to DB: %+v, proposalIdStr: %s, user wallet: %s", reqData, proposalIdStr, userWallet)
 
 	// Update title for testing
+	// FIXME: check whether prefix is empty or nil [h]
 	if !strings.HasPrefix(reqData.Title, cfg.MetaforoData.ProposalPrefix) {
 		reqData.Title = cfg.MetaforoData.ProposalPrefix + reqData.Title
 	}
@@ -123,6 +124,7 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 	voteTimeProps.PendingExecutionSecond = pTemplate.PendingExecutionSecond
 	reqData.VoteType = pTemplate.VoteType
 
+	// FIXME: data race: method 1: cache over DB, method 2: lock on record, method 3: upgrade SQL
 	if proposalIdStr != "" {
 		// Updating existing proposals
 		dbProposalRcd, err := GetProposalFromStringId(db, proposalIdStr)
@@ -155,6 +157,7 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 		proposalRcd.VoteDurationSecond = dbProposalRcd.VoteDurationSecond
 		proposalRcd.AssociateProposalId = reqData.CreateProjectProposalId
 
+		// FIXME: update or save? need transaction?
 		err = db.Save(&proposalRcd).Error
 		if err != nil {
 			log.Error().Msgf("duplicate proposal error: %+v", err)
@@ -167,6 +170,7 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 			return nil, err
 		}
 
+		// FIXME: change to use move instead of creating?
 		if err := SaveProposalContentRecords(db, proposalRcd.ID, reqData.ContentBlocks); err != nil {
 			log.Error().Msgf("create proposal block error: %+v", err)
 			return nil, err
@@ -203,6 +207,7 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 		proposalRecord.PendingExecutionSecond = voteTimeProps.PendingExecutionSecond
 		proposalRecord.VoteDurationSecond = voteTimeProps.VoteDurationSecond
 
+		// FIXME: change to use transaction [h]
 		if err := db.Create(&proposalRecord).Error; err != nil {
 			log.Error().Msgf("create proposal error: %+v", err)
 			return nil, err
@@ -236,6 +241,7 @@ func SaveProposalContentRecords(db *gorm.DB, proposalRecordId uint, reqContentBl
 		// Update or create blocks in request data
 		var updatedIds []uint
 		for _, block := range reqContentBlockData {
+			// FIXME: check Save or Updates here [h]
 			if err := tx.Save(&model.ProposalContentBlock{
 				ID:            block.ID,
 				ProposalID:    proposalRecordId,
@@ -577,11 +583,16 @@ func SaveProposalToMetaforo(db *gorm.DB, origProposalRecordId uint, voteType int
 			log.Error().Msgf("update db records from metaforoProposalResponse error: %+v", err)
 		}
 
+		// FIXME: verify this state change, if poll has been started already, the proposal should be voting state, not draft state
+		// FIXME: verify this state change, if poll has been started already, the proposal should be voting state, not draft state
+		// FIXME: verify this state change, if poll has been started already, the proposal should be voting state, not draft state
+		// FIXME: verify this state change, if poll has been started already, the proposal should be voting state, not draft state
 		// This branch only invoked while changing proposal state from PendingSubmit to Draft
 		updatedProposalRecord.State = int(model.ProposalStateDraft)
 	}
 
 	updatedProposalRecord.ProposalRecordId = model.BuildProposalRecordIdFromMetaforoThreadId(metaforoProposalResponse.Thread.Id)
+	// FIXME: fix logic here, the duplicated invoke of updateDbRecordFromMetaforoProposalResponse fix the last FIXME, need to update the logic
 	err = UpdateDbRecordsFromMetaforoProposalResponse(db, updatedProposalRecord.ID, metaforoProposalResponse)
 	if err != nil {
 		log.Error().Msgf("update db proposal record with metaforo response error: %+v", err)
@@ -590,6 +601,7 @@ func SaveProposalToMetaforo(db *gorm.DB, origProposalRecordId uint, voteType int
 
 	// Save data backed from metaforo API response to DB
 	// TODO: Use single transaction function to update proposal
+	// FIXME: Add where check, and confirm state transit map
 	if err := db.Model(&updatedProposalRecord).
 		Where("id = ?", updatedProposalRecord.ID).
 		Updates(&model.Proposal{ProposalRecordId: updatedProposalRecord.ProposalRecordId, State: updatedProposalRecord.State}).Error; err != nil {
@@ -768,6 +780,7 @@ func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcdId ui
 	// Save proposal vote records
 	for _, poll := range metaforoProposal.Thread.Polls {
 		proposalVoteRecord := model.ProposalVoteRecord{MetaforoID: poll.Id}
+		// FIXME: Confirm whether the startTs and endTs can be modified [h]
 		err := db.Where(&proposalVoteRecord).Assign(&model.ProposalVoteRecord{
 			Title:      poll.Title,
 			StartTs:    poll.PollStartAt.UTC().Unix(),
@@ -814,6 +827,7 @@ func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcdId ui
 			log.Warn().Msgf("update proposal vote DB record error: %+v", err)
 		}
 
+		// FIXME: verify this TODO
 		// TODO: Update the check logic of vote result with voter user limitations
 		if poll.Status == "open" {
 			// Refresh dbProposal record
@@ -836,7 +850,6 @@ func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcdId ui
 						}
 						proposalSip = createProjectProposal.Sip
 					} else {
-						// TODO: The GetNextSipValue may be invoked more than once, need preventing it by lock or others
 						proposalSip, err = model.GetNextSipValue(db)
 						log.Error().Msgf("TTT: get next sip value: %d", proposalSip)
 						if err != nil {
@@ -1233,6 +1246,7 @@ func updateProposalStateByExtraCheckRule(checkRules []*model.ExtraResultCheckRul
 		}
 		valueToBeCompared := 0
 		switch r.Metric {
+		// FIXME: Get data from cache
 		case internal.ExtraCheckRuleMetricSeed:
 			valueToBeCompared = indexClient.GetCurrentSeedHolderCount()
 		case internal.ExtraCheckRuleMetricCurrentSeasonNode:

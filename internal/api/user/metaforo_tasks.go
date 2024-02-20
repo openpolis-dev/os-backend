@@ -236,6 +236,7 @@ func LeaveMetaforoGroup(ctx *gin.Context) {
 //	@Param		JsonBody	body		metaforo.LoginResponse	true	"metaforo response after login"
 //	@success	200			{object}	api.Reply{data=nil}
 func PrepareMetaforoData(ctx *gin.Context) {
+	// FIXME: fix struct name, should be LoginRequest not response
 	var req metaforo.LoginResponse
 	err := ctx.BindJSON(&req)
 	if err != nil {

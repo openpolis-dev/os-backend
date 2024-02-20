@@ -42,18 +42,19 @@ type ComponentRequestData struct {
 }
 
 type CreateOrUpdateProposalData struct {
-	TemplateId              uint                          `json:"template_id"`
-	Title                   string                        `json:"title"`
-	ProposalCategoryId      uint                          `json:"proposal_category_id"`
-	ContentBlocks           []*FrontendContentBlockRecord `json:"content_blocks"`
-	Components              []*ComponentRequestData       `json:"components"`
-	VoteGateId              uint                          `json:"vote_gate_id"`
-	MetaforoAccessToken     string                        `json:"metaforo_access_token"`
-	SubmitToMetaforo        bool                          `json:"submit_to_metaforo"`
-	EditorType              int                           `json:"editor_type"`
-	VoteType                int                           `json:"vote_type"`
-	VoteOptions             []string                      `json:"vote_options"`
-	CreateProjectProposalId uint                          `json:"create_project_proposal_id"`
+	TemplateId         uint                          `json:"template_id"`
+	Title              string                        `json:"title"`
+	ProposalCategoryId uint                          `json:"proposal_category_id"`
+	ContentBlocks      []*FrontendContentBlockRecord `json:"content_blocks"`
+	Components         []*ComponentRequestData       `json:"components"`
+	// FIXME: verify whether this is using now.
+	VoteGateId              uint     `json:"vote_gate_id"`
+	MetaforoAccessToken     string   `json:"metaforo_access_token"`
+	SubmitToMetaforo        bool     `json:"submit_to_metaforo"`
+	EditorType              int      `json:"editor_type"`
+	VoteType                int      `json:"vote_type"`
+	VoteOptions             []string `json:"vote_options"`
+	CreateProjectProposalId uint     `json:"create_project_proposal_id"`
 }
 
 type RejectProposalData struct {
@@ -286,6 +287,7 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposalId uint, startPo
 		}
 
 		// Special processing for `associate_proposal`
+		// FIXME: Move the name string to const.go
 		if componentRecord.Name == "associate_proposal" {
 			var parsedData associatedProposalData
 			err := json.Unmarshal([]byte(item.Data), &parsedData)
@@ -335,6 +337,7 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposalId uint, startPo
 	}
 
 	var applicantAvatarLink string
+	// FIXME: Cache this avatar query
 	db.Model(model.User{}).Where("wallet = ?", common.FormatUserWallet(proposal.Applicant)).First(&applicantAvatarLink)
 
 	var editHistoryRecords []*FrontendProposalEditHistoryRecord
@@ -352,14 +355,15 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposalId uint, startPo
 		commentCount = metaforoProposal.Thread.PostsCount
 		votes = metaforoProposal.Thread.Polls
 
+		// FIXME: Verify whether this update is required
 		err = UpdateDbRecordsFromMetaforoProposalResponse(db, proposalId, metaforoProposal)
 		if err != nil {
 			return nil, err
 		}
-		// TODO: Query UserVoteRecord and update isVoted field
 
 		err = db.Model(model.ProposalComment{}).Where("proposal_id = ? AND is_reject_comment = ?", proposalId, true).First(&rejectedComment).Error
 		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+			log.Error().Msgf("fetch rejected comment error: %+v", err)
 			return nil, err
 		}
 
@@ -429,6 +433,7 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposalId uint, startPo
 		proposalPublicityTs = r.StartTs
 	}
 
+	// FIXME: Only get execution cronjob, not state change jobs to approved or other state
 	for _, job := range proposalCronJobs {
 		if job.NextExecTs > proposalExecTs {
 			proposalExecTs = job.NextExecTs

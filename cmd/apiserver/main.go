@@ -85,6 +85,7 @@ func main() {
 	// add default policies
 	defaultPolicies := [][]string{
 		{internal.RoleHall, "*", "*"}, // `p, hall, *, *` hall can do anything
+		// FIXME: clear this [h]
 		{internal.RoleTreasuryManager, internal.ObjTreasury, internal.ActUpdateAssertBudget}, // `p, treasury_manager, treasury, u_assert_budget`
 		{internal.RoleEventManager, internal.ObjEvent, internal.ActCreateEvent},              // `p, event_manager, event, create_event`
 	}
@@ -118,6 +119,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	// FIXME: move to separated tool [h]
 	storage.SeedDbRecords()
 
 	// setup cache
@@ -229,6 +231,7 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 
 		v1.GET("/apps_applicants", application.ListApplicants)
 		v1.GET("/download_applications", application.Download)
+		// FIXME: check with frontend whether this API is still in use [h]
 		v1.GET("/get_applications_upload_template", application.DownloadUploadTemplate)
 
 		// SeeDAO assets routers
@@ -236,6 +239,7 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		treasuryGroup.GET("/current", treasury.GetOrCreateCurrentAssetRecords)
 
 		// SeeDAO events routers
+		// FIXME: check w/ frontend whether this is still in use [h]
 		eventsGroup := v1.Group("/events")
 		eventsGroup.GET("/", event.List)
 		eventsGroup.GET("/:id", event.Detail)
@@ -291,6 +295,7 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		proposalTmplRouter.GET("/list", proposal.ListTemplates)
 
 		// Schedule jobs routers
+		// FIXME: check whether it is needed or move to admin scope [h]
 		jobsRouter := v1.Group("/jobs")
 		jobsRouter.GET("/list", cron_jobs.List)
 
@@ -355,6 +360,7 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		treasuryGroup.POST("/update_assets", treasury.UpdateAssets)
 
 		// SeeDAO events routers
+		// FIXME: varify whether it is needed [h]
 		eventsGroup := authorizedGroup.Group("/events")
 		eventsGroup.POST("/", event.Create)
 		eventsGroup.PUT("/:id", event.Update)

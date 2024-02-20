@@ -9,6 +9,7 @@ import (
 )
 
 // ToChecksumAddress converts an Ethereum address to its checksum representation.
+// FIXME: there is another function
 func ToChecksumAddress(address string) string {
 	// Remove the "0x" prefix and convert to lowercase
 	address = strings.Replace(strings.ToLower(address), "0x", "", 1)

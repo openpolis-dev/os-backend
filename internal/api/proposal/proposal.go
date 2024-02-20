@@ -335,9 +335,11 @@ func Create(ctx *gin.Context) {
 		return
 	}
 
+	// FIXME: change err to use existing err instead of creating new
+	// FIXME: check metaforo token is existing at first
 	if reqData.SubmitToMetaforo {
 		if err := updateProposalAssociatedProjectStatusInCloseProjectToClosing(db, reqData); err != nil {
-			log.Error().Msgf("associate mushrooms: %+v", err)
+			log.Error().Msgf("associate proposal with project error: %+v", err)
 			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
 			return
@@ -674,7 +676,7 @@ func GetProposalsUsedForCreatingProjects(ctx *gin.Context) {
 
 // UpdateProposalStateAndLaunchStateChangeActions changes proposal state and launch specified actions associated with state change
 func UpdateProposalStateAndLaunchStateChangeActions(db *gorm.DB, user *middleware.CurUser, proposalStrId string, newState model.ProposalState, cfg *config.Config) (uint, error) {
-	log.Error().Msgf("TTT: enter UpdateProposalStateAndLaunchStateChangeActions")
+	log.Debug().Msgf("enter UpdateProposalStateAndLaunchStateChangeActions, proposalStrId: %s, newState: %s", proposalStrId, newState)
 	proposalRecord, err := GetProposalFromStringId(db, proposalStrId)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -718,7 +720,6 @@ func UpdateProposalStateAndLaunchStateChangeActions(db *gorm.DB, user *middlewar
 		}
 
 		err = db.Model(&proposalRecord).Where("id = ?", proposalRecord.ID).Update("state", model.ProposalStateWithdrawn).Error
-		// TODO: Update Metaforo Label: Remove old label and add new, verify whether metaforo can handle this
 		if err != nil {
 			log.Error().Msgf("change proposal to withdrawn error")
 			return 0, err
@@ -727,6 +728,7 @@ func UpdateProposalStateAndLaunchStateChangeActions(db *gorm.DB, user *middlewar
 		return 0, db.Transaction(func(tx *gorm.DB) error {
 			proposalRecord.State = int(model.ProposalStateApproved)
 
+			// FIXME: Duplicated code
 			if pTemplate != nil && pTemplate.Type == model.ProposalTemplateTypeCloseProject {
 				createProjectProposal := model.Proposal{ID: proposalRecord.AssociateProposalId}
 				if err = db.Find(&createProjectProposal).Error; err != nil {
@@ -742,6 +744,7 @@ func UpdateProposalStateAndLaunchStateChangeActions(db *gorm.DB, user *middlewar
 				}
 			}
 
+			// FIXME: Migrate to the other code block, which contains check of sip==0
 			err = tx.Model(&proposalRecord).Where("id = ?", proposalRecord.ID).Updates(&model.Proposal{State: proposalRecord.State, Sip: proposalRecord.Sip}).Error
 			var voteRecords []*model.ProposalVoteRecord
 			err = tx.Model(&proposalRecord).Association("VoteRecords").Find(&voteRecords)
@@ -751,6 +754,7 @@ func UpdateProposalStateAndLaunchStateChangeActions(db *gorm.DB, user *middlewar
 			}
 
 			if proposalRecord.VoteType == model.ProposalVoteTypeNone {
+				// FIXME: Verify logic here, if all 0 pending execution second set to 1, whether this block is accessible
 				if proposalRecord.PendingExecutionSecond == 0 {
 					proposalRecord.State = int(model.ProposalStateExecuted)
 
@@ -795,6 +799,7 @@ func UpdateProposalStateAndLaunchStateChangeActions(db *gorm.DB, user *middlewar
 						time.Now().UTC().Add(proposalRecord.VoteDuration()).Unix(),
 					)
 					if err != nil {
+						// FIXME: does this error need rollback and exit?
 						log.Error().Msgf("update vote information error: %+v", err)
 					}
 				}

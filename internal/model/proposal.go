@@ -126,9 +126,11 @@ type Proposal struct {
 
 	Applicant string `gorm:"index"`
 
+	// FIXME: update vote type based on latest code [h]
 	// VoteType indicates the type of attached vote for this proposal, the available values are:
 	// - ProposalVoteTypeNone
 	// - ProposalVoteTypeNumericAvg
+	// - ProposalVoteTypeNumericSingle
 	// - ProposalVoteTypeDecision
 	// - ProposalVoteTypeCustomerDefinedAlwaysPassed
 	VoteType    int

@@ -79,6 +79,7 @@ func CreateVetoProposalTask(db *gorm.DB, job *model.CronJob, jobParams string) {
 				return err
 			}
 
+			// FIXME: lock?
 			for _, r := range proposalTasks {
 				r.State = model.CronJobStateTerminated
 				r.UpdateTs = model.GetCurrentUtcEpochSecond()
