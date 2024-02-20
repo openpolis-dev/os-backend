@@ -1077,6 +1077,7 @@ func createProposalAutomationTasks(db *gorm.DB, proposalId uint, finState model.
 	switch finState {
 	case model.ProposalStateVotePassed:
 		if len(proposalComponentActions) == 0 {
+			// FIXME: Guarantee this is create project proposal
 			log.Debug().Msgf("proposal %d has no component actions", proposalId)
 			// No automation action found for the proposal, check whether the proposal has pending execution time
 			// If yes, change the proposal state to pending execution, and create a new cron job to update proposal state after pending execution second
@@ -1134,6 +1135,7 @@ func createProposalAutomationTasks(db *gorm.DB, proposalId uint, finState model.
 				}
 			} else {
 				// TODO: Merge to single state transit function
+				// FIXME: state transition check
 				proposal.State = int(model.ProposalStateExecuted)
 				if err = db.Model(&proposal).Where("id = ?", proposal.ID).Update("state", model.ProposalStateExecuted).Error; err != nil {
 					if err != nil {
@@ -1188,6 +1190,7 @@ func createProposalAutomationTasks(db *gorm.DB, proposalId uint, finState model.
 			Where("status = 'closing'").
 			Update("status", model.ProjectStatusCloseFailed)
 
+		// FIXME: Update proposal state
 		if err = updateTx.Error; err != nil {
 			log.Error().Msgf("close project error: %+v", err)
 		} else if updateTx.RowsAffected == 0 {
@@ -1197,6 +1200,7 @@ func createProposalAutomationTasks(db *gorm.DB, proposalId uint, finState model.
 			log.Debug().Msgf("complete project status update")
 		}
 	default:
+		// FIXME: update proposal state to failed
 		log.Error().Msgf("unknown proposal state: %d", finState)
 		return
 	}
@@ -1431,6 +1435,7 @@ func CreateProjectFromAutoTasks(db *gorm.DB, proposalId uint) (*model.Project, e
 		}
 	}
 
+	// FIXME: Add uniq index field to project to avoid duplicated creation
 	if err = db.Create(&newProjectData).Error; err != nil {
 		log.Error().Msgf("create project error: %+v", err)
 		return nil, err

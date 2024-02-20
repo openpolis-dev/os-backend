@@ -51,6 +51,7 @@ func ListCategoriesWithPerm(ctx *gin.Context) {
 
 }
 
+// FIXME: delete it
 // UpdateCategories function updates category and sync to Metaforo
 func UpdateCategories(ctx *gin.Context) {
 	req := UpdateProposalCategoryReq{}
@@ -99,6 +100,7 @@ func ListAllCategories(ctx *gin.Context) {
 
 }
 
+// FIXME: check whether the function is needed
 // SyncFromMetaforo is used to sync metaforo categories to local DB
 // This function first queries ProposalCategory table by metaforoID,
 // and update name and hierarchical relationship if found, or create new record with returned name if metaforo ID is not found

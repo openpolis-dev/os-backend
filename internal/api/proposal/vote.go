@@ -179,7 +179,7 @@ func CloseVote(ctx *gin.Context) {
 
 // ShowVoteDetail returns vote detail for specified vote
 //
-//	@summary	revoke vote on existing metaforo vote
+//	@summary	show voter detail for specified vote option
 //	@tags		Proposal
 //	@param		vote_option_id	path		number										true	"Vote ID"
 //	@param		page			query		number										false	"page of the vote list"

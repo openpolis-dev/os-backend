@@ -284,7 +284,7 @@ type ProposalComment struct {
 	IpfsCid     string `gorm:"index"`
 	ArweaveLink string `gorm:"index"`
 
-	MetaforoCommentId int
+	MetaforoCommentId int `gorm:"index"`
 
 	IsHidden bool
 
