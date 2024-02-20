@@ -257,7 +257,7 @@
                 "tags": [
                     "AppBundle"
                 ],
-                "summary": "List available projects and guilds for current user",
+                "summary": "List available projects and guilds for current user, and all common budget sources",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -475,6 +475,18 @@
                 ],
                 "summary": "List guilds",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "search keywords",
+                        "name": "keywords",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "search wallet",
+                        "name": "wallet",
+                        "in": "query"
+                    },
                     {
                         "type": "integer",
                         "description": "page number, default: 1",
@@ -918,6 +930,18 @@
                         "type": "string",
                         "description": "status array, e.g. 'open,pending_close'",
                         "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "search keywords",
+                        "name": "keywords",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "search wallet",
+                        "name": "wallet",
                         "in": "query"
                     },
                     {
@@ -3222,6 +3246,12 @@
         "app_bundle.ListAvailableProjectAndGuildResp": {
             "type": "object",
             "properties": {
+                "common_budget_source": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.CommonBudgetSource"
+                    }
+                },
                 "guilds": {
                     "type": "array",
                     "items": {
@@ -3309,6 +3339,9 @@
                 },
                 "is_special": {
                     "type": "boolean"
+                },
+                "label": {
+                    "type": "string"
                 },
                 "logo": {
                     "type": "string"
@@ -3844,6 +3877,26 @@
                 "ApplicationStateOpen"
             ]
         },
+        "model.CommonBudgetSource": {
+            "type": "object",
+            "properties": {
+                "create_ts": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "state": {
+                    "type": "string"
+                },
+                "update_ts": {
+                    "type": "integer"
+                }
+            }
+        },
         "model.FrontendApplicationRecord": {
             "type": "object",
             "properties": {
@@ -4146,6 +4199,9 @@
                 },
                 "is_special": {
                     "type": "boolean"
+                },
+                "label": {
+                    "type": "string"
                 },
                 "logo": {
                     "type": "string"
@@ -4527,6 +4583,9 @@
                 },
                 "is_special": {
                     "type": "boolean"
+                },
+                "label": {
+                    "type": "string"
                 },
                 "logo": {
                     "type": "string"
