@@ -116,8 +116,6 @@ func ListTemplatesWithPerm(ctx *gin.Context) {
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		log.Error().Msgf("get user %+v seepass data error: %+v", user, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get user Seepass data error")))
-		return
 	}
 
 	var rcds []*TemplateResponse
