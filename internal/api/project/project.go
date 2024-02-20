@@ -514,8 +514,8 @@ func Detail(ctx *gin.Context) {
 //	@router			/projects [get]
 //	@tags			Project
 //	@param			status		query		string	false	"status array, e.g. 'open,pending_close'"	Enum(open pending_close closed)
-//	@param		    keywords    query		string	false	"search keywords"
-//	@param		    wallet      query		string	false	"search wallet"
+//	@param			keywords	query		string	false	"search keywords"
+//	@param			wallet		query		string	false	"search wallet"
 //	@param			page		query		string	false	"which page"
 //	@param			size		query		string	false	"size of each page"
 //	@param			sort_field	query		string	false	"sort by which field"

@@ -41,13 +41,14 @@ type AppBundleResponseRecord struct {
 }
 
 type ListAvailableProjectAndGuildResp struct {
-	Guilds   []*model.Guild   `json:"guilds"`
-	Projects []*model.Project `json:"projects"`
+	Guilds             []*model.Guild              `json:"guilds"`
+	Projects           []*model.Project            `json:"projects"`
+	CommonBudgetSource []*model.CommonBudgetSource `json:"common_budget_source"`
 }
 
 // ListAvailableProjectsAndGuilds returns available projects and guilds for current user
 //
-// @summary	List available projects and guilds for current user
+// @summary	List available projects and guilds for current user, and all common budget sources
 // @router		/available_projects_guilds [get]
 // @tags		AppBundle
 // @success	200	{object}	api.Reply{data=ListAvailableProjectAndGuildResp}
@@ -94,9 +95,18 @@ func ListAvailableProjectsAndGuilds(ctx *gin.Context) {
 		}
 	}
 
+	var commonBudgetSources []*model.CommonBudgetSource
+	err = db.Model(&model.CommonBudgetSource{}).Find(&commonBudgetSources).Error
+	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("list common budget sources error")))
+		return
+	}
+
 	ctx.JSON(http.StatusOK, api.Success(&ListAvailableProjectAndGuildResp{
 		guilds,
 		projects,
+		commonBudgetSources,
 	}))
 }
 
