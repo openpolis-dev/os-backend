@@ -281,6 +281,7 @@ func GetOrCreateCityHallProject(db *gorm.DB, cityHallUsers []string) (*Project, 
 }
 
 func createCityHallProject(db *gorm.DB, cityHallUsers []string) (*Project, error) {
+	// FIXME: Change to const instead of magic string
 	project := Project{
 		Name:        "CityHall",
 		IsSpecial:   true,

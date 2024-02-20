@@ -233,6 +233,7 @@ func CreateAppBundle(ctx *gin.Context) {
 
 	// Check permission, using ActCreateApplication for now, can be changed to new permission if required
 	// TODO: Merge to separated functions
+	// FIXME: add common_budget_source branch
 	obj := lo.
 		If(newAppBundleReq.Entity == "project", fmt.Sprintf("%s%d", internal.ObjProjPrefix, newAppBundleReq.EntityId)).
 		ElseIf(newAppBundleReq.Entity == "guild", fmt.Sprintf("%s%d", internal.ObjGuildPrefix, newAppBundleReq.EntityId)).
@@ -257,6 +258,7 @@ func CreateAppBundle(ctx *gin.Context) {
 	}
 
 	// TODO: Duplicated code *NewAppBundleAndApplication*
+	// FIXME: convert to transaction to create both app bundle and applications
 	appBundle := model.AppBundle{
 		Comment:      newAppBundleReq.Comment,
 		Applicant:    common.FormatUserWallet(user.Wallet),
@@ -397,6 +399,7 @@ func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState
 	}
 
 	user, enforcer, db, _ := api.ForContext(ctx)
+	// FIXME: common_budget_source
 	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), internal.ObjProjAndGuild, internal.ActAuditApplication)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
@@ -429,6 +432,7 @@ func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState
 	err = db.Transaction(func(tx *gorm.DB) error {
 		for _, appBundleRcd := range appBundleRcds {
 
+			// FIXME: use query and update syntax
 			appBundleRcd.State = newState
 			appBundleRcd.UpdateTs = model.GetCurrentUtcEpochSecond()
 			appBundleRcd.UpdatedAt = time.Now().In(internal.ProjectTimezone)
@@ -459,6 +463,7 @@ func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState
 					return err
 				}
 
+				// FIXME: this is applicationAuditLog, not appBundleAuditLog
 				err = tx.Model(model.AppBundleAuditLog{}).Create(&model.AppBundleAuditLog{
 					AppBundleId: appBundleRcd.ID,
 					AppBundle:   appBundleRcd,

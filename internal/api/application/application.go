@@ -479,6 +479,7 @@ func BatchApprove(ctx *gin.Context) {
 		return
 	}
 
+	// FIXME: pass application ids instead of reference to applications
 	push := api.ForContextOnlyPush(ctx)
 	err = model.BatchAuditApplication(db, common.FormatUserWallet(user.Wallet), &applications, model.AuditActionApprove, "", enforcer, push)
 	if err != nil {
@@ -560,6 +561,7 @@ func BatchComplete(ctx *gin.Context) {
 		return
 	}
 
+	// FIXME: pass application ids instead of reference to applications
 	push := api.ForContextOnlyPush(ctx)
 	err = model.BatchAuditApplication(db, common.FormatUserWallet(user.Wallet), &applications, model.AuditActionComplete, reqBody.Message, enforcer, push)
 	if err != nil {

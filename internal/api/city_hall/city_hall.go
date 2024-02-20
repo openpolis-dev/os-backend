@@ -415,6 +415,7 @@ func updateGroupedMembers(cityHallProject *model.Project, req *CityHallUpdateMem
 		cityHallProject.Sponsors = newSponsorsList
 	}
 
+	// FIXME: Change to update syntax and add lock
 	cityHallProject.UpdatedAt = time.Now().In(internal.ProjectTimezone)
 	cityHallProject.UpdateTs = model.GetCurrentUtcEpochSecond()
 	err = db.Save(cityHallProject).Error

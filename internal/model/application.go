@@ -214,6 +214,7 @@ func doAuditApplicationInTransaction(tx *gorm.DB, operatorWallet string, applica
 			if err != nil {
 				return err
 			}
+			// FIXME: Change to update syntax
 			project.Status = ProjectStatusOpen
 			err = tx.Save(project).Error
 			if err != nil {
@@ -224,6 +225,7 @@ func doAuditApplicationInTransaction(tx *gorm.DB, operatorWallet string, applica
 		application.CompleteMessage = extraMsg
 	}
 
+	// FIXME: Change to update syntax
 	application.UpdatedAt = time.Now().In(internal.ProjectTimezone)
 	application.UpdateTs = GetCurrentUtcEpochSecond()
 	if err := tx.Save(&application).Error; err != nil {
@@ -268,6 +270,7 @@ func completeApplication(tx *gorm.DB, operatorWallet string, application *Applic
 			return err
 		}
 
+		// FIXME: Change to update syntax
 		project.Status = ProjectStatusClosed
 		err = tx.Save(project).Error
 		if err != nil {
