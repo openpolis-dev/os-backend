@@ -509,7 +509,7 @@ func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState
 							Item:                    appRcd.DetailedType,
 							Comment:                 appRcd.Comment,
 							Applicant:               appRcd.Applicant,
-							ApplyComment:            appRcd.Comment,
+							ApplyComment:            appBundleRcd.Comment,
 							Reviewer:                user.Wallet,
 							ReviewDate:              now,
 						})

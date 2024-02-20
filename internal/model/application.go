@@ -239,11 +239,13 @@ func doAuditApplicationInTransaction(tx *gorm.DB, operatorWallet string, applica
 	if nextState == ApplicationStateProcessing {
 		err := processingApplication(tx, application)
 		if err != nil {
+			log.Error().Msgf("processing application error: %+v", err)
 			return err
 		}
 	} else if nextState == ApplicationStateCompleted {
 		err := completeApplication(tx, operatorWallet, application, enforcer, push)
 		if err != nil {
+			log.Error().Msgf("complete application error: %+v", err)
 			return err
 		}
 	}
