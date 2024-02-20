@@ -416,6 +416,7 @@ func updateGroupedMembers(cityHallProject *model.Project, req *CityHallUpdateMem
 		cityHallProject.Sponsors = newSponsorsList
 	}
 
+	cityHallProject.UpdateTs = model.GetCurrentUtcEpochSecond()
 	if err = db.Where(&model.Project{ID: cityHallProject.ID}).Updates(cityHallProject).Error; err != nil {
 		log.Error().Msgf("update cityhall record error: %+v", err)
 		return http.StatusInternalServerError, err
