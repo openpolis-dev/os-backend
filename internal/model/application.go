@@ -212,11 +212,13 @@ func doAuditApplicationInTransaction(tx *gorm.DB, operatorWallet string, applica
 		if application.Type == ApplicationCloseProject {
 			project, err := ProjectModel.Detail(tx, application.EntityId)
 			if err != nil {
+				log.Error().Msgf("Fetch project %d error: %+v", application.EntityId, err)
 				return err
 			}
 			project.Status = ProjectStatusOpen
 			err = tx.Save(project).Error
 			if err != nil {
+				log.Error().Msgf("Update project %d error: %+v", application.EntityId, err)
 				return err
 			}
 		}
@@ -233,11 +235,13 @@ func doAuditApplicationInTransaction(tx *gorm.DB, operatorWallet string, applica
 	if nextState == ApplicationStateProcessing {
 		err := processingApplication(tx, application)
 		if err != nil {
+			log.Error().Msgf("processing application error: %+v", err)
 			return err
 		}
 	} else if nextState == ApplicationStateCompleted {
 		err := completeApplication(tx, operatorWallet, application, enforcer, push)
 		if err != nil {
+			log.Error().Msgf("complete application error: %+v", err)
 			return err
 		}
 	}
