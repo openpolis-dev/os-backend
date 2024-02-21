@@ -161,7 +161,7 @@ func main() {
 
 	storage.SetConfig(cfg)
 
-	setupCronJob(db)
+	setupCronJob(cfg, db)
 
 	r := setupRouter(cfg, db, enforcer, pushSDK)
 	_ = r.Run()
@@ -449,14 +449,15 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 	return r
 }
 
-func setupCronJob(db *gorm.DB) {
+func setupCronJob(cfg *config.Config, db *gorm.DB) {
 	// cron task
 	c := cron.New()
 	// (Minutes Hours Day-of-Month Month Day-of-Week)
+	// "@every 10m"
 
 	// CheckAndUpdateUnverifiedSnsInvite Job
-	if _, err := c.AddFunc("@every 10m", func() {
-		_ = service.CheckAndUpdateUnverifiedSnsInvite(db)
+	if _, err := c.AddFunc(cfg.CronJob.CheckAndUpdateUnverifiedSnsInvite, func() {
+		_ = service.CheckAndUpdateUnverifiedSnsInvite(cfg, db)
 	}); err != nil {
 		panic(err)
 	}

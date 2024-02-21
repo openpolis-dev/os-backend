@@ -130,3 +130,8 @@ var AssertDecimalsAndContractAddr = map[string]*DecimalsAndContractAddr{
 	"SCR":  {Decimals: 18, Addr: ScrContractAddr},
 	"USDT": {Decimals: 6, Addr: USDTContractAddr},
 }
+
+const (
+	SNSInviteRewardsToken = "SCR"
+	SNSInviteItem         = "邀请 SNS"
+)

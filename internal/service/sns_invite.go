@@ -9,7 +9,9 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/common"
+	"github.com/theseed-labs/os-backend/internal/config"
 	"github.com/theseed-labs/os-backend/internal/model"
+	"github.com/theseed-labs/os-backend/internal/sdk"
 	"gorm.io/gorm"
 )
 
@@ -92,8 +94,7 @@ func GetMySnsInviteRewards(db *gorm.DB, inviteUserWallet string) (count int, tot
 // ------ ------ ------ ------ ------ ------ ------ ------ ------
 
 // CheckAndUpdateUnverifiedSnsInvite check and update unverified SNS invite
-// TODO define a cron task to execute this function
-func CheckAndUpdateUnverifiedSnsInvite(db *gorm.DB) error {
+func CheckAndUpdateUnverifiedSnsInvite(cfg *config.Config, db *gorm.DB) error {
 	rows, err := model.SnsInviteModel.FindInviteRecordOfUnVerified(db)
 	if err != nil {
 		return err
@@ -119,8 +120,8 @@ func CheckAndUpdateUnverifiedSnsInvite(db *gorm.DB) error {
 				// save app bundle
 				appBundle := model.AppBundle{
 					Applicant:    inviteeUserWallet,
-					EntityType:   "guild", // TODO use config file
-					EntityId:     2,       // TODO
+					EntityType:   cfg.SnsInvite.EntityType,
+					EntityId:     cfg.SnsInvite.EntityId,
 					SeasonId:     currentSeason.ID,
 					State:        model.ApplicationStateApproved,
 					ShadowRecord: false,
@@ -135,14 +136,14 @@ func CheckAndUpdateUnverifiedSnsInvite(db *gorm.DB) error {
 				appBundle.AppRecords = []*model.Application{
 					{
 						Type:             model.ApplicationNewReward,
-						Applicant:        "0x4564d5a8Bb409272F1FB4ae4c8b45fC0eaFd709D", // 申请人 // TODO
+						Applicant:        cfg.SnsInvite.Applicant, // 申请人
 						State:            model.ApplicationStateApproved,
 						CreatedAt:        time.Now().In(internal.ProjectTimezone),
 						UpdatedAt:        time.Now().In(internal.ProjectTimezone),
 						CreateTs:         model.GetCurrentUtcEpochSecond(),
 						UpdateTs:         model.GetCurrentUtcEpochSecond(),
-						DetailedType:     "邀请 SNS",             // 事项
-						Comment:          "SNS invite rewards", // 备注
+						DetailedType:     internal.SNSInviteItem, // 事项
+						Comment:          internal.SNSInviteItem, // 备注
 						AssetName:        "SCR",
 						AssetAmount:      row.SCRRewards,
 						TargetUserWallet: common.FormatUserWallet(row.InviteUserWallet),
@@ -180,8 +181,31 @@ func CheckAndUpdateUnverifiedSnsInvite(db *gorm.DB) error {
 					return err
 				}
 
-				// TODO 3 send application to QuickAccounting
-				// !! implements this after this branch merged
+				// 3 send application to QuickAccounting
+				// TODO when error occur should retry
+				now := time.Now().In(internal.ProjectTimezone).Format(time.DateTime)
+				dc := internal.AssertDecimalsAndContractAddr[internal.SNSInviteRewardsToken]
+				qaInputs := []*sdk.QAInput{
+					{
+						Recipient:               common.FormatUserWallet(row.InviteUserWallet),
+						Amount:                  row.SCRRewards.String(),
+						Decimals:                dc.Decimals,
+						CurrencyName:            internal.SNSInviteRewardsToken,
+						CurrencyContractAddress: dc.Addr,
+						BudgetSource:            cfg.SnsInvite.EntityName,
+						Session:                 currentSeason.Name,
+						Item:                    internal.SNSInviteItem,
+						Comment:                 internal.SNSInviteItem,
+						Applicant:               cfg.SnsInvite.Applicant,
+						ApplyComment:            "",
+						Reviewer:                "",
+						ReviewDate:              now,
+					},
+				}
+				err = sdk.SubmitToQuickAccounting(qaInputs, cfg)
+				if err != nil {
+					log.Error().Msgf("sumbit application to QuickAccounting error: %+v", err)
+				}
 
 				return nil
 			})
