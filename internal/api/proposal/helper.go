@@ -735,7 +735,7 @@ func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcdId ui
 	var dbProposalRcd *model.Proposal
 	db.Find(&dbProposalRcd, dbProposalRcdId)
 
-	// Save all version proposal arweave hash
+	// Save all version proposals' arweave hash
 	proposalRecordId := model.BuildProposalRecordIdFromMetaforoThreadId(metaforoProposal.Thread.Id)
 	if dbProposalRcd.ProposalRecordId == proposalRecordId {
 		var dbProposals []*model.Proposal

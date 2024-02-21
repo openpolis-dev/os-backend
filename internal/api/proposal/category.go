@@ -51,22 +51,6 @@ func ListCategoriesWithPerm(ctx *gin.Context) {
 
 }
 
-// FIXME: delete it
-// UpdateCategories function updates category and sync to Metaforo
-func UpdateCategories(ctx *gin.Context) {
-	req := UpdateProposalCategoryReq{}
-	err := ctx.BindJSON(&req)
-	if err != nil {
-		sdk.LogUserSideError(ctx, err)
-		log.Error().Msgf("UpdateProposalCategory: bind json error: %+v", err)
-		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
-		return
-	}
-
-	// TODO: Find record in DB with ID, and update parentID, name, metaforoId
-	// TODO: Load meatforoID from parent record (if have) and sync name and hierarchical relationship to Metaforo
-}
-
 // ListAllCategories return all categories data, open to public
 //
 //	@summary	list all proposal categories
@@ -98,13 +82,4 @@ func ListAllCategories(ctx *gin.Context) {
 		Data: categoryResp,
 	})
 
-}
-
-// FIXME: check whether the function is needed
-// SyncFromMetaforo is used to sync metaforo categories to local DB
-// This function first queries ProposalCategory table by metaforoID,
-// and update name and hierarchical relationship if found, or create new record with returned name if metaforo ID is not found
-// Invoking this API should have hall permission, and should raise error if record with same name found
-func SyncFromMetaforo(ctx *gin.Context) {
-	//user, _, db, _ := api.ForContext(ctx)
 }

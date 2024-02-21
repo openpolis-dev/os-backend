@@ -236,7 +236,8 @@ func LeaveMetaforoGroup(ctx *gin.Context) {
 //	@Param		JsonBody	body		metaforo.LoginResponse	true	"metaforo response after login"
 //	@success	200			{object}	api.Reply{data=nil}
 func PrepareMetaforoData(ctx *gin.Context) {
-	// FIXME: fix struct name, should be LoginRequest not response
+	// The struct type LoginResponse here means this is the response from metaforo for user login.
+	// The data is passed from frontend directly to the backend so the struct name is not Response
 	var req metaforo.LoginResponse
 	err := ctx.BindJSON(&req)
 	if err != nil {

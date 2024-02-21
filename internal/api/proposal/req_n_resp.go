@@ -9,6 +9,7 @@ import (
 	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api/component"
 	"github.com/theseed-labs/os-backend/internal/common"
+	"github.com/theseed-labs/os-backend/internal/db_agent"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk/metaforo"
 	"gorm.io/gorm"
@@ -334,10 +335,6 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposalId uint, startPo
 		return nil, err
 	}
 
-	var applicantAvatarLink string
-	// FIXME: Cache this avatar query
-	db.Model(model.User{}).Where("wallet = ?", common.FormatUserWallet(proposal.Applicant)).First(&applicantAvatarLink)
-
 	var editHistoryRecords []*FrontendProposalEditHistoryRecord
 	var frontendCommentsRecords []*FrontendProposalCommentRecord
 	var votes []metaforo.PollRecord
@@ -353,9 +350,9 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposalId uint, startPo
 		commentCount = metaforoProposal.Thread.PostsCount
 		votes = metaforoProposal.Thread.Polls
 
-		// FIXME: Verify whether this update is required
 		err = UpdateDbRecordsFromMetaforoProposalResponse(db, proposalId, metaforoProposal)
 		if err != nil {
+			log.Error().Msgf("update proposal %d from metaforo error: %+v", proposalId, err)
 			return nil, err
 		}
 
@@ -431,7 +428,6 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposalId uint, startPo
 		proposalPublicityTs = r.StartTs
 	}
 
-	// FIXME: Only get execution cronjob, not state change jobs to approved or other state
 	for _, job := range proposalCronJobs {
 		if job.NextExecTs > proposalExecTs {
 			proposalExecTs = job.NextExecTs
@@ -451,7 +447,7 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposalId uint, startPo
 		State:                   model.ProposalStateName[proposal.State],
 		Components:              proposalComponentResponse,
 		Applicant:               proposal.Applicant,
-		ApplicantAvatar:         applicantAvatarLink,
+		ApplicantAvatar:         db_agent.GetUserAvatar(proposal.Applicant),
 		IsRejected:              proposal.State == int(model.ProposalStateRejected),
 		RejectReason:            rejectedComment.Content,
 		RejectTs:                rejectedComment.CreateTs,
