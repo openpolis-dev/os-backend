@@ -119,7 +119,9 @@ func CheckAndUpdateUnverifiedSnsInvite(db *gorm.DB) error {
 				// save app bundle
 				appBundle := model.AppBundle{
 					Applicant:    inviteeUserWallet,
-					SeasonId:     currentSeason.Idx,
+					EntityType:   "guild", // TODO use config file
+					EntityId:     2,       // TODO
+					SeasonId:     currentSeason.ID,
 					State:        model.ApplicationStateApproved,
 					ShadowRecord: false,
 					CreateTs:     model.GetCurrentUtcEpochSecond(),
@@ -133,19 +135,21 @@ func CheckAndUpdateUnverifiedSnsInvite(db *gorm.DB) error {
 				appBundle.AppRecords = []*model.Application{
 					{
 						Type:             model.ApplicationNewReward,
-						Applicant:        inviteeUserWallet,
+						Applicant:        "0x4564d5a8Bb409272F1FB4ae4c8b45fC0eaFd709D", // 申请人 // TODO
 						State:            model.ApplicationStateApproved,
 						CreatedAt:        time.Now().In(internal.ProjectTimezone),
 						UpdatedAt:        time.Now().In(internal.ProjectTimezone),
 						CreateTs:         model.GetCurrentUtcEpochSecond(),
 						UpdateTs:         model.GetCurrentUtcEpochSecond(),
-						Comment:          "SNS invite rewards",
-						TargetUserWallet: inviteeUserWallet,
+						DetailedType:     "邀请 SNS",             // 事项
+						Comment:          "SNS invite rewards", // 备注
 						AssetName:        "SCR",
 						AssetAmount:      row.SCRRewards,
+						TargetUserWallet: common.FormatUserWallet(row.InviteUserWallet),
 						EntityType:       appBundle.EntityType,
 						EntityId:         appBundle.EntityId,
-						SeasonId:         currentSeason.Idx,
+						SeasonId:         currentSeason.ID,
+						BundleId:         appBundle.ID,
 					},
 				}
 				if err = tx.Save(&appBundle).Error; err != nil {

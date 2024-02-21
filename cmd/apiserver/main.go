@@ -5,6 +5,7 @@ import (
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
+	"github.com/robfig/cron/v3"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/pkgerrors"
 	"github.com/theseed-labs/os-backend/internal"
@@ -14,6 +15,7 @@ import (
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/graph/generated"
 	"github.com/theseed-labs/os-backend/internal/graph/resolver"
+	"github.com/theseed-labs/os-backend/internal/service"
 	"github.com/theseed-labs/os-backend/internal/task_manager"
 	"gorm.io/gorm"
 
@@ -155,6 +157,8 @@ func main() {
 	task_manager.GetTaskManager().StartRunner()
 
 	storage.SetConfig(cfg)
+
+	setupCronJob(db)
 
 	r := setupRouter(cfg, db, enforcer, pushSDK)
 	_ = r.Run()
@@ -433,6 +437,23 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 	r.GET("/graphql", middleware.GqlAuth, middleware.GinContextToContextMiddleware, playgroundHandler())
 
 	return r
+}
+
+func setupCronJob(db *gorm.DB) {
+	// cron task
+	c := cron.New()
+	// (Minutes Hours Day-of-Month Month Day-of-Week)
+
+	// CheckAndUpdateUnverifiedSnsInvite Job
+	if _, err := c.AddFunc("@every 10m", func() {
+		_ = service.CheckAndUpdateUnverifiedSnsInvite(db)
+	}); err != nil {
+		panic(err)
+	}
+
+	// other cron jobs
+
+	c.Start()
 }
 
 // defining the Graphql handler
