@@ -8,7 +8,6 @@ import (
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk/metaforo"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 )
 
 // UpsertProposalVoteRecord upserts a proposal vote record into DB
@@ -30,10 +29,7 @@ func UpsertProposalVoteRecord(proposalId uint, voteType int, voteOptions []*mode
 	}
 
 	err = agent.db.Transaction(func(tx *gorm.DB) error {
-		createVoteRecordTx := tx.Clauses(clause.OnConflict{
-			Columns:   []clause.Column{{Name: "proposal_id"}, {Name: "vote_type"}},
-			DoNothing: true,
-		}).Clauses(clause.Locking{Strength: "UPDATE", Options: "NOWAIT"}).Create(&proposalVoteRecord)
+		createVoteRecordTx := tx.Where(proposalVoteRecord).FirstOrCreate(&proposalVoteRecord)
 
 		if createVoteRecordTx.Error != nil {
 			log.Error().Msgf("upsert proposal vote record error: %+v", createVoteRecordTx.Error)
