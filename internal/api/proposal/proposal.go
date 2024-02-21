@@ -25,6 +25,8 @@ import (
 	"gorm.io/gorm/clause"
 )
 
+var err error
+
 var StateOrder = []model.ProposalState{
 	model.ProposalStateVoting,
 	model.ProposalStateDraft,
@@ -46,7 +48,7 @@ var StateOrder = []model.ProposalState{
 func List(ctx *gin.Context) {
 	db := api.ForContextOnlyDB(ctx)
 	queryParams := ListProposalQueryParams{}
-	if err := ctx.Bind(&queryParams); err != nil {
+	if err = ctx.Bind(&queryParams); err != nil {
 		ctx.JSON(http.StatusBadRequest, api.Reply{
 			Code: -1,
 			Msg:  fmt.Sprintf("query params error: %+v", err),
@@ -121,7 +123,6 @@ func Detail(ctx *gin.Context) {
 	metaforoAccessToken := ctx.Query("access_token")
 	startPostId := 0
 	if startPostIdStr != "" {
-		var err error
 		startPostId, err = strconv.Atoi(startPostIdStr)
 		if err != nil {
 			log.Warn().Msgf("parse ")
@@ -194,7 +195,7 @@ func Update(ctx *gin.Context) {
 
 	// Parsing request to create proposal object
 	var reqData CreateOrUpdateProposalData
-	if err := ctx.BindJSON(&reqData); err != nil {
+	if err = ctx.BindJSON(&reqData); err != nil {
 		log.Error().Msgf("parse request data error: %+v", err)
 		sdk.LogUserSideError(ctx, err)
 		ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("parse request data error: %+v", err)))
@@ -239,14 +240,14 @@ func Update(ctx *gin.Context) {
 	}
 
 	if reqData.SubmitToMetaforo {
-		if err := updateProposalAssociatedProjectStatusInCloseProjectToClosing(db, reqData); err != nil {
+		if err = updateProposalAssociatedProjectStatusInCloseProjectToClosing(db, reqData); err != nil {
 			log.Error().Msgf("associate mushrooms: %+v", err)
 			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
 			return
 		}
 
-		if err := SaveProposalToMetaforo(db, proposalRecord.ID, proposalRecord.VoteType, reqData.VoteOptions, reqData.MetaforoAccessToken, reqData.EditorType, cfg.MetaforoData.GroupName); err != nil {
+		if err = SaveProposalToMetaforo(db, proposalRecord.ID, proposalRecord.VoteType, reqData.VoteOptions, reqData.MetaforoAccessToken, reqData.EditorType, cfg.MetaforoData.GroupName); err != nil {
 			log.Error().Msgf("create metaforo proposal error: %+v", err)
 			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
@@ -289,7 +290,7 @@ func Update(ctx *gin.Context) {
 func Create(ctx *gin.Context) {
 	// Parsing request to create proposal object
 	var reqData CreateOrUpdateProposalData
-	if err := ctx.BindJSON(&reqData); err != nil {
+	if err = ctx.BindJSON(&reqData); err != nil {
 		log.Error().Msgf("parse request data error: %+v", err)
 		sdk.LogUserSideError(ctx, err)
 		ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("parse request data error: %+v", err)))
@@ -338,14 +339,14 @@ func Create(ctx *gin.Context) {
 	// FIXME: change err to use existing err instead of creating new
 	// FIXME: check metaforo token is existing at first
 	if reqData.SubmitToMetaforo {
-		if err := updateProposalAssociatedProjectStatusInCloseProjectToClosing(db, reqData); err != nil {
+		if err = updateProposalAssociatedProjectStatusInCloseProjectToClosing(db, reqData); err != nil {
 			log.Error().Msgf("associate proposal with project error: %+v", err)
 			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
 			return
 		}
 
-		if err := SaveProposalToMetaforo(db, proposalRecord.ID, reqData.VoteType, reqData.VoteOptions, reqData.MetaforoAccessToken, reqData.EditorType, cfg.MetaforoData.GroupName); err != nil {
+		if err = SaveProposalToMetaforo(db, proposalRecord.ID, reqData.VoteType, reqData.VoteOptions, reqData.MetaforoAccessToken, reqData.EditorType, cfg.MetaforoData.GroupName); err != nil {
 			log.Error().Msgf("create metaforo proposal error: %+v", err)
 			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
@@ -476,7 +477,7 @@ func Reject(ctx *gin.Context) {
 	}
 
 	var rejectRequestData RejectProposalData
-	if err := ctx.BindJSON(&rejectRequestData); err != nil {
+	if err = ctx.BindJSON(&rejectRequestData); err != nil {
 		sdk.LogUserSideError(ctx, err)
 		log.Error().Msgf("parse request data error: %+v", err)
 		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("parse request data error")))
@@ -558,7 +559,7 @@ func Reject(ctx *gin.Context) {
 func MyList(ctx *gin.Context) {
 	user, _, db, _ := api.ForContext(ctx)
 	queryParams := ListProposalQueryParams{}
-	if err := ctx.Bind(&queryParams); err != nil {
+	if err = ctx.Bind(&queryParams); err != nil {
 		ctx.JSON(http.StatusBadRequest, api.Reply{
 			Code: -1,
 			Msg:  fmt.Sprintf("query params error: %+v", err),
@@ -686,7 +687,7 @@ func UpdateProposalStateAndLaunchStateChangeActions(db *gorm.DB, user *middlewar
 	}
 
 	var pTemplate *model.ProposalTemplate
-	if err := db.Model(&proposalRecord).Association("ProposalTemplate").Find(&pTemplate); err != nil {
+	if err = db.Model(&proposalRecord).Association("ProposalTemplate").Find(&pTemplate); err != nil {
 		log.Error().Msgf("get proposal template error: %+v", err)
 		return 0, err
 	}
@@ -849,7 +850,7 @@ func generateFrontendProposalRecords(db *gorm.DB, querySql string, page *gormfin
 	var tmpRcd []*FrontendProposalListRecord
 	var countTx *gorm.DB
 	countTx = db.Raw(querySql).Scan(&tmpRcd)
-	if err := countTx.Error; err != nil {
+	if err = countTx.Error; err != nil {
 		log.Error().Msgf("get proposal count error: %+v", err)
 		return 0, nil, err
 	}
@@ -882,7 +883,6 @@ func generateFrontendProposalRecords(db *gorm.DB, querySql string, page *gormfin
 // TODO: Temporary solution to get open project proposal info while creating close project proposal
 
 func createJobToUpdateNoVoteProposalToNextState(db *gorm.DB, proposalId uint, proposalVoteType int, jobExecTs int64, nextState model.ProposalState) error {
-	var err error
 	proposalComponentRecord := model.ProposalComponentRecord{
 		ProposalID:  proposalId,
 		ComponentID: 0,
@@ -962,7 +962,7 @@ func getProposalTemplateType(db *gorm.DB, templateId uint) (model.ProposalTempla
 func findProjectCreatedByProposal(db *gorm.DB, proposalId uint) (*model.Project, error) {
 	log.Debug().Msgf("find project created by proposal: %d", proposalId)
 	var createProjectProposal model.Proposal
-	if err := db.Find(&createProjectProposal, proposalId).Error; err != nil {
+	if err = db.Find(&createProjectProposal, proposalId).Error; err != nil {
 		log.Error().Msgf("get create project proposal error: %+v", err)
 		return nil, err
 	}
@@ -970,7 +970,7 @@ func findProjectCreatedByProposal(db *gorm.DB, proposalId uint) (*model.Project,
 	createdProject := model.Project{
 		SIP: fmt.Sprintf("%d", createProjectProposal.Sip),
 	}
-	if err := db.Clauses(clause.Locking{
+	if err = db.Clauses(clause.Locking{
 		Strength: "UPDATE",
 		Options:  "NOWAIT",
 	}).Model(&createdProject).Where("s_ip = ?", createdProject.SIP).First(&createdProject).Error; err != nil {
@@ -994,8 +994,6 @@ func verifyProjectCanBeClosed(db *gorm.DB, createProjectProposalId uint) (bool, 
 }
 
 func updateProposalAssociatedProjectStatusInCloseProjectToClosing(db *gorm.DB, reqData CreateOrUpdateProposalData) error {
-	var err error
-
 	pTmplType, err := getProposalTemplateType(db, reqData.TemplateId)
 	if err != nil {
 		log.Error().Msgf("get proposal template error: %+v", err)
