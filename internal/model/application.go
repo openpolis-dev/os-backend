@@ -14,6 +14,7 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/common"
+	"github.com/theseed-labs/os-backend/internal/db_agent"
 	"github.com/theseed-labs/os-backend/internal/sdk"
 	"github.com/xiaosongfu/gormfind"
 	"gorm.io/datatypes"
@@ -107,9 +108,14 @@ type ApplicationAuditLog struct {
 // ValidateAuditAction validates whether the action required is suit for current application state.
 // Returns true means the action can be applied to application, while false means the action is invalid
 func (app *Application) ValidateAuditAction(action AuditActionType) bool {
-	if actions, foundState := applicationStateMap[app.State]; foundState {
-		_, foundAction := actions[action]
-		return foundAction
+	latestState, err := db_agent.GetApplicationState(app.ID)
+	if err != nil {
+		log.Error().Msgf("Get application %d state error: %+v", app.ID, err)
+		return false
+	}
+	if actions, stateFoundFlag := applicationStateMap[ApplicationState(latestState)]; stateFoundFlag {
+		_, actionFoundFlag := actions[action]
+		return actionFoundFlag
 	} else {
 		return false
 	}
@@ -132,7 +138,6 @@ func (app *Application) nextStateAfterAction(action AuditActionType) Application
 func AuditApplication(db *gorm.DB, operatorWallet string, application *Application, action AuditActionType, extraMsg string, enforcer *casbin.SyncedEnforcer, push []sdk.Pusher) error {
 	// Check application record, verify whether the action can be applied on the application
 	if !application.ValidateAuditAction(action) {
-		// TODO: Define the error message as project constant
 		return fmt.Errorf("application state %s is not suite for action %s", application.State, action)
 	}
 
@@ -164,18 +169,19 @@ func AuditApplication(db *gorm.DB, operatorWallet string, application *Applicati
 
 // BatchAuditApplication audits multiple applications in same transaction.
 // Note: if any error occurred during the transaction the whole transaction will not be performed.
+// This function gets applications object reference in params, which should be changed to pass by id, but the update for invoker may bring other changes, so the solution is adding some refresh of object in the code.
 func BatchAuditApplication(db *gorm.DB, operatorWallet string, applications *[]Application, action AuditActionType, extraMsg string, enforcer *casbin.SyncedEnforcer, push []sdk.Pusher) error {
-	for _, application := range *applications {
-		if !application.ValidateAuditAction(action) {
-			// TODO: Define the error message as project constant
-			return fmt.Errorf("application state %s is not suite for action %s", application.State, action)
-		}
-	}
-
 	err := userWalletRecordExisting(db, operatorWallet)
 	if err != nil {
 		log.Error().Msgf("Check user wallet error: %+v", err)
 		return err
+	}
+
+	// Validate application state
+	for _, application := range *applications {
+		if !application.ValidateAuditAction(action) {
+			return fmt.Errorf("application state %s is not suite for action %s", application.State, action)
+		}
 	}
 
 	return db.Transaction(func(tx *gorm.DB) error {
@@ -190,6 +196,8 @@ func BatchAuditApplication(db *gorm.DB, operatorWallet string, applications *[]A
 }
 
 func doAuditApplicationInTransaction(tx *gorm.DB, operatorWallet string, application *Application, action AuditActionType, extraMsg string, enforcer *casbin.SyncedEnforcer, push []sdk.Pusher) error {
+	// Refresh application record
+	tx.Find(&application, "application_id = ?", application.ID)
 	nextState := application.nextStateAfterAction(action)
 
 	// Create audit log for application

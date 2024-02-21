@@ -479,7 +479,6 @@ func BatchApprove(ctx *gin.Context) {
 		return
 	}
 
-	// FIXME: pass application ids instead of reference to applications
 	push := api.ForContextOnlyPush(ctx)
 	err = model.BatchAuditApplication(db, common.FormatUserWallet(user.Wallet), &applications, model.AuditActionApprove, "", enforcer, push)
 	if err != nil {
@@ -561,7 +560,6 @@ func BatchComplete(ctx *gin.Context) {
 		return
 	}
 
-	// FIXME: pass application ids instead of reference to applications
 	push := api.ForContextOnlyPush(ctx)
 	err = model.BatchAuditApplication(db, common.FormatUserWallet(user.Wallet), &applications, model.AuditActionComplete, reqBody.Message, enforcer, push)
 	if err != nil {
@@ -658,7 +656,7 @@ func auditApplication(ctx *gin.Context, application *model.Application, auditAct
 			return
 		}
 	} else {
-		err := fmt.Errorf("application currently is at state %s, which is not suit for approve", application.State)
+		err := fmt.Errorf("action %s can't be applied to application in state %s", auditAction, application.State)
 		sdk.LogUserSideError(ctx, err)
 		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
 		return
