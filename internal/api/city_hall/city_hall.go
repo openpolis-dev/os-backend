@@ -392,6 +392,7 @@ func updateGroupedMembers(cityHallProject *model.Project, req *CityHallUpdateMem
 
 	// Update sponsors record in DB
 	// TODO: All checking groupName is "" is workaround logic for non grouped request, will be changed to grouped version after FE updated
+	db.Find(&cityHallProject, cityHallProject.ID)
 	if req.GroupName != "" {
 		var newSponsorsList []string
 		for memberAddr, confirmedSponsors := range sponsorsMap {
@@ -415,11 +416,8 @@ func updateGroupedMembers(cityHallProject *model.Project, req *CityHallUpdateMem
 		cityHallProject.Sponsors = newSponsorsList
 	}
 
-	// FIXME: Change to update syntax and add lock
-	cityHallProject.UpdatedAt = time.Now().In(internal.ProjectTimezone)
-	cityHallProject.UpdateTs = model.GetCurrentUtcEpochSecond()
-	err = db.Save(cityHallProject).Error
-	if err != nil {
+	if err = db.Where(&model.Project{ID: cityHallProject.ID}).Updates(cityHallProject).Error; err != nil {
+		log.Error().Msgf("update cityhall record error: %+v", err)
 		return http.StatusInternalServerError, err
 	}
 

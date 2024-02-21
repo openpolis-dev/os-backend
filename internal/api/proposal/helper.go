@@ -98,8 +98,7 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 	log.Debug().Msgf("save proposal record to DB: %+v, proposalIdStr: %s, user wallet: %s", reqData, proposalIdStr, userWallet)
 
 	// Update title for testing
-	// FIXME: check whether prefix is empty or nil [h]
-	if !strings.HasPrefix(reqData.Title, cfg.MetaforoData.ProposalPrefix) {
+	if cfg.MetaforoData.ProposalPrefix != "" && !strings.HasPrefix(reqData.Title, cfg.MetaforoData.ProposalPrefix) {
 		reqData.Title = cfg.MetaforoData.ProposalPrefix + reqData.Title
 	}
 
@@ -170,7 +169,7 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 			return nil, err
 		}
 
-		// FIXME: change to use move instead of creating?
+		// TODO: change to use move instead of creating new
 		if err := SaveProposalContentRecords(db, proposalRcd.ID, reqData.ContentBlocks); err != nil {
 			log.Error().Msgf("create proposal block error: %+v", err)
 			return nil, err
@@ -207,21 +206,27 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 		proposalRecord.PendingExecutionSecond = voteTimeProps.PendingExecutionSecond
 		proposalRecord.VoteDurationSecond = voteTimeProps.VoteDurationSecond
 
-		// FIXME: change to use transaction [h]
-		if err := db.Create(&proposalRecord).Error; err != nil {
+		if err = db.Transaction(func(tx *gorm.DB) error {
+			if err := tx.Create(&proposalRecord).Error; err != nil {
+				log.Error().Msgf("create proposal error: %+v", err)
+				return err
+			}
+
+			// Create proposal content blocks
+			if err := SaveProposalContentRecords(tx, proposalRecord.ID, reqData.ContentBlocks); err != nil {
+				log.Error().Msgf("create proposal block error: %+v", err)
+				return err
+			}
+
+			// Create proposal components
+			if err := SaveProposalComponentRecords(tx, proposalRecord.ID, userWallet, reqData.Components); err != nil {
+				log.Error().Msgf("create proposal component blocks error: %+v", err)
+				return err
+			}
+
+			return nil
+		}); err != nil {
 			log.Error().Msgf("create proposal error: %+v", err)
-			return nil, err
-		}
-
-		// Create proposal content blocks
-		if err := SaveProposalContentRecords(db, proposalRecord.ID, reqData.ContentBlocks); err != nil {
-			log.Error().Msgf("create proposal block error: %+v", err)
-			return nil, err
-		}
-
-		// Create proposal components
-		if err := SaveProposalComponentRecords(db, proposalRecord.ID, userWallet, reqData.Components); err != nil {
-			log.Error().Msgf("create proposal component blocks error: %+v", err)
 			return nil, err
 		}
 
@@ -241,7 +246,6 @@ func SaveProposalContentRecords(db *gorm.DB, proposalRecordId uint, reqContentBl
 		// Update or create blocks in request data
 		var updatedIds []uint
 		for _, block := range reqContentBlockData {
-			// FIXME: check Save or Updates here [h]
 			if err := tx.Save(&model.ProposalContentBlock{
 				ID:            block.ID,
 				ProposalID:    proposalRecordId,
@@ -780,7 +784,6 @@ func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcdId ui
 	// Save proposal vote records
 	for _, poll := range metaforoProposal.Thread.Polls {
 		proposalVoteRecord := model.ProposalVoteRecord{MetaforoID: poll.Id}
-		// FIXME: Confirm whether the startTs and endTs can be modified [h]
 		err := db.Where(&proposalVoteRecord).Assign(&model.ProposalVoteRecord{
 			Title:      poll.Title,
 			StartTs:    poll.PollStartAt.UTC().Unix(),
@@ -827,8 +830,6 @@ func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcdId ui
 			log.Warn().Msgf("update proposal vote DB record error: %+v", err)
 		}
 
-		// FIXME: verify this TODO
-		// TODO: Update the check logic of vote result with voter user limitations
 		if poll.Status == "open" {
 			// Refresh dbProposal record
 			db.Find(&dbProposalRcd, dbProposalRcd.ID)
@@ -840,43 +841,9 @@ func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcdId ui
 						return err
 					}
 
-					var proposalSip = 0
-
-					if pTemplate != nil && pTemplate.Type == model.ProposalTemplateTypeCloseProject {
-						createProjectProposal := model.Proposal{ID: dbProposalRcd.AssociateProposalId}
-						if err = db.Find(&createProjectProposal).Error; err != nil {
-							log.Error().Msgf("get creating project proposal error: %+v", err)
-							return err
-						}
-						proposalSip = createProjectProposal.Sip
-					} else {
-						proposalSip, err = model.GetNextSipValue(db)
-						log.Error().Msgf("TTT: get next sip value: %d", proposalSip)
-						if err != nil {
-							log.Error().Msgf("get next sip value error: %+v", err)
-							return err
-						}
-					}
-
-					updateTx := db.Clauses(clause.Locking{Strength: "UPDATE"}).
-						Model(&dbProposalRcd).
-						Where(&dbProposalRcd).
-						Where("sip = 0").
-						Updates(&model.Proposal{Sip: proposalSip, State: int(model.ProposalStateVoting)})
-
-					if err = updateTx.Error; err != nil {
-						log.Error().Msgf("update proposal state error: %+v", err)
-						rollbackedSip, _ := model.RollbackSipValueByOne(db)
-						log.Debug().Msgf("rollbacked sip value return %d", rollbackedSip)
+					if err = setProposalSip(db, pTemplate, dbProposalRcd); err != nil {
+						log.Error().Msgf("set proposal sip error: %+v", err)
 						return err
-					} else if updateTx.RowsAffected == 0 {
-						err = fmt.Errorf("proposal %d already has a sip value, no update will be performed", dbProposalRcd.ID)
-						log.Error().Msgf(err.Error())
-						rollbackedSip, _ := model.RollbackSipValueByOne(db)
-						log.Debug().Msgf("rollbacked sip value return %d", rollbackedSip)
-						return err
-					} else {
-						log.Debug().Msgf("complete update proposal status")
 					}
 				}
 			}
@@ -1190,18 +1157,19 @@ func createProposalAutomationTasks(db *gorm.DB, proposalId uint, finState model.
 			Where("status = 'closing'").
 			Update("status", model.ProjectStatusCloseFailed)
 
-		// FIXME: Update proposal state
 		if err = updateTx.Error; err != nil {
 			log.Error().Msgf("close project error: %+v", err)
+			db.Model(&proposal).Where("id = ? AND state=?", proposal.ID, model.ProposalStateVoteFailed).Update("state", int(model.ProposalStateExecutionFailed))
 		} else if updateTx.RowsAffected == 0 {
 			err = fmt.Errorf("project not in correct status for updating to %+v", model.ProjectStatusCloseFailed)
 			log.Error().Msgf(err.Error())
+			db.Model(&proposal).Where("id = ? AND state=?", proposal.ID, model.ProposalStateVoteFailed).Update("state", int(model.ProposalStateExecutionFailed))
 		} else {
 			log.Debug().Msgf("complete project status update")
 		}
 	default:
-		// FIXME: update proposal state to failed
 		log.Error().Msgf("unknown proposal state: %d", finState)
+		db.Model(model.Proposal{}).Where("id = ?", proposalId).Update("state", int(model.ProposalStateExecutionFailed))
 		return
 	}
 }
@@ -1477,4 +1445,46 @@ func IsProposalIsForClosingProject(db *gorm.DB, proposalId uint) (bool, *model.P
 		return false, nil, err
 	}
 	return true, &createdProject, nil
+}
+
+func setProposalSip(db *gorm.DB, pTemplate *model.ProposalTemplate, dbProposalRcd *model.Proposal) error {
+	var proposalSip = 0
+
+	if pTemplate != nil && pTemplate.Type == model.ProposalTemplateTypeCloseProject {
+		createProjectProposal := model.Proposal{ID: dbProposalRcd.AssociateProposalId}
+		if err = db.Find(&createProjectProposal).Error; err != nil {
+			log.Error().Msgf("get creating project proposal error: %+v", err)
+			return err
+		}
+		proposalSip = createProjectProposal.Sip
+	} else {
+		proposalSip, err = model.GetNextSipValue(db)
+		log.Error().Msgf("TTT: get next sip value: %d", proposalSip)
+		if err != nil {
+			log.Error().Msgf("get next sip value error: %+v", err)
+			return err
+		}
+	}
+
+	updateTx := db.Clauses(clause.Locking{Strength: "UPDATE"}).
+		Model(&dbProposalRcd).
+		Where(&dbProposalRcd).
+		Where("sip = 0").
+		Updates(&model.Proposal{Sip: proposalSip, State: int(model.ProposalStateVoting)})
+
+	if err = updateTx.Error; err != nil {
+		log.Error().Msgf("update proposal state error: %+v", err)
+		rollbackedSip, _ := model.RollbackSipValueByOne(db)
+		log.Debug().Msgf("rollbacked sip value return %d", rollbackedSip)
+		return err
+	} else if updateTx.RowsAffected == 0 {
+		err = fmt.Errorf("proposal %d already has a sip value, no update will be performed", dbProposalRcd.ID)
+		log.Error().Msgf(err.Error())
+		rollbackedSip, _ := model.RollbackSipValueByOne(db)
+		log.Debug().Msgf("rollbacked sip value return %d", rollbackedSip)
+		return err
+	} else {
+		log.Debug().Msgf("complete update proposal status")
+		return nil
+	}
 }

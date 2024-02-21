@@ -233,7 +233,6 @@ func CreateAppBundle(ctx *gin.Context) {
 
 	// Check permission, using ActCreateApplication for now, can be changed to new permission if required
 	// TODO: Merge to separated functions
-	// FIXME: add common_budget_source branch
 	obj := lo.
 		If(newAppBundleReq.Entity == "project", fmt.Sprintf("%s%d", internal.ObjProjPrefix, newAppBundleReq.EntityId)).
 		ElseIf(newAppBundleReq.Entity == "guild", fmt.Sprintf("%s%d", internal.ObjGuildPrefix, newAppBundleReq.EntityId)).
@@ -258,7 +257,6 @@ func CreateAppBundle(ctx *gin.Context) {
 	}
 
 	// TODO: Duplicated code *NewAppBundleAndApplication*
-	// FIXME: convert to transaction to create both app bundle and applications
 	appBundle := model.AppBundle{
 		Comment:      newAppBundleReq.Comment,
 		Applicant:    common.FormatUserWallet(user.Wallet),
@@ -274,15 +272,16 @@ func CreateAppBundle(ctx *gin.Context) {
 		UpdateTs:     model.GetCurrentUtcEpochSecond(),
 		Type:         "NEW_REWARD",
 	}
-	err = db.Model(model.AppBundle{}).Create(&appBundle).Error
-	if err != nil {
-		log.Error().Msgf("Create app bundle records error: %+v", err)
-		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create app bundle record error")))
-		return
-	}
 
 	err = db.Transaction(func(tx *gorm.DB) error {
+		err = tx.Model(model.AppBundle{}).Create(&appBundle).Error
+		if err != nil {
+			log.Error().Msgf("Create app bundle records error: %+v", err)
+			sdk.LogServerErrorToSentry(ctx, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create app bundle record error")))
+			return err
+		}
+
 		appBundle.AppRecords = lo.Map(newAppBundleReq.Records, func(appRcdRequest *model.NewApplicationRequest, index int) *model.Application {
 			return &model.Application{
 				Type:             model.ApplicationNewReward,
@@ -399,7 +398,6 @@ func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState
 	}
 
 	user, enforcer, db, _ := api.ForContext(ctx)
-	// FIXME: common_budget_source
 	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), internal.ObjProjAndGuild, internal.ActAuditApplication)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
@@ -431,12 +429,10 @@ func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState
 
 	err = db.Transaction(func(tx *gorm.DB) error {
 		for _, appBundleRcd := range appBundleRcds {
-
-			// FIXME: use query and update syntax
 			appBundleRcd.State = newState
 			appBundleRcd.UpdateTs = model.GetCurrentUtcEpochSecond()
 			appBundleRcd.UpdatedAt = time.Now().In(internal.ProjectTimezone)
-			if err = tx.Save(&appBundleRcd).Error; err != nil {
+			if err = tx.Updates(&appBundleRcd).Error; err != nil {
 				log.Error().Msgf("update application state error: %+v, app bundle: %+v", err, appBundleRcd)
 				return err
 			}
@@ -463,16 +459,14 @@ func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState
 					return err
 				}
 
-				// FIXME: this is applicationAuditLog, not appBundleAuditLog
-				err = tx.Model(model.AppBundleAuditLog{}).Create(&model.AppBundleAuditLog{
-					AppBundleId: appBundleRcd.ID,
-					AppBundle:   appBundleRcd,
-					LogTs:       model.GetCurrentUtcEpochSecond(),
-					Operation:   action,
-					Operator:    common.FormatUserWallet(user.Wallet),
-					PreState:    model.ApplicationStateOpen,
-					PostState:   newState,
-					ExtraData:   "",
+				err = tx.Model(model.ApplicationAuditLog{}).Create(&model.ApplicationAuditLog{
+					ApplicationID: appRcd.ID,
+					LogTs:         model.GetCurrentUtcEpochSecond(),
+					Operation:     action,
+					Operator:      common.FormatUserWallet(user.Wallet),
+					PreState:      model.ApplicationStateOpen,
+					PostState:     newState,
+					ExtraData:     "",
 				}).Error
 				if err != nil {
 					log.Error().Msgf("create app bundle audit log record error: %+v, app bundle: %+v", err, appBundleRcd)

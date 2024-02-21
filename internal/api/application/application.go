@@ -647,7 +647,7 @@ func auditApplication(ctx *gin.Context, application *model.Application, auditAct
 		return
 	}
 
-	if application.ValidateAuditAction(auditAction) {
+	if application.ValidateAuditAction(db, auditAction) {
 		err = model.AuditApplication(db, common.FormatUserWallet(user.Wallet), application, auditAction, auditMsg, enforcer, push)
 		if err != nil {
 			log.Error().Msgf("approve application error: %+v", err)

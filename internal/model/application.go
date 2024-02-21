@@ -14,12 +14,13 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/common"
-	"github.com/theseed-labs/os-backend/internal/db_agent"
 	"github.com/theseed-labs/os-backend/internal/sdk"
 	"github.com/xiaosongfu/gormfind"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
+
+var err error
 
 type Application struct {
 	// unique ID for this request
@@ -107,13 +108,13 @@ type ApplicationAuditLog struct {
 
 // ValidateAuditAction validates whether the action required is suit for current application state.
 // Returns true means the action can be applied to application, while false means the action is invalid
-func (app *Application) ValidateAuditAction(action AuditActionType) bool {
-	latestState, err := db_agent.GetApplicationState(app.ID)
+func (app *Application) ValidateAuditAction(db *gorm.DB, action AuditActionType) bool {
+	db.Find(&app, app.ID)
 	if err != nil {
 		log.Error().Msgf("Get application %d state error: %+v", app.ID, err)
 		return false
 	}
-	if actions, stateFoundFlag := applicationStateMap[ApplicationState(latestState)]; stateFoundFlag {
+	if actions, stateFoundFlag := applicationStateMap[app.State]; stateFoundFlag {
 		_, actionFoundFlag := actions[action]
 		return actionFoundFlag
 	} else {
@@ -137,7 +138,7 @@ func (app *Application) nextStateAfterAction(action AuditActionType) Application
 // AuditApplication applies audit action on application and create related audit log in transaction
 func AuditApplication(db *gorm.DB, operatorWallet string, application *Application, action AuditActionType, extraMsg string, enforcer *casbin.SyncedEnforcer, push []sdk.Pusher) error {
 	// Check application record, verify whether the action can be applied on the application
-	if !application.ValidateAuditAction(action) {
+	if !application.ValidateAuditAction(db, action) {
 		return fmt.Errorf("application state %s is not suite for action %s", application.State, action)
 	}
 
@@ -179,7 +180,7 @@ func BatchAuditApplication(db *gorm.DB, operatorWallet string, applications *[]A
 
 	// Validate application state
 	for _, application := range *applications {
-		if !application.ValidateAuditAction(action) {
+		if !application.ValidateAuditAction(db, action) {
 			return fmt.Errorf("application state %s is not suite for action %s", application.State, action)
 		}
 	}
