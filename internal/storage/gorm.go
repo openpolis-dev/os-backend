@@ -85,6 +85,8 @@ func MigrateTables(db *gorm.DB) error {
 		&model.ProposalTemplate{},
 		&model.CronJob{},
 		&model.SystemVariable{},
+		&model.SnsInviteCode{},
+		&model.SnsInviteRecord{},
 	)
 }
 
