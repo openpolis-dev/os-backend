@@ -8,7 +8,6 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"github.com/theseed-labs/os-backend/internal/api"
-	"github.com/theseed-labs/os-backend/internal/api/proposal"
 	"github.com/theseed-labs/os-backend/internal/config"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk/metaforo"
@@ -18,7 +17,6 @@ import (
 
 func main() {
 	syncCommand := flag.NewFlagSet("sync", flag.ExitOnError)
-	createCommand := flag.NewFlagSet("create", flag.ExitOnError)
 	voteCommand := flag.NewFlagSet("vote", flag.ExitOnError)
 	showCommand := flag.NewFlagSet("show", flag.ExitOnError)
 
@@ -26,10 +24,6 @@ func main() {
 	syncPage := syncCommand.Int("page", 1, "Page number")
 	syncSize := syncCommand.Int("size", 10, "Page size")
 	syncGroup := syncCommand.String("group", "testttt", "Group name")
-
-	// Define flags for create command
-	createAccessToken := createCommand.String("access-token", "", "Access token")
-	createGroup := createCommand.String("group", "testttt", "Group name")
 
 	// vote related
 	voteAccessToken := voteCommand.String("access-token", "", "Access token")
@@ -58,30 +52,6 @@ func main() {
 		SyncCategories(db, *syncGroup)
 		SyncProposals(db, *syncGroup, *syncPage, *syncSize)
 		SyncNftGate(db, *syncGroup)
-	case "create":
-		createCommand.Parse(os.Args[2:])
-		votesData := []*model.ProposalVoteRecord{
-			{
-				Title:   "Proposal test",
-				StartTs: time.Now().UTC().Unix(),
-				EndTs:   time.Now().UTC().Add(14 * 24 * time.Hour).Unix(),
-			},
-		}
-		pollData, err := proposal.BuildMetaforoVoteFormDataBytes(votesData, []string{"a", "b", "c"})
-		if err != nil {
-			panic(err)
-		}
-		resp, err := metaforo.CreateProposal(
-			*createAccessToken,
-			*createGroup,
-			"1",
-			fmt.Sprintf("test from metaforo API, %s", time.Now().UTC().Format(time.RFC3339)),
-			"# Test content\n## TEST", nil, string(pollData))
-		if err != nil {
-			panic(err)
-		}
-
-		fmt.Printf("response: %+v", resp)
 	case "vote":
 		voteCommand.Parse(os.Args[2:])
 		startTs, err := time.Parse(time.RFC3339, *voteStartTime)
