@@ -202,6 +202,7 @@ func doAuditApplicationInTransaction(tx *gorm.DB, operatorWallet string, applica
 		PostState:     nextState,
 		ExtraData:     extraMsg,
 	}).Error; err != nil {
+		log.Error().Msgf("Create application audit log error: %+v", err)
 		return err
 	}
 
@@ -210,14 +211,8 @@ func doAuditApplicationInTransaction(tx *gorm.DB, operatorWallet string, applica
 	if action == AuditActionReject {
 		application.RejectReason = extraMsg
 		if application.Type == ApplicationCloseProject {
-			project, err := ProjectModel.Detail(tx, application.EntityId)
-			if err != nil {
-				return err
-			}
-			// FIXME: Change to update syntax
-			project.Status = ProjectStatusOpen
-			err = tx.Save(project).Error
-			if err != nil {
+			if err := ProjectModel.UpdateProjectStatus(tx, application.EntityId, ProjectStatusOpen); err != nil {
+				log.Error().Msgf("update project %d status back to open error: %+v", application.EntityId, err)
 				return err
 			}
 		}
@@ -225,10 +220,10 @@ func doAuditApplicationInTransaction(tx *gorm.DB, operatorWallet string, applica
 		application.CompleteMessage = extraMsg
 	}
 
-	// FIXME: Change to update syntax
 	application.UpdatedAt = time.Now().In(internal.ProjectTimezone)
 	application.UpdateTs = GetCurrentUtcEpochSecond()
-	if err := tx.Save(&application).Error; err != nil {
+	if err := tx.Updates(&application).Error; err != nil {
+		log.Error().Msgf("Update application error: %+v", err)
 		return err
 	}
 
@@ -265,15 +260,14 @@ func processingApplication(tx *gorm.DB, application *Application) error {
 func completeApplication(tx *gorm.DB, operatorWallet string, application *Application, enforcer *casbin.SyncedEnforcer, push []sdk.Pusher) error {
 	if application.Type == ApplicationCloseProject {
 		// This is a close project application, so the `entity_id` saved indicates a project record
-		project, err := ProjectModel.Detail(tx, application.EntityId)
-		if err != nil {
+		if err := ProjectModel.UpdateProjectStatus(tx, application.EntityId, ProjectStatusClosed); err != nil {
+			log.Error().Msgf("update project %d status to closed error: %+v", application.EntityId, err)
 			return err
 		}
 
-		// FIXME: Change to update syntax
-		project.Status = ProjectStatusClosed
-		err = tx.Save(project).Error
+		project, err := ProjectModel.Detail(tx, application.EntityId)
 		if err != nil {
+			log.Error().Msgf("Fetch project %d error: %+v", application.EntityId, err)
 			return err
 		}
 
@@ -281,22 +275,9 @@ func completeApplication(tx *gorm.DB, operatorWallet string, application *Applic
 		// clean rbac if passed in enforcer
 		if enforcer != nil {
 			// remove policies
-			policies := [][]string{
-				// p, proj_sponsor_1, proj_1, modify
-				// p, proj_sponsor_1, proj_1, create_app
-				// p, proj_sponsor_1, proj_1, u_member
-				// p, proj_sponsor_1, proj_1, u_budget
-				{fmt.Sprintf("%s%d", internal.RoleProjSponsorPrefix, project.ID), fmt.Sprintf("%s%d", internal.ObjProjPrefix, project.ID), internal.ActModify},
-				{fmt.Sprintf("%s%d", internal.RoleProjSponsorPrefix, project.ID), fmt.Sprintf("%s%d", internal.ObjProjPrefix, project.ID), internal.ActCreateApplication},
-				{fmt.Sprintf("%s%d", internal.RoleProjSponsorPrefix, project.ID), fmt.Sprintf("%s%d", internal.ObjProjPrefix, project.ID), internal.ActUpdateMember},
-				{fmt.Sprintf("%s%d", internal.RoleProjSponsorPrefix, project.ID), fmt.Sprintf("%s%d", internal.ObjProjPrefix, project.ID), internal.ActUpdateBudget},
-				//// p, proj_member_1, proj_1, modify
-				//// p, proj_member_1, proj_1, create_app
-				//{fmt.Sprintf("%s%d", api.RoleProjMemberPrefix, project.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, project.ID), api.ActModify},
-				//{fmt.Sprintf("%s%d", api.RoleProjMemberPrefix, project.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, project.ID), api.ActCreateApplication},
-			}
-			_, err = enforcer.RemovePolicies(policies)
-			if err != nil {
+			policies := GenerateCasbinPolicies(application.EntityId)
+			if _, err := enforcer.RemovePolicies(policies); err != nil {
+				log.Error().Msgf("remove casbin policies error: %+v", err)
 				return err
 			}
 			// remove roles for sponsors

@@ -292,9 +292,8 @@ func QueryAppBundleRecords(db *gorm.DB, queryParams *ListAppBundleQueryParams) (
 	clearedEntity := strings.ToLower(strings.TrimSpace(queryParams.Entity))
 	clearState := strings.ToLower(strings.TrimSpace(queryParams.State))
 
-	// FIXME: test with common_budget_sources data
 	if clearedEntity != "" {
-		if !lo.Contains([]string{"project", "guild"}, clearedEntity) {
+		if !lo.Contains([]string{"project", "guild", "common_budget_source"}, clearedEntity) {
 			return nil, 0, fmt.Errorf("unknown entity type %s", queryParams.Entity)
 		}
 	}
@@ -354,7 +353,6 @@ func QueryAppBundleRecords(db *gorm.DB, queryParams *ListAppBundleQueryParams) (
 	}
 	// TODO: Dup logic end
 
-	// FIXME: Optimize query, check how to get count and result in one query
 	// Calculate total count
 	total := db.Raw(querySQL+whereClause, whereParams).Scan(&[]map[string]any{}).RowsAffected
 

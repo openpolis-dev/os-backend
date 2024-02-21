@@ -25,9 +25,7 @@ type Config struct {
 	PublicData       publicData      `json:"publicData" yaml:"publicData"`
 	MetaforoData     metaforoData    `json:"metaforoData" yaml:"metaforoData"`
 	Admin            adminData       `json:"admin" yaml:"admin"`
-	// FIXME: remove ProposalData since the data has been saved to DB [h]
-	ProposalData    proposalData    `json:"proposalData" yaml:"proposalData"`
-	QuickAccounting QuickAccounting `json:"quickAccounting" yaml:"quickAccounting"`
+	QuickAccounting  QuickAccounting `json:"quickAccounting" yaml:"quickAccounting"`
 }
 
 type (
@@ -99,10 +97,6 @@ type (
 
 	adminData struct {
 		AuthToken string `json:"authToken" yaml:"authToken"`
-	}
-
-	proposalData struct {
-		SipInitNumber int `json:"sipInitNumber" yaml:"sipInitNumber"`
 	}
 
 	QuickAccounting struct {

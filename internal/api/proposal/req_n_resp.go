@@ -6,6 +6,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
+	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api/component"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
@@ -42,19 +43,17 @@ type ComponentRequestData struct {
 }
 
 type CreateOrUpdateProposalData struct {
-	TemplateId         uint                          `json:"template_id"`
-	Title              string                        `json:"title"`
-	ProposalCategoryId uint                          `json:"proposal_category_id"`
-	ContentBlocks      []*FrontendContentBlockRecord `json:"content_blocks"`
-	Components         []*ComponentRequestData       `json:"components"`
-	// FIXME: verify whether this is using now.
-	VoteGateId              uint     `json:"vote_gate_id"`
-	MetaforoAccessToken     string   `json:"metaforo_access_token"`
-	SubmitToMetaforo        bool     `json:"submit_to_metaforo"`
-	EditorType              int      `json:"editor_type"`
-	VoteType                int      `json:"vote_type"`
-	VoteOptions             []string `json:"vote_options"`
-	CreateProjectProposalId uint     `json:"create_project_proposal_id"`
+	TemplateId              uint                          `json:"template_id"`
+	Title                   string                        `json:"title"`
+	ProposalCategoryId      uint                          `json:"proposal_category_id"`
+	ContentBlocks           []*FrontendContentBlockRecord `json:"content_blocks"`
+	Components              []*ComponentRequestData       `json:"components"`
+	MetaforoAccessToken     string                        `json:"metaforo_access_token"`
+	SubmitToMetaforo        bool                          `json:"submit_to_metaforo"`
+	EditorType              int                           `json:"editor_type"`
+	VoteType                int                           `json:"vote_type"`
+	VoteOptions             []string                      `json:"vote_options"`
+	CreateProjectProposalId uint                          `json:"create_project_proposal_id"`
 }
 
 type RejectProposalData struct {
@@ -287,8 +286,7 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposalId uint, startPo
 		}
 
 		// Special processing for `associate_proposal`
-		// FIXME: Move the name string to const.go
-		if componentRecord.Name == "associate_proposal" {
+		if componentRecord.Name == internal.ComponentNameAssociateProposal {
 			var parsedData associatedProposalData
 			err := json.Unmarshal([]byte(item.Data), &parsedData)
 

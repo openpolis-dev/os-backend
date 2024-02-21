@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/rs/zerolog/log"
 	"github.com/shopspring/decimal"
 	"github.com/theseed-labs/os-backend/internal"
 	"github.com/xiaosongfu/gormfind"
@@ -249,6 +250,18 @@ func (*projectModel) DepositBudget(db *gorm.DB, projectId uint, assetName string
 	})
 }
 
+// UpdateProjectStatus update project status to given value and update update_ts field
+func (*projectModel) UpdateProjectStatus(db *gorm.DB, projectId uint, status ProjectStatus) error {
+	if err := db.Where(&Project{ID: projectId}).Updates(&Project{
+		Status:   status,
+		UpdateTs: GetCurrentUtcEpochSecond(),
+	}).Error; err != nil {
+		log.Error().Msgf("Update project %d status to open error: %+v", projectId, err)
+		return err
+	}
+	return nil
+}
+
 // GetCityHallProject get cityhall project in DB
 func GetCityHallProject(db *gorm.DB) (*Project, error) {
 	project := Project{}
@@ -281,9 +294,8 @@ func GetOrCreateCityHallProject(db *gorm.DB, cityHallUsers []string) (*Project, 
 }
 
 func createCityHallProject(db *gorm.DB, cityHallUsers []string) (*Project, error) {
-	// FIXME: Change to const instead of magic string
 	project := Project{
-		Name:        "CityHall",
+		Name:        internal.CityHallProjectName,
 		IsSpecial:   true,
 		SpecialType: SpecialProjectCityHall,
 		Sponsors:    cityHallUsers,
@@ -300,16 +312,17 @@ func createCityHallProject(db *gorm.DB, cityHallUsers []string) (*Project, error
 	return &project, nil
 }
 
-func (p *Project) GenerateCasbinPolicies() [][]string {
+// GenerateCasbinPolicies generate casbin policies for specified project
+func GenerateCasbinPolicies(projectId uint) [][]string {
 	return [][]string{
 		// p, proj_sponsor_1, proj_1, modify
 		// p, proj_sponsor_1, proj_1, create_app
 		// p, proj_sponsor_1, proj_1, u_member
 		// p, proj_sponsor_1, proj_1, u_budget
-		{fmt.Sprintf("%s%d", internal.RoleProjSponsorPrefix, p.ID), fmt.Sprintf("%s%d", internal.ObjProjPrefix, p.ID), internal.ActModify},
-		{fmt.Sprintf("%s%d", internal.RoleProjSponsorPrefix, p.ID), fmt.Sprintf("%s%d", internal.ObjProjPrefix, p.ID), internal.ActCreateApplication},
-		{fmt.Sprintf("%s%d", internal.RoleProjSponsorPrefix, p.ID), fmt.Sprintf("%s%d", internal.ObjProjPrefix, p.ID), internal.ActUpdateMember},
-		{fmt.Sprintf("%s%d", internal.RoleProjSponsorPrefix, p.ID), fmt.Sprintf("%s%d", internal.ObjProjPrefix, p.ID), internal.ActUpdateBudget},
+		{fmt.Sprintf("%s%d", internal.RoleProjSponsorPrefix, projectId), fmt.Sprintf("%s%d", internal.ObjProjPrefix, projectId), internal.ActModify},
+		{fmt.Sprintf("%s%d", internal.RoleProjSponsorPrefix, projectId), fmt.Sprintf("%s%d", internal.ObjProjPrefix, projectId), internal.ActCreateApplication},
+		{fmt.Sprintf("%s%d", internal.RoleProjSponsorPrefix, projectId), fmt.Sprintf("%s%d", internal.ObjProjPrefix, projectId), internal.ActUpdateMember},
+		{fmt.Sprintf("%s%d", internal.RoleProjSponsorPrefix, projectId), fmt.Sprintf("%s%d", internal.ObjProjPrefix, projectId), internal.ActUpdateBudget},
 		//// p, proj_member_1, proj_1, modify
 		//// p, proj_member_1, proj_1, create_app
 		//{fmt.Sprintf("%s%d", api.RoleProjMemberPrefix, proj.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, proj.ID), api.ActModify},
