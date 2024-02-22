@@ -1012,6 +1012,9 @@ func HandleProposalPollStatusChange(db *gorm.DB, proposalId uint) error {
 	}
 }
 
+// UpdateProposalStateAfterVoteClosed will be invoked when vote for proposal has changed to closed state
+// It will update the proposal state based on vote result and external check rules if configured
+// TODO: Check how to migrate this state change function into UpdateProposalStateAndLaunchStateChangeActions
 func UpdateProposalStateAfterVoteClosed(db *gorm.DB, proposalId uint, pVoteRcd *model.ProposalVoteRecord) error {
 	if TryAcquireUpdateProposalDbLockOrReturn(proposalId) == false {
 		err := fmt.Errorf("proposal %d is updating", proposalId)
@@ -1189,6 +1192,7 @@ func UpdateProposalStateAfterVoteClosed(db *gorm.DB, proposalId uint, pVoteRcd *
 }
 
 // createProposalAutomationTasks creates automation tasks after proposal finished (passed or failed)
+// In this function, the lock of proposal is still in hold
 func createProposalAutomationTasks(db *gorm.DB, proposalId uint, finState model.ProposalState, voteResult string, voteType int) error {
 	log.Debug().Msgf("enter createProposalAutomationTasks proposal id: %d, finState: %+v", proposalId, finState)
 	sqlQuery := QueryComponentActionNameBaseSQL + " WHERE proposal_id = ?"
@@ -1264,17 +1268,19 @@ func createProposalAutomationTasks(db *gorm.DB, proposalId uint, finState model.
 						log.Error().Msgf("marshal update proposal state params error: %+v", err)
 						return err
 					}
-					if _, err = UpdateProposalStateAndLaunchStateChangeActions(db, nil, fmt.Sprintf("%d", proposalId), model.ProposalStatePendingExecution, nil); err != nil {
-						log.Error().Msgf("update proposal %d state to pending execution error", proposal.ID)
+
+					if err = db.Model(&proposal).Where("id = ?", proposalId).Update("state", model.ProposalStatePendingExecution).Error; err != nil {
+						log.Error().Msgf("update proposal %d state to pending execution error", proposalId)
 						return err
 					}
 					return nil
 				} else {
-					log.Error().Msgf("NOTICE: this log is generated for creating project proposal with vote, if you found this log, check db or requirements")
-					if _, err = UpdateProposalStateAndLaunchStateChangeActions(db, nil, fmt.Sprintf("%d", proposalId), model.ProposalStateExecuted, nil); err != nil {
-						log.Error().Msgf("update proposal %d state to pending execution error", proposal.ID)
+					log.Error().Msgf("NOTICE: this log is generated for branch that creating project proposal with vote, WHICH IS NOT EXPECTED, if you found this log, check db or requirements")
+					if err = db.Model(&proposal).Where("id = ?", proposalId).Update("state", model.ProposalStateExecuted).Error; err != nil {
+						log.Error().Msgf("update proposal %d state to pending execution error", proposalId)
 						return err
 					}
+
 					return nil
 				}
 			}
@@ -1385,6 +1391,10 @@ func createCronJob(db *gorm.DB, dbProposalId uint, proposalPendingExecutionSecon
 	return nil
 }
 
+// updateProposalStateByExtraCheckRule update the state of proposal based on the extra check rules
+// It iterates through the rules, compares certain metrics with the provided values, and based on the comparison,
+// determines if the proposal has passed or failed the extra check rules.
+// If all the checks pass, it returns ProposalStateVotePassed, otherwise it returns ProposalStateVoteFailed.
 func updateProposalStateByExtraCheckRule(checkRules []*model.ExtraResultCheckRuleData, totalVoterCount int, seasonIdx uint) model.ProposalState {
 	log.Debug().Msgf("enter updatePropsalStateByExtraCheckRule: %+v, totalVoter: %d", checkRules, totalVoterCount)
 	indexClient := sdk.GetIndexerClient()

@@ -688,6 +688,7 @@ func GetProposalsUsedForCreatingProjects(ctx *gin.Context) {
 }
 
 // UpdateProposalStateAndLaunchStateChangeActions changes proposal state and launch specified actions associated with state change
+// This function is invoked in directly API calls, like approve, withdrawn, etc. and proposal state change automation tasks
 // The state change actions contains:
 // - Withdrawn: Set vote start time to 1 yr later after withdrawn
 // - Approved: Set proposal sip, create project for p1 create project proposal (no vote and 0 pending execution time), or start vote
@@ -695,7 +696,20 @@ func GetProposalsUsedForCreatingProjects(ctx *gin.Context) {
 // - PendingExecution: None
 // - Executed: Create project if it is new project proposal
 func UpdateProposalStateAndLaunchStateChangeActions(db *gorm.DB, user *middleware.CurUser, proposalStrId string, newState model.ProposalState, cfg *config.Config) (uint, error) {
-	log.Debug().Msgf("enter UpdateProposalStateAndLaunchStateChangeActions, proposalStrId: %s, newState: %s", proposalStrId, newState)
+	proposalId, err := strconv.Atoi(proposalStrId)
+	if err != nil {
+		log.Error().Msgf("parse proposal ID %s to int error: %+v", proposalStrId, err)
+		return 0, err
+	}
+
+	if TryAcquireUpdateProposalDbLockOrReturn(uint(proposalId)) == false {
+		err := fmt.Errorf("proposal %s is updating", proposalStrId)
+		log.Error().Msg(err.Error())
+		return 0, err
+	}
+	defer ReleaseUpdateProposalDbLock(uint(proposalId))
+
+	log.Debug().Msgf("enter UpdateProposalStateAndLaunchStateChangeActions, proposalStrId: %s, newState: %s", proposalStrId, model.ProposalStateName[newState])
 	proposalRecord, err := GetProposalFromStringId(db, proposalStrId)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
