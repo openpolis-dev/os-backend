@@ -1,8 +1,10 @@
 package db_agent
 
 import (
+	"github.com/rs/zerolog/log"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // proposalStateTransitRequirementsMap saves the state transition requirements for each proposal state
@@ -22,6 +24,23 @@ var proposalStateTransitRequirementsMap = map[model.ProposalState][]model.Propos
 	model.ProposalStateExecutionFailed:  {model.ProposalStatePendingExecution},
 }
 
-func UpdateProposalState(db *gorm.DB, id uint, state model.ProposalState) error {
-	return db.Model(&model.Proposal{}).Where("id = ?", id).Update("state", state).Error
+func UpdateProposalToStateWithStateTransitCheck(db *gorm.DB, id uint, nextState model.ProposalState) error {
+	dbSeg := db.Model(&model.Proposal{}).Clauses(clause.Locking{Strength: "UPDATE", Options: "NOWAIT"}).Where("id = ?", id)
+	stateRequirements, reqFoundFlag := proposalStateTransitRequirementsMap[nextState]
+	if reqFoundFlag {
+		dbSeg = dbSeg.Where("state in ?", stateRequirements)
+	}
+
+	updateTx := dbSeg.Update("state", nextState)
+
+	if updateTx.Error != nil {
+		log.Error().Msgf("update proposal state error: %+v", updateTx.Error)
+		return updateTx.Error
+	} else if updateTx.RowsAffected == 0 {
+		log.Error().Msgf("no proposal state updated: %+v", updateTx.RowsAffected)
+		return gorm.ErrRecordNotFound
+	} else {
+		log.Debug().Msgf("update proposal %d to state: %d", id, nextState)
+		return nil
+	}
 }
