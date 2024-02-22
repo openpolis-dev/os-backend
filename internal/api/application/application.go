@@ -370,23 +370,6 @@ func Download(ctx *gin.Context) {
 	}
 }
 
-func DownloadUploadTemplate(ctx *gin.Context) {
-	lang := api.GetLangFromQuery(ctx, "en")
-	headerStr := internal.ApplicationUploadTemplateHeader[lang]
-	if header, found := internal.ApplicationUploadTemplateHeader[lang]; found {
-		headerStr = header
-	}
-
-	reader := strings.NewReader(headerStr)
-	contentLength := len(headerStr)
-
-	extraHeaders := map[string]string{
-		"Content-Disposition": `attachment; filename="upload-template.csv"`,
-	}
-
-	ctx.DataFromReader(http.StatusOK, int64(contentLength), "encoding/csv", reader, extraHeaders)
-}
-
 // Batch operations, most of the request bodies are ids
 // For batch process logic, it handles all applications in approved state and process them, so no need to pass ids
 // TODO: Those batch actions contain similar logic, check whether it is possible to simplify them
