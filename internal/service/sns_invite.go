@@ -3,7 +3,7 @@ package service
 import (
 	"time"
 
-	"github.com/Taoist-Labs/sns-go"
+	"github.com/Taoist-Labs/sns-go-sepolia"
 	gonanoid "github.com/matoous/go-nanoid/v2"
 	"github.com/rs/zerolog/log"
 	"github.com/shopspring/decimal"
