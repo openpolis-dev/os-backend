@@ -445,6 +445,11 @@ func setupCronJob(cfg *config.Config, db *gorm.DB) {
 	// (Minutes Hours Day-of-Month Month Day-of-Week)
 	// "@every 10m"
 
+	if cfg.CronJob.CheckAndUpdateUnverifiedSnsInvite == "" {
+		log.Warn().Msg("cron job for checking sns invite not set")
+		return
+	}
+
 	// CheckAndUpdateUnverifiedSnsInvite Job
 	if _, err := c.AddFunc(cfg.CronJob.CheckAndUpdateUnverifiedSnsInvite, func() {
 		_ = service.CheckAndUpdateUnverifiedSnsInvite(cfg, db)
