@@ -59,14 +59,14 @@ github.com/StackExchange/wmi v1.2.1 h1:VIkavFPXSjcnS+O8yTq7NI32k0R5Aj+v39y29VYDO
 github.com/StackExchange/wmi v1.2.1/go.mod h1:rcmrprowKIVzvc+NUiLncP2uuArMWLCbu9SBzvHz7e8=
 github.com/Taoist-Labs/see-auth-go v0.1.8 h1:bYZlIRR/1c1KjDXL/EI7mN1T3yOAaLLvAyT+hrmDRWs=
 github.com/Taoist-Labs/see-auth-go v0.1.8/go.mod h1:Pj7k0x8PjF6yyG1weeVin94O4sJBjBUWzvxqLto+Xrw=
-github.com/Taoist-Labs/sns-go v0.5.4 h1:8Xs6NXld6QXkC1rNiDKsz63WrZ8TavhqwFrPpwiJjaw=
-github.com/Taoist-Labs/sns-go v0.5.4/go.mod h1:hrUK9IqpWhFCEnJmfOIU/oQDZ805s9P5ABp44JjuQOY=
 github.com/Taoist-Labs/sns-go-api v0.5.3 h1:up+dRBsD0j5R+qYvFxcZdPcewSw5o9ZY3OSBl58Ldio=
 github.com/Taoist-Labs/sns-go-api v0.5.3/go.mod h1:kz8hMJDMqRRVZV9fIUxp4GVSE5/uVXkvSjbh0JV5PVY=
 github.com/Taoist-Labs/sns-go-namehash v0.1.0 h1:5a1PKB7pAtBhb0o64pwrV+enHEfVm7AgipXzy8B59U4=
 github.com/Taoist-Labs/sns-go-namehash v0.1.0/go.mod h1:53v+oKUyKhjZAoASElIc65Y07GVAct80mczBycJoqzA=
 github.com/Taoist-Labs/sns-go-safe v0.5.1 h1:S28GnAU9BhSrplpESQJcsCUzXpi6d0AOGPRdSggk/G0=
 github.com/Taoist-Labs/sns-go-safe v0.5.1/go.mod h1:B3SoEPGWJp40CliOM1taSUfzkqnsDCa/HxF0Rgz57Vo=
+github.com/Taoist-Labs/sns-go-sepolia v0.1.1 h1:yGuIVKqO3if9QLktiaxm1FckYtHujoOd7nobqW7EIOw=
+github.com/Taoist-Labs/sns-go-sepolia v0.1.1/go.mod h1:swFfih/Kz/8vIRN6sa4tSkMAuuNToVKJFSkK+mwKi+A=
 github.com/VictoriaMetrics/fastcache v1.12.1 h1:i0mICQuojGDL3KblA7wUNlY5lOK6a4bwt3uRKnkZU40=
 github.com/VictoriaMetrics/fastcache v1.12.1/go.mod h1:tX04vaqcNoQeGLD+ra5pU5sWkuxnzWhEzLwhP9w653o=
 github.com/agiledragon/gomonkey/v2 v2.2.0 h1:QJWqpdEhGV/JJy70sZ/LDnhbSlMrqHAWHcNOjz1kyuI=
