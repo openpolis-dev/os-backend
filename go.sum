@@ -65,8 +65,8 @@ github.com/Taoist-Labs/sns-go-namehash v0.1.0 h1:5a1PKB7pAtBhb0o64pwrV+enHEfVm7A
 github.com/Taoist-Labs/sns-go-namehash v0.1.0/go.mod h1:53v+oKUyKhjZAoASElIc65Y07GVAct80mczBycJoqzA=
 github.com/Taoist-Labs/sns-go-safe v0.5.1 h1:S28GnAU9BhSrplpESQJcsCUzXpi6d0AOGPRdSggk/G0=
 github.com/Taoist-Labs/sns-go-safe v0.5.1/go.mod h1:B3SoEPGWJp40CliOM1taSUfzkqnsDCa/HxF0Rgz57Vo=
-github.com/Taoist-Labs/sns-go-sepolia v0.1.1 h1:yGuIVKqO3if9QLktiaxm1FckYtHujoOd7nobqW7EIOw=
-github.com/Taoist-Labs/sns-go-sepolia v0.1.1/go.mod h1:swFfih/Kz/8vIRN6sa4tSkMAuuNToVKJFSkK+mwKi+A=
+github.com/Taoist-Labs/sns-go-sepolia v0.1.2 h1:MFOUbMUTWq79DMtG3CkVWSyRZFQ3noiCdjgD9Hz+lok=
+github.com/Taoist-Labs/sns-go-sepolia v0.1.2/go.mod h1:swFfih/Kz/8vIRN6sa4tSkMAuuNToVKJFSkK+mwKi+A=
 github.com/VictoriaMetrics/fastcache v1.12.1 h1:i0mICQuojGDL3KblA7wUNlY5lOK6a4bwt3uRKnkZU40=
 github.com/VictoriaMetrics/fastcache v1.12.1/go.mod h1:tX04vaqcNoQeGLD+ra5pU5sWkuxnzWhEzLwhP9w653o=
 github.com/agiledragon/gomonkey/v2 v2.2.0 h1:QJWqpdEhGV/JJy70sZ/LDnhbSlMrqHAWHcNOjz1kyuI=
