@@ -157,21 +157,22 @@ func CloseVote(ctx *gin.Context) {
 	}
 
 	// update proposal state after getting the vote result
-	dbProposal, err := GetProposalFromStringId(db, proposalIdStr)
+	dbProposal, metaforoProposalResponse, err := GetMetaforoProposalByInternalId(db, proposalIdStr, cfg.MetaforoData.GroupName)
+	pollStatusChanged, err := UpdateDbVoteOptionRecordsFromMetaforoProposalResponse(db, dbProposal.ID, metaforoProposalResponse)
 	if err != nil {
-		log.Error().Msgf("fetch db proposal record error: %+v", err)
+		log.Error().Msgf("update propsal vote option records with metaforo response error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(fmt.Errorf("fetch db proposal error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(fmt.Errorf("close vote error")))
 		return
 	}
 
-	metaforoProposalResponse, err := metaforo.GetProposal(dbProposal.GetMetaforoThreadId(), cfg.MetaforoData.GroupName, "", 0)
-	err = UpdateDbRecordsFromMetaforoProposalResponse(db, dbProposal.ID, metaforoProposalResponse)
-	if err != nil {
-		log.Error().Msgf("update db proposal by response error: %+v", err)
-		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(fmt.Errorf("update proposal info error")))
-		return
+	if pollStatusChanged {
+		if err = HandleProposalPollStatusChange(db, dbProposal.ID); err != nil {
+			log.Error().Msgf("handle proposal poll status change error: %+v", err)
+			sdk.LogServerErrorToSentry(ctx, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(fmt.Errorf("close vote error")))
+			return
+		}
 	}
 
 	ctx.JSON(http.StatusOK, api.Success(nil))

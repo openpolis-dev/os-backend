@@ -356,6 +356,19 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposalId uint, startPo
 			return nil, err
 		}
 
+		pollStatusChanged, err := UpdateDbVoteOptionRecordsFromMetaforoProposalResponse(db, proposalId, metaforoProposal)
+		if err != nil {
+			log.Error().Msgf("update propsal vote option records with metaforo response error: %+v", err)
+			return nil, err
+		}
+
+		if pollStatusChanged {
+			if err = HandleProposalPollStatusChange(db, proposalId); err != nil {
+				log.Error().Msgf("handle proposal poll status change error: %+v", err)
+				return nil, err
+			}
+		}
+
 		err = db.Model(model.ProposalComment{}).Where("proposal_id = ? AND is_reject_comment = ?", proposalId, true).First(&rejectedComment).Error
 		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 			log.Error().Msgf("fetch rejected comment error: %+v", err)

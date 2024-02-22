@@ -117,8 +117,8 @@ type Proposal struct {
 
 	//  Fields for versioned proposals
 	// ProposalRecordId is built from metaforo thread ID, which should be kept same in various versions
-	ProposalRecordId string `gorm:"index:proposalVer"`
-	Version          uint   `gorm:"index:proposalVer"`
+	ProposalRecordId string `gorm:"uniqIndex:proposalVer"`
+	Version          uint   `gorm:"uniqIndex:proposalVer"`
 
 	// IPFS CID and Arweave hash for the proposal
 	IpfsCid     string `gorm:"index"`
@@ -381,9 +381,9 @@ type ProposalVoteRecord struct {
 	StartTs    int64 `gorm:"index"`
 	EndTs      int64 `gorm:"index"`
 	MetaforoID int   `gorm:"index"` // Poll id from metaforo
+	State      string
 
-	OptionType int
-	Options    []*ProposalVoteOptionRecord
+	Options []*ProposalVoteOptionRecord
 
 	// Indicates whether the vote has passed
 	IsVotePassed bool
