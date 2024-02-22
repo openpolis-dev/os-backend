@@ -363,12 +363,12 @@ type ProposalAuditLog struct {
 }
 
 var (
-	ProposalVoteTypeNone                        int = 0
-	ProposalVoteTypeDecision                        = 1
-	ProposalVoteTypeNumericAvg                      = 2  // This means if the result contains same vote value, use the average for result
-	ProposalVoteTypeNumericSingle                   = 3  // This means if the result contains same vote value, mark vote as failed
-	ProposalVoteTypeCustomerDefinedEqualFailed      = 98 // This is custom voting, but if more than one max value, the vote failed
-	ProposalVoteTypeCustomerDefinedAlwaysPassed     = 99 // Custom vote, always passed
+	ProposalVoteTypeNone                        = 0
+	ProposalVoteTypeDecision                    = 1
+	ProposalVoteTypeNumericAvg                  = 2  // This means if the result contains same vote value, use the average for result
+	ProposalVoteTypeNumericSingle               = 3  // This means if the result contains same vote value, mark vote as failed
+	ProposalVoteTypeCustomerDefinedEqualFailed  = 98 // This is custom voting, but if more than one max value, the vote failed
+	ProposalVoteTypeCustomerDefinedAlwaysPassed = 99 // Custom vote, always passed
 )
 
 // ProposalVoteRecord saves vote record and associated to specified Proposal

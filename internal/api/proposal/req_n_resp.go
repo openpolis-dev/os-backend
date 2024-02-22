@@ -7,7 +7,6 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	"github.com/theseed-labs/os-backend/internal"
-	"github.com/theseed-labs/os-backend/internal/api/component"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/db_agent"
 	"github.com/theseed-labs/os-backend/internal/model"
@@ -101,6 +100,18 @@ type CloseVoteRequest struct {
 // Response data definitions
 ///////////////////////
 
+// ComponentInstance indicates the component be added into proposal
+// It is generated from the Component object, and includes the data filled in proposal
+type ComponentInstance struct {
+	ID            uint   `json:"id"`
+	ComponentId   uint   `json:"component_id"`
+	ComponentName string `json:"name"`
+	Schema        string `json:"schema"`
+	Data          string `json:"data"`
+
+	CreateTs int64 `json:"create_ts"`
+}
+
 type FrontendProposalListRecord struct {
 	ID              uint   `json:"id"`
 	Title           string `json:"title"`
@@ -158,11 +169,11 @@ type FrontendProposalCommentRecord struct {
 }
 
 type FrontendProposalDetailRecord struct {
-	ID            uint                           `json:"id"`
-	Title         string                         `json:"title"`
-	ContentBlocks []*FrontendContentBlockRecord  `json:"content_blocks"`
-	State         string                         `json:"state"`
-	Components    []*component.ComponentInstance `json:"components"`
+	ID            uint                          `json:"id"`
+	Title         string                        `json:"title"`
+	ContentBlocks []*FrontendContentBlockRecord `json:"content_blocks"`
+	State         string                        `json:"state"`
+	Components    []*ComponentInstance          `json:"components"`
 
 	ProposalCategoryId uint `json:"proposal_category_id"`
 
@@ -278,7 +289,7 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposalId uint, startPo
 		}
 	})
 
-	proposalComponentResponse := lo.Map(proposalComponentRecords, func(item *model.ProposalComponentRecord, _ int) *component.ComponentInstance {
+	proposalComponentResponse := lo.Map(proposalComponentRecords, func(item *model.ProposalComponentRecord, _ int) *ComponentInstance {
 		var componentRecord model.ProposalComponent
 		err := db.Find(&componentRecord, item.ComponentID).Error
 		if err != nil {
@@ -319,7 +330,7 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposalId uint, startPo
 			}
 		}
 
-		return &component.ComponentInstance{
+		return &ComponentInstance{
 			ID:            item.ID,
 			ComponentId:   item.ComponentID,
 			ComponentName: componentRecord.Name,

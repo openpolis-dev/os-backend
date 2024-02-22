@@ -604,65 +604,6 @@ func Detail(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, application)
 }
 
-func Approve(ctx *gin.Context) {
-	application := &model.Application{}
-	auditApplication(ctx, application, model.AuditActionApprove, "")
-	ctx.JSON(http.StatusOK, "")
-}
-
-func Reject(ctx *gin.Context) {
-	application := &model.Application{}
-	auditApplication(ctx, application, model.AuditActionReject, "")
-	ctx.JSON(http.StatusOK, "")
-}
-
-func Process(ctx *gin.Context) {
-	application := &model.Application{}
-	auditApplication(ctx, application, model.AuditActionProcess, "")
-	ctx.JSON(http.StatusOK, "")
-}
-
-func Complete(ctx *gin.Context) {
-	application := &model.Application{}
-	auditApplication(ctx, application, model.AuditActionComplete, "")
-	ctx.JSON(http.StatusOK, "")
-}
-
-func auditApplication(ctx *gin.Context, application *model.Application, auditAction model.AuditActionType, auditMsg string) {
-	getRecordOrReturnNotFound(ctx, application)
-
-	user, enforcer, db, _ := api.ForContext(ctx)
-	push := api.ForContextOnlyPush(ctx)
-
-	//  check permission: `(0x..., proj_and_guild, audit_app)`
-	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), internal.ObjProjAndGuild, internal.ActAuditApplication)
-	if err != nil {
-		log.Error().Msgf("check permission error: %+v", err)
-		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
-		return
-	}
-	if !ok {
-		ctx.JSON(http.StatusForbidden, api.Forbidden())
-		return
-	}
-
-	if application.ValidateAuditAction(db, auditAction) {
-		err = model.AuditApplication(db, common.FormatUserWallet(user.Wallet), application, auditAction, auditMsg, enforcer, push)
-		if err != nil {
-			log.Error().Msgf("approve application error: %+v", err)
-			sdk.LogServerErrorToSentry(ctx, err)
-			ctx.JSON(http.StatusBadRequest, api.ServerError(errors.New("approve application error")))
-			return
-		}
-	} else {
-		err := fmt.Errorf("action %s can't be applied to application in state %s", auditAction, application.State)
-		sdk.LogUserSideError(ctx, err)
-		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
-		return
-	}
-}
-
 func getRecordOrReturnNotFound(ctx *gin.Context, application *model.Application) {
 	id := ctx.Param("id")
 	db := api.ForContextOnlyDB(ctx)

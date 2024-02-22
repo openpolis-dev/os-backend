@@ -50,7 +50,7 @@ func getOrCreateCityHallProject(db *gorm.DB, enforcer *casbin.SyncedEnforcer) (*
 		return nil, errors.New("get cityhall record error")
 	}
 
-	for grpName, _ := range cityHallProject.GroupedSponsors {
+	for grpName := range cityHallProject.GroupedSponsors {
 		if _, found := internal.CityhallGroupNames[grpName]; !found {
 			delete(cityHallProject.GroupedSponsors, grpName)
 		}

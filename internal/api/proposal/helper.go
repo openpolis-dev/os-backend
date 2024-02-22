@@ -726,6 +726,7 @@ func BuildMetaforoVoteFormDataBytes(voteRecords []*model.ProposalVoteRecord, osV
 }
 
 // TODO: Change to use indexer data
+
 func IsUserMetVoteGate(userSeepassData *sdk.SeepassResponse, proposalVoteGate *model.ProposalVoteGate) bool {
 	if userSeepassData == nil {
 		return false
@@ -788,7 +789,7 @@ func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcdId ui
 		return err
 	}
 
-	if err = UpdateUserRecordsFromMetaforoProposalResponse(db, dbProposalRcdId, metaforoProposal); err != nil {
+	if err = UpdateUserRecordsFromMetaforoProposalResponse(db, metaforoProposal); err != nil {
 		log.Error().Msgf("update user records error: %+v", err)
 		return err
 	}
@@ -843,7 +844,7 @@ func UpdateArweaveHashFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcdId 
 	}
 }
 
-func UpdateUserRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcdId uint, metaforoProposal *metaforo.ProposalResponse) error {
+func UpdateUserRecordsFromMetaforoProposalResponse(db *gorm.DB, metaforoProposal *metaforo.ProposalResponse) error {
 	// Save user id and wallet from comments data
 	if err = db.Transaction(func(tx *gorm.DB) error {
 		for _, metaforoComment := range metaforoProposal.Thread.Posts {
