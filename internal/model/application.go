@@ -198,7 +198,7 @@ func BatchAuditApplication(db *gorm.DB, operatorWallet string, applications *[]A
 
 func doAuditApplicationInTransaction(tx *gorm.DB, operatorWallet string, application *Application, action AuditActionType, extraMsg string, enforcer *casbin.SyncedEnforcer, push []sdk.Pusher) error {
 	// Refresh application record
-	tx.Find(&application, "application_id = ?", application.ID)
+	tx.Find(&application, application.ID)
 	nextState := application.nextStateAfterAction(action)
 
 	// Create audit log for application
