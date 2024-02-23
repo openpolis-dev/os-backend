@@ -46,7 +46,10 @@ func RefreshVotingProposalInfoJob(db *gorm.DB, job *model.CronJob, jobParams str
 			SELECT proposal_record_id, MAX(version) AS max_version
 			FROM proposals
 			GROUP BY proposal_record_id
-		) p2 ON p1.proposal_record_id = p2.proposal_record_id AND p1.version = p2.max_version and p1.state IN ?`
+		) p2 ON p1.proposal_record_id = p2.proposal_record_id
+		AND p1.version = p2.max_version
+		AND p1.proposal_record_id != ''
+ 		AND p1.state IN ?`
 
 		if err = db.Transaction(func(tx *gorm.DB) error {
 			err = tx.Raw(querySql, []model.ProposalState{
