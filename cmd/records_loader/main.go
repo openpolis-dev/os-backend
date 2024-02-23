@@ -24,6 +24,7 @@ import (
 const DealDateLayoutFormat1 = "2006/1/2"
 const DealDateLayoutFormat2 = "2006-01-02 15:04:05"
 const DealDateLayoutFormat3 = "2006-01-02"
+const DealDateLayoutFormat4 = "2006-1-2"
 
 const DefaultDetailSheetName = "明细"
 const SummarizedSheetName = "数据透视"
@@ -177,7 +178,10 @@ func tryParseDatetime(dateStr string) (time.Time, error) {
 		if err != nil {
 			parsedDate, err = time.ParseInLocation(DealDateLayoutFormat3, dateStr, internal.ProjectTimezone)
 			if err != nil {
-				return time.Time{}, err
+				parsedDate, err = time.ParseInLocation(DealDateLayoutFormat4, dateStr, internal.ProjectTimezone)
+				if err != nil {
+					return time.Time{}, err
+				}
 			}
 		}
 	}
