@@ -90,11 +90,13 @@ func List(ctx *gin.Context) {
 		querySql += fmt.Sprintf(" AND title ilike '%%%s%%'", queryParams.Q)
 	}
 
+	listBySip := false
 	if queryParams.Sip != "" {
 		querySql += fmt.Sprintf(" AND sip != 0")
+		listBySip = true
 	}
 
-	total, resultRows, err := generateFrontendProposalRecords(db, querySql, page)
+	total, resultRows, err := generateFrontendProposalRecords(db, querySql, page, listBySip)
 	if err != nil {
 		log.Error().Msgf("get proposal list error: query sql: %s, err: %+v", querySql, err)
 		sdk.LogServerErrorToSentry(ctx, err)
@@ -591,7 +593,7 @@ func MyList(ctx *gin.Context) {
 		querySql += fmt.Sprintf(" AND state != %d", model.ProposalStatePendingSubmit)
 	}
 
-	total, resultRows, err := generateFrontendProposalRecords(db, querySql, page)
+	total, resultRows, err := generateFrontendProposalRecords(db, querySql, page, false)
 	if err != nil {
 		log.Error().Msgf("get proposal list error: query sql: %s, err: %+v", querySql, err)
 		sdk.LogServerErrorToSentry(ctx, err)
@@ -669,7 +671,8 @@ func GetProposalsUsedForCreatingProjects(ctx *gin.Context) {
 		}), ","),
 	)
 
-	_, resultRows, err := generateFrontendProposalRecords(db, querySql, nil)
+	// The passed in query seg has already sorted by sip desc, no need to specify it in listBySip param
+	_, resultRows, err := generateFrontendProposalRecords(db, querySql, nil, false)
 	if err != nil {
 		log.Error().Msgf("get proposal list error: query sql: %s, err: %+v", querySql, err)
 		sdk.LogServerErrorToSentry(ctx, err)
@@ -894,7 +897,7 @@ func UpdateProposalStateAndLaunchStateChangeActions(db *gorm.DB, user *middlewar
 	return proposalRecord.ID, nil
 }
 
-func generateFrontendProposalRecords(db *gorm.DB, querySql string, page *gormfind.Page) (int64, []*FrontendProposalListRecord, error) {
+func generateFrontendProposalRecords(db *gorm.DB, querySql string, page *gormfind.Page, listBySip bool) (int64, []*FrontendProposalListRecord, error) {
 	var tmpRcd []*FrontendProposalListRecord
 	var countTx *gorm.DB
 	countTx = db.Raw(querySql).Scan(&tmpRcd)
@@ -907,8 +910,12 @@ func generateFrontendProposalRecords(db *gorm.DB, querySql string, page *gormfin
 	if page != nil {
 		// Specify custom order by state
 		// Note: this is PG specified function
-		querySql += fmt.Sprintf("\nORDER BY array_position(array[%s], p.state), create_ts desc",
-			strings.Join(lo.Map(StateOrder, func(state model.ProposalState, _ int) string { return fmt.Sprintf("%d", state) }), ", "))
+		if listBySip {
+			querySql += fmt.Sprintf("\nORDER BY sip desc")
+		} else {
+			querySql += fmt.Sprintf("\nORDER BY array_position(array[%s], p.state), create_ts desc",
+				strings.Join(lo.Map(StateOrder, func(state model.ProposalState, _ int) string { return fmt.Sprintf("%d", state) }), ", "))
+		}
 		querySql += fmt.Sprintf("\nLIMIT %d OFFSET %d", page.Size, (page.Page-1)*page.Size)
 	}
 
