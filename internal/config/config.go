@@ -12,11 +12,9 @@ import (
 )
 
 type Config struct {
-	DataSource dataSource `json:"dataSource" yaml:"dataSource"`
-	Jwt        jwt        `json:"jwt" yaml:"jwt"`
-	// FIXME: remove Auth, it is for unipass [x]
-	Auth auth `json:"auth" yaml:"auth"`
-	// FIXME: remove Auth, it is for appstore [x]
+	DataSource       dataSource      `json:"dataSource" yaml:"dataSource"`
+	Jwt              jwt             `json:"jwt" yaml:"jwt"`
+	Auth             auth            `json:"auth" yaml:"auth"`
 	PreviewMode      previewMode     `json:"previewMode" yaml:"previewMode"`
 	Casbin           casbin          `json:"casbin" yaml:"casbin"`
 	CronJob          cronJob         `json:"cronJob" yaml:"cronJob"`

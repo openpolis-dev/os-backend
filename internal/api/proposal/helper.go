@@ -152,7 +152,6 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 	voteTimeProps.PendingExecutionSecond = pTemplate.PendingExecutionSecond
 	reqData.VoteType = pTemplate.VoteType
 
-	// FIXME: data race: method 1: cache over DB, method 2: lock on record, method 3: upgrade SQL
 	if proposalId != 0 {
 		// Updating existing proposals
 		var dbProposalRcd model.Proposal
@@ -632,16 +631,13 @@ func SaveProposalToMetaforo(db *gorm.DB, origProposalRecordId uint, voteType int
 		log.Error().Msgf("update db records from metaforoProposalResponse error: %+v", err)
 	}
 
-	// FIXME: Check whether the state can be updated by poll status changed
-	updatedProposalRecord.State = int(model.ProposalStateDraft)
-	updatedProposalRecord.ProposalRecordId = model.BuildProposalRecordIdFromMetaforoThreadId(metaforoProposalResponse.Thread.Id)
-
 	// Save data backed from metaforo API response to DB
+	// Setting proposal to draft state here, and after this function return, check for publicity and vote type will be applied to this record
 	if err := db.Model(&updatedProposalRecord).
 		Where("id = ?", updatedProposalRecord.ID).
 		Updates(&model.Proposal{
-			ProposalRecordId: updatedProposalRecord.ProposalRecordId,
-			State:            updatedProposalRecord.State,
+			ProposalRecordId: model.BuildProposalRecordIdFromMetaforoThreadId(metaforoProposalResponse.Thread.Id),
+			State:            int(model.ProposalStateDraft),
 		}).Error; err != nil {
 		log.Error().Msgf("update proposal error: %+v", err)
 		return err
@@ -895,12 +891,17 @@ func UpdateDbVoteOptionRecordsFromMetaforoProposalResponse(db *gorm.DB, dbPropos
 			log.Debug().Msgf("save DB proposal vote record success: %+v", proposalVoteRecord)
 		}
 
-		updatePollStateTx := db.Model(&model.ProposalVoteRecord{}).Where(&model.ProposalVoteRecord{MetaforoID: poll.Id}).Update("state", poll.Status)
-		if updatePollStateTx.Error != nil {
-			log.Error().Msgf("update proposal vote record state error: %+v", updatePollStateTx.Error)
-			return pollStatusChanged, updatePollStateTx.Error
-		} else if updatePollStateTx.RowsAffected > 0 {
+		currState := proposalVoteRecord.State
+		if currState != poll.Status {
 			pollStatusChanged = true
+			err := db.Model(&model.ProposalVoteRecord{}).Where(&model.ProposalVoteRecord{MetaforoID: poll.Id}).Update("state", poll.Status).Error
+			if err != nil {
+				log.Error().Msgf("update proposal vote record state error: %+v", err)
+				return pollStatusChanged, err
+			}
+		} else {
+			log.Debug().Msgf("proposal vote record state: %s, new state: %s", currState, poll.Status)
+			pollStatusChanged = false
 		}
 
 		err = db.Transaction(func(tx *gorm.DB) error {
@@ -985,7 +986,7 @@ func HandleProposalPollStatusChange(db *gorm.DB, proposalId uint) error {
 				return err
 			}
 
-			// setProposalSip also change the proposal state to voting
+			// setProposalSip can change the proposal state to voting, and the query contains condition, so the code is lock free
 			if err = setProposalSip(db, pTemplate, &dbProposalRcd); err != nil {
 				log.Error().Msgf("set proposal sip error: %+v", err)
 				return err
@@ -1408,7 +1409,7 @@ func updateProposalStateByExtraCheckRule(checkRules []*model.ExtraResultCheckRul
 		}
 		valueToBeCompared := 0
 		switch r.Metric {
-		// FIXME: Get data from cache
+		// TODO: Get data from cache
 		case internal.ExtraCheckRuleMetricSeed:
 			valueToBeCompared = indexClient.GetCurrentSeedHolderCount()
 		case internal.ExtraCheckRuleMetricCurrentSeasonNode:
@@ -1593,7 +1594,7 @@ func CreateProjectFromAutoTasks(db *gorm.DB, proposalId uint) (*model.Project, e
 		}
 	}
 
-	// FIXME: Add uniq index field to project to avoid duplicated creation
+	// TODO: Add uniq index field to project to avoid duplicated creation
 	if err = db.Create(&newProjectData).Error; err != nil {
 		log.Error().Msgf("create project error: %+v", err)
 		return nil, err
@@ -1656,9 +1657,10 @@ func setProposalSip(db *gorm.DB, pTemplate *model.ProposalTemplate, dbProposalRc
 		}
 	}
 
-	updateTx := db.Clauses(clause.Locking{Strength: "UPDATE"}).
+	// Only update proposal has same state with passed in object
+	updateTx := db.Clauses(clause.Locking{Strength: "UPDATE", Options: "NOWAIT"}).
 		Model(&dbProposalRcd).
-		Where("id = ? AND sip = 0", dbProposalRcd.ID).
+		Where("id = ? AND state = ? AND sip = 0", dbProposalRcd.State, dbProposalRcd.ID).
 		Updates(&model.Proposal{Sip: proposalSip, State: int(model.ProposalStateVoting)})
 
 	if err = updateTx.Error; err != nil {
