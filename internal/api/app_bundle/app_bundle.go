@@ -272,15 +272,16 @@ func CreateAppBundle(ctx *gin.Context) {
 		UpdateTs:     model.GetCurrentUtcEpochSecond(),
 		Type:         "NEW_REWARD",
 	}
-	err = db.Model(model.AppBundle{}).Create(&appBundle).Error
-	if err != nil {
-		log.Error().Msgf("Create app bundle records error: %+v", err)
-		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create app bundle record error")))
-		return
-	}
 
 	err = db.Transaction(func(tx *gorm.DB) error {
+		err = tx.Model(model.AppBundle{}).Create(&appBundle).Error
+		if err != nil {
+			log.Error().Msgf("Create app bundle records error: %+v", err)
+			sdk.LogServerErrorToSentry(ctx, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create app bundle record error")))
+			return err
+		}
+
 		appBundle.AppRecords = lo.Map(newAppBundleReq.Records, func(appRcdRequest *model.NewApplicationRequest, index int) *model.Application {
 			return &model.Application{
 				Type:             model.ApplicationNewReward,
@@ -428,11 +429,10 @@ func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState
 
 	err = db.Transaction(func(tx *gorm.DB) error {
 		for _, appBundleRcd := range appBundleRcds {
-
 			appBundleRcd.State = newState
 			appBundleRcd.UpdateTs = model.GetCurrentUtcEpochSecond()
 			appBundleRcd.UpdatedAt = time.Now().In(internal.ProjectTimezone)
-			if err = tx.Save(&appBundleRcd).Error; err != nil {
+			if err = tx.Updates(&appBundleRcd).Error; err != nil {
 				log.Error().Msgf("update application state error: %+v, app bundle: %+v", err, appBundleRcd)
 				return err
 			}
@@ -459,15 +459,14 @@ func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState
 					return err
 				}
 
-				err = tx.Model(model.AppBundleAuditLog{}).Create(&model.AppBundleAuditLog{
-					AppBundleId: appBundleRcd.ID,
-					AppBundle:   appBundleRcd,
-					LogTs:       model.GetCurrentUtcEpochSecond(),
-					Operation:   action,
-					Operator:    common.FormatUserWallet(user.Wallet),
-					PreState:    model.ApplicationStateOpen,
-					PostState:   newState,
-					ExtraData:   "",
+				err = tx.Model(model.ApplicationAuditLog{}).Create(&model.ApplicationAuditLog{
+					ApplicationID: appRcd.ID,
+					LogTs:         model.GetCurrentUtcEpochSecond(),
+					Operation:     action,
+					Operator:      common.FormatUserWallet(user.Wallet),
+					PreState:      model.ApplicationStateOpen,
+					PostState:     newState,
+					ExtraData:     "",
 				}).Error
 				if err != nil {
 					log.Error().Msgf("create app bundle audit log record error: %+v, app bundle: %+v", err, appBundleRcd)

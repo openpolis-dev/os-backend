@@ -293,7 +293,7 @@ func QueryAppBundleRecords(db *gorm.DB, queryParams *ListAppBundleQueryParams) (
 	clearState := strings.ToLower(strings.TrimSpace(queryParams.State))
 
 	if clearedEntity != "" {
-		if !lo.Contains([]string{"project", "guild"}, clearedEntity) {
+		if !lo.Contains([]string{"project", "guild", "common_budget_source"}, clearedEntity) {
 			return nil, 0, fmt.Errorf("unknown entity type %s", queryParams.Entity)
 		}
 	}

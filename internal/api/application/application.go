@@ -370,23 +370,6 @@ func Download(ctx *gin.Context) {
 	}
 }
 
-func DownloadUploadTemplate(ctx *gin.Context) {
-	lang := api.GetLangFromQuery(ctx, "en")
-	headerStr := internal.ApplicationUploadTemplateHeader[lang]
-	if header, found := internal.ApplicationUploadTemplateHeader[lang]; found {
-		headerStr = header
-	}
-
-	reader := strings.NewReader(headerStr)
-	contentLength := len(headerStr)
-
-	extraHeaders := map[string]string{
-		"Content-Disposition": `attachment; filename="upload-template.csv"`,
-	}
-
-	ctx.DataFromReader(http.StatusOK, int64(contentLength), "encoding/csv", reader, extraHeaders)
-}
-
 // Batch operations, most of the request bodies are ids
 // For batch process logic, it handles all applications in approved state and process them, so no need to pass ids
 // TODO: Those batch actions contain similar logic, check whether it is possible to simplify them
@@ -479,6 +462,7 @@ func BatchApprove(ctx *gin.Context) {
 		return
 	}
 
+	// FIXME: pass application ids instead of reference to applications
 	push := api.ForContextOnlyPush(ctx)
 	err = model.BatchAuditApplication(db, common.FormatUserWallet(user.Wallet), &applications, model.AuditActionApprove, "", enforcer, push)
 	if err != nil {
@@ -560,6 +544,7 @@ func BatchComplete(ctx *gin.Context) {
 		return
 	}
 
+	// FIXME: pass application ids instead of reference to applications
 	push := api.ForContextOnlyPush(ctx)
 	err = model.BatchAuditApplication(db, common.FormatUserWallet(user.Wallet), &applications, model.AuditActionComplete, reqBody.Message, enforcer, push)
 	if err != nil {
@@ -602,65 +587,6 @@ func Detail(ctx *gin.Context) {
 	application := &model.Application{}
 	getRecordOrReturnNotFound(ctx, application)
 	ctx.JSON(http.StatusOK, application)
-}
-
-func Approve(ctx *gin.Context) {
-	application := &model.Application{}
-	auditApplication(ctx, application, model.AuditActionApprove, "")
-	ctx.JSON(http.StatusOK, "")
-}
-
-func Reject(ctx *gin.Context) {
-	application := &model.Application{}
-	auditApplication(ctx, application, model.AuditActionReject, "")
-	ctx.JSON(http.StatusOK, "")
-}
-
-func Process(ctx *gin.Context) {
-	application := &model.Application{}
-	auditApplication(ctx, application, model.AuditActionProcess, "")
-	ctx.JSON(http.StatusOK, "")
-}
-
-func Complete(ctx *gin.Context) {
-	application := &model.Application{}
-	auditApplication(ctx, application, model.AuditActionComplete, "")
-	ctx.JSON(http.StatusOK, "")
-}
-
-func auditApplication(ctx *gin.Context, application *model.Application, auditAction model.AuditActionType, auditMsg string) {
-	getRecordOrReturnNotFound(ctx, application)
-
-	user, enforcer, db, _ := api.ForContext(ctx)
-	push := api.ForContextOnlyPush(ctx)
-
-	//  check permission: `(0x..., proj_and_guild, audit_app)`
-	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), internal.ObjProjAndGuild, internal.ActAuditApplication)
-	if err != nil {
-		log.Error().Msgf("check permission error: %+v", err)
-		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
-		return
-	}
-	if !ok {
-		ctx.JSON(http.StatusForbidden, api.Forbidden())
-		return
-	}
-
-	if application.ValidateAuditAction(auditAction) {
-		err = model.AuditApplication(db, common.FormatUserWallet(user.Wallet), application, auditAction, auditMsg, enforcer, push)
-		if err != nil {
-			log.Error().Msgf("approve application error: %+v", err)
-			sdk.LogServerErrorToSentry(ctx, err)
-			ctx.JSON(http.StatusBadRequest, api.ServerError(errors.New("approve application error")))
-			return
-		}
-	} else {
-		err := fmt.Errorf("application currently is at state %s, which is not suit for approve", application.State)
-		sdk.LogUserSideError(ctx, err)
-		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
-		return
-	}
 }
 
 func getRecordOrReturnNotFound(ctx *gin.Context, application *model.Application) {

@@ -24,7 +24,6 @@ type Config struct {
 	PublicData       publicData      `json:"publicData" yaml:"publicData"`
 	MetaforoData     metaforoData    `json:"metaforoData" yaml:"metaforoData"`
 	Admin            adminData       `json:"admin" yaml:"admin"`
-	ProposalData     proposalData    `json:"proposalData" yaml:"proposalData"`
 	QuickAccounting  QuickAccounting `json:"quickAccounting" yaml:"quickAccounting"`
 	SnsInvite        snsInvite       `json:"snsInvite" yaml:"snsInvite"`
 }
@@ -101,10 +100,6 @@ type (
 
 	adminData struct {
 		AuthToken string `json:"authToken" yaml:"authToken"`
-	}
-
-	proposalData struct {
-		SipInitNumber int `json:"sipInitNumber" yaml:"sipInitNumber"`
 	}
 
 	QuickAccounting struct {

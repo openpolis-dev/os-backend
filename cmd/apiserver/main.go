@@ -88,8 +88,6 @@ func main() {
 	// add default policies
 	defaultPolicies := [][]string{
 		{internal.RoleHall, "*", "*"}, // `p, hall, *, *` hall can do anything
-		{internal.RoleTreasuryManager, internal.ObjTreasury, internal.ActUpdateAssertBudget}, // `p, treasury_manager, treasury, u_assert_budget`
-		{internal.RoleEventManager, internal.ObjEvent, internal.ActCreateEvent},              // `p, event_manager, event, create_event`
 	}
 	_, err = enforcer.AddPolicies(defaultPolicies)
 	if err != nil {
@@ -121,7 +119,6 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	storage.SeedDbRecords()
 
 	// setup cache
 	// Currently the cache is only used by saving aggregated data, may be extended to other data in future
@@ -234,7 +231,6 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 
 		v1.GET("/apps_applicants", application.ListApplicants)
 		v1.GET("/download_applications", application.Download)
-		v1.GET("/get_applications_upload_template", application.DownloadUploadTemplate)
 
 		// SeeDAO assets routers
 		treasuryGroup := v1.Group("/treasury")
@@ -294,10 +290,6 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		// Proposal templates router
 		proposalTmplRouter := v1.Group("/proposal_tmpl")
 		proposalTmplRouter.GET("/list", proposal.ListTemplates)
-
-		// Schedule jobs routers
-		jobsRouter := v1.Group("/jobs")
-		jobsRouter.GET("/list", cron_jobs.List)
 
 		// foo routers
 	}
@@ -433,6 +425,10 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		adminGroup := r.Group("/admin", middleware.AdminPermissionRequired)
 		proposalTmplAdminRouter := adminGroup.Group("/proposal_tmpl")
 		proposalTmplAdminRouter.POST("/update", proposal.UpdateTemplate)
+
+		// Schedule jobs routers
+		jobsRouter := adminGroup.Group("/jobs")
+		jobsRouter.GET("/list", cron_jobs.List)
 	}
 
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
@@ -448,6 +444,11 @@ func setupCronJob(cfg *config.Config, db *gorm.DB) {
 	c := cron.New()
 	// (Minutes Hours Day-of-Month Month Day-of-Week)
 	// "@every 10m"
+
+	if cfg.CronJob.CheckAndUpdateUnverifiedSnsInvite == "" {
+		log.Warn().Msg("cron job for checking sns invite not set")
+		return
+	}
 
 	// CheckAndUpdateUnverifiedSnsInvite Job
 	if _, err := c.AddFunc(cfg.CronJob.CheckAndUpdateUnverifiedSnsInvite, func() {

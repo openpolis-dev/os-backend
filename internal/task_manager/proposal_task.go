@@ -82,7 +82,7 @@ func CreateVetoProposalTask(db *gorm.DB, job *model.CronJob, jobParams string) {
 			for _, r := range proposalTasks {
 				r.State = model.CronJobStateTerminated
 				r.UpdateTs = model.GetCurrentUtcEpochSecond()
-				tx.Updates(r)
+				tx.Model(&model.CronJob{}).Updates(r)
 			}
 			tx.Updates(&proposalTasks)
 
