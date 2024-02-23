@@ -178,9 +178,11 @@ func AggrScr(ctx *gin.Context) {
 	switch currentSeason.Idx {
 	case 3:
 		metaforoVoteCount = static_data.MetaforoVoteCountS3
-		break
 	case 4:
 		metaforoVoteCount = static_data.MetaforoVoteCountS4
+	case 5:
+		metaforoVoteCount = static_data.MetaforoVoteCountS5
+
 	default:
 		log.Warn().Msgf("no meatforo voting data for season %d", currentSeason.Idx)
 	}
