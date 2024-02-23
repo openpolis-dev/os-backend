@@ -895,7 +895,7 @@ func UpdateDbVoteOptionRecordsFromMetaforoProposalResponse(db *gorm.DB, dbPropos
 			log.Debug().Msgf("save DB proposal vote record success: %+v", proposalVoteRecord)
 		}
 
-		updatePollStateTx := db.Where(&model.ProposalVoteRecord{MetaforoID: poll.Id}).Update("state", poll.Status)
+		updatePollStateTx := db.Model(&model.ProposalVoteRecord{}).Where(&model.ProposalVoteRecord{MetaforoID: poll.Id}).Update("state", poll.Status)
 		if updatePollStateTx.Error != nil {
 			log.Error().Msgf("update proposal vote record state error: %+v", updatePollStateTx.Error)
 			return pollStatusChanged, updatePollStateTx.Error
@@ -972,7 +972,7 @@ func HandleProposalPollStatusChange(db *gorm.DB, proposalId uint) error {
 		db.Find(&dbProposalRcd, proposalId)
 
 		if dbProposalRcd.Sip != 0 {
-			log.Debug().Msgf("proposal %d has SIP set, skip", proposalId)
+			log.Debug().Msgf("proposal %d has SIP set, no update will be performed even poll is open", proposalId)
 			return nil
 		}
 
@@ -1658,8 +1658,7 @@ func setProposalSip(db *gorm.DB, pTemplate *model.ProposalTemplate, dbProposalRc
 
 	updateTx := db.Clauses(clause.Locking{Strength: "UPDATE"}).
 		Model(&dbProposalRcd).
-		Where(&dbProposalRcd).
-		Where("sip = 0").
+		Where("id = ? AND sip = 0", dbProposalRcd.ID).
 		Updates(&model.Proposal{Sip: proposalSip, State: int(model.ProposalStateVoting)})
 
 	if err = updateTx.Error; err != nil {

@@ -204,6 +204,10 @@ func (p *Proposal) CanBeUpdatedBy(wallet string) bool {
 
 func (p *Proposal) GetMetaforoThreadId() int {
 	threadIdStr := strings.TrimPrefix(p.ProposalRecordId, "metaforo:")
+	if threadIdStr == "" {
+		log.Error().Msgf("empty metafor thread ID error, proposal: %+v", p)
+		return 0
+	}
 	threadId, err := strconv.Atoi(threadIdStr)
 	if err != nil {
 		log.Error().Msgf("Parse metafor thread ID error, proposalRecordId: %s, error: %+v", p.ProposalRecordId, err)
