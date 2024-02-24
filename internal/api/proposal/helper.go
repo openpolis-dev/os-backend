@@ -1627,11 +1627,7 @@ func IsProposalIsForClosingProject(db *gorm.DB, proposalId uint) (bool, *model.P
 		SIP: fmt.Sprintf("%d", createProjectProposal.Sip),
 	}
 
-	updateTx := db.Clauses(clause.Locking{
-		Strength: "UPDATE",
-		Options:  "NOWAIT",
-	}).Model(&createdProject).Where(&createdProject).First(&createdProject)
-	if err = updateTx.Error; err != nil {
+	if err := db.Model(&createdProject).Where(&createdProject).First(&createdProject).Error; err != nil {
 		log.Error().Msgf("get associated project error: %+v", err)
 		return false, nil, err
 	}
