@@ -1660,7 +1660,7 @@ func setProposalSip(db *gorm.DB, pTemplate *model.ProposalTemplate, dbProposalRc
 	// Only update proposal has same state with passed in object
 	updateTx := db.Clauses(clause.Locking{Strength: "UPDATE", Options: "NOWAIT"}).
 		Model(&dbProposalRcd).
-		Where("id = ? AND state = ? AND sip = 0", dbProposalRcd.State, dbProposalRcd.ID).
+		Where("id = ? AND state = ? AND sip = 0", dbProposalRcd.ID, dbProposalRcd.State).
 		Updates(&model.Proposal{Sip: proposalSip, State: int(model.ProposalStateVoting)})
 
 	if err = updateTx.Error; err != nil {
