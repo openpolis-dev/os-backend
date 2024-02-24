@@ -1640,6 +1640,7 @@ func IsProposalIsForClosingProject(db *gorm.DB, proposalId uint) (bool, *model.P
 
 func setProposalSip(db *gorm.DB, pTemplate *model.ProposalTemplate, dbProposalRcd *model.Proposal) error {
 	var proposalSip = 0
+	db.Find(&dbProposalRcd, dbProposalRcd.ID)
 
 	if pTemplate != nil && pTemplate.Type == model.ProposalTemplateTypeCloseProject {
 		createProjectProposal := model.Proposal{ID: dbProposalRcd.AssociateProposalId}

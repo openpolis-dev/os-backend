@@ -762,8 +762,6 @@ func UpdateProposalStateAndLaunchStateChangeActions(db *gorm.DB, user *middlewar
 		}
 	case model.ProposalStateApproved:
 		return 0, db.Transaction(func(tx *gorm.DB) error {
-			proposalRecord.State = int(model.ProposalStateApproved)
-
 			if err = setProposalSip(db, pTemplate, proposalRecord); err != nil {
 				log.Error().Msgf("set proposal sip error: %+v", err)
 				return err
