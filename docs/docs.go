@@ -264,7 +264,7 @@ const docTemplate = `{
                 "tags": [
                     "AppBundle"
                 ],
-                "summary": "List available projects and guilds for current user",
+                "summary": "List available projects and guilds for current user, and all common budget sources",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -482,6 +482,18 @@ const docTemplate = `{
                 ],
                 "summary": "List guilds",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "search keywords",
+                        "name": "keywords",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "search wallet",
+                        "name": "wallet",
+                        "in": "query"
+                    },
                     {
                         "type": "integer",
                         "description": "page number, default: 1",
@@ -925,6 +937,18 @@ const docTemplate = `{
                         "type": "string",
                         "description": "status array, e.g. 'open,pending_close'",
                         "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "search keywords",
+                        "name": "keywords",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "search wallet",
+                        "name": "wallet",
                         "in": "query"
                     },
                     {
@@ -3229,6 +3253,12 @@ const docTemplate = `{
         "app_bundle.ListAvailableProjectAndGuildResp": {
             "type": "object",
             "properties": {
+                "common_budget_source": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.CommonBudgetSource"
+                    }
+                },
                 "guilds": {
                     "type": "array",
                     "items": {
@@ -3316,6 +3346,9 @@ const docTemplate = `{
                 },
                 "is_special": {
                     "type": "boolean"
+                },
+                "label": {
+                    "type": "string"
                 },
                 "logo": {
                     "type": "string"
@@ -3851,6 +3884,26 @@ const docTemplate = `{
                 "ApplicationStateOpen"
             ]
         },
+        "model.CommonBudgetSource": {
+            "type": "object",
+            "properties": {
+                "create_ts": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "state": {
+                    "type": "string"
+                },
+                "update_ts": {
+                    "type": "integer"
+                }
+            }
+        },
         "model.FrontendApplicationRecord": {
             "type": "object",
             "properties": {
@@ -4153,6 +4206,9 @@ const docTemplate = `{
                 },
                 "is_special": {
                     "type": "boolean"
+                },
+                "label": {
+                    "type": "string"
                 },
                 "logo": {
                     "type": "string"
@@ -4534,6 +4590,9 @@ const docTemplate = `{
                 },
                 "is_special": {
                     "type": "boolean"
+                },
+                "label": {
+                    "type": "string"
                 },
                 "logo": {
                     "type": "string"

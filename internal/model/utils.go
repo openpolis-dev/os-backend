@@ -293,7 +293,7 @@ func QueryAppBundleRecords(db *gorm.DB, queryParams *ListAppBundleQueryParams) (
 	clearState := strings.ToLower(strings.TrimSpace(queryParams.State))
 
 	if clearedEntity != "" {
-		if !lo.Contains([]string{"project", "guild"}, clearedEntity) {
+		if !lo.Contains([]string{"project", "guild", "common_budget_source"}, clearedEntity) {
 			return nil, 0, fmt.Errorf("unknown entity type %s", queryParams.Entity)
 		}
 	}
@@ -311,6 +311,9 @@ func QueryAppBundleRecords(db *gorm.DB, queryParams *ListAppBundleQueryParams) (
 		}
 		whereClause += " AND app_bundles.state = @state"
 		whereParams["state"] = ApplicationState(clearState)
+	} else {
+		whereClause += " AND app_bundles.state = @state"
+		whereParams["state"] = ApplicationStateOpen
 	}
 
 	if clearedEntity != "" {
@@ -353,7 +356,6 @@ func QueryAppBundleRecords(db *gorm.DB, queryParams *ListAppBundleQueryParams) (
 	// Calculate total count
 	total := db.Raw(querySQL+whereClause, whereParams).Scan(&[]map[string]any{}).RowsAffected
 
-	// TODO: This is the mysql style, need to find way to get db schema here and implement pg way
 	whereClause += fmt.Sprintf("\nORDER BY app_bundles.%s %s LIMIT @limit OFFSET @offset", queryParams.SortField, queryParams.SortOrder)
 	whereParams["offset"] = (queryParams.Page - 1) * queryParams.Size
 	whereParams["limit"] = queryParams.Size
@@ -361,6 +363,7 @@ func QueryAppBundleRecords(db *gorm.DB, queryParams *ListAppBundleQueryParams) (
 	var rcds []JointAppBundleEntityRslt
 	err := db.Raw(querySQL+whereClause, whereParams).Find(&rcds).Error
 	if err != nil {
+		log.Error().Msgf("get application list error: %+v, query sql: %s, query params: %+v", err, querySQL+whereClause, whereParams)
 		return nil, 0, err
 	}
 

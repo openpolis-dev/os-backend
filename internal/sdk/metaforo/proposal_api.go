@@ -270,7 +270,7 @@ func createCreateOrUpdateFormData(groupName, title, categoryIndexId, content str
 	}
 
 	if voteFormData != "" {
-		_ = writer.WriteField("polls", string(voteFormData))
+		_ = writer.WriteField("polls", voteFormData)
 	}
 
 	err := writer.Close()

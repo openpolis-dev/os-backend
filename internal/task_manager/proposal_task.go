@@ -82,7 +82,7 @@ func CreateVetoProposalTask(db *gorm.DB, job *model.CronJob, jobParams string) {
 			for _, r := range proposalTasks {
 				r.State = model.CronJobStateTerminated
 				r.UpdateTs = model.GetCurrentUtcEpochSecond()
-				tx.Updates(r)
+				tx.Model(&model.CronJob{}).Updates(r)
 			}
 			tx.Updates(&proposalTasks)
 
@@ -96,13 +96,12 @@ func CreateVetoProposalTask(db *gorm.DB, job *model.CronJob, jobParams string) {
 
 			// Mark project associated to proposal be vetoed to close_failed
 			var dbProposalRcd model.Proposal
-			if err = tx.Find(&dbProposalRcd, vetoProposalId).Error; err != nil {
+			if err = tx.Find(&dbProposalRcd, params.BeVetoedProposalInfo.Id).Error; err != nil {
 				log.Warn().Msgf("fetch veto proposal data error: %+v", err)
 				execResult = err.Error()
 				jobFailed = true
 				return err
 			}
-
 			proposalIsForClosingProject, project, err := proposal.IsProposalIsForClosingProject(tx, dbProposalRcd.ID)
 			if err != nil {
 				log.Warn().Msgf("check proposal is closing project error: %+v", err)
@@ -110,6 +109,8 @@ func CreateVetoProposalTask(db *gorm.DB, job *model.CronJob, jobParams string) {
 				jobFailed = true
 				return err
 			}
+
+			log.Debug().Msgf("proposal %d is closing project proposal? %+v, related project: %+v", dbProposalRcd.ID, proposalIsForClosingProject, project)
 
 			if proposalIsForClosingProject {
 				log.Debug().Msgf("proposal %d is for closing project %v", dbProposalRcd.ID, project)

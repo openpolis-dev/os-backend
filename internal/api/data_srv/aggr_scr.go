@@ -5,6 +5,7 @@ import (
 	"encoding/gob"
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
@@ -177,13 +178,18 @@ func AggrScr(ctx *gin.Context) {
 
 	switch currentSeason.Idx {
 	case 3:
+		log.Debug().Msgf("using vote data from season 3")
 		metaforoVoteCount = static_data.MetaforoVoteCountS3
-		break
 	case 4:
+		log.Debug().Msgf("using vote data from season 4")
 		metaforoVoteCount = static_data.MetaforoVoteCountS4
+	case 5:
+		log.Debug().Msgf("using vote data from season 5")
+		metaforoVoteCount = static_data.MetaforoVoteCountS5
 	default:
 		log.Warn().Msgf("no meatforo voting data for season %d", currentSeason.Idx)
 	}
+	api.PrintStructAsJson(metaforoVoteCount, "TTT: vote count")
 
 	activateWalletCount := 0
 
@@ -256,7 +262,8 @@ func AggrScr(ctx *gin.Context) {
 			}
 		})
 
-		userMetaforoVoteCount := model.GetMapValueOrDefault[string, int](metaforoVoteCount, wallet, 0)
+		lowerCasedWallet := strings.ToLower(wallet)
+		userMetaforoVoteCount := model.GetMapValueOrDefault[string, int](metaforoVoteCount, lowerCasedWallet, 0)
 		metaforoVoteReward := metaforoVoteRewardUnit.Mul(decimal.NewFromInt(int64(userMetaforoVoteCount)))
 		if !metaforoVoteReward.Equal(decimal.Zero) {
 			mintRewardData[wallet] = metaforoVoteReward.String()

@@ -12,6 +12,8 @@ const EventDeleteMagicWorld = "4taoist2"
 
 var ProjectTimezone = time.FixedZone("UTF+8", int((8 * time.Hour).Seconds()))
 
+const CityHallProjectName = "CityHall"
+
 var ApplicationUploadTemplateHeader = map[string]string{
 	"zh": "接收人,增加资产,季度,事项内容,预算来源,申请人,状态",
 	"en": "Receiver,Add Assets,Season,Content,Budget Source,Operator,State",
@@ -21,6 +23,8 @@ var ApplicationDownloadHeader = map[string]string{
 	"zh": "接收人,增加资产,季度,事项内容,预算来源,申请人,状态",
 	"en": "Receiver,Add Assets,Season,Content,Budget Source,Operator,State",
 }
+
+const USDTContractAddr = "0xdAC17F958D2ee523a2206206994597C13D831ec7"
 
 const ScrContractType = "erc20"
 const ScrContractAddr = "0xc74DEE15a4700D5df797bDD3982EE649A3Bb8c6C"
@@ -98,11 +102,12 @@ const (
 )
 
 const (
-	ComponentNameBudgetP1      = "budget_p1"
-	ComponentNameBudget        = "budget"
-	ComponentNameDeliverables  = "deliverables"
-	ComponentNameDeadline      = "deadline"
-	ComponentNameCreateProject = "create_project"
+	ComponentNameBudgetP1          = "budget_p1"
+	ComponentNameBudget            = "budget"
+	ComponentNameDeliverables      = "deliverables"
+	ComponentNameDeadline          = "deadline"
+	ComponentNameCreateProject     = "create_project"
+	ComponentNameAssociateProposal = "associate_proposal"
 
 	ContentBlockContentName = "内容"
 )
@@ -114,3 +119,19 @@ const ExtraCheckRuleMetricCurrentSeasonNode = "cs_node"
 
 const ExtraCheckRuleTypeRatio = "ratio"
 const ExtraCheckRuleTypeCount = "count"
+
+type DecimalsAndContractAddr struct {
+	Decimals int
+	Addr     string
+}
+
+// AssertDecimalsAndContractAddr supported token for sending application to QuickAccounting
+var AssertDecimalsAndContractAddr = map[string]*DecimalsAndContractAddr{
+	"SCR":  {Decimals: 18, Addr: ScrContractAddr},
+	"USDT": {Decimals: 6, Addr: USDTContractAddr},
+}
+
+const (
+	SNSInviteRewardsToken = "SCR"
+	SNSInviteItem         = "邀请 SNS"
+)

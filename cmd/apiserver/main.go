@@ -5,15 +5,18 @@ import (
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
+	"github.com/robfig/cron/v3"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/pkgerrors"
 	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api/common_budget_sources"
 	"github.com/theseed-labs/os-backend/internal/api/cron_jobs"
 	"github.com/theseed-labs/os-backend/internal/api/proposal"
+	"github.com/theseed-labs/os-backend/internal/api/sns_invite"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/graph/generated"
 	"github.com/theseed-labs/os-backend/internal/graph/resolver"
+	"github.com/theseed-labs/os-backend/internal/service"
 	"github.com/theseed-labs/os-backend/internal/task_manager"
 	"gorm.io/gorm"
 
@@ -85,8 +88,6 @@ func main() {
 	// add default policies
 	defaultPolicies := [][]string{
 		{internal.RoleHall, "*", "*"}, // `p, hall, *, *` hall can do anything
-		{internal.RoleTreasuryManager, internal.ObjTreasury, internal.ActUpdateAssertBudget}, // `p, treasury_manager, treasury, u_assert_budget`
-		{internal.RoleEventManager, internal.ObjEvent, internal.ActCreateEvent},              // `p, event_manager, event, create_event`
 	}
 	_, err = enforcer.AddPolicies(defaultPolicies)
 	if err != nil {
@@ -118,7 +119,6 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	storage.SeedDbRecords()
 
 	// setup cache
 	// Currently the cache is only used by saving aggregated data, may be extended to other data in future
@@ -155,6 +155,8 @@ func main() {
 	task_manager.GetTaskManager().StartRunner()
 
 	storage.SetConfig(cfg)
+
+	setupCronJob(cfg, db)
 
 	r := setupRouter(cfg, db, enforcer, pushSDK)
 	_ = r.Run()
@@ -229,7 +231,6 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 
 		v1.GET("/apps_applicants", application.ListApplicants)
 		v1.GET("/download_applications", application.Download)
-		v1.GET("/get_applications_upload_template", application.DownloadUploadTemplate)
 
 		// SeeDAO assets routers
 		treasuryGroup := v1.Group("/treasury")
@@ -289,10 +290,6 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		// Proposal templates router
 		proposalTmplRouter := v1.Group("/proposal_tmpl")
 		proposalTmplRouter.GET("/list", proposal.ListTemplates)
-
-		// Schedule jobs routers
-		jobsRouter := v1.Group("/jobs")
-		jobsRouter.GET("/list", cron_jobs.List)
 
 		// foo routers
 	}
@@ -417,11 +414,21 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		// Data services API
 		dataSrv := authorizedGroup.Group("/data_srv")
 		dataSrv.GET("/widget_data", data_srv.WidgetData)
+
+		// SNS invite
+		snsInvite := authorizedGroup.Group("/sns_invite")
+		snsInvite.GET("/my_sns_invite_code", sns_invite.GetMySnsInviteCode)
+		snsInvite.GET("/my_sns_invite_rewards", sns_invite.GetMySnsInviteRewards)
+		snsInvite.POST("/invited_by/:invite_code", sns_invite.SnsInvitedBy)
 	}
 	{
 		adminGroup := r.Group("/admin", middleware.AdminPermissionRequired)
 		proposalTmplAdminRouter := adminGroup.Group("/proposal_tmpl")
 		proposalTmplAdminRouter.POST("/update", proposal.UpdateTemplate)
+
+		// Schedule jobs routers
+		jobsRouter := adminGroup.Group("/jobs")
+		jobsRouter.GET("/list", cron_jobs.List)
 	}
 
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
@@ -430,6 +437,29 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 	r.GET("/graphql", middleware.GqlAuth, middleware.GinContextToContextMiddleware, playgroundHandler())
 
 	return r
+}
+
+func setupCronJob(cfg *config.Config, db *gorm.DB) {
+	// cron task
+	c := cron.New()
+	// (Minutes Hours Day-of-Month Month Day-of-Week)
+	// "@every 10m"
+
+	if cfg.CronJob.CheckAndUpdateUnverifiedSnsInvite == "" {
+		log.Warn().Msg("cron job for checking sns invite not set")
+		return
+	}
+
+	// CheckAndUpdateUnverifiedSnsInvite Job
+	if _, err := c.AddFunc(cfg.CronJob.CheckAndUpdateUnverifiedSnsInvite, func() {
+		_ = service.CheckAndUpdateUnverifiedSnsInvite(cfg, db)
+	}); err != nil {
+		panic(err)
+	}
+
+	// other cron jobs
+
+	c.Start()
 }
 
 // defining the Graphql handler

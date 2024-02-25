@@ -17,13 +17,15 @@ type Config struct {
 	Auth             auth            `json:"auth" yaml:"auth"`
 	PreviewMode      previewMode     `json:"previewMode" yaml:"previewMode"`
 	Casbin           casbin          `json:"casbin" yaml:"casbin"`
+	CronJob          cronJob         `json:"cronJob" yaml:"cronJob"`
 	Push             push            `json:"push" yaml:"push"`
 	AwsConfig        awsConfig       `json:"awsConfig" yaml:"awsConfig"`
 	ExternalServices externalService `json:"externalServices" yaml:"externalServices"`
 	PublicData       publicData      `json:"publicData" yaml:"publicData"`
 	MetaforoData     metaforoData    `json:"metaforoData" yaml:"metaforoData"`
 	Admin            adminData       `json:"admin" yaml:"admin"`
-	ProposalData     proposalData    `json:"proposalData" yaml:"proposalData"`
+	QuickAccounting  QuickAccounting `json:"quickAccounting" yaml:"quickAccounting"`
+	SnsInvite        snsInvite       `json:"snsInvite" yaml:"snsInvite"`
 }
 
 type (
@@ -44,6 +46,9 @@ type (
 	casbin struct {
 		DriverName string   `json:"driverName" yaml:"driverName"`
 		SuperUsers []string `json:"superUsers" yaml:"superUsers"`
+	}
+	cronJob struct {
+		CheckAndUpdateUnverifiedSnsInvite string `json:"checkAndUpdateUnverifiedSnsInvite" yaml:"checkAndUpdateUnverifiedSnsInvite"`
 	}
 	push struct {
 		Desktop pushOneSignalConfig `json:"desktop" yaml:"desktop"`
@@ -97,8 +102,17 @@ type (
 		AuthToken string `json:"authToken" yaml:"authToken"`
 	}
 
-	proposalData struct {
-		SipInitNumber int `json:"sipInitNumber" yaml:"sipInitNumber"`
+	QuickAccounting struct {
+		Url          string `json:"url" yaml:"url"`
+		WorkspaceId  int    `json:"workspaceId" yaml:"workspaceId"`
+		CategoryId   int    `json:"categoryId" yaml:"categoryId"`
+		CategoryName string `json:"categoryName" yaml:"categoryName"`
+	}
+	snsInvite struct {
+		EntityType string `json:"entityType" yaml:"entityType"`
+		EntityId   uint   `json:"entityId" yaml:"entityId"`
+		EntityName string `json:"entityName" yaml:"entityName"`
+		Applicant  string `json:"applicant" yaml:"applicant"`
 	}
 )
 
