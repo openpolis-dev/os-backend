@@ -8,7 +8,7 @@ require (
 	github.com/99designs/gqlgen v0.17.41
 	github.com/OneSignal/onesignal-go-api v1.0.4
 	github.com/Taoist-Labs/see-auth-go v0.1.8
-	github.com/Taoist-Labs/sns-go-sepolia v0.1.2
+	github.com/Taoist-Labs/sns-go v0.5.4
 	github.com/allegro/bigcache/v3 v3.1.0
 	github.com/aptible/supercronic v0.2.29
 	github.com/aws/aws-sdk-go v1.45.25
