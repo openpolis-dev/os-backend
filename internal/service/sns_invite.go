@@ -108,10 +108,14 @@ func CheckAndUpdateUnverifiedSnsInvite(cfg *config.Config, db *gorm.DB) error {
 		n := sns.Name(row.InviteeUserWallet)
 		log.Debug().Msgf(" -- -- [%d] InviteeUserWallet: %s, SNS: %s", i, row.InviteeUserWallet, n)
 		if n != "" {
-			inviteeUserWallet := common.FormatUserWallet(row.InviteeUserWallet)
+			// applicant is rewards receiver
+			applicant := common.FormatUserWallet(row.InviteUserWallet) // cfg.SnsInvite.Applicant,
+			// recipient is `InviteUserWallet`
+			recipient := applicant //common.FormatUserWallet(row.InviteUserWallet)
+
 			err = db.Transaction(func(tx *gorm.DB) error {
 				// 1 update invite record's 'verified' to true
-				err = model.SnsInviteModel.UpdateInviteRecordVerified(tx, row.InviteeUserWallet)
+				err = model.SnsInviteModel.UpdateInviteRecordVerified(tx, common.FormatUserWallet(row.InviteeUserWallet))
 				if err != nil {
 					return err
 				}
@@ -119,7 +123,7 @@ func CheckAndUpdateUnverifiedSnsInvite(cfg *config.Config, db *gorm.DB) error {
 				// 2 create application
 				// save app bundle
 				appBundle := model.AppBundle{
-					Applicant:    inviteeUserWallet,
+					Applicant:    applicant,
 					EntityType:   cfg.SnsInvite.EntityType,
 					EntityId:     cfg.SnsInvite.EntityId,
 					SeasonId:     currentSeason.ID,
@@ -136,7 +140,7 @@ func CheckAndUpdateUnverifiedSnsInvite(cfg *config.Config, db *gorm.DB) error {
 				appBundle.AppRecords = []*model.Application{
 					{
 						Type:             model.ApplicationNewReward,
-						Applicant:        cfg.SnsInvite.Applicant, // 申请人
+						Applicant:        applicant, // 申请人
 						State:            model.ApplicationStateApproved,
 						CreatedAt:        time.Now().In(internal.ProjectTimezone),
 						UpdatedAt:        time.Now().In(internal.ProjectTimezone),
@@ -146,7 +150,7 @@ func CheckAndUpdateUnverifiedSnsInvite(cfg *config.Config, db *gorm.DB) error {
 						Comment:          internal.SNSInviteItem, // 备注
 						AssetName:        "SCR",
 						AssetAmount:      row.SCRRewards,
-						TargetUserWallet: common.FormatUserWallet(row.InviteUserWallet),
+						TargetUserWallet: recipient,
 						EntityType:       appBundle.EntityType,
 						EntityId:         appBundle.EntityId,
 						SeasonId:         currentSeason.ID,
@@ -161,7 +165,7 @@ func CheckAndUpdateUnverifiedSnsInvite(cfg *config.Config, db *gorm.DB) error {
 					ApplicationID: appBundle.AppRecords[0].ID,
 					LogTs:         model.GetCurrentUtcEpochSecond(),
 					Operation:     model.AuditActionNew,
-					Operator:      inviteeUserWallet,
+					Operator:      "",
 					PreState:      "",
 					PostState:     model.ApplicationStateApproved,
 				}).Error; err != nil {
@@ -173,7 +177,7 @@ func CheckAndUpdateUnverifiedSnsInvite(cfg *config.Config, db *gorm.DB) error {
 					AppBundle:   appBundle,
 					LogTs:       model.GetCurrentUtcEpochSecond(),
 					Operation:   model.AuditActionNew,
-					Operator:    inviteeUserWallet,
+					Operator:    "",
 					PreState:    "",
 					PostState:   model.ApplicationStateApproved,
 					ExtraData:   "",
@@ -187,7 +191,7 @@ func CheckAndUpdateUnverifiedSnsInvite(cfg *config.Config, db *gorm.DB) error {
 				dc := internal.AssertDecimalsAndContractAddr[internal.SNSInviteRewardsToken]
 				qaInputs := []*sdk.QAInput{
 					{
-						Recipient:               common.FormatUserWallet(row.InviteUserWallet),
+						Recipient:               recipient,
 						Amount:                  row.SCRRewards.String(),
 						Decimals:                dc.Decimals,
 						CurrencyName:            internal.SNSInviteRewardsToken,
@@ -196,7 +200,7 @@ func CheckAndUpdateUnverifiedSnsInvite(cfg *config.Config, db *gorm.DB) error {
 						Session:                 currentSeason.Name,
 						Item:                    internal.SNSInviteItem,
 						Comment:                 internal.SNSInviteItem,
-						Applicant:               cfg.SnsInvite.Applicant,
+						Applicant:               applicant,
 						ApplyComment:            "",
 						Reviewer:                "",
 						ReviewDate:              now,
