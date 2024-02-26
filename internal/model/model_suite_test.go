@@ -1,15 +1,16 @@
 package model_test
 
 import (
+	"os"
 	"testing"
 
-	"github.com/glebarez/sqlite"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/shopspring/decimal"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/storage"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 var db *gorm.DB
@@ -38,6 +39,7 @@ var tables = []any{
 	&model.TreasuryAsset{},
 	&model.TreasuryDetailedRecord{},
 	&model.TreasuryAuditLog{},
+	&model.Season{},
 }
 
 var (
@@ -51,7 +53,16 @@ var (
 var openProject, pendingCloseProject, closedProject *model.Project
 
 var _ = BeforeSuite(func() {
-	db, _ = gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
+	dsn := os.Getenv("TEST_DATABASE_DSN")
+	debugFlag := os.Getenv("TEST_DATABASE_DEBUG")
+	if dsn == "" {
+		dsn = "postgres://localhost:5432/os_backend_auto_test?sslmode=disable"
+	}
+	logLv := logger.Error
+	if debugFlag != "" {
+		logLv = logger.Info
+	}
+	db, _ = storage.BuildGormClient("pg", dsn, logLv)
 	storage.InitCache()
 })
 

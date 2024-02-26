@@ -1,6 +1,7 @@
 package model
 
 import (
+	"encoding/json"
 	"errors"
 
 	"github.com/allegro/bigcache/v3"
@@ -10,7 +11,7 @@ import (
 )
 
 type SystemVariable struct {
-	Name     string
+	Name     string `gorm:"uniqIndex"`
 	NumValue int
 	StrValue string
 }
@@ -70,32 +71,58 @@ func RollbackSipValueByOne(db *gorm.DB) (int, error) {
 	return sipValue[0], nil
 }
 
-const MetaforoAccessTokenVariableName = "metaforo_access_token"
+const MetaforoInfoVariableName = "metaforo_access_info"
 
-// GetMetaforoAccessToken returns metaforo admin token saved in DB
-func GetMetaforoAccessToken(db *gorm.DB) (string, error) {
-	log.Debug().Msgf("get metaforo access token request")
-	cachedVal, err := storage.GetCachedData(MetaforoAccessTokenVariableName)
+// GetMetaforoData returns metaforo group name, group ID and admin token as map[string]string from DB
+func GetMetaforoData(db *gorm.DB) (map[string]string, error) {
+	log.Debug().Msgf("try to get metaforo access data")
+	metaforoInfo := make(map[string]string)
+
+	cachedVal, err := storage.GetCachedData(MetaforoInfoVariableName)
+	log.Error().Msgf("TTT: cache val: %+v, err : %+v, err==nil: %+v", cachedVal, err, err == nil)
+
 	if err != nil && !errors.Is(err, bigcache.ErrEntryNotFound) {
-		log.Error().Msgf("get metaforo access token error: %+v", err)
-		return "", err
+		log.Error().Msgf("get metaforo info returns error: %+v", err)
+		return nil, err
 	} else if err == nil {
-		log.Debug().Msgf("get metaforo access token return %s", cachedVal)
-		return string(cachedVal), nil
+		log.Debug().Msgf("get metaforo info return %q", cachedVal)
+		err = json.Unmarshal(cachedVal, &metaforoInfo)
+		if err != nil {
+			log.Error().Msgf("parse metaforo cache value error: %+v, reload from DB", err)
+		} else {
+			log.Debug().Msgf("unmarshalled metaforo info: %+v", metaforoInfo)
+			return metaforoInfo, nil
+		}
 	}
 
-	// No cached value, get from DB
-	log.Debug().Msgf("get metaforo access token from DB")
-	var mfAccessTokenRecord SystemVariable
-	err = db.Model(&SystemVariable{}).Where("name=?", MetaforoAccessTokenVariableName).First(&mfAccessTokenRecord).Error
+	// No cached value or parse cache value error, get from DB
+	log.Debug().Msgf("load metaforo access token from DB")
+	var mfRecords []*SystemVariable
+	err = db.Model(&SystemVariable{}).Where("name like ?", "metaforo_%").Find(&mfRecords).Error
 	if err != nil {
-		log.Error().Msgf("get metaforo access token error: %+v", err)
-		return "", err
+		log.Error().Msgf("get metaforo access token from DB error: %+v", err)
+		return nil, err
+	} else if len(mfRecords) == 0 {
+		err = errors.New("no metaforo info records found")
+		log.Error().Msgf(err.Error())
+		return nil, err
 	} else {
-		err = storage.StoreCachedData(MetaforoAccessTokenVariableName, []byte(mfAccessTokenRecord.StrValue))
-		if err != nil {
-			log.Warn().Msgf("get metaforo access token error: %+v", err)
+		log.Debug().Msgf("get metaforo related records from DB: %+v", mfRecords)
+		for _, mfRcd := range mfRecords {
+			metaforoInfo[mfRcd.Name] = mfRcd.StrValue
 		}
-		return mfAccessTokenRecord.StrValue, nil
+		log.Debug().Msgf("rebuilt metaforo info from DB: %+v", metaforoInfo)
+
+		mfInfoBytes, err := json.Marshal(metaforoInfo)
+		if err != nil {
+			log.Warn().Msgf("marshal metaforo data error: %+v, no cache will be updaed", err)
+			return metaforoInfo, nil
+		}
+
+		err = storage.StoreCachedData(MetaforoInfoVariableName, mfInfoBytes)
+		if err != nil {
+			log.Warn().Msgf("write metaforo info to cache error: %+v", err)
+		}
+		return metaforoInfo, nil
 	}
 }

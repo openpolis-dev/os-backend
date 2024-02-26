@@ -7,6 +7,7 @@ import (
 )
 
 var _ = Describe("Application", func() {
+	var seasonId uint
 
 	// Before each `It` execution, create the table and init project data
 	BeforeEach(func() {
@@ -19,6 +20,13 @@ var _ = Describe("Application", func() {
 		db.Create(&model.User{Wallet: aliceWallet})
 		db.Create(&model.User{Wallet: bobWallet})
 		db.Create(&model.User{Wallet: carolWallet})
+		db.Save(&model.Season{
+			ID:   1,
+			Name: "testSeason",
+			Idx:  1,
+		})
+
+		seasonId = 1
 	})
 
 	// After each `It` execution, drop tables
@@ -35,6 +43,7 @@ var _ = Describe("Application", func() {
 					State:      model.ApplicationStateOpen,
 					EntityType: "project",
 					EntityId:   openProject.ID,
+					SeasonId:   seasonId,
 				})
 
 				var applications []*model.Application
@@ -63,6 +72,7 @@ var _ = Describe("Application", func() {
 					State:      model.ApplicationStateOpen,
 					EntityType: "project",
 					EntityId:   pendingCloseProject.ID,
+					SeasonId:   seasonId,
 				})).ToNot(BeNil())
 
 				Expect(model.NewApplicationRecord(db, &model.Application{
@@ -71,6 +81,7 @@ var _ = Describe("Application", func() {
 					State:      model.ApplicationStateOpen,
 					EntityType: "project",
 					EntityId:   closedProject.ID,
+					SeasonId:   seasonId,
 				})).ToNot(BeNil())
 			})
 			It("should return error if entity type is guild", func() {
@@ -80,6 +91,7 @@ var _ = Describe("Application", func() {
 					State:      model.ApplicationStateOpen,
 					EntityType: "guild",
 					EntityId:   42, // A fake ID
+					SeasonId:   seasonId,
 				})).ToNot(BeNil())
 			})
 			// TODO: Test with guild records
@@ -93,6 +105,7 @@ var _ = Describe("Application", func() {
 					State:      model.ApplicationStateOpen,
 					EntityType: "project",
 					EntityId:   openProject.ID,
+					SeasonId:   seasonId,
 				})
 
 				var applications []*model.Application
@@ -119,6 +132,7 @@ var _ = Describe("Application", func() {
 					State:      model.ApplicationStateOpen,
 					EntityType: "project",
 					EntityId:   pendingCloseProject.ID,
+					SeasonId:   seasonId,
 				})).NotTo(BeNil())
 				Expect(model.NewApplicationRecord(db, &model.Application{
 					Type:       model.MustParseApplicationType("new_reward"),
@@ -126,6 +140,7 @@ var _ = Describe("Application", func() {
 					State:      model.ApplicationStateOpen,
 					EntityType: "project",
 					EntityId:   closedProject.ID,
+					SeasonId:   seasonId,
 				})).NotTo(BeNil())
 			})
 		})
@@ -142,6 +157,7 @@ var _ = Describe("Application", func() {
 					State:      model.ApplicationStateOpen,
 					EntityType: "project",
 					EntityId:   openProject.ID,
+					SeasonId:   seasonId,
 				}
 
 				// Create correct application before testing
@@ -185,6 +201,7 @@ var _ = Describe("Application", func() {
 					TargetUserWallet: daveWallet,
 					AssetName:        token1Name,
 					AssetAmount:      token1RewardAmount,
+					SeasonId:         seasonId,
 				}
 
 				// Create correct application before testing
@@ -223,6 +240,7 @@ var _ = Describe("Application", func() {
 					TargetUserWallet: daveWallet,
 					AssetName:        token1Name,
 					AssetAmount:      token1RewardAmount,
+					SeasonId:         seasonId,
 				}
 
 				// Create correct application before testing
@@ -265,6 +283,7 @@ var _ = Describe("Application", func() {
 					TargetUserWallet: daveWallet,
 					AssetName:        token1Name,
 					AssetAmount:      token1RewardAmount,
+					SeasonId:         seasonId,
 				}
 
 				// Create correct application before testing
@@ -316,6 +335,7 @@ var _ = Describe("Application", func() {
 					TargetUserWallet: daveWallet,
 					AssetName:        token1Name,
 					AssetAmount:      token1RewardAmount,
+					SeasonId:         seasonId,
 				}
 
 				// Create correct application before testing

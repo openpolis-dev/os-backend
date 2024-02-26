@@ -1,13 +1,21 @@
 package model_test
 
 import (
+	"encoding/json"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/storage"
 )
 
-var _ = Describe("Application", func() {
+const (
+	TestMfAccessToken = "test_token"
+	TestMfGrpId       = "12345"
+	TestMfGrpName     = "test_grp"
+)
+
+var _ = Describe("SystemVariable", func() {
 
 	// Before each `It` execution, create the table and init project data
 	BeforeEach(func() {
@@ -22,26 +30,38 @@ var _ = Describe("Application", func() {
 	Describe("Fetch metaforo access token from DB", func() {
 		When("no record with metaforo access token created", func() {
 			It("should returns error", func() {
-				_, err := model.GetMetaforoAccessToken(db)
+				_, err := model.GetMetaforoData(db)
 				Expect(err).ToNot(BeNil())
 			})
 		})
 		When("record with metaforo access token created", func() {
 			BeforeEach(func() {
-				err := db.Create(&model.SystemVariable{Name: model.MetaforoAccessTokenVariableName, StrValue: "test"}).Error
+				mfSysVariableRcds := []*model.SystemVariable{
+					{Name: "metaforo_access_token", StrValue: TestMfAccessToken},
+					{Name: "metaforo_group_id", StrValue: TestMfGrpId},
+					{Name: "metaforo_group_name", StrValue: TestMfGrpName},
+				}
+				err := db.Create(&mfSysVariableRcds).Error
 				Expect(err).To(BeNil())
 			})
 
 			It("should returns metaforo access token", func() {
-				token, err := model.GetMetaforoAccessToken(db)
+				mfInfo, err := model.GetMetaforoData(db)
 				Expect(err).To(BeNil())
-				Expect(token).To(Equal("test"))
+				Expect(mfInfo["metaforo_access_token"]).To(Equal(TestMfAccessToken))
+				Expect(mfInfo["metaforo_group_id"]).To(Equal(TestMfGrpId))
+				Expect(mfInfo["metaforo_group_name"]).To(Equal(TestMfGrpName))
 			})
 
 			It("should store metaforo access token to cache", func() {
-				tokenVal, err := storage.GetCachedData(model.MetaforoAccessTokenVariableName)
+				mfInfoBytes, err := storage.GetCachedData(model.MetaforoInfoVariableName)
 				Expect(err).To(BeNil())
-				Expect(string(tokenVal)).To(Equal("test"))
+				var rslt map[string]string
+				err = json.Unmarshal(mfInfoBytes, &rslt)
+				Expect(err).To(BeNil())
+				Expect(rslt["metaforo_access_token"]).To(Equal(TestMfAccessToken))
+				Expect(rslt["metaforo_group_id"]).To(Equal(TestMfGrpId))
+				Expect(rslt["metaforo_group_name"]).To(Equal(TestMfGrpName))
 			})
 		})
 	})
