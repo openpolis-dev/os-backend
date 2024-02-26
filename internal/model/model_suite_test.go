@@ -8,6 +8,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/shopspring/decimal"
 	"github.com/theseed-labs/os-backend/internal/model"
+	"github.com/theseed-labs/os-backend/internal/storage"
 	"gorm.io/gorm"
 )
 
@@ -51,6 +52,7 @@ var openProject, pendingCloseProject, closedProject *model.Project
 
 var _ = BeforeSuite(func() {
 	db, _ = gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
+	storage.InitCache()
 })
 
 func TestModel(t *testing.T) {

@@ -1,7 +1,11 @@
 package model
 
 import (
+	"errors"
+
+	"github.com/allegro/bigcache/v3"
 	"github.com/rs/zerolog/log"
+	"github.com/theseed-labs/os-backend/internal/storage"
 	"gorm.io/gorm"
 )
 
@@ -64,4 +68,34 @@ func RollbackSipValueByOne(db *gorm.DB) (int, error) {
 
 	log.Debug().Msgf("rollbacked sip value return %d", sipValue[0])
 	return sipValue[0], nil
+}
+
+const MetaforoAccessTokenVariableName = "metaforo_access_token"
+
+// GetMetaforoAccessToken returns metaforo admin token saved in DB
+func GetMetaforoAccessToken(db *gorm.DB) (string, error) {
+	log.Debug().Msgf("get metaforo access token request")
+	cachedVal, err := storage.GetCachedData(MetaforoAccessTokenVariableName)
+	if err != nil && !errors.Is(err, bigcache.ErrEntryNotFound) {
+		log.Error().Msgf("get metaforo access token error: %+v", err)
+		return "", err
+	} else if err == nil {
+		log.Debug().Msgf("get metaforo access token return %s", cachedVal)
+		return string(cachedVal), nil
+	}
+
+	// No cached value, get from DB
+	log.Debug().Msgf("get metaforo access token from DB")
+	var mfAccessTokenRecord SystemVariable
+	err = db.Model(&SystemVariable{}).Where("name=?", MetaforoAccessTokenVariableName).First(&mfAccessTokenRecord).Error
+	if err != nil {
+		log.Error().Msgf("get metaforo access token error: %+v", err)
+		return "", err
+	} else {
+		err = storage.StoreCachedData(MetaforoAccessTokenVariableName, []byte(mfAccessTokenRecord.StrValue))
+		if err != nil {
+			log.Warn().Msgf("get metaforo access token error: %+v", err)
+		}
+		return mfAccessTokenRecord.StrValue, nil
+	}
 }
