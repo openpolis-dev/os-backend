@@ -5,6 +5,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/storage"
 )
@@ -37,9 +38,9 @@ var _ = Describe("SystemVariable", func() {
 		When("record with metaforo access token created", func() {
 			BeforeEach(func() {
 				mfSysVariableRcds := []*model.SystemVariable{
-					{Name: "metaforo_access_token", StrValue: TestMfAccessToken},
-					{Name: "metaforo_group_id", StrValue: TestMfGrpId},
-					{Name: "metaforo_group_name", StrValue: TestMfGrpName},
+					{Name: internal.SysVarMfAdminToken, StrValue: TestMfAccessToken},
+					{Name: internal.SysVarMfGroupId, StrValue: TestMfGrpId},
+					{Name: internal.SysVarMfGroupName, StrValue: TestMfGrpName},
 				}
 				err := db.Create(&mfSysVariableRcds).Error
 				Expect(err).To(BeNil())
@@ -48,9 +49,9 @@ var _ = Describe("SystemVariable", func() {
 			It("should returns metaforo access token", func() {
 				mfInfo, err := model.GetMetaforoData(db)
 				Expect(err).To(BeNil())
-				Expect(mfInfo["metaforo_access_token"]).To(Equal(TestMfAccessToken))
-				Expect(mfInfo["metaforo_group_id"]).To(Equal(TestMfGrpId))
-				Expect(mfInfo["metaforo_group_name"]).To(Equal(TestMfGrpName))
+				Expect(mfInfo[internal.SysVarMfAdminToken]).To(Equal(TestMfAccessToken))
+				Expect(mfInfo[internal.SysVarMfGroupId]).To(Equal(TestMfGrpId))
+				Expect(mfInfo[internal.SysVarMfGroupName]).To(Equal(TestMfGrpName))
 			})
 
 			It("should store metaforo access token to cache", func() {
@@ -59,9 +60,9 @@ var _ = Describe("SystemVariable", func() {
 				var rslt map[string]string
 				err = json.Unmarshal(mfInfoBytes, &rslt)
 				Expect(err).To(BeNil())
-				Expect(rslt["metaforo_access_token"]).To(Equal(TestMfAccessToken))
-				Expect(rslt["metaforo_group_id"]).To(Equal(TestMfGrpId))
-				Expect(rslt["metaforo_group_name"]).To(Equal(TestMfGrpName))
+				Expect(rslt[internal.SysVarMfAdminToken]).To(Equal(TestMfAccessToken))
+				Expect(rslt[internal.SysVarMfGroupId]).To(Equal(TestMfGrpId))
+				Expect(rslt[internal.SysVarMfGroupName]).To(Equal(TestMfGrpName))
 			})
 		})
 	})

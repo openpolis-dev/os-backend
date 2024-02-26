@@ -135,3 +135,9 @@ const (
 	SNSInviteRewardsToken = "SCR"
 	SNSInviteItem         = "邀请 SNS"
 )
+
+const (
+	SysVarMfAdminToken = "metaforo_admin_token"
+	SysVarMfGroupId    = "metaforo_group_id"
+	SysVarMfGroupName  = "metaforo_group_name"
+)

@@ -79,7 +79,6 @@ func GetMetaforoData(db *gorm.DB) (map[string]string, error) {
 	metaforoInfo := make(map[string]string)
 
 	cachedVal, err := storage.GetCachedData(MetaforoInfoVariableName)
-	log.Error().Msgf("TTT: cache val: %+v, err : %+v, err==nil: %+v", cachedVal, err, err == nil)
 
 	if err != nil && !errors.Is(err, bigcache.ErrEntryNotFound) {
 		log.Error().Msgf("get metaforo info returns error: %+v", err)

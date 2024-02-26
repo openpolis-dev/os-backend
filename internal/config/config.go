@@ -6,9 +6,12 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"strconv"
 
 	"github.com/rs/zerolog/log"
+	"github.com/theseed-labs/os-backend/internal"
 	"gopkg.in/yaml.v2"
+	"gorm.io/gorm"
 )
 
 type Config struct {
@@ -146,4 +149,19 @@ func LoadConfig(configPath string) *Config {
 	}
 
 	return &config
+}
+
+// PopulateMetaforoDataFromDB loads metaforo data configured in system variables table into the config object
+func (c *Config) PopulateMetaforoDataFromDB(db *gorm.DB, mfData map[string]string) error {
+	var err error
+	// Metaforo related data
+	c.MetaforoData.AccessToken = mfData[internal.SysVarMfAdminToken]
+	c.MetaforoData.GroupName = mfData[internal.SysVarMfGroupName]
+	c.MetaforoData.GroupID, err = strconv.Atoi(mfData[internal.SysVarMfGroupId])
+	if err != nil {
+		log.Error().Msgf("parse metaforo group ID error: %+v", err)
+		return err
+	} else {
+		return nil
+	}
 }
