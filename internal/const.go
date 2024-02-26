@@ -137,7 +137,10 @@ const (
 )
 
 const (
-	SysVarMfAdminToken = "metaforo_admin_token"
-	SysVarMfGroupId    = "metaforo_group_id"
-	SysVarMfGroupName  = "metaforo_group_name"
+	SysVarMfAdminToken      = "metaforo_admin_token"
+	SysVarMfGroupId         = "metaforo_group_id"
+	SysVarMfGroupName       = "metaforo_group_name"
+	SysVarMfAdminWalletAddr = "metaforo_admin_wallet_addr"
+	SysVarMfAdminWalletPk   = "metaforo_admin_wallet_pk"
+	SysVarSeeAuthPk         = "seeauth_private_key"
 )

@@ -33,13 +33,13 @@ type TokenResponse struct {
 	UserId int    `json:"user_id"`
 }
 
-// Token get metaforo's user token
+// GetUserToken get metaforo's user token
 // `userPrivateKey`: user wallet private key, no '0x' prefix
 // `userWallet`: user wallet
 // `seeAuthPrivateKey`: SeeDAO SeeAuth signer's private key, now is fixed to `59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d`
 //
 // for more, please see `TestToken` in `seeauth_metaforo_test.go`
-func Token(userPrivateKey string, userWallet string, seeAuthPrivateKey string) (*TokenResponse, error) {
+func GetUserToken(userPrivateKey string, userWallet string, seeAuthPrivateKey string) (*TokenResponse, error) {
 	// generate signature
 	nonce := seeauth.GenerateNonce()
 	message, sig, err := signature.Sign(nonce, 60*time.Second, userPrivateKey)

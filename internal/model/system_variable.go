@@ -3,9 +3,11 @@ package model
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 
 	"github.com/allegro/bigcache/v3"
 	"github.com/rs/zerolog/log"
+	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/storage"
 	"gorm.io/gorm"
 )
@@ -14,6 +16,31 @@ type SystemVariable struct {
 	Name     string `gorm:"uniqIndex"`
 	NumValue int
 	StrValue string
+}
+
+func getStrVal(db *gorm.DB, name string) (string, error) {
+	log.Debug().Msgf("get string value request for name %s", name)
+	cacheKey := fmt.Sprintf("sys_var_cache_%s", name)
+	cachedValBytes, err := storage.GetCachedData(cacheKey)
+	if err == nil {
+		log.Debug().Msgf("get string value return %q", cachedValBytes)
+		return string(cachedValBytes), nil
+	}
+
+	log.Debug().Msgf("load value from cache error: %+v, try to get from DB", err)
+	var sysVar SystemVariable
+	err = db.Model(&SystemVariable{}).Where("name = ?", name).First(&sysVar).Error
+	if err != nil {
+		log.Error().Msgf("get string value error from db error: %+v", err)
+		return "", err
+	}
+
+	err = storage.StoreCachedData(cacheKey, []byte(sysVar.StrValue))
+	if err != nil {
+		log.Error().Msgf("store value to cache error: %+v", err)
+	}
+
+	return sysVar.StrValue, nil
 }
 
 func GetNextSipValue(db *gorm.DB) (int, error) {
@@ -95,9 +122,10 @@ func GetMetaforoData(db *gorm.DB) (map[string]string, error) {
 	}
 
 	// No cached value or parse cache value error, get from DB
-	log.Debug().Msgf("load metaforo access token from DB")
+	log.Debug().Msgf("load metaforo data from DB")
 	var mfRecords []*SystemVariable
 	err = db.Model(&SystemVariable{}).Where("name like ?", "metaforo_%").Find(&mfRecords).Error
+	log.Error().Msgf("%+v", err)
 	if err != nil {
 		log.Error().Msgf("get metaforo access token from DB error: %+v", err)
 		return nil, err
@@ -123,5 +151,39 @@ func GetMetaforoData(db *gorm.DB) (map[string]string, error) {
 			log.Warn().Msgf("write metaforo info to cache error: %+v", err)
 		}
 		return metaforoInfo, nil
+	}
+}
+
+func UpdateMetaforoAdminToken(db *gorm.DB, adminToken string) error {
+	log.Debug().Msgf("update metaforo admin token to %s", adminToken)
+	err := db.Model(&SystemVariable{}).Where("name = ?", internal.SysVarMfAdminToken).Update("str_value", adminToken).Error
+	if err != nil {
+		log.Error().Msgf("update metaforo admin token error: %+v", err)
+		return err
+	} else {
+		log.Debug().Msgf("updated metaforo admin token to %s", adminToken)
+	}
+
+	// Invalidate cache
+	err = storage.InvalidCache(MetaforoInfoVariableName)
+	if err != nil {
+		log.Error().Msgf("invalid metaforo info cache error: %+v", err)
+		return err
+	}
+	err = storage.InvalidCache(internal.SysVarMfAdminToken)
+	if err != nil {
+		log.Error().Msgf("invalid metaforo info cache error: %+v", err)
+		return err
+	}
+	return nil
+}
+
+func GetSeeAuthPk(db *gorm.DB) (string, error) {
+	pkVal, err := getStrVal(db, internal.SysVarSeeAuthPk)
+	if err != nil {
+		log.Error().Msgf("get see auth pk error: %+v", err)
+		return "", err
+	} else {
+		return pkVal, nil
 	}
 }
