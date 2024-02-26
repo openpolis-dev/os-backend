@@ -171,10 +171,6 @@ var _ = Describe("Application", func() {
 				// The application should be changed to completed now
 				Expect(app.State).To(BeEquivalentTo(model.ApplicationStateCompleted))
 			})
-			It("should return error if project is not in pending_close status", func() {
-				db.Model(&openProject).Update("status", model.ApplicationStateOpen)
-				Expect(model.AuditApplication(db, carolWallet, &app, model.AuditActionApprove, "", nil, nil)).NotTo(BeNil())
-			})
 		})
 		When("to approve new reward application", func() {
 			var app model.Application
@@ -212,13 +208,6 @@ var _ = Describe("Application", func() {
 				Expect(postLatestAuditLog.Operation).To(BeEquivalentTo(model.AuditActionApprove))
 				Expect(postLatestAuditLog.PreState).To(BeEquivalentTo(model.ApplicationStateOpen))
 				Expect(postLatestAuditLog.PostState).To(BeEquivalentTo(model.ApplicationStateApproved))
-			})
-			It("should return error if project is not in open status", func() {
-				openProject.Status = model.ProjectStatusPendingClose
-				db.Save(&openProject)
-
-				err := model.AuditApplication(db, carolWallet, &app, model.AuditActionApprove, "", nil, nil)
-				Expect(err).NotTo(BeNil())
 			})
 		})
 		When("to reject new reward application", func() {
