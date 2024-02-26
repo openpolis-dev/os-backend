@@ -25,7 +25,7 @@ type Config struct {
 	MetaforoData     metaforoData    `json:"metaforoData" yaml:"metaforoData"`
 	Admin            adminData       `json:"admin" yaml:"admin"`
 	QuickAccounting  QuickAccounting `json:"quickAccounting" yaml:"quickAccounting"`
-	SnsInvite        snsInvite       `json:"snsInvite" yaml:"snsInvite"`
+	SnsInvite        SnsInvite       `json:"snsInvite" yaml:"snsInvite"`
 }
 
 type (
@@ -108,7 +108,7 @@ type (
 		CategoryId   int    `json:"categoryId" yaml:"categoryId"`
 		CategoryName string `json:"categoryName" yaml:"categoryName"`
 	}
-	snsInvite struct {
+	SnsInvite struct {
 		EntityType string `json:"entityType" yaml:"entityType"`
 		EntityId   uint   `json:"entityId" yaml:"entityId"`
 		EntityName string `json:"entityName" yaml:"entityName"`

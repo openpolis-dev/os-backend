@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/theseed-labs/os-backend/internal"
-
+	"github.com/theseed-labs/os-backend/internal/config"
 	"github.com/theseed-labs/os-backend/internal/model"
 )
 
@@ -194,6 +194,16 @@ func TestCheckAndUpdateUnverifiedSnsInvite(t *testing.T) {
 	truncateTable("applications")
 	truncateTable("application_audit_logs")
 
+	// prepare config
+	cfg := &config.Config{
+		SnsInvite: config.SnsInvite{
+			EntityType: "project",
+			EntityId:   1,
+			EntityName: "新手村",
+			Applicant:  wallet1,
+		},
+	}
+
 	now := time.Now().In(internal.ProjectTimezone).Unix()
 	conn.Model(&model.Season{}).Create(&model.Season{Idx: 1, StartAt: now - 100, EndAt: now + 100})
 
@@ -203,7 +213,7 @@ func TestCheckAndUpdateUnverifiedSnsInvite(t *testing.T) {
 	_ = SnsInvitedBy(conn, wallet1Code, wallet2)                                      // no sns
 
 	// ---> test
-	err := CheckAndUpdateUnverifiedSnsInvite(conn)
+	err := CheckAndUpdateUnverifiedSnsInvite(cfg, conn)
 	if err != nil {
 		t.Errorf("CheckAndUpdateUnverifiedSnsInvite() error = %v", err)
 		return
