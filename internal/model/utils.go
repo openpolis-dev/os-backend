@@ -422,3 +422,46 @@ func QueryRows[T any](querySeg *gorm.DB, page *gormfind.Page) ([]*T, error) {
 
 	return d, nil
 }
+
+// MigrateTables auto migrate models defined.
+func MigrateTables(db *gorm.DB) error {
+	// Migrate the schema
+	return db.AutoMigrate(
+		&User{},
+		&UserNonce{},
+		&UserAssetRecord{},
+		&Project{},
+		&ProjectBudget{},
+		&Guild{},
+		&GuildBudget{},
+		&CommonBudgetSource{},
+		&AppBundle{},
+		&AppBundleAuditLog{},
+		&Season{},
+		&Application{},
+		&ApplicationAuditLog{},
+		&TreasuryAsset{},
+		&TreasuryDetailedRecord{},
+		&TreasuryAuditLog{},
+		&Event{},
+		&Push{},
+		&MetaforoUser{},
+		&Proposal{},
+		&ProposalCategory{},
+		&ProposalContentBlock{},
+		&ProposalAuditLog{},
+		&ProposalComment{},
+		&ProposalComponentRecord{},
+		&ProposalUserVoteRecord{},
+		&ProposalVoteGate{},
+		&ProposalVoteRecord{},
+		&ProposalVoteOptionRecord{},
+		&ProposalComponent{},
+		&ProposalComponentAction{},
+		&ProposalTemplate{},
+		&CronJob{},
+		&SystemVariable{},
+		&SnsInviteCode{},
+		&SnsInviteRecord{},
+	)
+}

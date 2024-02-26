@@ -6,7 +6,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/theseed-labs/os-backend/internal/model"
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -45,49 +44,6 @@ func InitGormDBWithLoggerLevel(dsn string, dbSchema string, logLevel logger.LogL
 	if err != nil {
 		panic(fmt.Errorf("init gorm connection error: %+v", err))
 	}
-}
-
-// MigrateTables auto migrate models defined.
-func MigrateTables(db *gorm.DB) error {
-	// Migrate the schema
-	return db.AutoMigrate(
-		&model.User{},
-		&model.UserNonce{},
-		&model.UserAssetRecord{},
-		&model.Project{},
-		&model.ProjectBudget{},
-		&model.Guild{},
-		&model.GuildBudget{},
-		&model.CommonBudgetSource{},
-		&model.AppBundle{},
-		&model.AppBundleAuditLog{},
-		&model.Season{},
-		&model.Application{},
-		&model.ApplicationAuditLog{},
-		&model.TreasuryAsset{},
-		&model.TreasuryDetailedRecord{},
-		&model.TreasuryAuditLog{},
-		&model.Event{},
-		&model.Push{},
-		&model.MetaforoUser{},
-		&model.Proposal{},
-		&model.ProposalCategory{},
-		&model.ProposalContentBlock{},
-		&model.ProposalAuditLog{},
-		&model.ProposalComment{},
-		&model.ProposalComponentRecord{},
-		&model.ProposalUserVoteRecord{},
-		&model.ProposalVoteGate{},
-		&model.ProposalVoteRecord{},
-		&model.ProposalVoteOptionRecord{},
-		&model.ProposalComponent{},
-		&model.ProposalComponentAction{},
-		&model.ProposalTemplate{},
-		&model.CronJob{},
-		&model.SystemVariable{},
-		&model.SnsInviteCode{},
-		&model.SnsInviteRecord{},
-	)
 }
 
 // SeedDbRecords inits some const data records to database if not existing
