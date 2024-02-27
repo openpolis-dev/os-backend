@@ -215,6 +215,7 @@ func Update(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
 		return
 	}
+	reqData.TemplateId = *proposalRcd.ProposalTemplateID
 
 	// In close project proposal, verify whether the project to be closed is in open or closed_failed state,
 	// and only set project to closing in those status. For other cases, return error
