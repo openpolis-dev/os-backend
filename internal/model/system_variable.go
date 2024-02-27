@@ -52,7 +52,7 @@ func GetNextSipValue(db *gorm.DB) (int, error) {
 			log.Error().Msgf("update sip value error: %+v", err)
 			return err
 		}
-		if err = tx.Model(&SystemVariable{}).Limit(1).Pluck("num_value", &sipValue).Error; err != nil {
+		if err = tx.Model(&SystemVariable{}).Where("name='sip'").Limit(1).Pluck("num_value", &sipValue).Error; err != nil {
 			log.Error().Msgf("update sip value error: %+v", err)
 			return err
 		}
