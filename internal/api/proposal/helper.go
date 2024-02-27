@@ -888,7 +888,7 @@ func UpdateDbVoteOptionRecordsFromMetaforoProposalResponse(db *gorm.DB, dbPropos
 				var optLabel string
 				switch reflect.TypeOf(voteOpt.Html).Kind() {
 				case reflect.Float64:
-					optLabel = fmt.Sprintf("%f", voteOpt.Html.(float64))
+					optLabel = strconv.FormatFloat(voteOpt.Html.(float64), 'f', -1, 64)
 				default:
 					optLabel = voteOpt.Html.(string)
 				}
