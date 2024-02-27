@@ -202,7 +202,7 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 			}
 
 			// Move vote record and vote option record from original proposal to new one
-			if err = tx.Model(&model.ProposalVoteRecord{}).Where("proposal_id = ?", proposalId).Update("proposal_id = ?", proposalId).Error; err != nil {
+			if err = tx.Model(&model.ProposalVoteRecord{}).Where("proposal_id = ?", proposalId).Update("proposal_id", proposalId).Error; err != nil {
 				log.Error().Msgf("move proposal vote record error: %+v", err)
 				return err
 			}
