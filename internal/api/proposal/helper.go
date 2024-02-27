@@ -844,15 +844,15 @@ func UpdateDbVoteOptionRecordsFromMetaforoProposalResponse(db *gorm.DB, dbPropos
 	pollStatusChanged := false
 
 	for _, poll := range metaforoProposal.Thread.Polls {
-		proposalVoteRecord := model.ProposalVoteRecord{ProposalID: dbProposalRcdId}
-		if err = db.Where(&proposalVoteRecord).Updates(&model.ProposalVoteRecord{
+		var proposalVoteRecord = model.ProposalVoteRecord{}
+		if err = db.Where(&model.ProposalVoteRecord{ProposalID: dbProposalRcdId}).Updates(&model.ProposalVoteRecord{
 			Title:      poll.Title,
 			MetaforoID: poll.Id,
 			StartTs:    poll.PollStartAt.UTC().Unix(),
 			EndTs:      poll.CloseAt.UTC().Unix(),
 			ProposalID: dbProposalRcdId,
 			VoteType:   dbProposalRcd.VoteType,
-		}).Error; err != nil {
+		}).First(&proposalVoteRecord).Error; err != nil {
 			log.Warn().Msgf("save DB proposal vote record error: %+v", err)
 			return pollStatusChanged, err
 		} else {
@@ -865,7 +865,7 @@ func UpdateDbVoteOptionRecordsFromMetaforoProposalResponse(db *gorm.DB, dbPropos
 		if currState != poll.Status {
 			pollStatusChanged = true
 			err := db.Model(&model.ProposalVoteRecord{}).
-				Where("metaforo_id = ? AND state =?", proposalVoteRecord.MetaforoID, currState).
+				Where("metaforo_id = ? AND state =?", poll.Id, currState).
 				Update("state", poll.Status).Error
 			if err != nil {
 				log.Error().Msgf("update proposal vote record state error: %+v", err)
@@ -876,11 +876,13 @@ func UpdateDbVoteOptionRecordsFromMetaforoProposalResponse(db *gorm.DB, dbPropos
 			pollStatusChanged = false
 		}
 
+		db.Find(&proposalVoteRecord, proposalVoteRecord.ID)
+
 		err = db.Transaction(func(tx *gorm.DB) error {
 			for _, voteOpt := range poll.Options {
 				proposalVoteOptionRecord := model.ProposalVoteOptionRecord{
 					MetaforoID:           voteOpt.Id,
-					MetaforoVoteID:       proposalVoteRecord.MetaforoID,
+					MetaforoVoteID:       poll.Id,
 					ProposalVoteRecordId: proposalVoteRecord.ID,
 				}
 
@@ -898,7 +900,7 @@ func UpdateDbVoteOptionRecordsFromMetaforoProposalResponse(db *gorm.DB, dbPropos
 					Updates(&model.ProposalVoteOptionRecord{
 						VoterCount:     voteOpt.Voters,
 						MetaforoID:     voteOpt.Id,
-						MetaforoVoteID: proposalVoteRecord.MetaforoID,
+						MetaforoVoteID: poll.Id,
 					}).Error
 				if err != nil {
 					log.Warn().Msgf("save DB proposal vote option error: %+v", err)
@@ -937,9 +939,8 @@ func HandleProposalPollStatusChange(db *gorm.DB, proposalId uint) error {
 		return err
 	}
 
-	log.Debug().Msgf("proposal vote records: %+v", pVoteRcds)
-
 	effectVoteRcd := pVoteRcds[0]
+	log.Debug().Msgf("effect proposal vote records: %+v", effectVoteRcd)
 
 	// Metaforo support multiple vote in one proposal, but in OS only one vote will be created, so only check the first value
 	if effectVoteRcd.State == "open" {
