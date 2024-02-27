@@ -17,6 +17,8 @@ import (
 // 3. If the effected rows is 0, need to validate whether VoteOptionRecord has metaforo ID.
 //   - If yes, return error since the data has been uploaded to metaforo and is not updatable
 //   - If no, remove all associated ProposalVoteOptionRecord, and create new records from passed in params
+//
+// Note: this function is only used for proposal haven't submitted to metaforo
 func UpsertProposalVoteRecord(db *gorm.DB, proposalId uint, voteType int, voteOptions []*model.ProposalVoteOptionRecord) (*model.ProposalVoteRecord, error) {
 	var err error
 
@@ -84,12 +86,11 @@ func UpsertProposalVoteRecord(db *gorm.DB, proposalId uint, voteType int, voteOp
 	}
 }
 
-func GetProposalVoteRecord(proposalId uint, voteType int) ([]*model.ProposalVoteRecord, error) {
-	agent := GetDbAgent()
+func GetProposalVoteRecord(db *gorm.DB, proposalId uint) ([]*model.ProposalVoteRecord, error) {
 	var err error
 
 	var proposalVoteRecord []*model.ProposalVoteRecord
-	if err = agent.db.Where("proposal_id = ? AND vote_type = ?", proposalId, voteType).Find(&proposalVoteRecord).Error; err != nil {
+	if err = db.Where("proposal_id = ?", proposalId).Find(&proposalVoteRecord).Error; err != nil {
 		log.Error().Msgf("fetch proposal vote record error: %+v", err)
 		return nil, err
 	}

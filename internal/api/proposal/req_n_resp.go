@@ -45,13 +45,11 @@ type ComponentRequestData struct {
 type CreateOrUpdateProposalData struct {
 	TemplateId              uint                          `json:"template_id"`
 	Title                   string                        `json:"title"`
-	ProposalCategoryId      uint                          `json:"proposal_category_id"`
 	ContentBlocks           []*FrontendContentBlockRecord `json:"content_blocks"`
 	Components              []*ComponentRequestData       `json:"components"`
 	MetaforoAccessToken     string                        `json:"metaforo_access_token"`
 	SubmitToMetaforo        bool                          `json:"submit_to_metaforo"`
 	EditorType              int                           `json:"editor_type"`
-	VoteType                int                           `json:"vote_type"`
 	VoteOptions             []string                      `json:"vote_options"`
 	CreateProjectProposalId uint                          `json:"create_project_proposal_id"`
 }
@@ -168,6 +166,12 @@ type FrontendProposalCommentRecord struct {
 	IsRejected bool `json:"is_rejected"` // indicate whether this comment is a rejected comment
 }
 
+type FrontendProposalVoteOptionRecord struct {
+	ID         uint   `json:"id"`
+	Label      string `json:"label"`
+	MetaforoId int    `json:"metaforo_id"`
+}
+
 type FrontendProposalDetailRecord struct {
 	ID            uint                          `json:"id"`
 	Title         string                        `json:"title"`
@@ -205,6 +209,8 @@ type FrontendProposalDetailRecord struct {
 	VoteGate *FrontendVoteGateResponse `json:"vote_gate"`
 
 	VoteType int `json:"vote_type"`
+
+	OsVoteOptions []*FrontendProposalVoteOptionRecord `json:"os_vote_options"`
 
 	// Is current user voted for this proposal
 	IsVoted bool `json:"is_voted"`
@@ -458,6 +464,21 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposalId uint, startPo
 		}
 	}
 
+	var osVoteOptionRecords []*model.ProposalVoteOptionRecord
+	err = db.Model(&model.ProposalVoteOptionRecord{}).Where("proposal_id = ?", proposalId).Find(&osVoteOptionRecords).Error
+	if err != nil {
+		log.Error().Msgf("get vote option records error: %+v", err)
+		return nil, err
+	}
+
+	frontendVoteOptions := lo.Map(osVoteOptionRecords, func(r *model.ProposalVoteOptionRecord, _ int) *FrontendProposalVoteOptionRecord {
+		return &FrontendProposalVoteOptionRecord{
+			ID:         r.ID,
+			Label:      r.Text,
+			MetaforoId: r.MetaforoID,
+		}
+	})
+
 	// Refresh proposal record
 	if err = db.Find(&proposal, proposalId).Error; err != nil {
 		log.Error().Msgf("fetch proposal error: %+v", err)
@@ -486,6 +507,7 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposalId uint, startPo
 		Comments:                frontendCommentsRecords,
 		VoteGate:                voteGate,
 		Votes:                   votes,
+		OsVoteOptions:           frontendVoteOptions,
 		VoteType:                proposal.VoteType,
 		CreateTs:                proposal.CreateTs,
 		IsBasedOnCustomTemplate: proposal.IsBasedOnCustomTemplate,

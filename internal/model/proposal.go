@@ -416,8 +416,8 @@ type ProposalVoteOptionRecord struct {
 	// Metaforo related data
 	// Text field is used to
 	Text           string
-	MetaforoID     int
-	MetaforoVoteID int
+	MetaforoID     int // Metaforo ID for this option
+	MetaforoVoteID int // Metaforo ID for the vote
 
 	// Value is used in for automation tasks related to this
 	Value string
