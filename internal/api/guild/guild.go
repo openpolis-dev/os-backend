@@ -473,8 +473,8 @@ func Detail(ctx *gin.Context) {
 //	@tags		Guild
 //	@accept		json
 //	@produce	json
-//	@param		keywords    query		string	false	"search keywords"
-//	@param		wallet      query		string	false	"search wallet"
+//	@param		keywords	query		string	false	"search keywords"
+//	@param		wallet		query		string	false	"search wallet"
 //	@param		page		query		int		false	"page number, default: 1"
 //	@param		size		query		int		false	"page size, default: 10"
 //	@param		sort_field	query		string	false	"sort field, default: create_ts"

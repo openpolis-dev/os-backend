@@ -356,7 +356,7 @@ type TokenGateSetting struct {
 	Id      uint `json:"id"`
 	GroupId int  `json:"group_id"`
 
-	// Token spec for this gate record.
+	// GetUserToken spec for this gate record.
 	// Regards TokenType field, here are the available values
 	//   0 - ERC20
 	//   1 - ERC721

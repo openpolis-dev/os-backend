@@ -117,8 +117,8 @@ type Proposal struct {
 
 	//  Fields for versioned proposals
 	// ProposalRecordId is built from metaforo thread ID, which should be kept same in various versions
-	ProposalRecordId string `gorm:"index:proposalVer"`
-	Version          uint   `gorm:"index:proposalVer"`
+	ProposalRecordId string `gorm:"uniqIndex:proposalVer"`
+	Version          uint   `gorm:"uniqIndex:proposalVer"`
 
 	// IPFS CID and Arweave hash for the proposal
 	IpfsCid     string `gorm:"index"`
@@ -128,8 +128,10 @@ type Proposal struct {
 
 	// VoteType indicates the type of attached vote for this proposal, the available values are:
 	// - ProposalVoteTypeNone
-	// - ProposalVoteTypeNumericAvg
 	// - ProposalVoteTypeDecision
+	// - ProposalVoteTypeNumericAvg
+	// - ProposalVoteTypeNumericSingle
+	// - ProposalVoteTypeCustomerDefinedEqualFailed
 	// - ProposalVoteTypeCustomerDefinedAlwaysPassed
 	VoteType    int
 	VoteRecords []*ProposalVoteRecord
@@ -202,6 +204,10 @@ func (p *Proposal) CanBeUpdatedBy(wallet string) bool {
 
 func (p *Proposal) GetMetaforoThreadId() int {
 	threadIdStr := strings.TrimPrefix(p.ProposalRecordId, "metaforo:")
+	if threadIdStr == "" {
+		log.Error().Msgf("empty metafor thread ID error, proposal: %+v", p)
+		return 0
+	}
 	threadId, err := strconv.Atoi(threadIdStr)
 	if err != nil {
 		log.Error().Msgf("Parse metafor thread ID error, proposalRecordId: %s, error: %+v", p.ProposalRecordId, err)
@@ -282,7 +288,7 @@ type ProposalComment struct {
 	IpfsCid     string `gorm:"index"`
 	ArweaveLink string `gorm:"index"`
 
-	MetaforoCommentId int
+	MetaforoCommentId int `gorm:"index"`
 
 	IsHidden bool
 
@@ -361,12 +367,12 @@ type ProposalAuditLog struct {
 }
 
 var (
-	ProposalVoteTypeNone                        int = 0
-	ProposalVoteTypeDecision                        = 1
-	ProposalVoteTypeNumericAvg                      = 2  // This means if the result contains same vote value, use the average for result
-	ProposalVoteTypeNumericSingle                   = 3  // This means if the result contains same vote value, mark vote as failed
-	ProposalVoteTypeCustomerDefinedEqualFailed      = 98 // This is custom voting, but if more than one max value, the vote failed
-	ProposalVoteTypeCustomerDefinedAlwaysPassed     = 99 // Custom vote, always passed
+	ProposalVoteTypeNone                        = 0
+	ProposalVoteTypeDecision                    = 1
+	ProposalVoteTypeNumericAvg                  = 2  // This means if the result contains same vote value, use the average for result
+	ProposalVoteTypeNumericSingle               = 3  // This means if the result contains same vote value, mark vote as failed
+	ProposalVoteTypeCustomerDefinedEqualFailed  = 98 // This is custom voting, but if more than one max value, the vote failed
+	ProposalVoteTypeCustomerDefinedAlwaysPassed = 99 // Custom vote, always passed
 )
 
 // ProposalVoteRecord saves vote record and associated to specified Proposal
@@ -379,9 +385,9 @@ type ProposalVoteRecord struct {
 	StartTs    int64 `gorm:"index"`
 	EndTs      int64 `gorm:"index"`
 	MetaforoID int   `gorm:"index"` // Poll id from metaforo
+	State      string
 
-	OptionType int
-	Options    []*ProposalVoteOptionRecord
+	Options []*ProposalVoteOptionRecord
 
 	// Indicates whether the vote has passed
 	IsVotePassed bool

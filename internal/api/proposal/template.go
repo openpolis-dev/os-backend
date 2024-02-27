@@ -116,8 +116,6 @@ func ListTemplatesWithPerm(ctx *gin.Context) {
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		log.Error().Msgf("get user %+v seepass data error: %+v", user, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get user Seepass data error")))
-		return
 	}
 
 	var rcds []*TemplateResponse
@@ -142,13 +140,17 @@ func ListTemplatesWithPerm(ctx *gin.Context) {
 			return nil
 		}
 
-		permArray := lo.Map(useTemplateVoteGates, func(r *model.ProposalVoteGate, _ int) bool {
-			return IsUserMetVoteGate(userSeepassData, r)
-		})
+		if userSeepassData == nil {
+			r.HasPermToUse = false
+		} else {
+			permArray := lo.Map(useTemplateVoteGates, func(r *model.ProposalVoteGate, _ int) bool {
+				return IsUserMetVoteGate(userSeepassData, r)
+			})
 
-		r.HasPermToUse = lo.Reduce(permArray, func(rslt bool, r bool, _ int) bool {
-			return rslt && r
-		}, true)
+			r.HasPermToUse = lo.Reduce(permArray, func(rslt bool, r bool, _ int) bool {
+				return rslt && r
+			}, true)
+		}
 
 		components := getTemplateComponents(&tmplDbRcd)
 

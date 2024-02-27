@@ -20,6 +20,8 @@ import (
 	"gorm.io/gorm"
 )
 
+var err error
+
 type Application struct {
 	// unique ID for this request
 	ID uint `json:"id" gorm:"primaryKey"`
@@ -106,10 +108,15 @@ type ApplicationAuditLog struct {
 
 // ValidateAuditAction validates whether the action required is suit for current application state.
 // Returns true means the action can be applied to application, while false means the action is invalid
-func (app *Application) ValidateAuditAction(action AuditActionType) bool {
-	if actions, foundState := applicationStateMap[app.State]; foundState {
-		_, foundAction := actions[action]
-		return foundAction
+func (app *Application) ValidateAuditAction(db *gorm.DB, action AuditActionType) bool {
+	db.Find(&app, app.ID)
+	if err != nil {
+		log.Error().Msgf("Get application %d state error: %+v", app.ID, err)
+		return false
+	}
+	if actions, stateFoundFlag := applicationStateMap[app.State]; stateFoundFlag {
+		_, actionFoundFlag := actions[action]
+		return actionFoundFlag
 	} else {
 		return false
 	}
@@ -131,8 +138,7 @@ func (app *Application) nextStateAfterAction(action AuditActionType) Application
 // AuditApplication applies audit action on application and create related audit log in transaction
 func AuditApplication(db *gorm.DB, operatorWallet string, application *Application, action AuditActionType, extraMsg string, enforcer *casbin.SyncedEnforcer, push []sdk.Pusher) error {
 	// Check application record, verify whether the action can be applied on the application
-	if !application.ValidateAuditAction(action) {
-		// TODO: Define the error message as project constant
+	if !application.ValidateAuditAction(db, action) {
 		return fmt.Errorf("application state %s is not suite for action %s", application.State, action)
 	}
 
@@ -164,18 +170,19 @@ func AuditApplication(db *gorm.DB, operatorWallet string, application *Applicati
 
 // BatchAuditApplication audits multiple applications in same transaction.
 // Note: if any error occurred during the transaction the whole transaction will not be performed.
+// This function gets applications object reference in params, which should be changed to pass by id, but the update for invoker may bring other changes, so the solution is adding some refresh of object in the code.
 func BatchAuditApplication(db *gorm.DB, operatorWallet string, applications *[]Application, action AuditActionType, extraMsg string, enforcer *casbin.SyncedEnforcer, push []sdk.Pusher) error {
-	for _, application := range *applications {
-		if !application.ValidateAuditAction(action) {
-			// TODO: Define the error message as project constant
-			return fmt.Errorf("application state %s is not suite for action %s", application.State, action)
-		}
-	}
-
 	err := userWalletRecordExisting(db, operatorWallet)
 	if err != nil {
 		log.Error().Msgf("Check user wallet error: %+v", err)
 		return err
+	}
+
+	// Validate application state
+	for _, application := range *applications {
+		if !application.ValidateAuditAction(db, action) {
+			return fmt.Errorf("application state %s is not suite for action %s", application.State, action)
+		}
 	}
 
 	return db.Transaction(func(tx *gorm.DB) error {
@@ -190,6 +197,8 @@ func BatchAuditApplication(db *gorm.DB, operatorWallet string, applications *[]A
 }
 
 func doAuditApplicationInTransaction(tx *gorm.DB, operatorWallet string, application *Application, action AuditActionType, extraMsg string, enforcer *casbin.SyncedEnforcer, push []sdk.Pusher) error {
+	// Refresh application record
+	tx.Find(&application, application.ID)
 	nextState := application.nextStateAfterAction(action)
 
 	// Create audit log for application
@@ -202,6 +211,7 @@ func doAuditApplicationInTransaction(tx *gorm.DB, operatorWallet string, applica
 		PostState:     nextState,
 		ExtraData:     extraMsg,
 	}).Error; err != nil {
+		log.Error().Msgf("Create application audit log error: %+v", err)
 		return err
 	}
 
@@ -210,13 +220,8 @@ func doAuditApplicationInTransaction(tx *gorm.DB, operatorWallet string, applica
 	if action == AuditActionReject {
 		application.RejectReason = extraMsg
 		if application.Type == ApplicationCloseProject {
-			project, err := ProjectModel.Detail(tx, application.EntityId)
-			if err != nil {
-				return err
-			}
-			project.Status = ProjectStatusOpen
-			err = tx.Save(project).Error
-			if err != nil {
+			if err := ProjectModel.UpdateProjectStatus(tx, application.EntityId, ProjectStatusOpen); err != nil {
+				log.Error().Msgf("update project %d status back to open error: %+v", application.EntityId, err)
 				return err
 			}
 		}
@@ -226,18 +231,21 @@ func doAuditApplicationInTransaction(tx *gorm.DB, operatorWallet string, applica
 
 	application.UpdatedAt = time.Now().In(internal.ProjectTimezone)
 	application.UpdateTs = GetCurrentUtcEpochSecond()
-	if err := tx.Save(&application).Error; err != nil {
+	if err := tx.Updates(&application).Error; err != nil {
+		log.Error().Msgf("Update application error: %+v", err)
 		return err
 	}
 
 	if nextState == ApplicationStateProcessing {
 		err := processingApplication(tx, application)
 		if err != nil {
+			log.Error().Msgf("processing application error: %+v", err)
 			return err
 		}
 	} else if nextState == ApplicationStateCompleted {
 		err := completeApplication(tx, operatorWallet, application, enforcer, push)
 		if err != nil {
+			log.Error().Msgf("complete application error: %+v", err)
 			return err
 		}
 	}
@@ -263,14 +271,14 @@ func processingApplication(tx *gorm.DB, application *Application) error {
 func completeApplication(tx *gorm.DB, operatorWallet string, application *Application, enforcer *casbin.SyncedEnforcer, push []sdk.Pusher) error {
 	if application.Type == ApplicationCloseProject {
 		// This is a close project application, so the `entity_id` saved indicates a project record
-		project, err := ProjectModel.Detail(tx, application.EntityId)
-		if err != nil {
+		if err := ProjectModel.UpdateProjectStatus(tx, application.EntityId, ProjectStatusClosed); err != nil {
+			log.Error().Msgf("update project %d status to closed error: %+v", application.EntityId, err)
 			return err
 		}
 
-		project.Status = ProjectStatusClosed
-		err = tx.Save(project).Error
+		project, err := ProjectModel.Detail(tx, application.EntityId)
 		if err != nil {
+			log.Error().Msgf("Fetch project %d error: %+v", application.EntityId, err)
 			return err
 		}
 
@@ -278,22 +286,9 @@ func completeApplication(tx *gorm.DB, operatorWallet string, application *Applic
 		// clean rbac if passed in enforcer
 		if enforcer != nil {
 			// remove policies
-			policies := [][]string{
-				// p, proj_sponsor_1, proj_1, modify
-				// p, proj_sponsor_1, proj_1, create_app
-				// p, proj_sponsor_1, proj_1, u_member
-				// p, proj_sponsor_1, proj_1, u_budget
-				{fmt.Sprintf("%s%d", internal.RoleProjSponsorPrefix, project.ID), fmt.Sprintf("%s%d", internal.ObjProjPrefix, project.ID), internal.ActModify},
-				{fmt.Sprintf("%s%d", internal.RoleProjSponsorPrefix, project.ID), fmt.Sprintf("%s%d", internal.ObjProjPrefix, project.ID), internal.ActCreateApplication},
-				{fmt.Sprintf("%s%d", internal.RoleProjSponsorPrefix, project.ID), fmt.Sprintf("%s%d", internal.ObjProjPrefix, project.ID), internal.ActUpdateMember},
-				{fmt.Sprintf("%s%d", internal.RoleProjSponsorPrefix, project.ID), fmt.Sprintf("%s%d", internal.ObjProjPrefix, project.ID), internal.ActUpdateBudget},
-				//// p, proj_member_1, proj_1, modify
-				//// p, proj_member_1, proj_1, create_app
-				//{fmt.Sprintf("%s%d", api.RoleProjMemberPrefix, project.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, project.ID), api.ActModify},
-				//{fmt.Sprintf("%s%d", api.RoleProjMemberPrefix, project.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, project.ID), api.ActCreateApplication},
-			}
-			_, err = enforcer.RemovePolicies(policies)
-			if err != nil {
+			policies := GenerateCasbinPolicies(application.EntityId)
+			if _, err := enforcer.RemovePolicies(policies); err != nil {
+				log.Error().Msgf("remove casbin policies error: %+v", err)
 				return err
 			}
 			// remove roles for sponsors

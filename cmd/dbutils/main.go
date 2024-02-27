@@ -40,7 +40,7 @@ type dataSeedRecords struct {
 }
 
 func autoMigrateDb(db *gorm.DB) error {
-	return storage.MigrateTables(db)
+	return model.MigrateTables(db)
 }
 
 func updateWallet(db *gorm.DB, tableName string, walletField string, whereClause string) error {

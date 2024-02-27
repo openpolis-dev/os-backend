@@ -329,6 +329,13 @@ func LoginWithSeeAuth(ctx *gin.Context) {
 		return
 	}
 
+	seeAuthPk, err := model.GetSeeAuthPk(db)
+	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(fmt.Errorf("get see auth private key error: %+v, contract admin", err)))
+		return
+	}
+
 	// SEE-AUTH Logic
 	seeAuth, err := seeauth.Auth(&seeauth.SignatureParams{
 		WalletName: req.WalletName,
@@ -343,7 +350,7 @@ func LoginWithSeeAuth(ctx *gin.Context) {
 			Wallet: req.Wallet,
 			Vendor: "common",
 		},
-		PrivateKey: "59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d",
+		PrivateKey: seeAuthPk,
 	})
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)

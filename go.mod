@@ -8,6 +8,7 @@ require (
 	github.com/99designs/gqlgen v0.17.41
 	github.com/OneSignal/onesignal-go-api v1.0.4
 	github.com/Taoist-Labs/see-auth-go v0.1.8
+	github.com/Taoist-Labs/sns-go v0.5.4
 	github.com/allegro/bigcache/v3 v3.1.0
 	github.com/aptible/supercronic v0.2.29
 	github.com/aws/aws-sdk-go v1.45.25
@@ -24,10 +25,12 @@ require (
 	github.com/golang-jwt/jwt/v4 v4.5.0
 	github.com/gomarkdown/markdown v0.0.0-20231222211730-1d6d20845b47
 	github.com/google/uuid v1.5.0
+	github.com/matoous/go-nanoid/v2 v2.0.0
 	github.com/microcosm-cc/bluemonday v1.0.23
 	github.com/onsi/ginkgo/v2 v2.13.0
 	github.com/onsi/gomega v1.28.0
 	github.com/prometheus/client_golang v1.17.0
+	github.com/robfig/cron/v3 v3.0.1
 	github.com/rs/zerolog v1.31.0
 	github.com/samber/lo v1.38.1
 	github.com/shopspring/decimal v1.3.1
@@ -35,6 +38,7 @@ require (
 	github.com/swaggo/files v1.0.1
 	github.com/swaggo/gin-swagger v1.6.0
 	github.com/swaggo/swag v1.16.2
+	github.com/unipassid/unipass-sigverify-go v0.9.0
 	github.com/valyala/fasthttp v1.51.0
 	github.com/vektah/gqlparser/v2 v2.5.10
 	github.com/xiaosongfu/ethsign v0.1.0
@@ -42,6 +46,7 @@ require (
 	github.com/xuri/excelize/v2 v2.8.0
 	golang.org/x/crypto v0.17.0
 	gopkg.in/yaml.v2 v2.4.0
+	gopkg.in/yaml.v3 v3.0.1
 	gorm.io/datatypes v1.2.0
 	gorm.io/driver/mysql v1.5.2
 	gorm.io/driver/postgres v1.5.0
@@ -55,6 +60,9 @@ require (
 	github.com/PuerkitoBio/purell v1.1.1 // indirect
 	github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578 // indirect
 	github.com/StackExchange/wmi v1.2.1 // indirect
+	github.com/Taoist-Labs/sns-go-api v0.5.3 // indirect
+	github.com/Taoist-Labs/sns-go-namehash v0.1.0 // indirect
+	github.com/Taoist-Labs/sns-go-safe v0.5.1 // indirect
 	github.com/agnivade/levenshtein v1.1.1 // indirect
 	github.com/andybalholm/brotli v1.0.5 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
@@ -72,6 +80,7 @@ require (
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.1.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/ethereum/c-kzg-4844 v0.4.0 // indirect
+	github.com/forta-network/go-multicall v0.0.0-20230701154355-9467c4ddaa83 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.2 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
@@ -130,7 +139,6 @@ require (
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/richardlehane/mscfb v1.0.4 // indirect
 	github.com/richardlehane/msoleps v1.0.3 // indirect
-	github.com/robfig/cron/v3 v3.0.1 // indirect
 	github.com/shirou/gopsutil v3.21.4-0.20210419000835-c7a38de76ee5+incompatible // indirect
 	github.com/sosodev/duration v1.1.0 // indirect
 	github.com/supranational/blst v0.3.11 // indirect
@@ -141,7 +149,6 @@ require (
 	github.com/tklauser/numcpus v0.6.1 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.2.11 // indirect
-	github.com/unipassid/unipass-sigverify-go v0.9.0 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/xuri/efp v0.0.0-20230802181842-ad255f2331ca // indirect
 	github.com/xuri/nfp v0.0.0-20230819163627-dc951e3ffe1a // indirect
@@ -156,7 +163,6 @@ require (
 	golang.org/x/tools v0.16.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gorm.io/driver/sqlserver v1.4.1 // indirect
 	gorm.io/plugin/dbresolver v1.3.0 // indirect
 	modernc.org/libc v1.22.5 // indirect
