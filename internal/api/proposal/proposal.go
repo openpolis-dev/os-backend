@@ -206,7 +206,9 @@ func Update(ctx *gin.Context) {
 
 	// In close project proposal, verify whether the project to be closed is in open or closed_failed state,
 	// and only set project to closing in those status. For other cases, return error
-	pTmplType, err := getProposalTemplateType(db, reqData.TemplateId)
+	// In update cases, the proposal should already have a template ID, which is not changeable in update action,
+	// and frontend request doesn't send template ID in request, so use the proposal data
+	pTmplType, err := getProposalTemplateType(db, *proposalRcd.ProposalTemplateID)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		log.Error().Msgf("get proposal template error: %+v", err)
