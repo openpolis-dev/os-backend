@@ -17,18 +17,20 @@ import (
 // 3. If the effected rows is 0, need to validate whether VoteOptionRecord has metaforo ID.
 //   - If yes, return error since the data has been uploaded to metaforo and is not updatable
 //   - If no, remove all associated ProposalVoteOptionRecord, and create new records from passed in params
-func UpsertProposalVoteRecord(proposalId uint, voteType int, voteOptions []*model.ProposalVoteOptionRecord) (*model.ProposalVoteRecord, error) {
-	agent := GetDbAgent()
+func UpsertProposalVoteRecord(db *gorm.DB, proposalId uint, voteType int, voteOptions []*model.ProposalVoteOptionRecord) (*model.ProposalVoteRecord, error) {
 	var err error
 
-	// TODO: Add lock for proposal ID
+	if voteType == model.ProposalVoteTypeNone {
+		log.Debug().Msgf("skip upsert proposal vote record for none vote type")
+		return nil, nil
+	}
 
 	proposalVoteRecord := model.ProposalVoteRecord{
 		ProposalID: proposalId,
 		VoteType:   voteType,
 	}
 
-	err = agent.db.Transaction(func(tx *gorm.DB) error {
+	err = db.Transaction(func(tx *gorm.DB) error {
 		createVoteRecordTx := tx.Where(proposalVoteRecord).FirstOrCreate(&proposalVoteRecord)
 
 		if createVoteRecordTx.Error != nil {

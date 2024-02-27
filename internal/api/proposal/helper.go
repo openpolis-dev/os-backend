@@ -224,14 +224,14 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 				return err
 			}
 
+			if err := SaveProposalVoteOptionRecords(tx, proposalRcd.ID, reqData.VoteType, reqData.VoteOptions); err != nil {
+				log.Error().Msgf("create proposal vote option records error: %+v", err)
+				return err
+			}
+
 			return nil
 		}); err != nil {
 			log.Error().Msgf("update proposal error: %+v", err)
-			return nil, err
-		}
-
-		if err := SaveProposalVoteOptionRecords(proposalRcd.ID, reqData.VoteType, reqData.VoteOptions); err != nil {
-			log.Error().Msgf("create proposal vote option records error: %+v", err)
 			return nil, err
 		}
 
@@ -273,14 +273,14 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 				return err
 			}
 
+			if err := SaveProposalVoteOptionRecords(tx, proposalRecord.ID, reqData.VoteType, reqData.VoteOptions); err != nil {
+				log.Error().Msgf("create proposal vote option records error: %+v", err)
+				return err
+			}
+
 			return nil
 		}); err != nil {
 			log.Error().Msgf("create proposal error: %+v", err)
-			return nil, err
-		}
-
-		if err := SaveProposalVoteOptionRecords(proposalRecord.ID, reqData.VoteType, reqData.VoteOptions); err != nil {
-			log.Error().Msgf("create proposal vote option records error: %+v", err)
 			return nil, err
 		}
 
@@ -394,7 +394,8 @@ func SaveProposalComponentRecords(db *gorm.DB, proposalId uint, applicantWallet 
 
 // SaveProposalVoteOptionRecords saves proposal vote option records into DB
 // Those records will be converted to metaforo format data while submitting to metaforo
-func SaveProposalVoteOptionRecords(proposalId uint, voteType int, customVoteOptions []string) error {
+// To implement this feature, one proposal can ONLY HAVE AT MOST ONE vote record
+func SaveProposalVoteOptionRecords(tx *gorm.DB, proposalId uint, voteType int, customVoteOptions []string) error {
 	switch voteType {
 	case model.ProposalVoteTypeNone:
 		log.Debug().Msgf("skip saving proposal vote option records for none vote type")
@@ -419,7 +420,7 @@ func SaveProposalVoteOptionRecords(proposalId uint, voteType int, customVoteOpti
 			})
 		}
 
-		proposalVoteRecord, err := db_agent.UpsertProposalVoteRecord(proposalId, voteType, voteOptions)
+		proposalVoteRecord, err := db_agent.UpsertProposalVoteRecord(tx, proposalId, voteType, voteOptions)
 		if err != nil {
 			log.Error().Msgf("upsert proposal vote record error: %+v", err)
 			return err
@@ -435,7 +436,7 @@ func SaveProposalVoteOptionRecords(proposalId uint, voteType int, customVoteOpti
 				Text:       s,
 			}
 		})
-		proposalVoteRecord, err := db_agent.UpsertProposalVoteRecord(proposalId, voteType, voteOptions)
+		proposalVoteRecord, err := db_agent.UpsertProposalVoteRecord(tx, proposalId, voteType, voteOptions)
 		if err != nil {
 			log.Error().Msgf("upsert proposal vote record error: %+v", err)
 			return err
@@ -456,7 +457,6 @@ func SaveProposalVoteOptionRecords(proposalId uint, voteType int, customVoteOpti
 // and the metaforo API invoked here is updateProposal.
 // TODO: Refactor this function
 func SaveProposalToMetaforo(db *gorm.DB, origProposalRecordId uint, voteType int, metaforoAccessToken string, EditorType int, metaforoGroupName string) error {
-//func SaveProposalToMetaforo(db *gorm.DB, origProposalRecordId uint, voteType int, customVoteOptions []string, metaforoAccessToken string, EditorType int, metaforoGroupName string) error {
 	if TryAcquireUpdateProposalDbLockOrReturn(origProposalRecordId) == false {
 		err := fmt.Errorf("proposal %d is updating", origProposalRecordId)
 		log.Error().Msg(err.Error())
