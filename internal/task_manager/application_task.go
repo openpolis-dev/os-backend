@@ -104,22 +104,39 @@ func CreateAppBundleTaskFromMotivationComponent(db *gorm.DB, job *model.CronJob,
 				}
 				db.Model(&prjDbRcd).Where(&prjDbRcd).First(&prjDbRcd)
 
-				// Limit only one motivation component record for one proposal
-				existingAppBundle := model.AppBundle{
-					EntityType: "project",
-					EntityId:   prjDbRcd.ID,
-				}
-
-				var appBundleRecordsCount int64
-				db.Model(&existingAppBundle).Where(&existingAppBundle).Count(&appBundleRecordsCount)
-				log.Debug().Msgf("Found %d records for app bundle", appBundleRecordsCount)
-				if appBundleRecordsCount > 0 {
-					log.Error().Msgf("appliation bundle with sip %s is already exist", prjDbRcd.SIP)
-					execResult = fmt.Sprintf("app bundle for project %d is existing", prjDbRcd.ID)
-					jobFailed = true
+				if prjDbRcd.ID == 0 {
+					log.Debug().Msgf("no project found with sip %d, check whether this is cityhall evaluation proposal.", proposalDbRcd.Sip)
+					var cityHallEvaluationTempId uint
+					db.Model(&model.ProposalTemplate{}).Where("name = ?", internal.CityHallEvaluationTemplateName).Pluck("id", &cityHallEvaluationTempId)
+					if *proposalDbRcd.ProposalTemplateID == cityHallEvaluationTempId {
+						cityHallRcd, err := model.GetCityHallProject(db)
+						if err != nil {
+							log.Warn().Msgf("get cityhall project error: %+v", err)
+							execResult = err.Error()
+							jobFailed = true
+						} else {
+							log.Debug().Msgf("cityhall project found: %+v", cityHallRcd)
+							prjDbRcd = *cityHallRcd
+						}
+					}
 				}
 
 				if !jobFailed {
+					// Limit only one motivation component record for one proposal
+					existingAppBundle := model.AppBundle{
+						EntityType: "project",
+						EntityId:   prjDbRcd.ID,
+					}
+
+					var appBundleRecordsCount int64
+					db.Model(&existingAppBundle).Where(&existingAppBundle).Count(&appBundleRecordsCount)
+					log.Debug().Msgf("Found %d records for app bundle", appBundleRecordsCount)
+					if appBundleRecordsCount > 0 {
+						log.Error().Msgf("appliation bundle with sip %s is already exist", prjDbRcd.SIP)
+						execResult = fmt.Sprintf("app bundle for project %d is existing", prjDbRcd.ID)
+						jobFailed = true
+					}
+
 					// TODO: Duplicated code *NewAppBundleAndApplication*
 					// Create AppBundle
 					appBundle := model.AppBundle{
