@@ -13,7 +13,7 @@ import (
 )
 
 type SystemVariable struct {
-	Name     string `gorm:"uniqIndex"`
+	Name     string `gorm:"uniqueIndex"`
 	NumValue int
 	StrValue string
 }
@@ -125,7 +125,6 @@ func GetMetaforoData(db *gorm.DB) (map[string]string, error) {
 	log.Debug().Msgf("load metaforo data from DB")
 	var mfRecords []*SystemVariable
 	err = db.Model(&SystemVariable{}).Where("name like ?", "metaforo_%").Find(&mfRecords).Error
-	log.Error().Msgf("%+v", err)
 	if err != nil {
 		log.Error().Msgf("get metaforo access token from DB error: %+v", err)
 		return nil, err
