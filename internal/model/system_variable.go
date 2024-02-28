@@ -186,3 +186,13 @@ func GetSeeAuthPk(db *gorm.DB) (string, error) {
 		return pkVal, nil
 	}
 }
+
+func IsSnsInvitationEnabled(db *gorm.DB) bool {
+	flagVal, err := getStrVal(db, internal.SysVarSnsInvitationEnabled)
+	if err != nil {
+		log.Error().Msgf("get sns invitation flag error: %+v", err)
+		return false
+	} else {
+		return flagVal == "true"
+	}
+}
