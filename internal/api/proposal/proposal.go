@@ -928,7 +928,7 @@ func generateFrontendProposalRecords(db *gorm.DB, querySql string, page *gormfin
 		// Specify custom order by state
 		// Note: this is PG specified function
 		if listBySip {
-			querySql += fmt.Sprintf("\nORDER BY sip, create_ts desc")
+			querySql += fmt.Sprintf("\nORDER BY sip desc, create_ts desc")
 		} else {
 			querySql += fmt.Sprintf("\nORDER BY array_position(array[%s], p.state), create_ts desc",
 				strings.Join(lo.Map(StateOrder, func(state model.ProposalState, _ int) string { return fmt.Sprintf("%d", state) }), ", "))
