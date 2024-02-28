@@ -2,6 +2,8 @@ package proposal
 
 import (
 	"errors"
+	"reflect"
+	"strconv"
 
 	"github.com/rs/zerolog/log"
 	"github.com/theseed-labs/os-backend/internal/common"
@@ -175,9 +177,17 @@ func GetProposalCommentsWithOsUserData(db *gorm.DB, metaforoComments []metaforo.
 			}
 		}
 
+		var mfContent string
+		switch reflect.TypeOf(metaforoComment.Content).Kind() {
+		case reflect.Float64:
+			mfContent = strconv.FormatFloat(metaforoComment.Content.(float64), 'f', -1, 64)
+		default:
+			mfContent = metaforoComment.Content.(string)
+		}
+
 		frontendCommentsRecords = append(frontendCommentsRecords, &FrontendProposalCommentRecord{
 			MetaforoPostId:      metaforoComment.Id,
-			Content:             metaforoComment.Content,
+			Content:             mfContent,
 			Wallet:              userWallet,
 			Avatar:              userAvatar,
 			ReplyMetaforoPostId: metaforoComment.ReplyPid,
