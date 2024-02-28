@@ -106,6 +106,8 @@ func doHttpRequest[T any](requestData *httpRequestData) (int, *T, error) {
 	if apiResp.Code == 20000 {
 		return resp.StatusCode(), apiResp.Data, nil
 	} else {
+		log.Error().Msgf("http request error, code: %d, request: %+v, resp: %+v", resp.StatusCode(), req, resp)
+
 		if apiResp.Code == 40001 {
 			return resp.StatusCode(), nil, GroupNotExist
 		}

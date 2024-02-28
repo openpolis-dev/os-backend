@@ -16,6 +16,7 @@ import (
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/graph/generated"
 	"github.com/theseed-labs/os-backend/internal/graph/resolver"
+	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/service"
 	"github.com/theseed-labs/os-backend/internal/task_manager"
 	"gorm.io/gorm"
@@ -117,6 +118,15 @@ func main() {
 	db := storage.GetGormDB()
 	//err = storage.MigrateTables(db)
 	if err != nil {
+		panic(err)
+	}
+
+	// Load configured metaforo data from DB and save to config
+	mfData, err := model.GetMetaforoData(db)
+	if err != nil {
+		panic(err)
+	}
+	if err = cfg.PopulateMetaforoDataFromDB(db, mfData); err != nil {
 		panic(err)
 	}
 

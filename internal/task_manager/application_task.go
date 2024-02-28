@@ -217,7 +217,7 @@ func CreateAppBundleTaskFromMotivationComponent(db *gorm.DB, job *model.CronJob,
 
 		var proposal model.Proposal
 		if err = db.Find(&proposal, proposalId).Error; err != nil {
-			log.Error().Msgf("get proposal %d error: %+v", proposalId, err)
+			log.Error().Msgf("get proposal %s error: %+v", proposalId, err)
 			execResult = err.Error()
 			jobFailed = true
 		} else {

@@ -422,7 +422,7 @@ func main() {
 		storage.InitGormDBWithLoggerLevel(dbDsn, parsedURI.Scheme, logger.Error)
 	}
 	db := storage.GetGormDB()
-	err := storage.MigrateTables(db)
+	err := model.MigrateTables(db)
 	if err != nil {
 		panic(err)
 	}

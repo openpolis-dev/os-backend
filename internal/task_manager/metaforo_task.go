@@ -6,9 +6,11 @@ import (
 
 	"github.com/aptible/supercronic/cronexpr"
 	"github.com/rs/zerolog/log"
+	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api/proposal"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk/metaforo"
+	"github.com/theseed-labs/os-backend/internal/storage"
 	"gorm.io/gorm"
 )
 
@@ -124,4 +126,31 @@ func updateJobExecutionInfoForNextRun(db *gorm.DB, job *model.CronJob, execResul
 	job.State = model.CronJobStateActive
 	job.LastExecutionFailed = jobFailed
 	return db.Save(&job).Error
+}
+
+func RefreshMetaforoAdminToken() {
+	log.Debug().Msgf("refresh metaforo admin token job")
+	db := storage.GetGormDB()
+	mfData, err := model.GetMetaforoData(db)
+	if err != nil {
+		log.Error().Msgf("get metaforo data error: %+v", err)
+		return
+	}
+
+	seeAuthToken, err := model.GetSeeAuthPk(db)
+	if err != nil {
+		log.Error().Msgf("get see auth pk error: %+v", err)
+		return
+	}
+
+	mfAdminTokenResp, err := metaforo.GetUserToken(mfData[internal.SysVarMfAdminWalletPk], mfData[internal.SysVarMfAdminWalletAddr], seeAuthToken)
+	if err != nil {
+		log.Error().Msgf("get metaforo user token error: %+v", err)
+		return
+	}
+
+	err = model.UpdateMetaforoAdminToken(db, mfAdminTokenResp.Token)
+	if err != nil {
+		log.Error().Msgf("update metaforo admin token error: %+v", err)
+	}
 }

@@ -33,7 +33,7 @@ type UserActivity struct {
 	SignData                interface{} `json:"sign_data"`
 	CreatedAt               time.Time   `json:"created_at"`
 	SignMsg                 interface{} `json:"sign_msg"`
-	Content                 string      `json:"content"`
+	Content                 any         `json:"content"`
 	Ipfs                    interface{} `json:"ipfs"`
 	Arweave                 string      `json:"arweave"`
 	UpdatedAt               string      `json:"updated_at"`
@@ -108,7 +108,7 @@ type PostData struct {
 		Posts []PostData `json:"posts"`
 	} `json:"children"`
 	ChildrenCount         int           `json:"children_count"`
-	Content               string        `json:"content"`
+	Content               any           `json:"content"`
 	CreatedAt             time.Time     `json:"created_at"`
 	Deleted               int           `json:"deleted"`
 	DeletedBy             interface{}   `json:"deleted_by"`
@@ -356,7 +356,7 @@ type TokenGateSetting struct {
 	Id      uint `json:"id"`
 	GroupId int  `json:"group_id"`
 
-	// Token spec for this gate record.
+	// GetUserToken spec for this gate record.
 	// Regards TokenType field, here are the available values
 	//   0 - ERC20
 	//   1 - ERC721

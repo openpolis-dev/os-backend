@@ -206,13 +206,16 @@ func Update(ctx *gin.Context) {
 
 	// In close project proposal, verify whether the project to be closed is in open or closed_failed state,
 	// and only set project to closing in those status. For other cases, return error
-	pTmplType, err := getProposalTemplateType(db, reqData.TemplateId)
+	// In update cases, the proposal should already have a template ID, which is not changeable in update action,
+	// and frontend request doesn't send template ID in request, so use the proposal data
+	pTmplType, err := getProposalTemplateType(db, *proposalRcd.ProposalTemplateID)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		log.Error().Msgf("get proposal template error: %+v", err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
 		return
 	}
+	reqData.TemplateId = *proposalRcd.ProposalTemplateID
 
 	// In close project proposal, verify whether the project to be closed is in open or closed_failed state,
 	// and only set project to closing in those status. For other cases, return error
@@ -256,7 +259,7 @@ func Update(ctx *gin.Context) {
 			return
 		}
 
-		if err = SaveProposalToMetaforo(db, proposalRecord.ID, proposalRecord.VoteType, reqData.VoteOptions, reqData.MetaforoAccessToken, reqData.EditorType, cfg.MetaforoData.GroupName); err != nil {
+		if err := SaveProposalToMetaforo(db, proposalRecord.ID, proposalRecord.VoteType, reqData.MetaforoAccessToken, reqData.EditorType, cfg.MetaforoData.GroupName); err != nil {
 			log.Error().Msgf("create metaforo proposal error: %+v", err)
 			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
@@ -360,7 +363,7 @@ func Create(ctx *gin.Context) {
 			return
 		}
 
-		if err = SaveProposalToMetaforo(db, proposalRecord.ID, reqData.VoteType, reqData.VoteOptions, reqData.MetaforoAccessToken, reqData.EditorType, cfg.MetaforoData.GroupName); err != nil {
+		if err := SaveProposalToMetaforo(db, proposalRecord.ID, proposalRecord.VoteType, reqData.MetaforoAccessToken, reqData.EditorType, cfg.MetaforoData.GroupName); err != nil {
 			log.Error().Msgf("create metaforo proposal error: %+v", err)
 			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error")))
@@ -741,6 +744,14 @@ func UpdateProposalStateAndLaunchStateChangeActions(db *gorm.DB, user *middlewar
 			return 0, err
 		}
 
+		if proposalRecord.VoteType == model.ProposalVoteTypeNone {
+			log.Debug().Msgf("proposal %d has no vote records, clear cronjob created for updating state", proposalId)
+			if err = db.Model(&model.CronJob{}).Where(&model.CronJob{ProposalId: proposalRecord.ID}).Delete(&model.CronJob{}).Error; err != nil {
+				log.Error().Msgf("delete cronjob error while withdrawing proposal: %+v", err)
+				return 0, err
+			}
+		}
+
 		for _, record := range voteRecords {
 			oneYearDuration := 24 * 365 * time.Hour
 			err := metaforo.UpdateVoteTime(cfg.MetaforoData.AccessToken,
@@ -846,6 +857,14 @@ func UpdateProposalStateAndLaunchStateChangeActions(db *gorm.DB, user *middlewar
 		if err != nil {
 			log.Error().Msgf("get vote records error: %+v", err)
 			return 0, err
+		}
+
+		if proposalRecord.VoteType == model.ProposalVoteTypeNone {
+			log.Debug().Msgf("proposal %d has no vote records, clear cronjob created for updating state", proposalId)
+			if err = db.Model(&model.CronJob{}).Where(&model.CronJob{ProposalId: proposalRecord.ID}).Delete(&model.CronJob{}).Error; err != nil {
+				log.Error().Msgf("delete cronjob error while withdrawing proposal: %+v", err)
+				return 0, err
+			}
 		}
 
 		for _, record := range voteRecords {

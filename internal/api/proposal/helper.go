@@ -20,6 +20,7 @@ import (
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/config"
+	"github.com/theseed-labs/os-backend/internal/db_agent"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk"
 	"github.com/theseed-labs/os-backend/internal/sdk/metaforo"
@@ -133,13 +134,6 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 
 	var voteTimeProps model.VoteTimeProperties
 
-	var pCategory model.ProposalCategory
-	err := db.Find(&pCategory, reqData.ProposalCategoryId).Error
-	if err != nil {
-		log.Error().Msgf("get proposal category error: %+v", err)
-		return nil, err
-	}
-
 	var pTemplate model.ProposalTemplate
 	err = db.Find(&pTemplate, reqData.TemplateId).Error
 	if err != nil {
@@ -150,7 +144,13 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 	voteTimeProps.PublicitySecond = pTemplate.PublicitySecond
 	voteTimeProps.VoteDurationSecond = pTemplate.VoteDurationSecond
 	voteTimeProps.PendingExecutionSecond = pTemplate.PendingExecutionSecond
-	reqData.VoteType = pTemplate.VoteType
+
+	var pCategory model.ProposalCategory
+	err := db.Find(&pCategory, pTemplate.ProposalCategoryID).Error
+	if err != nil {
+		log.Error().Msgf("get proposal category error: %+v", err)
+		return nil, err
+	}
 
 	if proposalId != 0 {
 		// Updating existing proposals
@@ -182,7 +182,7 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 		// Update fields from request data.
 		// The update logic can be applied to both PendingSubmit and Draft state
 		proposalRcd.Title = reqData.Title
-		proposalRcd.ProposalCategoryID = reqData.ProposalCategoryId
+		proposalRcd.ProposalCategoryID = pTemplate.ProposalCategoryID
 		proposalRcd.VoteType = dbProposalRcd.VoteType
 		proposalRcd.CanBeVetoed = dbProposalRcd.CanBeVetoed
 		proposalRcd.IsBasedOnCustomTemplate = dbProposalRcd.IsBasedOnCustomTemplate
@@ -201,12 +201,12 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 			}
 
 			// Move vote record and vote option record from original proposal to new one
-			if err = tx.Model(&model.ProposalVoteRecord{}).Where("proposal_id = ?", proposalId).Update("proposal_id = ?", proposalId).Error; err != nil {
+			if err = tx.Model(&model.ProposalVoteRecord{}).Where("proposal_id = ?", proposalId).Update("proposal_id", proposalRcd.ID).Error; err != nil {
 				log.Error().Msgf("move proposal vote record error: %+v", err)
 				return err
 			}
 
-			if err = tx.Model(&model.ProposalVoteOptionRecord{}).Where("proposal_id = ?", proposalId).Update("proposal_id = ?", proposalId).Error; err != nil {
+			if err = tx.Model(&model.ProposalVoteOptionRecord{}).Where("proposal_id = ?", proposalId).Update("proposal_id", proposalRcd.ID).Error; err != nil {
 				log.Error().Msgf("move proposal vote record error: %+v", err)
 				return err
 			}
@@ -223,6 +223,11 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 				return err
 			}
 
+			if err := SaveProposalVoteOptionRecords(tx, proposalRcd.ID, pTemplate.VoteType, reqData.VoteOptions); err != nil {
+				log.Error().Msgf("create proposal vote option records error: %+v", err)
+				return err
+			}
+
 			return nil
 		}); err != nil {
 			log.Error().Msgf("update proposal error: %+v", err)
@@ -236,9 +241,9 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 			CreateTs:                time.Now().UTC().Unix(),
 			Title:                   reqData.Title,
 			Applicant:               common.FormatUserWallet(userWallet),
-			ProposalCategoryID:      reqData.ProposalCategoryId,
+			ProposalCategoryID:      pTemplate.ProposalCategoryID,
 			Version:                 1,
-			VoteType:                reqData.VoteType,
+			VoteType:                pTemplate.VoteType,
 			CanBeVetoed:             pCategory.CanBeVetoed,
 			IsBasedOnCustomTemplate: pTemplate.IsCustomTemplate,
 			AssociateProposalId:     reqData.CreateProjectProposalId,
@@ -264,6 +269,11 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 			// Create proposal components
 			if err := SaveProposalComponentRecords(tx, proposalRecord.ID, userWallet, reqData.Components); err != nil {
 				log.Error().Msgf("create proposal component blocks error: %+v", err)
+				return err
+			}
+
+			if err := SaveProposalVoteOptionRecords(tx, proposalRecord.ID, pTemplate.VoteType, reqData.VoteOptions); err != nil {
+				log.Error().Msgf("create proposal vote option records error: %+v", err)
 				return err
 			}
 
@@ -381,108 +391,63 @@ func SaveProposalComponentRecords(db *gorm.DB, proposalId uint, applicantWallet 
 	})
 }
 
-//func SaveProposalVoteOptionRecords(db *gorm.DB, proposalId uint, applicantWallet string, voteType int, voteOptions []*string) error {
-//	switch voteType {
-//	case model.ProposalVoteTypeNone:
-//		return nil
-//	case model.ProposalVoteTypeDecision:
-//		proposalVoteRecord := model.ProposalVoteRecord{
-//			Options: lo.Map(internal.ProposalDecisionVoteOptions, func(s []string, _ int) *model.ProposalVoteOptionRecord {
-//				return &model.ProposalVoteOptionRecord{
-//					ProposalId: proposalId,
-//					Text:       s[0],
-//					Value:      s[1],
-//				}
-//			}),
-//			ProposalID: proposalId,
-//			VoteType:   voteType,
-//		}
-//		if err := db.Model(&model.ProposalVoteRecord{}).Where(&proposalVoteRecord).First(&proposalVoteRecord).Error; err != nil {
-//			if errors.Is(err, gorm.ErrRecordNotFound) {
-//				db.Create(&proposalVoteRecord)
-//			} else {
-//			}
-//		}
-//		voteOptions = lo.Map(internal.ProposalDecisionVoteOptions, func(s []string, _ int) *string {
-//			return &model.ProposalVoteOptionRecord{
-//				ProposalVoteRecordId: 0,
-//				ProposalId:           proposalId,
-//				Text:                 "",
-//				MetaforoID:           0,
-//				MetaforoVoteID:       0,
-//				Value:                "",
-//				VoterCount:           0,
-//			}
-//		})
-//	case model.ProposalVoteTypeNumericSingle:
-//		return nil
-//	case model.ProposalVoteTypeNumericAvg:
-//		return nil
-//	case model.ProposalVoteType:
-//
-//	}
-//
-//	var existingVoteOptionRecordsId []uint
-//	err := db.Model(&model.ProposalVoteOptionRecord{}).
-//		Where(model.ProposalVoteOptionRecord{ProposalVoteRecordId: proposalId}).
-//		Pluck("id", &existingVoteOptionRecordsId).Error
-//	if err != nil {
-//		log.Error().Msgf("get proposal vote record ids error: %+v", err)
-//		return err
-//	}
-//
-//	return db.Transaction(func(tx *gorm.DB) error {
-//		var updatedIds []uint
-//		for _, componentData := range reqComponentData {
-//			// Try to get component record from DB
-//			componentRecord := model.ProposalComponent{
-//				Name: componentData.Name,
-//			}
-//			if err := tx.Where(componentRecord).First(&componentRecord).Error; err != nil {
-//				tx.Rollback()
-//				log.Error().Msgf("find proposal component %s error: %+v", componentData.Name, err)
-//				return err
-//			}
-//
-//			// Append applicant information
-//			componentData.Data["applicant"] = common.FormatUserWallet(applicantWallet)
-//			componentData.Data["proposal_id"] = fmt.Sprintf("os-%d", proposalId)
-//
-//			proposalDataStr, err := json.Marshal(componentData.Data)
-//			if err != nil {
-//				tx.Rollback()
-//				log.Error().Msgf("create proposal component error: %+v", err)
-//				return err
-//			}
-//
-//			// Create proposal component record and save to DB
-//			if err := db.Save(&model.ProposalComponentRecord{
-//				CreateTs:    time.Now().UTC().Unix(),
-//				ComponentID: componentRecord.ID,
-//				ProposalID:  proposalId,
-//				Data:        string(proposalDataStr),
-//			}).Error; err != nil {
-//				log.Error().Msgf("create proposal component error: %+v", err)
-//				return err
-//			}
-//
-//			if componentData.ID != 0 {
-//				updatedIds = append(updatedIds, componentData.ID)
-//			}
-//		}
-//
-//		// Remove deleted blocks
-//		for _, componentId := range existingComponentIds {
-//			if !lo.Contains(updatedIds, componentId) {
-//				if err := db.Delete(&model.ProposalComponentRecord{ID: componentId}).Error; err != nil {
-//					log.Error().Msgf("delete proposal component error: %+v", err)
-//					return err
-//				}
-//			}
-//		}
-//		return nil
-//	})
-//}
+// SaveProposalVoteOptionRecords saves proposal vote option records into DB
+// Those records will be converted to metaforo format data while submitting to metaforo
+// To implement this feature, one proposal can ONLY HAVE AT MOST ONE vote record
+func SaveProposalVoteOptionRecords(tx *gorm.DB, proposalId uint, voteType int, customVoteOptions []string) error {
+	log.Debug().Msgf("save proposal vote option records: %d, %d, %v", proposalId, voteType, customVoteOptions)
+	switch voteType {
+	case model.ProposalVoteTypeNone:
+		log.Debug().Msgf("skip saving proposal vote option records for none vote type")
+		return nil
+	case model.ProposalVoteTypeDecision, model.ProposalVoteTypeNumericSingle, model.ProposalVoteTypeNumericAvg:
+		var voteOptions []*model.ProposalVoteOptionRecord
+		if voteType == model.ProposalVoteTypeDecision {
+			voteOptions = lo.Map(internal.ProposalDecisionVoteOptions, func(s []string, _ int) *model.ProposalVoteOptionRecord {
+				return &model.ProposalVoteOptionRecord{
+					ProposalId: proposalId,
+					Text:       s[0],
+					Value:      s[1],
+				}
+			})
+		} else {
+			voteOptions = lo.Map(internal.ProposalNumericVoteOptions, func(s []string, _ int) *model.ProposalVoteOptionRecord {
+				return &model.ProposalVoteOptionRecord{
+					ProposalId: proposalId,
+					Text:       s[0],
+					Value:      s[1],
+				}
+			})
+		}
+
+		proposalVoteRecord, err := db_agent.UpsertProposalVoteRecord(tx, proposalId, voteType, voteOptions)
+		if err != nil {
+			log.Error().Msgf("upsert proposal vote record error: %+v", err)
+			return err
+		}
+
+		log.Debug().Msgf("proposal vote record: %+v", proposalVoteRecord)
+		return nil
+	case model.ProposalVoteTypeCustomerDefinedEqualFailed, model.ProposalVoteTypeCustomerDefinedAlwaysPassed:
+		log.Debug().Msgf("custom vote options: %+v", customVoteOptions)
+		voteOptions := lo.Map(customVoteOptions, func(s string, _ int) *model.ProposalVoteOptionRecord {
+			return &model.ProposalVoteOptionRecord{
+				ProposalId: proposalId,
+				Text:       s,
+			}
+		})
+		proposalVoteRecord, err := db_agent.UpsertProposalVoteRecord(tx, proposalId, voteType, voteOptions)
+		if err != nil {
+			log.Error().Msgf("upsert proposal vote record error: %+v", err)
+			return err
+		}
+		log.Debug().Msgf("proposal vote record: %+v", proposalVoteRecord)
+		return nil
+	default:
+		log.Error().Msgf("unsupported vote type: %d, no vote will be created", voteType)
+		return nil
+	}
+}
 
 // SaveProposalToMetaforo updates proposal record to Metaforo
 // If proposal is in pending submit state, update existing proposal record (state, ProposalRecordId, ArweaveHash) and save back,
@@ -491,7 +456,7 @@ func SaveProposalComponentRecords(db *gorm.DB, proposalId uint, applicantWallet 
 // Otherwise, copy the proposal to new record with ver+1, update the metaforo data, and save back as a new record,
 // and the metaforo API invoked here is updateProposal.
 // TODO: Refactor this function
-func SaveProposalToMetaforo(db *gorm.DB, origProposalRecordId uint, voteType int, customVoteOptions []string, metaforoAccessToken string, EditorType int, metaforoGroupName string) error {
+func SaveProposalToMetaforo(db *gorm.DB, origProposalRecordId uint, voteType int, metaforoAccessToken string, EditorType int, metaforoGroupName string) error {
 	if TryAcquireUpdateProposalDbLockOrReturn(origProposalRecordId) == false {
 		err := fmt.Errorf("proposal %d is updating", origProposalRecordId)
 		log.Error().Msg(err.Error())
@@ -589,16 +554,7 @@ func SaveProposalToMetaforo(db *gorm.DB, origProposalRecordId uint, voteType int
 
 		// Regards vote record, the data is generated here, and uploaded to metaforo in CreateProposal API.
 		// And the db records will be updated by data returned from Metaforo
-		voteRecords := []*model.ProposalVoteRecord{
-			{
-				GateID:   0,
-				StartTs:  voteStartTime.Unix(),
-				EndTs:    voteEndTime.Unix(),
-				VoteType: updatedProposalRecord.VoteType,
-			},
-		}
-		osVoteOptions := prepareOsVoteOptions(voteType, customVoteOptions)
-		voteFormBytes, err := BuildMetaforoVoteFormDataBytes(voteRecords, osVoteOptions)
+		voteFormBytes, err := BuildMetaforoVoteFormDataBytes(db, origProposalRecordId, voteStartTime, voteEndTime)
 		if err != nil {
 			log.Error().Msgf("build metaforoProposal vote data error: %+v", err)
 			return err
@@ -681,17 +637,25 @@ func prepareOsVoteOptions(voteType int, customVoteOptions []string) []string {
 // Returns:
 // - []byte: The byte representation of the vote form data.
 // - error: An error if there was a problem generating the byte representation.
-func BuildMetaforoVoteFormDataBytes(voteRecords []*model.ProposalVoteRecord, osVoteOptions []string) ([]byte, error) {
-	// Generate metaforo vote options
-	voteOptions := lo.Map(osVoteOptions, func(r string, idx int) *metaforo.VoteOption {
-		return &metaforo.VoteOption{Text: r, Type: idx}
-	})
+func BuildMetaforoVoteFormDataBytes(db *gorm.DB, proposalId uint, startTime time.Time, endTime time.Time) ([]byte, error) {
+	voteRecords, err := db_agent.GetProposalVoteRecord(db, proposalId)
+	if err != nil {
+		log.Error().Msgf("fetch proposal vote record error: %+v", err)
+		return nil, err
+	}
 
-	voteData := lo.Map(voteRecords, func(r *model.ProposalVoteRecord, _ int) *metaforo.NewVoteFormRequest {
-		return &metaforo.NewVoteFormRequest{
-			Options:            voteOptions,
+	voteData := make([]*metaforo.NewVoteFormRequest, 0)
+	for idx := range voteRecords {
+		mfVoteOpts, err := db_agent.GenerateMetaforoVoteOptions(voteRecords[idx].ProposalID)
+		if err != nil {
+			log.Error().Msgf("generate metaforo vote options error: %+v", err)
+			continue
+		}
+
+		voteData = append(voteData, &metaforo.NewVoteFormRequest{
+			Options:            mfVoteOpts,
 			Type:               "1",
-			Title:              r.Title,
+			Title:              voteRecords[idx].Title,
 			ShowType:           "1",
 			ShowResult:         true,
 			ChartType:          "1",
@@ -700,8 +664,8 @@ func BuildMetaforoVoteFormDataBytes(voteRecords []*model.ProposalVoteRecord, osV
 			ContractType:       0,
 			SettingId:          0,
 			Period:             "1",
-			CloseAt:            time.Unix(r.EndTs, 0).Format(time.RFC3339),
-			VoteStartAt:        time.Unix(r.StartTs, 0).Format(time.RFC3339),
+			CloseAt:            endTime.Format(time.RFC3339),
+			VoteStartAt:        startTime.Format(time.RFC3339),
 			Max:                1,
 			MinTokens:          "0",
 			PollCategory:       "0",
@@ -710,8 +674,12 @@ func BuildMetaforoVoteFormDataBytes(voteRecords []*model.ProposalVoteRecord, osV
 			Quorum:             false,
 			Weight:             true,
 			Step:               2,
-		}
-	})
+		})
+	}
+
+	api.PrintStructAsJson(voteData, "TTT: mf vote data")
+
+	log.Debug().Msgf("metaforo vote data: %+v", voteData)
 
 	voteDataBytes, err := json.Marshal(voteData)
 	if err != nil {
@@ -876,25 +844,29 @@ func UpdateDbVoteOptionRecordsFromMetaforoProposalResponse(db *gorm.DB, dbPropos
 	pollStatusChanged := false
 
 	for _, poll := range metaforoProposal.Thread.Polls {
-		proposalVoteRecord := model.ProposalVoteRecord{MetaforoID: poll.Id}
-		err = db.Where(&proposalVoteRecord).Assign(&model.ProposalVoteRecord{
+		var proposalVoteRecord = model.ProposalVoteRecord{}
+		if err = db.Where(&model.ProposalVoteRecord{ProposalID: dbProposalRcdId}).Updates(&model.ProposalVoteRecord{
 			Title:      poll.Title,
+			MetaforoID: poll.Id,
 			StartTs:    poll.PollStartAt.UTC().Unix(),
 			EndTs:      poll.CloseAt.UTC().Unix(),
 			ProposalID: dbProposalRcdId,
 			VoteType:   dbProposalRcd.VoteType,
-		}).FirstOrCreate(&proposalVoteRecord).Error
-		if err != nil {
+		}).First(&proposalVoteRecord).Error; err != nil {
 			log.Warn().Msgf("save DB proposal vote record error: %+v", err)
 			return pollStatusChanged, err
 		} else {
 			log.Debug().Msgf("save DB proposal vote record success: %+v", proposalVoteRecord)
 		}
 
+		api.PrintStructAsJson(proposalVoteRecord, "TTT: proposal vote record")
+
 		currState := proposalVoteRecord.State
 		if currState != poll.Status {
 			pollStatusChanged = true
-			err := db.Model(&model.ProposalVoteRecord{}).Where(&model.ProposalVoteRecord{MetaforoID: poll.Id}).Update("state", poll.Status).Error
+			err := db.Model(&model.ProposalVoteRecord{}).
+				Where("metaforo_id = ? AND state =?", poll.Id, currState).
+				Update("state", poll.Status).Error
 			if err != nil {
 				log.Error().Msgf("update proposal vote record state error: %+v", err)
 				return pollStatusChanged, err
@@ -904,34 +876,39 @@ func UpdateDbVoteOptionRecordsFromMetaforoProposalResponse(db *gorm.DB, dbPropos
 			pollStatusChanged = false
 		}
 
+		db.Find(&proposalVoteRecord, proposalVoteRecord.ID)
+
 		err = db.Transaction(func(tx *gorm.DB) error {
 			for _, voteOpt := range poll.Options {
 				proposalVoteOptionRecord := model.ProposalVoteOptionRecord{
 					MetaforoID:           voteOpt.Id,
-					MetaforoVoteID:       proposalVoteRecord.MetaforoID,
+					MetaforoVoteID:       poll.Id,
 					ProposalVoteRecordId: proposalVoteRecord.ID,
 				}
+
+				// Get option label from metaforo response
 				var optLabel string
 				switch reflect.TypeOf(voteOpt.Html).Kind() {
 				case reflect.Float64:
-					optLabel = fmt.Sprintf("%f", voteOpt.Html.(float64))
+					optLabel = strconv.FormatFloat(voteOpt.Html.(float64), 'f', -1, 64)
 				default:
 					optLabel = voteOpt.Html.(string)
 				}
-				err = tx.Where(&proposalVoteOptionRecord).Assign(&model.ProposalVoteOptionRecord{
-					Text:  optLabel,
-					Value: model.GetPredefinedVoteOptionValue(optLabel, dbProposalRcd.VoteType),
-				}).FirstOrCreate(&proposalVoteOptionRecord).Error
-				if err != nil {
-					log.Warn().Msgf("save DB proposal vote option error: %+v", err)
-					return err
-				}
 
-				err = tx.Model(&proposalVoteOptionRecord).Where("id = ?", proposalVoteOptionRecord.ID).Updates(&model.ProposalVoteOptionRecord{VoterCount: voteOpt.Voters}).Error
+				err = tx.Model(&model.ProposalVoteOptionRecord{}).
+					Where("proposal_id = ? AND text =?", dbProposalRcdId, optLabel).
+					Updates(&model.ProposalVoteOptionRecord{
+						VoterCount:     voteOpt.Voters,
+						MetaforoID:     voteOpt.Id,
+						MetaforoVoteID: poll.Id,
+					}).Error
 				if err != nil {
 					log.Warn().Msgf("save DB proposal vote option error: %+v", err)
 					return err
+				} else {
+					log.Debug().Msgf("update DB proposal vote option success: %+v", proposalVoteOptionRecord)
 				}
+				api.PrintStructAsJson(proposalVoteOptionRecord, "TTT: proposal vote option record")
 			}
 			return nil
 		})
@@ -962,9 +939,8 @@ func HandleProposalPollStatusChange(db *gorm.DB, proposalId uint) error {
 		return err
 	}
 
-	log.Debug().Msgf("proposal vote records: %+v", pVoteRcds)
-
 	effectVoteRcd := pVoteRcds[0]
+	log.Debug().Msgf("effect proposal vote records: %+v", effectVoteRcd)
 
 	// Metaforo support multiple vote in one proposal, but in OS only one vote will be created, so only check the first value
 	if effectVoteRcd.State == "open" {

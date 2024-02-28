@@ -34,6 +34,9 @@ func GetCachedData(key string) ([]byte, error) {
 func StoreCachedData(key string, value []byte) error {
 	return GetCache().Set(key, value)
 }
+func InvalidCache(name string) error {
+	return GetCache().Delete(name)
+}
 
 func MetaforoRewardCacheKey(seasonIdx uint) string {
 	return fmt.Sprintf("metaforo.reward.season.%d", seasonIdx)

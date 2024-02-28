@@ -6,9 +6,12 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"strconv"
 
 	"github.com/rs/zerolog/log"
+	"github.com/theseed-labs/os-backend/internal"
 	"gopkg.in/yaml.v2"
+	"gorm.io/gorm"
 )
 
 type Config struct {
@@ -25,7 +28,7 @@ type Config struct {
 	MetaforoData     metaforoData    `json:"metaforoData" yaml:"metaforoData"`
 	Admin            adminData       `json:"admin" yaml:"admin"`
 	QuickAccounting  QuickAccounting `json:"quickAccounting" yaml:"quickAccounting"`
-	SnsInvite        snsInvite       `json:"snsInvite" yaml:"snsInvite"`
+	SnsInvite        SnsInvite       `json:"snsInvite" yaml:"snsInvite"`
 }
 
 type (
@@ -108,7 +111,7 @@ type (
 		CategoryId   int    `json:"categoryId" yaml:"categoryId"`
 		CategoryName string `json:"categoryName" yaml:"categoryName"`
 	}
-	snsInvite struct {
+	SnsInvite struct {
 		EntityType string `json:"entityType" yaml:"entityType"`
 		EntityId   uint   `json:"entityId" yaml:"entityId"`
 		EntityName string `json:"entityName" yaml:"entityName"`
@@ -146,4 +149,19 @@ func LoadConfig(configPath string) *Config {
 	}
 
 	return &config
+}
+
+// PopulateMetaforoDataFromDB loads metaforo data configured in system variables table into the config object
+func (c *Config) PopulateMetaforoDataFromDB(db *gorm.DB, mfData map[string]string) error {
+	var err error
+	// Metaforo related data
+	c.MetaforoData.AccessToken = mfData[internal.SysVarMfAdminToken]
+	c.MetaforoData.GroupName = mfData[internal.SysVarMfGroupName]
+	c.MetaforoData.GroupID, err = strconv.Atoi(mfData[internal.SysVarMfGroupId])
+	if err != nil {
+		log.Error().Msgf("parse metaforo group ID error: %+v", err)
+		return err
+	} else {
+		return nil
+	}
 }

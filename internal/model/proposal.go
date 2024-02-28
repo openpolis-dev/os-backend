@@ -404,20 +404,20 @@ type ProposalVoteRecord struct {
 	VoteType int
 }
 
-// ProposalVoteOptionRecord saves option used in proposal vote record, it contains a
+// ProposalVoteOptionRecord saves option used in proposal vote record, it stands for a single option in the vote.
+// Which means one ProposalVoteRecord has many ProposalVoteOptionRecord records
 type ProposalVoteOptionRecord struct {
 	ID uint `gorm:"primaryKey"`
 
-	// Foreign key
-	ProposalVoteRecordId uint
-	//
-	//ProposalId uint
+	// Associated db records
+	ProposalVoteRecordId uint `gorm:"index"`
+	ProposalId           uint `gorm:"index"`
 
 	// Metaforo related data
 	// Text field is used to
 	Text           string
-	MetaforoID     int
-	MetaforoVoteID int
+	MetaforoID     int // Metaforo ID for this option
+	MetaforoVoteID int // Metaforo ID for the vote
 
 	// Value is used in for automation tasks related to this
 	Value string

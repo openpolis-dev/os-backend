@@ -148,7 +148,7 @@ func CheckAndUpdateUnverifiedSnsInvite(cfg *config.Config, db *gorm.DB) error {
 						UpdateTs:         model.GetCurrentUtcEpochSecond(),
 						DetailedType:     internal.SNSInviteItem, // 事项
 						Comment:          internal.SNSInviteItem, // 备注
-						AssetName:        "SCR",
+						AssetName:        internal.SNSInviteRewardsToken,
 						AssetAmount:      row.SCRRewards,
 						TargetUserWallet: recipient,
 						EntityType:       appBundle.EntityType,
