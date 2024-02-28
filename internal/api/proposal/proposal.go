@@ -862,7 +862,7 @@ func UpdateProposalStateAndLaunchStateChangeActions(db *gorm.DB, user *middlewar
 		if proposalRecord.VoteType == model.ProposalVoteTypeNone {
 			log.Debug().Msgf("proposal %d has no vote records, clear cronjob created for updating state", proposalId)
 			if err = db.Model(&model.CronJob{}).Where(&model.CronJob{ProposalId: proposalRecord.ID}).Delete(&model.CronJob{}).Error; err != nil {
-				log.Error().Msgf("delete cronjob error while withdrawing proposal: %+v", err)
+				log.Error().Msgf("delete cronjob error while rejecting proposal: %+v", err)
 				return 0, err
 			}
 		}
@@ -928,7 +928,7 @@ func generateFrontendProposalRecords(db *gorm.DB, querySql string, page *gormfin
 		// Specify custom order by state
 		// Note: this is PG specified function
 		if listBySip {
-			querySql += fmt.Sprintf("\nORDER BY sip desc")
+			querySql += fmt.Sprintf("\nORDER BY sip desc, create_ts desc")
 		} else {
 			querySql += fmt.Sprintf("\nORDER BY array_position(array[%s], p.state), create_ts desc",
 				strings.Join(lo.Map(StateOrder, func(state model.ProposalState, _ int) string { return fmt.Sprintf("%d", state) }), ", "))

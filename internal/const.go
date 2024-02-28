@@ -52,6 +52,8 @@ const (
 	ProposalNumeric80  = "80%"
 	ProposalNumeric100 = "100%"
 	ProposalNumeric120 = "120%"
+
+	CityHallEvaluationTemplateName = "市政厅岗位评估"
 )
 
 // ProposalDecisionVoteOptions is used for proposal that requires a decision.
