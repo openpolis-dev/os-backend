@@ -744,6 +744,14 @@ func UpdateProposalStateAndLaunchStateChangeActions(db *gorm.DB, user *middlewar
 			return 0, err
 		}
 
+		if proposalRecord.VoteType == model.ProposalVoteTypeNone {
+			log.Debug().Msgf("proposal %d has no vote records, clear cronjob created for updating state", proposalId)
+			if err = db.Model(&model.CronJob{}).Where(&model.CronJob{ProposalId: proposalRecord.ID}).Delete(&model.CronJob{}).Error; err != nil {
+				log.Error().Msgf("delete cronjob error while withdrawing proposal: %+v", err)
+				return 0, err
+			}
+		}
+
 		for _, record := range voteRecords {
 			oneYearDuration := 24 * 365 * time.Hour
 			err := metaforo.UpdateVoteTime(cfg.MetaforoData.AccessToken,
