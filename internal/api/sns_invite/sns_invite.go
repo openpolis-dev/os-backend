@@ -75,15 +75,13 @@ func GetMySnsInviteRewards(ctx *gin.Context) {
 // @Success 200 {object} api.Reply
 // @Router /sns_invite/invited_by/{invite_code} [post]
 func SnsInvitedBy(ctx *gin.Context) {
-	db := api.ForContextOnlyDB(ctx)
+	user, db := api.ForContextUserAndDB(ctx)
 	if !model.IsSnsInvitationEnabled(db) {
 		ctx.JSON(http.StatusOK, api.Success(nil))
 		return
 	}
 
 	inviteCode := ctx.Param("invite_code")
-
-	user, db := api.ForContextUserAndDB(ctx)
 
 	err := service.SnsInvitedBy(db, inviteCode, user.Wallet)
 	if errors.Is(err, service.ErrInvalidInviteCode) || errors.Is(err, service.ErrAlreadyInvited) {
