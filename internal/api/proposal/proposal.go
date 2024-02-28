@@ -862,7 +862,7 @@ func UpdateProposalStateAndLaunchStateChangeActions(db *gorm.DB, user *middlewar
 		if proposalRecord.VoteType == model.ProposalVoteTypeNone {
 			log.Debug().Msgf("proposal %d has no vote records, clear cronjob created for updating state", proposalId)
 			if err = db.Model(&model.CronJob{}).Where(&model.CronJob{ProposalId: proposalRecord.ID}).Delete(&model.CronJob{}).Error; err != nil {
-				log.Error().Msgf("delete cronjob error while withdrawing proposal: %+v", err)
+				log.Error().Msgf("delete cronjob error while rejecting proposal: %+v", err)
 				return 0, err
 			}
 		}

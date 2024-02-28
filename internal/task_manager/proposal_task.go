@@ -94,6 +94,12 @@ func CreateVetoProposalTask(db *gorm.DB, job *model.CronJob, jobParams string) {
 				return err
 			}
 
+			log.Debug().Msgf("clear all cron job for proposal %d be vetoed", params.BeVetoedProposalInfo.Id)
+			if err = db.Model(&model.CronJob{}).Where(&model.CronJob{ProposalId: uint(params.BeVetoedProposalInfo.Id)}).Delete(&model.CronJob{}).Error; err != nil {
+				log.Error().Msgf("delete cronjob error while vetoing proposal: %+v", err)
+				return err
+			}
+
 			// Mark project associated to proposal be vetoed to close_failed
 			var dbProposalRcd model.Proposal
 			if err = tx.Find(&dbProposalRcd, params.BeVetoedProposalInfo.Id).Error; err != nil {
