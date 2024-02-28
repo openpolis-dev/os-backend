@@ -222,7 +222,6 @@ func getProposalsCanBeVetoed(db *gorm.DB) ([]*WidgetDataResponse, error) {
 	querySql := fmt.Sprintf("%s WHERE state IN (%d, %d, %d) and p.can_be_vetoed = true",
 		proposal.ListProposalsSQL,
 		model.ProposalStateVoting,
-		model.ProposalStateVotePassed,
 		model.ProposalStatePendingExecution,
 	)
 	querySql += fmt.Sprintf(" ORDER BY create_ts DESC")
