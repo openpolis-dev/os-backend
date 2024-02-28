@@ -146,6 +146,7 @@ func RefreshMetaforoAdminToken() {
 	mfAdminTokenResp, err := metaforo.GetUserToken(mfData[internal.SysVarMfAdminWalletPk], mfData[internal.SysVarMfAdminWalletAddr], seeAuthToken)
 	if err != nil {
 		log.Error().Msgf("get metaforo user token error: %+v", err)
+		return
 	}
 
 	err = model.UpdateMetaforoAdminToken(db, mfAdminTokenResp.Token)
