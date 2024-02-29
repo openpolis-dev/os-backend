@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	ethereumCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
@@ -43,17 +44,19 @@ type LoaderConfig struct {
 }
 
 type DetailRecordSchema struct {
-	SeasonName   string
-	Username     string
-	EntityName   string
-	UserWallet   string
-	DealDate     time.Time
-	DealTs       int64
-	AssetName    string
-	AssetAmount  decimal.Decimal
-	DetailedType string
-	Comment      string
-	ProposalLink string
+	SeasonName      string
+	Username        string
+	EntityName      string
+	UserWallet      string
+	DealDate        time.Time
+	DealTs          int64
+	AssetName       string
+	AssetAmount     decimal.Decimal
+	DetailedType    string
+	Comment         string
+	ProposalLink    string
+	AppState        string
+	AddressVerified bool
 }
 
 type SummarizedRecordSchema struct {
@@ -141,7 +144,7 @@ func loadDetailSheet(filePath string, sheetName string, assets map[string]bool) 
 		return nil, err
 	}
 
-	detailRecords := lo.Map(rows[2:], func(r []string, _ int) *DetailRecordSchema {
+	detailRecords := lo.Map(rows[2:], func(r []string, idx int) *DetailRecordSchema {
 		dealDate, err := tryParseDatetime(r[4])
 		if err != nil {
 			panic(err)
@@ -156,30 +159,43 @@ func loadDetailSheet(filePath string, sheetName string, assets map[string]bool) 
 		detailedType := ""
 
 		if len(r) > 7 {
-			detailedType = r[7]
+			detailedType = strings.TrimSpace(r[7])
 		}
 		if len(r) > 8 {
-			comment = r[8]
+			comment = strings.TrimSpace(r[8])
 		}
 
 		if len(r) > 9 {
-			proposalLink = r[9]
+			proposalLink = strings.TrimSpace(r[9])
+		}
+
+		appState := "completed"
+		if len(r) == 11 {
+			if r[10] == "未发放" {
+				appState = "processing"
+			}
+		}
+
+		if !ethereumCommon.IsHexAddress(r[3]) {
+			fmt.Printf("invalid user wallet: %d: %s\n", idx, r[3])
 		}
 
 		userWallet := common.ToChecksumAddress(r[3])
 
 		return &DetailRecordSchema{
-			SeasonName:   r[0],
-			Username:     r[1],
-			EntityName:   strings.TrimSpace(r[2]),
-			UserWallet:   userWallet,
-			DealDate:     dealDate.In(internal.ProjectTimezone),
-			DealTs:       dealDate.In(internal.ProjectTimezone).UTC().Unix(),
-			AssetName:    r[5],
-			AssetAmount:  assetAmount,
-			DetailedType: detailedType,
-			Comment:      comment,
-			ProposalLink: proposalLink,
+			SeasonName:      r[0],
+			Username:        r[1],
+			EntityName:      r[2],
+			UserWallet:      userWallet,
+			DealDate:        dealDate.In(internal.ProjectTimezone),
+			DealTs:          dealDate.In(internal.ProjectTimezone).UTC().Unix(),
+			AssetName:       r[5],
+			AssetAmount:     assetAmount,
+			DetailedType:    detailedType,
+			Comment:         comment,
+			ProposalLink:    proposalLink,
+			AppState:        appState,
+			AddressVerified: ethereumCommon.IsHexAddress(r[3]),
 		}
 	})
 
@@ -335,6 +351,11 @@ func saveToDatabase(db *gorm.DB, rcds []*DetailRecordSchema, seasonRcds []*model
 
 	return db.Transaction(func(tx *gorm.DB) error {
 		for i, r := range recordsWillBeImported {
+			if !r.AddressVerified {
+				fmt.Printf("Skipping record %+v due to address verification failure\n", r)
+				continue
+			}
+
 			if i%10 == 0 {
 				fmt.Printf("%d", i)
 			} else {
@@ -344,10 +365,15 @@ func saveToDatabase(db *gorm.DB, rcds []*DetailRecordSchema, seasonRcds []*model
 			seasonId, _ := seasonNames[r.SeasonName]
 			entityInfo := entityInfo[strings.TrimSpace(r.EntityName)]
 
+			appState := model.ApplicationStateApproved
+			if r.AppState == "completed" {
+				appState = model.ApplicationStateCompleted
+			}
+
 			application := model.Application{
 				Type:             model.ApplicationNewReward,
 				Applicant:        "",
-				State:            model.ApplicationStateApproved,
+				State:            model.ApplicationState(appState),
 				CreatedAt:        r.DealDate,
 				UpdatedAt:        r.DealDate,
 				CreateTs:         r.DealTs,
@@ -371,8 +397,11 @@ func saveToDatabase(db *gorm.DB, rcds []*DetailRecordSchema, seasonRcds []*model
 			auditLogs := []*model.ApplicationAuditLog{
 				{ApplicationID: application.ID, Operation: model.AuditActionNew, LogTs: r.DealTs, PostState: model.ApplicationStateOpen},
 				{ApplicationID: application.ID, Operation: model.AuditActionApprove, LogTs: r.DealTs, PreState: model.ApplicationStateOpen, PostState: model.ApplicationStateApproved},
-				{ApplicationID: application.ID, Operation: model.AuditActionProcess, LogTs: r.DealTs, PreState: model.ApplicationStateApproved, PostState: model.ApplicationStateProcessing},
-				{ApplicationID: application.ID, Operation: model.AuditActionComplete, LogTs: r.DealTs, PreState: model.ApplicationStateProcessing, PostState: model.ApplicationStateCompleted},
+			}
+
+			if r.AppState == "completed" {
+				auditLogs = append(auditLogs, &model.ApplicationAuditLog{ApplicationID: application.ID, Operation: model.AuditActionProcess, LogTs: r.DealTs, PreState: model.ApplicationStateApproved, PostState: model.ApplicationStateProcessing})
+				auditLogs = append(auditLogs, &model.ApplicationAuditLog{ApplicationID: application.ID, Operation: model.AuditActionComplete, LogTs: r.DealTs, PreState: model.ApplicationStateProcessing, PostState: model.ApplicationStateCompleted})
 			}
 
 			err = tx.Save(auditLogs).Error
