@@ -1,0 +1,29 @@
+# select * from system_variables sv where name != 'sip'
+system_variables:
+  - name: metaforo_admin_wallet_addr
+    num_value:
+    str_value: ''
+  - name: metaforo_admin_wallet_pk
+    num_value:
+    str_value: ''
+  - name: metaforo_admin_token
+    num_value:
+    str_value: 24291|WzB6s3Qex8gGMaJ76NLhTWihWqbcykflIwAjIdiG
+
+  - name: metaforo_group_id
+    num_value:
+    str_value: '10434'
+  - name: metaforo_group_name
+    num_value:
+    str_value: testttt
+
+  - name: seeauth_private_key
+    num_value:
+    str_value: 59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d
+
+  - name: sns_invitation_enabled
+    num_value:
+    str_value: 'true'
+
+
+
