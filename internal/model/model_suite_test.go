@@ -54,9 +54,6 @@ var db *gorm.DB
 var _ = BeforeSuite(func() {
 	dsn := os.Getenv("TEST_DATABASE_DSN")
 	debugFlag := os.Getenv("TEST_DATABASE_DEBUG")
-	if dsn == "" {
-		dsn = "postgres://localhost:5432/os_backend_auto_test?sslmode=disable"
-	}
 	logLv := logger.Error
 	if debugFlag != "" {
 		logLv = logger.Info
@@ -66,6 +63,11 @@ var _ = BeforeSuite(func() {
 })
 
 func TestModel(t *testing.T) {
+	dsn := os.Getenv("TEST_DATABASE_DSN")
+	if dsn == "" {
+		t.Skip("skip test without TEST_DATABASE_DSN")
+	}
+
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Model Suite")
 }
