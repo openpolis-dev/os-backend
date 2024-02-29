@@ -1,0 +1,599 @@
+---
+# select name, status, sponsors, "desc"  , category ,approval_link ,over_link ,contant_way ,official_link , s_ip , "label"  from projects where id <=132 and is_special = false order by id desc;
+projects:
+- name: P1提案 - Seed NFT 二创征集
+  status: closed
+  sponsors:
+  desc:
+  category:
+  approval_link:
+  over_link:
+  contant_way:
+  official_link:
+  s_ip:
+  label: P1 提案
+- name: 悬赏酒馆
+  status: open
+  sponsors:
+  desc:
+  category: 公共项目
+  approval_link:
+  over_link:
+  contant_way:
+  official_link:
+  s_ip:
+  label:
+- name: P3提案 - SIP-79 - 共同打造中文 web3 媒体
+  status: closed
+  sponsors:
+  desc:
+  category:
+  approval_link:
+  over_link:
+  contant_way:
+  official_link:
+  s_ip:
+  label: P3 提案
+- name: P1提案 - Weeping Club On Sunday
+  status: closed
+  sponsors:
+  desc:
+  category:
+  approval_link:
+  over_link:
+  contant_way:
+  official_link:
+  s_ip:
+  label: P1 提案
+- name: P1 提案 - 媒体小红书项目提案
+  status: closed
+  sponsors:
+  desc:
+  category:
+  approval_link:
+  over_link:
+  contant_way:
+  official_link:
+  s_ip:
+  label: P1 提案
+- name: P1 提案 - AMA机器人接入Discord
+  status: closed
+  sponsors:
+  desc:
+  category:
+  approval_link:
+  over_link:
+  contant_way:
+  official_link:
+  s_ip:
+  label: P1 提案
+- name: P1提案 - Vitalik英文共读会 (001期)
+  status: closed
+  sponsors:
+  desc:
+  category:
+  approval_link:
+  over_link:
+  contant_way:
+  official_link:
+  s_ip:
+  label: P1 提案
+- name: P2提案 - 在SeeDAO发起SeeGIRLS女性组织项目
+  status: closed
+  sponsors:
+  desc:
+  category:
+  approval_link:
+  over_link:
+  contant_way:
+  official_link:
+  s_ip:
+  label: P2 提案
+- name: P3提案 - 基于Bounty GO为SeeDAO OS 开发定制化任务系统
+  status: closed
+  sponsors:
+  desc:
+  category:
+  approval_link:
+  over_link:
+  contant_way:
+  official_link:
+  s_ip:
+  label: P3 提案
+- name: P1 提案 - Smart Money Club 共学运营支持
+  status: closed
+  sponsors:
+  desc:
+  category:
+  approval_link:
+  over_link:
+  contant_way:
+  official_link:
+  s_ip:
+  label: P1 提案
+- name: P1提案 - 官方公众号专业头图
+  status: closed
+  sponsors:
+  desc:
+  category:
+  approval_link:
+  over_link:
+  contant_way:
+  official_link:
+  s_ip:
+  label: P1 提案
+- name: P1提案 - LeDAO身心灵项目组上海线下线上联动工作坊
+  status: closed
+  sponsors:
+  desc:
+  category:
+  approval_link:
+  over_link:
+  contant_way:
+  official_link:
+  s_ip:
+  label: P1 提案
+- name: P1提案 - 数字游民线上分享会
+  status: closed
+  sponsors:
+  desc:
+  category:
+  approval_link:
+  over_link:
+  contant_way:
+  official_link:
+  s_ip:
+  label: P1 提案
+- name: P1提案 - SIP-34:SeeDAO口述史项目(第一季)
+  status: closed
+  sponsors:
+  desc:
+  category:
+  approval_link:
+  over_link:
+  contant_way:
+  official_link:
+  s_ip:
+  label: P1 提案
+- name: 'P1提案 - See U in Shanghai : SeeDAO & go2mars: AI meets web3'
+  status: closed
+  sponsors:
+  desc:
+  category:
+  approval_link:
+  over_link:
+  contant_way:
+  official_link:
+  s_ip:
+  label: P1 提案
+- name: 新手村与公共教育
+  status: open
+  sponsors:
+  desc:
+  category: 公共项目
+  approval_link:
+  over_link:
+  contant_way:
+  official_link:
+  s_ip:
+  label:
+- name: P2提案 - SeeGirls 一阶段
+  status: closed
+  sponsors:
+  desc:
+  category:
+  approval_link:
+  over_link:
+  contant_way:
+  official_link:
+  s_ip:
+  label: P2 提案
+- name: P2提案 - SeeDAO Mod
+  status: closed
+  sponsors:
+  desc:
+  category:
+  approval_link:
+  over_link:
+  contant_way:
+  official_link:
+  s_ip:
+  label: P2 提案
+- name: P1提案 - SeeDAO考古家新手任务
+  status: closed
+  sponsors:
+  desc:
+  category:
+  approval_link:
+  over_link:
+  contant_way:
+  official_link:
+  s_ip:
+  label: P1 提案
+- name: P1提案 - LeDAO身心灵项目组上海线下线上联动工+作坊
+  status: closed
+  sponsors:
+  desc:
+  category:
+  approval_link:
+  over_link:
+  contant_way:
+  official_link:
+  s_ip:
+  label: P1 提案
+- name: 公地剧场
+  status: closed
+  sponsors:
+  desc:
+  category: 公共项目
+  approval_link:
+  over_link:
+  contant_way:
+  official_link:
+  s_ip:
+  label:
+- name: 城市联络人 & 线下活动
+  status: open
+  sponsors:
+  desc:
+  category: 公共项目
+  approval_link:
+  over_link:
+  contant_way:
+  official_link:
+  s_ip:
+  label:
+- name: 全球DAO场
+  status: open
+  sponsors:
+  desc:
+  category: 公共项目
+  approval_link:
+  over_link:
+  contant_way:
+  official_link:
+  s_ip:
+  label:
+- name: Web3图书馆
+  status: closed
+  sponsors:
+  desc:
+  category: 公共项目
+  approval_link:
+  over_link:
+  contant_way:
+  official_link:
+  s_ip:
+  label:
+- name: 元地觉醒
+  status: closed
+  sponsors:
+  desc:
+  category: 公共项目
+  approval_link:
+  over_link:
+  contant_way:
+  official_link:
+  s_ip:
+  label:
+- name: 历史提案
+  status: closed
+  sponsors:
+  desc:
+  category:
+  approval_link:
+  over_link:
+  contant_way:
+  official_link:
+  s_ip:
+  label:
+- name: P3提案 - SIP-79：共同打造中文web3媒体一阶段
+  status: closed
+  sponsors:
+  desc:
+  category:
+  approval_link:
+  over_link:
+  contant_way:
+  official_link:
+  s_ip:
+  label: P3 提案
+- name: SeeDAO 操作系统
+  status: closed
+  sponsors:
+  desc:
+  category: 公共项目
+  approval_link:
+  over_link:
+  contant_way:
+  official_link:
+  s_ip:
+  label:
+- name: SeeShore 大理
+  status: open
+  sponsors:
+  desc:
+  category: 公共项目
+  approval_link:
+  over_link:
+  contant_way:
+  official_link:
+  s_ip:
+  label:
+- name: SeeDAO 白皮书
+  status: closed
+  sponsors:
+  desc:
+  category: 公共项目
+  approval_link:
+  over_link:
+  contant_way:
+  official_link:
+  s_ip:
+  label:
+- name: Deschool
+  status: closed
+  sponsors:
+  desc:
+  category: 公共项目
+  approval_link:
+  over_link:
+  contant_way:
+  official_link:
+  s_ip:
+  label:
+- name: 治理工程师教育第一期
+  status: closed
+  sponsors:
+  desc:
+  category: 公共项目
+  approval_link:
+  over_link:
+  contant_way:
+  official_link:
+  s_ip:
+  label:
+- name: See U Network
+  status: open
+  sponsors:
+  desc:
+  category: 公共项目
+  approval_link:
+  over_link:
+  contant_way:
+  official_link:
+  s_ip:
+  label:
+- name: SNS 和 SeePASS 内测
+  status: closed
+  sponsors: '["0x332345477Db00239f88CA2Eb015B159750Cf3C44"]'
+  desc: SeeDAO Name Service 内测阶段社区服务组
+  category: 市政厅联席会议
+  approval_link: https://forum.seedao.xyz/thread/sip-110-sns-seepass-46556
+  over_link: https://discord.com/channels/841189467128594442/1015267211008548934
+  contant_way: forever.seedao
+  official_link: https://seedao.notion.site/SNS-SeePASS-96a81543b2734870affc93cc808b4eb1?pvs=4
+  s_ip: '110'
+  label:
+- name: P2提案 - SeeDAO Wiki
+  status: closed
+  sponsors: '["0x902b13E46305E3AE10F70871C6D0bca9E5446b07"]'
+  desc: 提供当季SeeDAO有效知识
+  category: ''
+  approval_link: https://forum.seedao.xyz/thread/search-47099
+  over_link: https://forum.seedao.xyz/thread/p2-wiki-48907
+  contant_way: guyi.seedao
+  official_link: https://seedao.notion.site/SeeDAO-Wiki-0bad66817c464f04962b797b47056241?pvs=4
+  s_ip: ''
+  label: P2 提案
+- name: SEED 小组
+  status: closed
+  sponsors: '["0x4Ffb83A8344F33453fBEbe5e126534407ceb32f5"]'
+  desc: 将SGN升级为SEED
+  category: 公共项目
+  approval_link: https://forum.seedao.xyz/thread/sip-90-dao-44519
+  over_link: https://forum.seedao.xyz/thread/sip-107-seed-46334
+  contant_way: jason.seedao
+  official_link: https://seedao.notion.site/Seed-SGN-0ab3128cacda40bfb249d76b3dfd4f60
+  s_ip: '91'
+  label:
+- name: 人物志
+  status: closed
+  sponsors: '["0xB8abE31a6caF1217D632190559B2C1FD909178ec"]'
+  desc: 采访SeeDAO人物并写传记
+  category: 公共项目
+  approval_link: https://forum.seedao.xyz/thread/sip-125-seedao-47643
+  over_link: "/proposal/thread/141"
+  contant_way: suannai#5420
+  official_link: ''
+  s_ip: '125'
+  label:
+- name: 新手村
+  status: open
+  sponsors: '["0x991b1aDe06d49454FD7A2cAeaf31F908e00d1c63"]'
+  desc: 欢迎SeeDAO新人并导引共建者
+  category: 公共项目
+  approval_link: https://forum.seedao.xyz/thread/sip-127-onboarding-s5-47645
+  over_link: ''
+  contant_way: 定慧
+  official_link: https://seedao.notion.site/586089e33be44a999c1eaaf40b024b2e?pvs=4
+  s_ip: '127'
+  label:
+- name: 城市联络人
+  status: open
+  sponsors: '["0x4D6654beeC5942aEe8E3102528a58fb34A0f1b19"]'
+  desc: 全球线下网络
+  category: 公共项目
+  approval_link: https://forum.seedao.xyz/thread/sip-126-s5-47644
+  over_link: ''
+  contant_way: grace.seedao
+  official_link: https://seedao.notion.site/5dcf7b8e4b3c4b0786094446f95c1e2b?pvs=4
+  s_ip: '126'
+  label:
+- name: Our Polis
+  status: closed
+  sponsors: '["0x4D6654beeC5942aEe8E3102528a58fb34A0f1b19"]'
+  desc: SeeDAO两周年城邦发布会
+  category: 市政厅联席会议
+  approval_link: https://forum.seedao.xyz/thread/sip-108-2023-46409
+  over_link: ''
+  contant_way: grace.seedao
+  official_link: https://seedao.notion.site/Our-Polis-SeeDAO-80652c48e83c498f888ca73645357637
+  s_ip: '108'
+  label:
+- name: 数字城邦白皮书
+  status: closed
+  sponsors: '["0x8C913aEc7443FE2018639133398955e0E17FB0C1"]'
+  desc: 数字城邦白皮书
+  category: 公共项目
+  approval_link: https://forum.seedao.xyz/thread/sip-91-seedao-44520
+  over_link: https://forum.seedao.xyz/thread/search-47414
+  contant_way: baiyuseedaonetwork
+  official_link: https://seedao.notion.site/ef1c2b55257a47f59bfc720900368c18?pvs=4
+  s_ip: '91'
+  label:
+- name: 音视频小组
+  status: open
+  sponsors: '["0xB8abE31a6caF1217D632190559B2C1FD909178ec"]'
+  desc: 处理SeeDAO S5 及之前季度各类音视频需求及对进行整理包装
+  category: 公共项目
+  approval_link: https://forum.seedao.xyz/thread/sip-124-47642
+  over_link: ''
+  contant_way: suannai#5420
+  official_link: ''
+  s_ip: '124'
+  label:
+- name: 'P2提案 - DAO Tools 前沿研究小组 '
+  status: closed
+  sponsors:
+  desc:
+  category:
+  approval_link:
+  over_link:
+  contant_way:
+  official_link:
+  s_ip:
+  label: P2 提案
+- name: 城邦造物
+  status: open
+  sponsors: '["0x7A6ff8906f68C0ceAfDd61C2E5d39834cF0b39F1"]'
+  desc: SeeDAO 衍生品设计大赛
+  category: 市政厅联席会议
+  approval_link: https://forum.seedao.xyz/thread/p2-seedao-logo-seed-nft-46695
+  over_link: ''
+  contant_way: queeny.seedao
+  official_link: https://seedao.notion.site/SeeDAO-cc5d5e4eb78a4749b9be316a02434187
+  s_ip: ''
+  label:
+- name: 20城秋日聚会
+  status: closed
+  sponsors: '["0x5B228FCb60A95F7E749E00c4B88154FC17e706dD"]'
+  desc: 来吃SeeDAO两周岁生日蛋糕！
+  category: 公共项目
+  approval_link: https://forum.seedao.xyz/thread/search-47042
+  over_link: ''
+  contant_way: 文倩
+  official_link: https://seeu.network/
+  s_ip: ''
+  label:
+- name: P2提案 - SeeDAO 往事，城邦前传
+  status: closed
+  sponsors: '["0x5B228FCb60A95F7E749E00c4B88154FC17e706dD"]'
+  desc: 城邦往事共创
+  category: ''
+  approval_link: https://forum.seedao.xyz/thread/search-46527
+  over_link: https://forum.seedao.xyz/thread/seedao-48527
+  contant_way: 文倩
+  official_link: https://www.cascad3.com/seedao
+  s_ip: ''
+  label: P2 提案
+
+#select name,logo,sponsors,"desc" ,create_ts, status, contant_way , official_link from guilds
+guilds:
+- name: 翻译公会
+  logo: https://seedao.notion.site/image/https%3A%2F%2Fs3-us-west-2.amazonaws.com%2Fsecure.notion-static.com%2Fcce9a62b-711a-42f6-89c3-76de5c92435f%2F资源_1.png?table=block&id=d498b5e6-919d-4f22-95bb-76f80c83c4bf&spaceId=5a4585f0-41bf-46b1-8321-4c9d55abc37a&width=250&userId=&cache=v2
+  sponsors: '["0x10ea167893cb51500Ec829222E3D17a968FEB650"]'
+  desc: 翻译公会由 SeeDAO 翻译小组升级而来，专注 DAO、Web3、Creator economy 相关主题的翻译研究。
+  create_ts: 1707405941
+  status: open
+  contant_way: Henry,微信ID：lilei105
+  official_link: https://seedao.notion.site/d498b5e6919d4f2295bb76f80c83c4bf
+- name: 投研公会
+  logo: https://seedao-os-superapp.s3.ap-northeast-2.amazonaws.com/project-53/logo.jpg
+  sponsors: '["0xFdE65eA7a7aF9B4fECD585db65e0b0394a2A55A7"]'
+  desc: SeeDAO投研公会关注区块链前沿技术的发展，针对DAO、Web3.0、元宇宙、DeFi及其他领域进行研究分析，日常组织共学周会、嘉宾分享，研报共写等活动，为连100万数字游民们提供终身学习交流园地，深厚数据研究支撑，紧紧把握行业前沿脉搏。
+  create_ts: 1707405941
+  status: open
+  contant_way: 老王，微信ID：WTen77
+  official_link: https://seedao.notion.site/8085ec2d7a924a439bc56c2edfd3ffbe
+- name: NFT Club
+  logo:
+  sponsors:
+  desc:
+  create_ts: 1707405941
+  status: closed
+  contant_way:
+  official_link:
+- name: 艺术公会
+  logo:
+  sponsors:
+  desc:
+  create_ts: 1707405941
+  status: closed
+  contant_way:
+  official_link:
+- name: 治理公会
+  logo:
+  sponsors:
+  desc:
+  create_ts: 1707405941
+  status: closed
+  contant_way:
+  official_link:
+- name: 产品公会
+  logo:
+  sponsors:
+  desc:
+  create_ts: 1707405941
+  status: closed
+  contant_way:
+  official_link:
+- name: 研发公会
+  logo: https://www.notion.so/image/https%3A%2F%2Fs3-us-west-2.amazonaws.com%2Fsecure.notion-static.com%2Fdfe1ebd4-0064-40c6-85c8-77d6b56e83bc%2F%25E5%259B%25BE%25E7%2589%25871.png?table=block&id=86969d6e-93e2-4882-ba52-7a4493a930ba&spaceId=5a4585f0-41bf-46b1-8321-4c9d55abc37a&width=250&userId=fc5a0e52-cf2f-434b-9244-aa5a47caf917&cache=v2
+  sponsors: '["0x89c60C01F2E1d1b233253596bf1c2386bDfeB898"]'
+  desc: SeeDAO 研发公会是一个由研发、产品、设计构成的探索、融入、创建 Web3 生态的去中心化社区，以 DAO 的协作模式进行 Web3 技术学习、交流、分享和项目协作孵化等。
+  create_ts: 1707405941
+  status: open
+  contant_way: 空格，微信ID：n1241897972wangyajun
+  official_link: https://seedao.notion.site/86969d6e93e24882ba527a4493a930ba?pvs=4
+- name: 宣传公会
+  logo:
+  sponsors:
+  desc:
+  create_ts: 1707405941
+  status: closed
+  contant_way:
+  official_link:
+- name: 建筑师公会
+  logo:
+  sponsors:
+  desc:
+  create_ts: 1707405941
+  status: closed
+  contant_way:
+  official_link:
+- name: 设计公会
+  logo:
+  sponsors:
+  desc:
+  create_ts: 1707405941
+  status: closed
+  contant_way:
+  official_link:
+
+#select name, state from common_budget_sources cbs:
+common_budget_sources:
+- name: 过渡期决策小组
+  state: closed
+- name: 孵化器
+  state: open
