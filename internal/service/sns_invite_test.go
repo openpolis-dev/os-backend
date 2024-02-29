@@ -185,6 +185,7 @@ func TestGetMySnsInviteRewards(t *testing.T) {
 }
 
 func TestCheckAndUpdateUnverifiedSnsInvite(t *testing.T) {
+	t.Skip("skip this case for now since it can't be run in CI")
 	// ---> prepare
 	truncateTable(model.TableSnsInviteCode)
 	truncateTable(model.TableSnsInviteRecord)
