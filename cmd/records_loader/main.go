@@ -176,11 +176,12 @@ func loadDetailSheet(filePath string, sheetName string, assets map[string]bool) 
 			}
 		}
 
-		if !ethereumCommon.IsHexAddress(r[3]) {
-			fmt.Printf("invalid user wallet: %d: %s\n", idx, r[3])
+		stripedWallet := strings.TrimSpace(r[3])
+		if !ethereumCommon.IsHexAddress(stripedWallet) {
+			fmt.Printf("invalid user wallet: %d: |%s|\n", idx, stripedWallet)
 		}
 
-		userWallet := common.ToChecksumAddress(r[3])
+		userWallet := common.ToChecksumAddress(stripedWallet)
 
 		return &DetailRecordSchema{
 			SeasonName:      r[0],
@@ -195,7 +196,7 @@ func loadDetailSheet(filePath string, sheetName string, assets map[string]bool) 
 			Comment:         comment,
 			ProposalLink:    proposalLink,
 			AppState:        appState,
-			AddressVerified: ethereumCommon.IsHexAddress(r[3]),
+			AddressVerified: ethereumCommon.IsHexAddress(userWallet),
 		}
 	})
 
