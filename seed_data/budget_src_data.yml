@@ -507,6 +507,29 @@ projects:
   official_link: https://www.cascad3.com/seedao
   s_ip: ''
   label: P2 提案
+- name: 品牌物料
+  status: open
+  sponsors:
+  desc:
+  category: 公共项目
+  approval_link:
+  over_link:
+  contant_way:
+  official_link:
+  s_ip:
+  label:
+- name: 市政厅伙伴计划
+  status: open
+  sponsors:
+  desc:
+  category: 公共项目
+  approval_link:
+  over_link:
+  contant_way:
+  official_link:
+  s_ip:
+  label:
+
 
 #select name,logo,sponsors,"desc" ,create_ts, status, contant_way , official_link from guilds
 guilds:
