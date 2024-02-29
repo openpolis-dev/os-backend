@@ -61,6 +61,10 @@ definitions:
     type: object
   app_bundle.ListAvailableProjectAndGuildResp:
     properties:
+      common_budget_source:
+        items:
+          $ref: '#/definitions/model.CommonBudgetSource'
+        type: array
       guilds:
         items:
           $ref: '#/definitions/model.Guild'
@@ -79,6 +83,24 @@ definitions:
     type: object
   city_hall.CityHallDetailReply:
     properties:
+      ApprovalLink:
+        type: string
+      Budgets:
+        type: string
+      Category:
+        type: string
+      ContantWay:
+        type: string
+      Deliverable:
+        type: string
+      OfficialLink:
+        type: string
+      OverLink:
+        type: string
+      PlanTime:
+        type: string
+      SIP:
+        type: string
       budgets:
         items:
           $ref: '#/definitions/model.ProjectBudget'
@@ -101,6 +123,8 @@ definitions:
         type: string
       is_special:
         type: boolean
+      label:
+        type: string
       logo:
         type: string
       members:
@@ -223,6 +247,10 @@ definitions:
     type: object
   guild.CreateReq:
     properties:
+      ContantWay:
+        type: string
+      OfficialLink:
+        type: string
       budgets:
         items:
           $ref: '#/definitions/guild.BudgetParam'
@@ -252,6 +280,10 @@ definitions:
     type: object
   guild.DetailReply:
     properties:
+      ContantWay:
+        type: string
+      OfficialLink:
+        type: string
       budgets:
         items:
           $ref: '#/definitions/model.GuildBudget'
@@ -300,13 +332,16 @@ definitions:
     type: object
   guild.UpdateReq:
     properties:
-      desc:
+      ContantWay:
         type: string
-      intro:
+      OfficialLink:
+        type: string
+      desc:
+        description: |-
+          Name    string `json:"name"`
+          Intro   string `json:"intro"`
         type: string
       logo:
-        type: string
-      name:
         type: string
     type: object
   guild.UpdateStaffsReq:
@@ -445,6 +480,19 @@ definitions:
     type: string
     x-enum-varnames:
     - ApplicationStateOpen
+  model.CommonBudgetSource:
+    properties:
+      create_ts:
+        type: integer
+      id:
+        type: integer
+      name:
+        type: string
+      state:
+        type: string
+      update_ts:
+        type: integer
+    type: object
   model.FrontendApplicationRecord:
     properties:
       amount:
@@ -519,6 +567,10 @@ definitions:
     type: object
   model.Guild:
     properties:
+      ContantWay:
+        type: string
+      OfficialLink:
+        type: string
       create_ts:
         type: integer
       creator:
@@ -609,6 +661,24 @@ definitions:
     type: object
   model.Project:
     properties:
+      ApprovalLink:
+        type: string
+      Budgets:
+        type: string
+      Category:
+        type: string
+      ContantWay:
+        type: string
+      Deliverable:
+        type: string
+      OfficialLink:
+        type: string
+      OverLink:
+        type: string
+      PlanTime:
+        type: string
+      SIP:
+        type: string
       create_ts:
         type: integer
       creator:
@@ -627,6 +697,8 @@ definitions:
         type: string
       is_special:
         type: boolean
+      label:
+        type: string
       logo:
         type: string
       members:
@@ -796,6 +868,22 @@ definitions:
     type: object
   project.CreateReq:
     properties:
+      ApprovalLink:
+        type: string
+      Category:
+        type: string
+      ContantWay:
+        type: string
+      Deliverable:
+        type: string
+      OfficialLink:
+        type: string
+      OverLink:
+        type: string
+      PlanTime:
+        type: string
+      SIP:
+        type: string
       budgets:
         items:
           $ref: '#/definitions/project.BudgetParam'
@@ -824,6 +912,24 @@ definitions:
     type: object
   project.DetailReply:
     properties:
+      ApprovalLink:
+        type: string
+      Budgets:
+        type: string
+      Category:
+        type: string
+      ContantWay:
+        type: string
+      Deliverable:
+        type: string
+      OfficialLink:
+        type: string
+      OverLink:
+        type: string
+      PlanTime:
+        type: string
+      SIP:
+        type: string
       budgets:
         items:
           $ref: '#/definitions/model.ProjectBudget'
@@ -846,6 +952,8 @@ definitions:
         type: string
       is_special:
         type: boolean
+      label:
+        type: string
       logo:
         type: string
       members:
@@ -882,14 +990,23 @@ definitions:
     type: object
   project.UpdateReq:
     properties:
-      desc:
+      ContantWay:
         type: string
-      intro:
+      OfficialLink:
+        type: string
+      OverLink:
+        type: string
+      desc:
+        description: |-
+          Name    string `json:"name"`
+          Intro   string `json:"intro"`
         type: string
       logo:
         type: string
-      name:
-        type: string
+      sponsors:
+        items:
+          type: string
+        type: array
     type: object
   project.UpdateStaffsReq:
     properties:
@@ -927,6 +1044,13 @@ definitions:
       vote_id:
         type: integer
     type: object
+  proposal.CloseVoteRequest:
+    properties:
+      metaforo_access_token:
+        type: string
+      vote_id:
+        type: integer
+    type: object
   proposal.ComponentRequestData:
     properties:
       auto_action:
@@ -943,6 +1067,8 @@ definitions:
     properties:
       id:
         type: integer
+      is_hidden:
+        type: boolean
       name:
         type: string
       schema:
@@ -953,13 +1079,15 @@ definitions:
   proposal.CreateOrUpdateProposalData:
     properties:
       components:
-        additionalProperties:
+        items:
           $ref: '#/definitions/proposal.ComponentRequestData'
-        type: object
+        type: array
       content_blocks:
         items:
           $ref: '#/definitions/proposal.FrontendContentBlockRecord'
         type: array
+      create_project_proposal_id:
+        type: integer
       editor_type:
         type: integer
       metaforo_access_token:
@@ -974,6 +1102,10 @@ definitions:
         type: string
       vote_gate_id:
         type: integer
+      vote_options:
+        items:
+          type: string
+        type: array
       vote_type:
         type: integer
     type: object
@@ -1001,7 +1133,11 @@ definitions:
         type: string
       id:
         type: integer
+      name:
+        type: string
       title:
+        type: string
+      type:
         type: string
     type: object
   proposal.FrontendProposalCategory:
@@ -1081,11 +1217,15 @@ definitions:
       create_ts:
         description: Timestamps
         type: integer
+      execution_ts:
+        type: integer
       histories:
         $ref: '#/definitions/proposal.FrontendProposalEditHistories'
       id:
         type: integer
-      is_based_on_template:
+      is_based_on_custom_template:
+        type: boolean
+      is_instant_execution:
         type: boolean
       is_rejected:
         description: Reject related data
@@ -1094,6 +1234,8 @@ definitions:
         description: Is current user voted for this proposal
         type: boolean
       proposal_category_id:
+        type: integer
+      publicity_ts:
         type: integer
       reject_metaforo_comment_id:
         type: integer
@@ -1105,6 +1247,8 @@ definitions:
         type: string
       reviewer_avatar:
         type: string
+      sip:
+        type: integer
       state:
         type: string
       template_name:
@@ -1152,6 +1296,8 @@ definitions:
         type: integer
       id:
         type: integer
+      sip:
+        type: integer
       state:
         type: string
       title:
@@ -1196,18 +1342,28 @@ definitions:
     type: object
   proposal.TemplateResponse:
     properties:
-      components:
-        items:
-          $ref: '#/definitions/proposal.ComponentResponse'
-        type: array
+      category_display_index:
+        type: integer
+      display_index:
+        type: integer
+      has_perm_to_use:
+        type: boolean
       id:
         type: integer
+      is_closing_project:
+        type: boolean
+      is_instant_vote:
+        type: boolean
       name:
+        type: string
+      rule_description:
         type: string
       schema:
         type: string
       screenshot_uri:
         type: string
+      vote_type:
+        type: integer
     type: object
   publicdata.Vault:
     properties:
@@ -1684,7 +1840,8 @@ paths:
                 data:
                   $ref: '#/definitions/app_bundle.ListAvailableProjectAndGuildResp'
               type: object
-      summary: List available projects and guilds for current user
+      summary: List available projects and guilds for current user, and all common
+        budget sources
       tags:
       - AppBundle
   /cityhall/batch_update_members:
@@ -1782,11 +1939,37 @@ paths:
         for downloading
       tags:
       - Application
+  /guild/:id/close:
+    post:
+      description: This api close specified project, admin permission is required
+        for this operation
+      parameters:
+      - description: project ID
+        in: path
+        name: id
+        required: true
+        type: number
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.Reply'
+      summary: Close a project
+      tags:
+      - Guild
   /guilds:
     get:
       consumes:
       - application/json
       parameters:
+      - description: search keywords
+        in: query
+        name: keywords
+        type: string
+      - description: search wallet
+        in: query
+        name: wallet
+        type: string
       - description: 'page number, default: 1'
         in: query
         name: page
@@ -2064,6 +2247,14 @@ paths:
         in: query
         name: status
         type: string
+      - description: search keywords
+        in: query
+        name: keywords
+        type: string
+      - description: search wallet
+        in: query
+        name: wallet
+        type: string
       - description: which page
         in: query
         name: page
@@ -2293,43 +2484,6 @@ paths:
       summary: list my projects
       tags:
       - Project
-  /proposal/mylist:
-    get:
-      parameters:
-      - description: which page
-        in: query
-        name: page
-        type: integer
-      - description: size of each page
-        in: query
-        name: size
-        type: integer
-      - description: sort by which field
-        in: query
-        name: sort_field
-        type: string
-      - description: order of sort
-        in: query
-        name: sort_order
-        type: string
-      - description: Return pending submit proposals or other state, only query PendingSubmit
-          records when value is `1`
-        in: query
-        name: pending_submit
-        type: integer
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/api.Reply'
-            - properties:
-                data:
-                  $ref: '#/definitions/proposal.FrontendProposalDetailRecord'
-              type: object
-      summary: Returns proposals created by login user
-      tags:
-      - Proposal
   /proposal_categories/list:
     get:
       responses:
@@ -2471,6 +2625,33 @@ paths:
       summary: Check whether user has permission to vote in thread
       tags:
       - Proposal
+  /proposals/close_vote/:id:
+    post:
+      parameters:
+      - description: proposal ID
+        in: query
+        name: id
+        required: true
+        type: number
+      - description: revoke vote data
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/proposal.CloseVoteRequest'
+      responses:
+        "200":
+          description: Success
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  type: object
+              type: object
+      summary: close all votes belongs to the proposal
+      tags:
+      - Proposal
   /proposals/create:
     post:
       parameters:
@@ -2486,6 +2667,28 @@ paths:
           schema:
             $ref: '#/definitions/api.Reply'
       summary: Create metaforo proposal and public to others
+      tags:
+      - Proposal
+  /proposals/creating_project_proposals:
+    get:
+      parameters:
+      - description: Limit the category of creating project proposal
+        in: query
+        name: category_id
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  $ref: '#/definitions/proposal.FrontendProposalDetailRecord'
+              type: object
+      summary: Returns creating project and executed proposals created by login user,
+        if category_id is not specified, all proposals for opening project will be
+        returned
       tags:
       - Proposal
   /proposals/delete_comment/:id:
@@ -2562,9 +2765,13 @@ paths:
         in: query
         name: sort_order
         type: string
-      - description: state of proposal
+      - description: state of proposal, for multiple states, use comma as separator
         in: query
         name: state
+        type: string
+      - description: whether query only proposals with SIP number
+        in: query
+        name: sip
         type: string
       - description: filter proposal records with specified category
         in: query
@@ -2588,7 +2795,61 @@ paths:
       summary: lists all proposals based on query params and return in JSON format
       tags:
       - Proposal
-  /proposals/proposal_tmpl/:
+  /proposals/my:
+    get:
+      parameters:
+      - description: which page
+        in: query
+        name: page
+        type: integer
+      - description: size of each page
+        in: query
+        name: size
+        type: integer
+      - description: sort by which field
+        in: query
+        name: sort_field
+        type: string
+      - description: order of sort
+        in: query
+        name: sort_order
+        type: string
+      - description: Return pending submit proposals or other state, only query PendingSubmit
+          records when value is `1`
+        in: query
+        name: pending_submit
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  $ref: '#/definitions/proposal.FrontendProposalDetailRecord'
+              type: object
+      summary: Returns proposals created by login user
+      tags:
+      - Proposal
+  /proposals/proposal_tmpl/list:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/proposal.TemplateResponse'
+                  type: array
+              type: object
+      summary: list templates and return to frontend
+      tags:
+      - Proposal
+  /proposals/proposal_tmpl/list_with_perm:
     get:
       responses:
         "200":

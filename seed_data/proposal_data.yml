@@ -1,0 +1,545 @@
+# select name from proposal_component_actions
+proposal_component_actions:
+  - command: project/create
+  - command: project/close
+  - command: guild/create
+  - command: guild/close
+  - command: reward/new_application
+  - command: proposal/veto
+  - command: reward/motivation
+  - command: reject_action_1
+
+# select pc.name, pc.schema, pc.is_hidden, pca.command as approve_action, pca2.command as reject_action
+# from proposal_components pc
+# left join proposal_component_actions pca on pc.approve_action_id =pca.id
+# left join proposal_component_actions pca2 on pc.reject_action_id =pca2.id
+proposal_components:
+  - name: close_project
+    schema: '{"title":"关闭项目申请","content":[{"type":"select","dataList":"datasrv/project_list","name":"project_info","properties":[{"name":"title","value":"项目名称"},{"name":"size","value":"lg"},{"name":"validate","value":{"required":true}}]}]}'
+    is_hidden: false
+    approve_action: project/close
+    reject_action: reject_action_1
+  - name: close_guild
+    schema: '{"title":"关闭公会申请","content":[{"type":"select","dataList":"datasrv/guild_list","name":"guild_info","properties":[{"name":"title","value":"公会名称"},{"name":"size","value":"lg"},{"name":"validate","value":{"required":true}}]}]}'
+    is_hidden: false
+    approve_action: guild/close
+    reject_action: reject_action_1
+  - name: create_project
+    schema: '{"title":"创建公共项目申请","content":[{"type":"input","inputType":"text","value":"","name":"project_name","properties":[{"name":"title","value":"项目名称"},{"name":"size","value":"lg"},{"name":"validate","value":{"required":true}}]}]}'
+    is_hidden: false
+    approve_action: project/create
+    reject_action: reject_action_1
+  - name: create_guild
+    schema: '{"title":"创建公会申请","content":[{"type":"input","inputType":"text","value":"","name":"guild_name","properties":[{"name":"title","value":"公会名称"},{"name":"size","value":"lg"},{"name":"validate","value":{"required":true}}]}]}'
+    is_hidden: false
+    approve_action: guild/create
+    reject_action: reject_action_1
+  - name: deliverables
+    schema: '{"type":"deliverables","title":"交付物","content":[{"type":"richText","value":"","name":"description","properties":[{"name":"title","value":"交付物"},{"name":"hint","value":"请注明交付物的类型或形式。（如线上讨论会1场
+      / SNS 增长人数不少于50人 / 活动内容文稿宣传 1 篇 / 培训课程 pft 文档 1 份等）"},{"name":"size","value":"lg"},{"name":"validate","value":{"required":true,"pattern":"^<!--.*-->(.|\\n)+$|^(?!(<!--.*?-->))[\\s\\S]+$"}}]}]}'
+    is_hidden: true
+    approve_action:
+    reject_action:
+  - name: associate_proposal
+    schema: '{"title":"关联提案","content":[{"type":"select","dataList":"datasrv/passed_proposals","name":"proposal","properties":[{"name":"title","value":"提案"},{"name":"size","value":"lg"},{"name":"validate","value":{"required":true}}]}]}'
+    is_hidden: false
+    approve_action:
+    reject_action:
+  - name: new_reward
+    schema: '{"title":"资产申请","content":[{"type":"select","dataList":"datasrv/entity_list","name":"budget","properties":[{"name":"title","value":"预算来源"},{"name":"size","value":"lg"},{"name":"validate","value":{"required":true}}]},{"type":"table","name":"receiverList","style":{"width":[20,15,15,20,30],"tHeader":["接收人","资产类型","资产数量","事项","备注"]},"rows":[{"type":"input","inputType":"address","value":"","name":"address","properties":[{"name":"title","value":"接收人"},{"name":"size","value":"md"},{"name":"validate","value":{"required":true}}]},{"type":"select","dataList":"datasrv/asset_type","value":"","name":"type","properties":[{"name":"title","value":"资产类型"},{"name":"size","value":"md"},{"name":"validate","value":{"required":true}}]},{"type":"input","inputType":"number","value":"","name":"amount","properties":[{"name":"title","value":"资产数量"},{"name":"size","value":"md"},{"name":"validate","value":{"required":true}}]},{"type":"input","inputType":"number","value":"","name":"issue","properties":[{"name":"title","value":"事项"},{"name":"size","value":"md"},{"name":"validate","value":{"required":true}}]},{"type":"input","inputType":"text","value":"","name":"memo","properties":[{"name":"title","value":"备注"},{"name":"size","value":"md"},{"name":"validate","value":{"required":true}}]}]},{"type":"input","inputType":"textarea","value":"","name":"description","properties":[{"name":"title","value":"说明"},{"name":"size","value":"lg"},{"name":"validate","value":{"required":true}}]}]}'
+    is_hidden: true
+    approve_action: reward/new_application
+    reject_action: reject_action_1
+  - name: deadline
+    schema: '{"type":"deadline","title":"计划完成时限","content":[{"type":"datepicker","value":"","name":"description","properties":[{"name":"title","value":"日期选择"},{"name":"size","value":"lg"},{"name":"validate","value":{"required":true}}]}]}'
+    is_hidden: true
+    approve_action:
+    reject_action:
+  - name: relate
+    schema: '{"title":"立项提案","type":"relate","content":[{"type":"input","inputType":"text","value":"","name":"relate","properties":[{"name":"title","value":"关联提案"},{"name":"size","value":"lg"},{"name":"validate","value":{"required":true}}]}]}'
+    is_hidden: true
+    approve_action:
+    reject_action:
+  - name: reject
+    schema: '{"type":"reject","title":"否决提案","content":[{"type":"select","dataList":"datasrv/can_be_vetoed_proposals","name":"proposal_info","properties":[{"name":"title","value":"提案名称"},{"name":"size","value":"lg"},{"name":"validate","value":{"required":true}}]}]}'
+    is_hidden: false
+    approve_action: proposal/veto
+    reject_action: reject_action_1
+  - name: budget_p1
+    schema: '{"title":"预算申请(P1)","type":"budget_p1","desc":"P1 提案可申请不超过 20000 SCR
+      的激励","content":[{"type":"input","inputType":"number","value":"","name":"amount","properties":[{"name":"title","value":"数额"},{"name":"size","value":"md"},{"name":"validate","value":{"required":true,"max":20000}}]},{"type":"select","dataList":"datasrv/asset_type","value":{"id":1,"name":"SCR"},"name":"typeTest","properties":[{"name":"title","value":"资产类型"},{"name":"size","value":"md"},{"name":"validate","value":{"required":true}}]}]}'
+    is_hidden: false
+    approve_action:
+    reject_action:
+  - name: motivation
+    schema: '{"type":"budget","title":"激励申请表","content":[{"type":"table","name":"budgetList","desc":"如果此项目有预付部分，请在以下表格中分配中剔除已预付的部分。","style":{"width":[20,20,20,40],"tHeader":["接收人","资产类型","资产数量","备注"]},"rows":[{"type":"input","inputType":"address","value":"","name":"address","properties":[{"name":"title","value":"接收人"},{"name":"size","value":"md"},{"name":"needParseSNS","value":true},{"name":"validate","value":{"required":true}}]},{"type":"select","dataList":"datasrv/asset_type","value":"","name":"assetInfo","properties":[{"name":"title","value":"资产类型"},{"name":"size","value":"md"},{"name":"validate","value":{"required":true}}]},{"type":"input","inputType":"number","value":"","name":"amount","properties":[{"name":"title","value":"资产数量"},{"name":"size","value":"md"},{"name":"validate","value":{"required":true,"min":0}}]},{"type":"input","inputType":"text","value":"","name":"description","properties":[{"name":"title","value":"备注"},{"name":"size","value":"md"},{"name":"validate","value":{"required":true}}]}]}]}'
+    is_hidden: true
+    approve_action: reward/motivation
+    reject_action: reject_action_1
+  - name: budget
+    schema: '{"type":"budget","title":"预算申请","content":[{"type":"table","name":"budgetList","desc":"P2
+      提案可申请不超过 50000 SCR 、不超过 1000 USDT 的激励。目前预付只能选择U，且需要说明预付的具体使用途径。","style":{"width":[20,20,20,40],"tHeader":["申请数额","资产类型","预付比例(0-50%)","预付需求说明"]},"rows":[{"type":"input","inputType":"number","value":"","name":"amount","properties":[{"name":"title","value":"申请数额"},{"name":"size","value":"md"},{"name":"validate","value":{"required":true}}]},{"type":"select","dataList":"datasrv/asset_type","value":"","name":"typeTest","properties":[{"name":"title","value":"资产类型"},{"name":"size","value":"md"},{"name":"validate","value":{"required":true}}]},{"type":"input","inputType":"number","value":"","name":"proportion","properties":[{"name":"title","value":"预付比例"},{"name":"size","value":"md"},{"name":"validate","value":{"required":true,"pattern":"^(?:[1-9]|[1-4]\\d|50|0)$"}}]},{"type":"input","inputType":"text","value":"","name":"description","properties":[{"name":"title","value":"预付需求说明"},{"name":"size","value":"md"},{"name":"validate","value":{"required":true}}]}]}]}'
+    is_hidden: false
+    approve_action:
+    reject_action:
+
+# select pc.name, pc.metaforo_id , pc.is_active , pc.vote_duration_second , pc.publicity_second , pc.pending_execution_second ,pc.display_index ,pc.can_be_vetoed,pc2."name" as close_project_category_name
+# from proposal_categories pc left join proposal_categories pc2 on pc.category_id_for_close_project=pc2.id
+proposal_categories:
+  - name: P3提案
+    metaforo_id: 9
+    is_active: true
+    vote_duration_second: 0
+    publicity_second: 0
+    pending_execution_second: 0
+    display_index: 3
+    can_be_vetoed: true
+    close_project_category_name:
+  - name: P2提案
+    metaforo_id: 8
+    is_active: true
+    vote_duration_second: 240
+    publicity_second: 240
+    pending_execution_second: 240
+    display_index: 2
+    can_be_vetoed: true
+    close_project_category_name:
+  - name: P1提案
+    metaforo_id: 7
+    is_active: true
+    vote_duration_second: 120
+    publicity_second: 120
+    pending_execution_second: 120
+    display_index: 1
+    can_be_vetoed: true
+    close_project_category_name:
+  - name: 节点共识大会提案
+    metaforo_id: 11
+    is_active: true
+    vote_duration_second: 0
+    publicity_second: 0
+    pending_execution_second: 0
+    display_index: 5
+    can_be_vetoed: false
+    close_project_category_name:
+  - name: 市政厅联席会议提案
+    metaforo_id: 10
+    is_active: true
+    vote_duration_second: 0
+    publicity_second: 0
+    pending_execution_second: 0
+    display_index: 4
+    can_be_vetoed: false
+    close_project_category_name: 节点共识大会提案
+
+# select pt.name, content_schema,rule_desc,
+# is_hidden, pc."name" as category_name, pt.publicity_second , pt.vote_duration_second ,
+# pt.pending_execution_second ,pt.vote_type, pt.type, pt.display_index ,pt.is_custom_template, pt.component_name_list,
+# pt.extra_result_check_rule, pt.is_hidden
+# from proposal_templates pt left join proposal_categories pc on pt.proposal_category_id =pc.id  order by pt.display_index
+proposal_templates:
+  - name: P1-新建提案(常规)
+    content_schema: '[{"title":"自动执行组件","type":"components","content":"","name":""},{"title":"背景","content":"","hint":"请输入"},{"title":"内容","content":"","hint":"请输入"},{"title":"备注","content":"","hint":"模版中未提及但重要的内容可以在此处提及。"}]'
+    rule_desc: 创建该提案需要满足 $SCR ≥5000，提案提交后在社区公示 72 小时，若无异议则提案自动通过，如公示期内被市政厅驳回，则需要退回修改，重新提交。提案通过后，市政厅可以在24小时内行使一票否决权，24小时后如未被否决，涉及自动执行的相关信息（如资产发放）将被系统执行。
+    is_hidden: true
+    category_name: P1提案
+    publicity_second: 120
+    vote_duration_second: 120
+    pending_execution_second: 120
+    vote_type: 1
+    type: 0
+    display_index: 11
+    is_custom_template: true
+    component_name_list:
+    extra_result_check_rule: ''
+  - name: P1提案立项
+    content_schema: '[{"title":"背景","content":"","hint":"请写明项目发起的缘由和目标。需要体现与活跃社区的相关性，以便后期获得足够社区成员的支持。可以思考的问题如下，你希望解决什么问题？这个问题的影响有多大？你希望通过这个提案达到什么样的目标？"},{"title":"内容","content":"","hint":"请写明项目推进节奏、重要执行环节、项目成员及预算分配明细。可以思考的问题如下，你打算如何实施这个提案？需要哪些资源及如何分配？谁会负责执行？提案的执行时间表是怎样的？有哪些重要的里程碑？最重要的是：该提案内容与SeeDAO产生怎么样的关联与影响？"},{"title":"立项信息","type":"components","content":"P1
+    提案可申请不超过 20000 SCR 的激励","name":["budget_p1","deliverables","deadline"]},{"title":"备注","content":"","hint":"模版中未提及但重要的内容可以在此处提及。"}]'
+    rule_desc: 创建该提案需要满足 $SCR ≥5000，提案提交后在社区公示 72 小时，若无异议则提案自动通过，如公示期内被市政厅驳回，则需要退回修改，重新提交。提案通过后，市政厅可以在24小时内行使一票否决权，24小时后如未被否决，涉及自动执行的相关信息（如资产发放）将被系统执行。
+    is_hidden: false
+    category_name: P1提案
+    publicity_second: 120
+    vote_duration_second: 120
+    pending_execution_second: 120
+    vote_type: 0
+    type: 10
+    display_index: 12
+    is_custom_template: false
+    component_name_list: "[\"budget_p1\",\"deliverables\",\"deadline\"]\r\n"
+    extra_result_check_rule: ''
+  - name: P1提案结项
+    content_schema: '[{"title":"立项信息","type":"preview"},{"title":"结项内容","content":"","hint":"请说明活动最终执行日期和执行效果。"},{"title":"交付物完成明细","content":"","hint":"请详细罗列活动所有交付物的交付日期、链接和说明。"},{"title":"激励申请表","type":"components","content":"如果此项目有预付部分，请在以下表格中分配中剔除已预付的部分。","name":["motivation"]},{"title":"备注","content":"","hint":"模版中未提及但重要的内容可以在此处提及。"}]'
+    rule_desc: 创建该提案需要满足 $SCR ≥5000。该提案由市政厅治理成员进行投票，投票周期为 48 小时，获得票数最多的选择为提案的最终结果，投票数量最多的选项若有两个，则取两者平均数作为调整明细的参数。提案通过后，市政厅可以在24小时内行使一票否决权，24小时后如未被否决，涉及自动执行的相关信息（如资产发放）将被系统执行。
+    is_hidden: false
+    category_name: P1提案
+    publicity_second: 0
+    vote_duration_second: 120
+    pending_execution_second: 120
+    vote_type: 2
+    type: 11
+    display_index: 13
+    is_custom_template: false
+    component_name_list:
+    extra_result_check_rule: ''
+  - name: P2-新建提案(常规)
+    content_schema: '[{"title":"自动执行组件","type":"components","content":"","name":""},{"title":"背景","content":"","hint":"请输入"},{"title":"内容","content":"","hint":"请输入"},{"title":"备注","content":"","hint":"模版中未提及但重要的内容可以在此处提及。"}]'
+    rule_desc: 创建该提案需要满足 $SCR ≥20000，提交后在社区公示 120 小时。该提案由Seed持有者进行投票，投票周期为 72 小时，当参与投票的Seed持有者人数≥30，并且赞成票>50%时，视为提案通过。提案通过后，市政厅可以在24小时内行使一票否决权，24小时后如未被否决，涉及自动执行的相关信息（如资产发放）将被系统执行。
+    is_hidden: true
+    category_name: P2提案
+    publicity_second: 240
+    vote_duration_second: 240
+    pending_execution_second: 240
+    vote_type: 1
+    type: 0
+    display_index: 21
+    is_custom_template: true
+    component_name_list:
+    extra_result_check_rule: ''
+  - name: P2-新建提案(多选项)
+    content_schema: '[{"title":"自动执行组件","type":"components","content":"","name":""},{"title":"背景","content":"","hint":"请输入"},{"title":"内容","content":"","hint":"请输入"},{"title":"备注","content":"","hint":"模版中未提及但重要的内容可以在此处提及。"}]'
+    rule_desc: 创建该提案需要满足 $SCR ≥20000，提交后在社区公示 120 小时。该提案由Seed持有者进行投票，投票周期为 72 小时，当参与投票的Seed持有者人数≥30，票数最多的选项为提案的最终结果。提案通过后，市政厅可以在24小时内行使一票否决权。
+    is_hidden: true
+    category_name: P2提案
+    publicity_second: 240
+    vote_duration_second: 240
+    pending_execution_second: 240
+    vote_type: 99
+    type: 0
+    display_index: 22
+    is_custom_template: true
+    component_name_list:
+    extra_result_check_rule: ''
+  - name: P2提案立项
+    content_schema: '[{"title":"背景","content":"","hint":"请写明项目发起的缘由和目标。需要体现与活跃社区的相关性，以便后期获得足够社区成员的支持。可以思考的问题如下，你希望解决什么问题？这个问题的影响有多大？你希望通过这个提案达到什么样的目标？"},{"title":"内容","content":"","hint":"请写明项目推进节奏、重要执行环节、项目成员及预算分配明细。可以思考的问题如下，你打算如何实施这个提案？需要哪些资源及如何分配？谁会负责执行？提案的执行时间表是怎样的？有哪些重要的里程碑？最重要的是：该提案内容与SeeDAO产生怎么样的关联与影响？"},{"title":"立项信息","type":"components","content":"P2
+    提案可申请不超过 50000 SCR 和不超过 1000 USDT 的激励","name":["budget_p1","deliverables","deadline"]},{"title":"备注","content":"","hint":"模版中未提及但重要的内容可以在此处提及。"}]'
+    rule_desc: 创建该提案需要满足 $SCR ≥20000，提交后在社区公示 120 小时。该提案由Seed持有者进行投票，投票周期为 72 小时，当参与投票的Seed持有者人数≥30，并且赞成票>50%时，视为提案通过。提案通过后，市政厅可以在24小时内行使一票否决权，24小时后如未被否决，涉及自动执行的相关信息（如资产发放）将被系统执行。
+    is_hidden: false
+    category_name: P2提案
+    publicity_second: 90
+    vote_duration_second: 90
+    pending_execution_second: 90
+    vote_type: 1
+    type: 10
+    display_index: 23
+    is_custom_template: false
+    component_name_list: " [\"budget\",\"deliverables\",\"deadline\"]\r\n"
+    extra_result_check_rule: '[{"metric":"seed", "check_type": "count", "value": "1"}]'
+  - name: P2提案结项
+    content_schema: '[{"title":"预算申请","type":"preview"},{"title":"结项内容","content":"","hint":"请说明活动最终执行日期和执行效果。"},{"title":"交付物完成明细","content":"","hint":"请详细罗列活动所有交付物的交付日期、链接和说明。"},{"title":"激励申请表","type":"components","content":"如果此项目有预付部分，请在以下表格中分配中剔除已预付的部分。","name":["motivation"]},{"title":"备注","content":"","hint":"模版中未提及但重要的内容可以在此处提及。"}]'
+    rule_desc: 创建该提案需要满足 $SCR ≥20000。该提案由Seed持有者进行投票，投票周期为 48 小时，当参与投票的Seed持有者人数≥30，获得票数最多的选择为提案的最终结果，投票数量最多的选项若有两个，则取两者平均数作为调整明细的参数。提案通过后，市政厅可以在24小时内行使一票否决权，24小时后如未被否决，涉及自动执行的相关信息（如资产发放）将被系统执行。
+    is_hidden: false
+    category_name: P2提案
+    publicity_second: 0
+    vote_duration_second: 240
+    pending_execution_second: 240
+    vote_type: 2
+    type: 11
+    display_index: 24
+    is_custom_template: false
+    component_name_list:
+    extra_result_check_rule: ''
+  - name: P3-新建提案(常规)
+    content_schema: '[{"title":"自动执行组件","type":"components","content":"","name":""},{"title":"背景","content":"","hint":"请输入"},{"title":"内容","content":"","hint":"请输入"},{"title":"备注","content":"","hint":"模版中未提及但重要的内容可以在此处提及。"}]'
+    rule_desc: 创建该提案需要满足 $SCR ≥100000，提交后在社区公示 240 小时。该提案由当季节点进行投票，投票周期为 72 小时，当参与投票的当季节点人数≥当季节点数的25%，并且赞成票>50%时，视为提案通过。提案通过后，市政厅可以在24小时内行使一票否决权，24小时后如未被否决，涉及自动执行的相关信息（如资产发放）将被系统执行。
+    is_hidden: true
+    category_name: P3提案
+    publicity_second: 0
+    vote_duration_second: 0
+    pending_execution_second: 0
+    vote_type: 1
+    type: 0
+    display_index: 31
+    is_custom_template: true
+    component_name_list:
+    extra_result_check_rule: ''
+  - name: P3-新建提案(多选项)
+    content_schema: '[{"title":"自动执行组件","type":"components","content":"","name":""},{"title":"背景","content":"","hint":"请输入"},{"title":"内容","content":"","hint":"请输入"},{"title":"备注","content":"","hint":"模版中未提及但重要的内容可以在此处提及。"}]'
+    rule_desc: 创建该提案需要满足 $SCR ≥100000，提交后在社区公示 240 小时。该提案由当季节点进行投票，投票周期为 72 小时，当参与投票的当季节点人数≥当季节点数的25%，票数最多的选项为提案的最终结果。提案通过后，市政厅可以在24小时内行使一票否决权。
+    is_hidden: true
+    category_name: P3提案
+    publicity_second: 0
+    vote_duration_second: 0
+    pending_execution_second: 0
+    vote_type: 99
+    type: 0
+    display_index: 32
+    is_custom_template: true
+    component_name_list:
+    extra_result_check_rule: ''
+  - name: P3提案立项
+    content_schema: '[{"title":"背景","content":"","hint":"请写明项目发起的缘由和目标。需要体现与活跃社区的相关性，以便后期获得足够社区成员的支持。可以思考的问题如下，你希望解决什么问题？这个问题的影响有多大？你希望通过这个提案达到什么样的目标？"},{"title":"内容","content":"","hint":"请写明项目推进节奏、重要执行环节、项目成员及预算分配明细。可以思考的问题如下，你打算如何实施这个提案？需要哪些资源及如何分配？谁会负责执行？提案的执行时间表是怎样的？有哪些重要的里程碑？最重要的是：该提案内容与SeeDAO产生怎么样的关联与影响？"},{"title":"立项信息","type":"components","content":"P3
+    提案可申请不超过当前季度剩余三层提案预算的激励","name":["budget_p1","deliverables","deadline"]},{"title":"备注","content":"","hint":"模版中未提及但重要的内容可以在此处提及。"}]'
+    rule_desc: 创建该提案需要满足 $SCR ≥100000，提交后在社区公示 240 小时。该提案由当季节点进行投票，投票周期为 72 小时，当参与投票的当季节点人数≥当季节点数的25%，并且赞成票>50%时，视为提案通过。提案通过后，市政厅可以在24小时内行使一票否决权，24小时后如未被否决，涉及自动执行的相关信息（如资产发放）将被系统执行。
+    is_hidden: false
+    category_name: P3提案
+    publicity_second: 360
+    vote_duration_second: 360
+    pending_execution_second: 360
+    vote_type: 1
+    type: 10
+    display_index: 33
+    is_custom_template: false
+    component_name_list: " [\"budget\",\"deliverables\",\"deadline\"]\r\n"
+    extra_result_check_rule: ''
+  - name: P3提案结项
+    content_schema: '[{"title":"立项信息","type":"preview"},{"title":"结项内容","content":"","hint":"请说明活动最终执行日期和执行效果。"},{"title":"交付物完成明细","content":"","hint":"请详细罗列活动所有交付物的交付日期、链接和说明。"},{"title":"激励申请表","type":"components","content":"如果此项目有预付部分，请在以下表格中分配中剔除已预付的部分。","name":["motivation"]},{"title":"备注","content":"","hint":"模版中未提及但重要的内容可以在此处提及。"}]'
+    rule_desc: 创建该提案需要满足 $SCR ≥100000。该提案由当季节点进行投票，投票周期为 48 小时，当参与投票的当季节点人数≥当季节点数的25%，获得票数最多的选择为提案的最终结果，投票数量最多的选项若有两个，则取两者平均数作为调整明细的参数。提案通过后，市政厅可以在24小时内行使一票否决权，24小时后如未被否决，涉及自动执行的相关信息（如资产发放）将被系统执行。
+    is_hidden: false
+    category_name: P3提案
+    publicity_second: 0
+    vote_duration_second: 360
+    pending_execution_second: 360
+    vote_type: 2
+    type: 11
+    display_index: 34
+    is_custom_template: false
+    component_name_list:
+    extra_result_check_rule: ''
+  - name: 特殊P3提案
+    content_schema: '[{"title":"背景","content":"","hint":"请写明项目发起的缘由和目标。需要体现与活跃社区的相关性，以便后期获得足够社区成员的支持。可以思考的问题如下，你希望解决什么问题？这个问题的影响有多大？你希望通过这个提案达到什么样的目标？"},{"title":"内容","content":"","hint":"请写明项目各投票项具体的缘由与预期可能造成的相关影响。如果是岗位竞选提案，则需要提供每个选项候选人的相关信息。"},{"title":"备注","content":"","hint":"模版中未提及但重要的内容可以在此处提及。"}]'
+    rule_desc: 创建该提案需要满足 $SCR ≥100000，提交后在社区公示 240 小时。该提案由当季节点进行投票，投票周期为 72 小时，当参与投票的当季节点人数≥当季节点数的25%，获得票数最多的选择为提案的最终结果，如投票数量最多的选项有两个以上，则本次投票不生效。提案通过后，市政厅可以在24小时内行使一票否决权。
+    is_hidden: false
+    category_name: P3提案
+    publicity_second: 90
+    vote_duration_second: 90
+    pending_execution_second: 90
+    vote_type: 98
+    type: 0
+    display_index: 35
+    is_custom_template: false
+    component_name_list:
+    extra_result_check_rule: ''
+  - name: 市政厅联席会议-新建提案(常规)
+    content_schema: '[{"title":"自动执行组件","type":"components","content":"","name":""},{"title":"背景","content":"","hint":"请输入"},{"title":"内容","content":"","hint":"请输入"},{"title":"备注","content":"","hint":"模版中未提及但重要的内容可以在此处提及。"}]'
+    rule_desc: 该提案由当季市政厅 SBT 持有者创建、投票，投票周期为24小时，当赞成票>50%时，视为提案通过。
+    is_hidden: true
+    category_name: 市政厅联席会议提案
+    publicity_second: 0
+    vote_duration_second: 0
+    pending_execution_second: 0
+    vote_type: 1
+    type: 0
+    display_index: 41
+    is_custom_template: true
+    component_name_list:
+    extra_result_check_rule: ''
+  - name: 市政厅联席会议-新建提案(多选项)
+    content_schema: '[{"title":"自动执行组件","type":"components","content":"","name":""},{"title":"背景","content":"","hint":"请输入"},{"title":"内容","content":"","hint":"请输入"},{"title":"备注","content":"","hint":"模版中未提及但重要的内容可以在此处提及。"}]'
+    rule_desc: 该提案由当季市政厅 SBT 持有者创建、投票，投票周期为24小时。投票结束后，票数最多的选项为提案的最终结果。
+    is_hidden: true
+    category_name: 市政厅联席会议提案
+    publicity_second: 0
+    vote_duration_second: 0
+    pending_execution_second: 0
+    vote_type: 99
+    type: 0
+    display_index: 42
+    is_custom_template: true
+    component_name_list:
+    extra_result_check_rule: ''
+  - name: 市政厅联席会议常规提案
+    content_schema: '[{"title":"背景","content":"","hint":"请写明项目发起的缘由和目标。"},{"title":"内容","content":"","hint":"市政厅联席会议待投票内容。"},{"title":"备注","content":"","hint":"模版中未提及但重要的内容可以在此处提及。"}]'
+    rule_desc: 该提案由当季市政厅 SBT 持有者创建、投票，投票周期为24小时，当赞成票>50%时，视为提案通过。
+    is_hidden: false
+    category_name: 市政厅联席会议提案
+    publicity_second: 0
+    vote_duration_second: 600
+    pending_execution_second: 600
+    vote_type: 1
+    type: 0
+    display_index: 43
+    is_custom_template: false
+    component_name_list:
+    extra_result_check_rule: ''
+  - name: 否决提案
+    content_schema: '[{"title":"被否决提案","type":"components","name":["reject"]},{"title":"否决理由","content":"","hint":"市政厅联席会议待投票内容。"},{"title":"备注","content":"","hint":"模版中未提及但重要的内容可以在此处提及。"}]'
+    rule_desc: 该提案由当季市政厅 SBT 持有者创建、投票，投票周期为24小时，当赞成票>50%时，视为提案通过。
+    is_hidden: false
+    category_name: 市政厅联席会议提案
+    publicity_second: 0
+    vote_duration_second: 60
+    pending_execution_second: 0
+    vote_type: 1
+    type: 20
+    display_index: 44
+    is_custom_template: false
+    component_name_list:
+    extra_result_check_rule: ''
+  - name: 市政厅结项评估提案
+    content_schema: '[{"title":"预算申请","type":"preview"},{"title":"结项内容","content":"","hint":"请说明活动最终执行日期和执行效果。"},{"title":"交付物完成明细","content":"","hint":"请详细罗列活动所有交付物的交付日期、链接和说明。"},{"title":"激励申请表","type":"components","content":"如果此项目有预付部分，请在以下表格中分配中剔除已预付的部分。","name":["motivation"]},{"title":"备注","content":"","hint":"模版中未提及但重要的内容可以在此处提及。"}]'
+    rule_desc: 该提案由当季节点创建，且创建人需要拥有已通过的「公共项目申请」提案。该提案由市政厅成员投票，投票周期为24小时，获得票数最多的选择为提案的最终结果，投票数量最多的选项若有两个，则取两者平均数作为调整明细的参数。
+    is_hidden: false
+    category_name: 市政厅联席会议提案
+    publicity_second: 0
+    vote_duration_second: 600
+    pending_execution_second: 600
+    vote_type: 2
+    type: 11
+    display_index: 45
+    is_custom_template: false
+    component_name_list:
+    extra_result_check_rule: ''
+  - name: 市政厅联席会议特殊提案
+    content_schema: '[{"title":"背景","content":"","hint":"请写明项目发起的缘由和目标。"},{"title":"内容","content":"","hint":"市政厅联席会议待投票内容。"},{"title":"备注","content":"","hint":"模版中未提及但重要的内容可以在此处提及。"}]'
+    rule_desc: 该提案由当季市政厅 SBT 持有者创建、投票，投票周期为24小时。投票结束后，票数最多的选项为提案的最终结果。若投票数量最多的选项有两个以上，则本次投票不生效。
+    is_hidden: false
+    category_name: 市政厅联席会议提案
+    publicity_second: 0
+    vote_duration_second: 600
+    pending_execution_second: 600
+    vote_type: 98
+    type: 0
+    display_index: 46
+    is_custom_template: false
+    component_name_list:
+    extra_result_check_rule: ''
+  - name: 节点共识大会-新建提案(常规)
+    content_schema: '[{"title":"自动执行组件","type":"components","content":"","name":""},{"title":"背景","content":"","hint":"请输入"},{"title":"内容","content":"","hint":"请输入"},{"title":"备注","content":"","hint":"模版中未提及但重要的内容可以在此处提及。"}]'
+    rule_desc: 该提案由当季节点创建，提交后在社区公示 96 小时。该提案由当季节点进行投票，投票周期为 72 小时，当参与投票的当季节点人数≥当季节点数的50%，并且赞成票>50%时，视为提案通过。
+    is_hidden: true
+    category_name: 节点共识大会提案
+    publicity_second: 0
+    vote_duration_second: 0
+    pending_execution_second: 0
+    vote_type: 1
+    type: 0
+    display_index: 51
+    is_custom_template: true
+    component_name_list:
+    extra_result_check_rule: ''
+  - name: 节点共识大会-新建提案(多选项)
+    content_schema: '[{"title":"自动执行组件","type":"components","content":"","name":""},{"title":"背景","content":"","hint":"请输入"},{"title":"内容","content":"","hint":"请输入"},{"title":"备注","content":"","hint":"模版中未提及但重要的内容可以在此处提及。"}]'
+    rule_desc: 该提案由当季节点创建，提交后在社区公示 96 小时。该提案由当季节点进行投票，投票周期为 72 小时，当参与投票的当季节点人数≥当季节点数的50%，票数最多的选项为提案的最终结果。
+    is_hidden: true
+    category_name: 节点共识大会提案
+    publicity_second: 0
+    vote_duration_second: 0
+    pending_execution_second: 0
+    vote_type: 99
+    type: 0
+    display_index: 52
+    is_custom_template: true
+    component_name_list:
+    extra_result_check_rule: ''
+  - name: 市政厅岗位评估
+    content_schema: '[{"title":"背景","content":"","hint":"请写明该岗位在当季的工作职责（参见当季节点共识大会筹备notion页面中的岗位说明）"},{"title":"内容","content":"","hint":"请写明该岗位人员述职报告、自评与互评。"},{"title":"激励申请","content":"参见当季节点共识大会筹备notion页面中的岗位说明，以月度薪酬标准*工作月数计算档季总报酬","type":"components","name":["motivation"]},{"title":"备注","content":"","hint":"模版中未提及但重要的内容可以在此处提及。"}]'
+    rule_desc: 该提案由当季节点创建，提交后在社区公示 96 小时。该提案由当季节点进行投票，投票周期为 72 小时，当参与投票的当季节点人数≥当季节点数的50%，获得票数最多的选择为提案的最终结果，若投票数量最多的选项若有两个以上，则取平均数作为调整明细的参数。
+    is_hidden: false
+    category_name: 节点共识大会提案
+    publicity_second: 480
+    vote_duration_second: 480
+    pending_execution_second: 480
+    vote_type: 2
+    type: 0
+    display_index: 53
+    is_custom_template: false
+    component_name_list:
+    extra_result_check_rule: ''
+  - name: 节点共识大会特别提案
+    content_schema: '[{"title":"背景","content":"","hint":"请写明项目发起的缘由和目标。需要体现与活跃社区的相关性，以便后期获得足够社区成员的支持。可以思考的问题如下，你希望解决什么问题？这个问题的影响有多大？你希望通过这个提案达到什么样的目标？"},{"title":"内容","content":"","hint":"请写明项目各投票项具体的缘由与预期可能造成的相关影响。如果是岗位竞选提案，则需要提供每个选项候选人的相关信息。"},{"title":"备注","content":"","hint":"模版中未提及但重要的内容可以在此处提及。"}]'
+    rule_desc: 该提案由当季节点创建，提交后在社区公示 96 小时。该提案由当季节点进行投票，投票周期为 72 小时，当参与投票的当季节点人数≥当季节点数的50%，获得票数最多的选择为提案的最终结果。若投票数量最多的选项若有两个以上，则本次投票不生效。
+    is_hidden: false
+    category_name: 节点共识大会提案
+    publicity_second: 480
+    vote_duration_second: 480
+    pending_execution_second: 480
+    vote_type: 98
+    type: 0
+    display_index: 54
+    is_custom_template: false
+    component_name_list:
+    extra_result_check_rule: ''
+  - name: 节点共识大会规则提案
+    content_schema: '[{"title":"背景","content":"","hint":"规则变动的背景、待变动的具体规则名称、当前版本的链接"},{"title":"内容","content":"","hint":"请写明涉及变动的规则具体条目所在位置、变动的原文文本、以及修改后的文本，并简述变动的理由。"},{"title":"备注","content":"","hint":"模版中未提及但重要的内容可以在此处提及。"}]'
+    rule_desc: 该提案由当季节点创建，提交后在社区公示 96 小时。该提案由当季节点进行投票，投票周期为 72 小时，当参与投票的当季节点人数≥当季节点数的50%，并且赞成票>50%时，视为提案通过。
+    is_hidden: false
+    category_name: 节点共识大会提案
+    publicity_second: 480
+    vote_duration_second: 480
+    pending_execution_second: 480
+    vote_type: 1
+    type: 0
+    display_index: 55
+    is_custom_template: false
+    component_name_list:
+    extra_result_check_rule: ''
+  - name: 公共项目申请
+    content_schema: '[{"title":"背景","content":"","hint":"请写明项目发起的缘由和目标。需要体现与活跃社区的相关性，以便后期获得足够社区成员的支持。可以思考的问题如下，你希望解决什么问题？这个问题的影响有多大？你希望通过这个提案达到什么样的目标？"},{"title":"内容","content":"","hint":"请写明项目推进节奏、重要执行环节、项目成员及预算分配明细。可以思考的问题如下，你打算如何实施这个提案？需要哪些资源及如何分配？谁会负责执行？提案的执行时间表是怎样的？有哪些重要的里程碑？最重要的是：该提案内容与SeeDAO产生怎么样的关联与影响？"},{"title":"立项信息","type":"components","content":"公共项目可申请不超过运行当季公共项目预算上限的激励","name":["budget","deliverables","deadline"]},{"title":"备注","content":"","hint":"模版中未提及但重要的内容可以在此处提及。"}]'
+    rule_desc: 该提案由当季节点创建，提交后在社区公示 96 小时。该提案由当季节点进行投票，投票周期为 72 小时，当参与投票的当季节点人数≥当季节点数的50%，并且赞成票>50%时，视为提案通过。
+    is_hidden: false
+    category_name: 节点共识大会提案
+    publicity_second: 90
+    vote_duration_second: 480
+    pending_execution_second: 1
+    vote_type: 1
+    type: 10
+    display_index: 56
+    is_custom_template: false
+    component_name_list: " [\"budget\",\"deliverables\",\"deadline\"]\r\n"
+    extra_result_check_rule: ''
+
+# select pt."name" as template_name, pc."name" as component_name from template_components tc
+# left join proposal_templates pt on pt.id=tc.proposal_template_id
+# left join proposal_components pc on tc.proposal_component_id =pc.id
+template_components:
+  - template_name: 否决提案
+    component_name: reject
+  - template_name: P1提案立项
+    component_name: budget_p1
+  - template_name: P1提案立项
+    component_name: deliverables
+  - template_name: P1提案立项
+    component_name: deadline
+  - template_name: P1提案结项
+    component_name: motivation
+  - template_name: P2提案立项
+    component_name: budget
+  - template_name: P2提案立项
+    component_name: deliverables
+  - template_name: P2提案立项
+    component_name: deadline
+  - template_name: P3提案立项
+    component_name: budget
+  - template_name: P3提案立项
+    component_name: deliverables
+  - template_name: P3提案立项
+    component_name: deadline
+  - template_name: P3提案结项
+    component_name: motivation
+  - template_name: 市政厅结项评估提案
+    component_name: motivation
+  - template_name: 市政厅岗位评估
+    component_name: motivation
+  - template_name: P2提案结项
+    component_name: motivation
+  - template_name: 公共项目申请
+    component_name: budget
+  - template_name: 公共项目申请
+    component_name: deliverables
+  - template_name: 公共项目申请
+    component_name: deadline
+
+
+# select * from system_variables sv where name != 'sip'
+system_variables:
+  - name: metaforo_admin_token
+    num_value:
+    str_value: 24291|WzB6s3Qex8gGMaJ76NLhTWihWqbcykflIwAjIdiG
+  - name: metaforo_group_id
+    num_value:
+    str_value: '10434'
+  - name: metaforo_group_name
+    num_value:
+    str_value: testttt
+  - name: seeauth_private_key
+    num_value:
+    str_value: 59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d
+  - name: metaforo_admin_wallet_addr
+    num_value:
+    str_value: ''
+  - name: metaforo_admin_wallet_pk
+    num_value:
+    str_value: ''
+
+
+

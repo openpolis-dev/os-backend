@@ -30,50 +30,17 @@ const DealDateLayoutFormat4 = "2006-1-2"
 const DefaultDetailSheetName = "明细"
 const SummarizedSheetName = "数据透视"
 
-var DefaultSeasonRecords = []map[string]any{
-	{"Name": "S0",
-		"Idx":     0,
-		"StartAt": time.Date(2022, 9, 26, 0, 0, 0, 0, internal.ProjectTimezone).Unix(),
-		"EndAt":   time.Date(2022, 11, 3, 0, 0, 0, 0, internal.ProjectTimezone).Unix(),
-	}, {
-		"Name":    "S1",
-		"Idx":     1,
-		"StartAt": time.Date(2022, 11, 3, 0, 0, 0, 0, internal.ProjectTimezone).Unix(),
-		"EndAt":   time.Date(2023, 2, 26, 0, 0, 0, 0, internal.ProjectTimezone).Unix(),
-	}, {
-		"Name":    "S2",
-		"Idx":     2,
-		"StartAt": time.Date(2023, 2, 28, 0, 0, 0, 0, internal.ProjectTimezone).Unix(),
-		"EndAt":   time.Date(2023, 6, 2, 0, 0, 0, 0, internal.ProjectTimezone).Unix(),
-	}, {
-		"Name":    "S3",
-		"Idx":     3,
-		"StartAt": time.Date(2023, 6, 3, 0, 0, 0, 0, internal.ProjectTimezone).Unix(),
-		"EndAt":   time.Date(2023, 9, 5, 0, 0, 0, 0, internal.ProjectTimezone).Unix(),
-	}, {
-		"Name":    "S4",
-		"Idx":     4,
-		"StartAt": time.Date(2023, 9, 6, 0, 0, 0, 0, internal.ProjectTimezone).Unix(),
-		"EndAt":   time.Date(2023, 12, 1, 0, 0, 0, 0, internal.ProjectTimezone).Unix(),
-		//}, {
-		//	Name:    "S5",
-		//	Idx:     5,
-		//	StartAt: time.Date(2023, 11, 2, 0, 0, 0, 0, ProjectTimezone).Unix(),
-		//	EndAt:   time.Date(2024, 1, 1, 0, 0, 0, 0, ProjectTimezone).Unix(),
-	},
-}
-
 type LoaderConfig struct {
-	Dsn              string
-	Scheme           string
-	Mode             string
-	SeasonName       string
-	AssetName        string
-	DetailSheetName  string
-	CleanDBFlag      bool
-	CreateSeasonFlag bool
-	LogLevel         int
-	InputFile        string
+	Dsn             string
+	Scheme          string
+	Mode            string
+	SeasonName      string
+	AssetName       string
+	DetailSheetName string
+	CleanDBFlag     bool
+	LogLevel        int
+	InputFile       string
+	CreateMissing   bool
 }
 
 type DetailRecordSchema struct {
@@ -102,26 +69,6 @@ type EntityProps struct {
 	EntityType string
 	Id         uint
 	Name       string
-}
-
-func CreateSeasons(db *gorm.DB) {
-	err := db.Transaction(func(tx *gorm.DB) error {
-		for _, season := range DefaultSeasonRecords {
-			err := db.Model(&model.Season{}).
-				Clauses(clause.OnConflict{
-					Columns:   []clause.Column{{Name: "idx"}},
-					DoUpdates: clause.AssignmentColumns([]string{"start_at", "end_at"})}).
-				Create(&season).Error
-			if err != nil {
-				tx.Rollback()
-				return err
-			}
-		}
-		return nil
-	})
-	if err != nil {
-		panic(err)
-	}
 }
 
 func parseSeasonParams(db *gorm.DB, seasonParamValue string) ([]*model.Season, error) {
@@ -229,11 +176,12 @@ func loadDetailSheet(filePath string, sheetName string, assets map[string]bool) 
 			}
 		}
 
-		if !ethereumCommon.IsHexAddress(r[3]) {
-			fmt.Printf("invalid user wallet: %d: %s\n", idx, r[3])
+		stripedWallet := strings.TrimSpace(r[3])
+		if !ethereumCommon.IsHexAddress(stripedWallet) {
+			fmt.Printf("invalid user wallet: %d: |%s|\n", idx, stripedWallet)
 		}
 
-		userWallet := common.ToChecksumAddress(r[3])
+		userWallet := common.ToChecksumAddress(stripedWallet)
 
 		return &DetailRecordSchema{
 			SeasonName:      r[0],
@@ -248,7 +196,7 @@ func loadDetailSheet(filePath string, sheetName string, assets map[string]bool) 
 			Comment:         comment,
 			ProposalLink:    proposalLink,
 			AppState:        appState,
-			AddressVerified: ethereumCommon.IsHexAddress(r[3]),
+			AddressVerified: ethereumCommon.IsHexAddress(userWallet),
 		}
 	})
 
@@ -327,9 +275,10 @@ func saveToDatabase(db *gorm.DB, rcds []*DetailRecordSchema, seasonRcds []*model
 	var dbEntities []EntityProps
 	dbEntityMap := make(map[string]EntityProps)
 
-	err = db.Raw("? UNION ?",
+	err = db.Raw("? UNION ? UNION ?",
 		db.Model(&model.Project{}).Select("id, name, 'project' as entity_type"),
 		db.Model(&model.Guild{}).Select("id, name, 'guild' as entity_type"),
+		db.Model(&model.CommonBudgetSource{}).Select("id, name, 'common_budget_source' as entity_type"),
 	).Find(&dbEntities).Error
 
 	if err != nil {
@@ -352,16 +301,16 @@ func saveToDatabase(db *gorm.DB, rcds []*DetailRecordSchema, seasonRcds []*model
 		if _, exists := seasonNames[xslxRcd.SeasonName]; exists {
 			userWallets[xslxRcd.UserWallet] = true
 			recordsWillBeImported = append(recordsWillBeImported, xslxRcd)
-			if dbEntityMap[xslxRcd.EntityName].Id == 0 {
-				missingEntity[xslxRcd.EntityName] = true
+			if dbEntityMap[strings.TrimSpace(xslxRcd.EntityName)].Id == 0 {
+				missingEntity[strings.TrimSpace(xslxRcd.EntityName)] = true
 			}
 
-			entityInfo[xslxRcd.EntityName] = dbEntityMap[xslxRcd.EntityName]
+			entityInfo[strings.TrimSpace(xslxRcd.EntityName)] = dbEntityMap[strings.TrimSpace(xslxRcd.EntityName)]
 		}
 	}
 
 	if len(missingEntity) > 0 {
-		panic(fmt.Errorf("some entites are missing in DB: %+v", strings.Join(lo.Keys(missingEntity), ", ")))
+		panic(fmt.Errorf("some entites are missing in DB:\n %+v", strings.Join(lo.Keys(missingEntity), "\n")))
 	}
 
 	// DB tasks
@@ -415,7 +364,7 @@ func saveToDatabase(db *gorm.DB, rcds []*DetailRecordSchema, seasonRcds []*model
 			}
 
 			seasonId, _ := seasonNames[r.SeasonName]
-			entityInfo := entityInfo[r.EntityName]
+			entityInfo := entityInfo[strings.TrimSpace(r.EntityName)]
 
 			appState := model.ApplicationStateApproved
 			if r.AppState == "completed" {
@@ -473,10 +422,9 @@ func main() {
 	flag.StringVar(&config.Scheme, "scheme", "", "Database scheme, used for mysql connection string")
 	flag.StringVar(&config.Mode, "mode", "load", "load data mode or verify data")
 	flag.StringVar(&config.SeasonName, "season", "", "Specify seasons the application will import, multiple seasons can be split by comma. If not given, the current season will be used. And pass `all` for processing all season records")
-	flag.StringVar(&config.AssetName, "asset", "", "Specify assets the application will import, multiple seasons can be split by comma. If not given, all assets will be imported")
+	flag.StringVar(&config.AssetName, "asset", "", "Specify assets the application will import, multiple assets can be split by comma. If not given, all assets will be imported")
 	flag.StringVar(&config.DetailSheetName, "detail-sheet", DefaultDetailSheetName, "Specify detail sheet name in the Excel file, the default value will be used if not given")
 	flag.BoolVar(&config.CleanDBFlag, "clean-db", false, "Clean the database with specified seasons before importing.")
-	flag.BoolVar(&config.CreateSeasonFlag, "create-season", false, "Clean the database with specified seasons before importing.")
 	flag.IntVar(&config.LogLevel, "v", 0, "Log level: 0 for no logs, 1 for normal logs, 2 for verbose logs, 3 for very verbose logs.")
 	flag.StringVar(&config.InputFile, "input", "summary.xsls", "Specify input xslx file")
 
@@ -495,24 +443,20 @@ func main() {
 	}
 
 	if config.Scheme != "" {
-		storage.InitGormDB(dbDsn, config.Scheme)
+		storage.InitGormDBWithLoggerLevel(dbDsn, config.Scheme, logger.Error)
 	} else {
 		parsedURI, err := url.Parse(dbDsn)
 		if err != nil {
 			panic(fmt.Errorf("parse database URI %s error, please confirm", dbDsn))
 		}
-		storage.InitGormDB(dbDsn, parsedURI.Scheme)
+		storage.InitGormDBWithLoggerLevel(dbDsn, parsedURI.Scheme, logger.Error)
 	}
 	db := storage.GetGormDB()
-	err := storage.MigrateTables(db)
+	err := model.MigrateTables(db)
 	if err != nil {
 		panic(err)
 	}
 	db.Logger = logger.Default.LogMode(logger.Silent)
-
-	if config.CreateSeasonFlag {
-		CreateSeasons(db)
-	}
 
 	// parse season data
 	seasons, err := parseSeasonParams(db, config.SeasonName)

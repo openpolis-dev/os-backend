@@ -22,14 +22,17 @@ SELECT app.id                         as application_id,
        CASE
            WHEN app.entity_type = 'project' THEN projects.id
            WHEN app.entity_type = 'guild' THEN guilds.id
+           WHEN app.entity_type = 'common_budget_source' THEN common_budget_sources.id
            ELSE NULL END              AS entity_id,
        CASE
            WHEN app.entity_type = 'project' THEN projects.name
            WHEN app.entity_type = 'guild' THEN guilds.name
+           WHEN app.entity_type = 'common_budget_source' THEN common_budget_sources.name
            ELSE NULL END              AS entity_name,
        CASE
            WHEN app.entity_type = 'project' THEN projects.name
            WHEN app.entity_type = 'guild' THEN guilds.name
+           WHEN app.entity_type = 'common_budget_source' THEN common_budget_sources.name
            ELSE NULL END              AS budget_source,
        apply_aal.operator             as applicant_wallet,
        apply_aal.log_ts               as apply_ts,
@@ -68,6 +71,7 @@ SELECT app.id                         as application_id,
 FROM applications as app
          LEFT JOIN projects ON app.entity_type = 'project' AND app.entity_id = projects.id
          LEFT JOIN guilds ON app.entity_type = 'guild' AND app.entity_id = guilds.id
+         LEFT JOIN common_budget_sources ON app.entity_type = 'common_budget_source' AND app.entity_id = common_budget_sources.id
          LEFT JOIN seasons ON app.season_id = seasons.id
          LEFT JOIN application_audit_logs completed_aal on app.id = completed_aal.application_id AND completed_aal.id =
                                                                                                      (select max(id)
@@ -100,12 +104,14 @@ const QueryAppBundlesWithEntityNameBaseSQL = `SELECT app_bundles.*,
 CASE
    WHEN app_bundles.entity_type = 'project' THEN projects.name
    WHEN app_bundles.entity_type = 'guild' THEN guilds.name
+   WHEN app_bundles.entity_type = 'common_budget_source' THEN common_budget_sources.name
    ELSE NULL END AS entity_name,
 seasons.name AS season_name
 FROM app_bundles
    LEFT JOIN seasons ON app_bundles.season_id = seasons.id
    LEFT JOIN projects ON app_bundles.entity_type = 'project' AND app_bundles.entity_id = projects.id
-   LEFT JOIN guilds ON app_bundles.entity_type = 'guild' AND app_bundles.entity_id = guilds.id`
+   LEFT JOIN guilds ON app_bundles.entity_type = 'guild' AND app_bundles.entity_id = guilds.id
+   LEFT JOIN common_budget_sources ON app_bundles.entity_type = 'common_budget_source' AND app_bundles.entity_id = common_budget_sources.id`
 
 var CloseProjectStateOrder = []string{string(ApplicationStateOpen), ApplicationStateCompleted, ApplicationStateRejected}
 
@@ -182,7 +188,7 @@ func GenerateFrontendApplicationRecords(db *gorm.DB, queryParams *ListApplicatio
 	}
 
 	if clearEntity != "" {
-		if !lo.Contains([]string{"project", "guild"}, clearEntity) {
+		if !lo.Contains([]string{"project", "guild", "common_budget_source"}, clearEntity) {
 			return nil, 0, fmt.Errorf("unknown entity type %s", queryParams.Entity)
 		}
 	}
@@ -287,7 +293,7 @@ func QueryAppBundleRecords(db *gorm.DB, queryParams *ListAppBundleQueryParams) (
 	clearState := strings.ToLower(strings.TrimSpace(queryParams.State))
 
 	if clearedEntity != "" {
-		if !lo.Contains([]string{"project", "guild"}, clearedEntity) {
+		if !lo.Contains([]string{"project", "guild", "common_budget_source"}, clearedEntity) {
 			return nil, 0, fmt.Errorf("unknown entity type %s", queryParams.Entity)
 		}
 	}
@@ -305,6 +311,9 @@ func QueryAppBundleRecords(db *gorm.DB, queryParams *ListAppBundleQueryParams) (
 		}
 		whereClause += " AND app_bundles.state = @state"
 		whereParams["state"] = ApplicationState(clearState)
+	} else {
+		whereClause += " AND app_bundles.state = @state"
+		whereParams["state"] = ApplicationStateOpen
 	}
 
 	if clearedEntity != "" {
@@ -347,7 +356,6 @@ func QueryAppBundleRecords(db *gorm.DB, queryParams *ListAppBundleQueryParams) (
 	// Calculate total count
 	total := db.Raw(querySQL+whereClause, whereParams).Scan(&[]map[string]any{}).RowsAffected
 
-	// TODO: This is the mysql style, need to find way to get db schema here and implement pg way
 	whereClause += fmt.Sprintf("\nORDER BY app_bundles.%s %s LIMIT @limit OFFSET @offset", queryParams.SortField, queryParams.SortOrder)
 	whereParams["offset"] = (queryParams.Page - 1) * queryParams.Size
 	whereParams["limit"] = queryParams.Size
@@ -355,6 +363,7 @@ func QueryAppBundleRecords(db *gorm.DB, queryParams *ListAppBundleQueryParams) (
 	var rcds []JointAppBundleEntityRslt
 	err := db.Raw(querySQL+whereClause, whereParams).Find(&rcds).Error
 	if err != nil {
+		log.Error().Msgf("get application list error: %+v, query sql: %s, query params: %+v", err, querySQL+whereClause, whereParams)
 		return nil, 0, err
 	}
 
@@ -412,4 +421,47 @@ func QueryRows[T any](querySeg *gorm.DB, page *gormfind.Page) ([]*T, error) {
 	}
 
 	return d, nil
+}
+
+// MigrateTables auto migrate models defined.
+func MigrateTables(db *gorm.DB) error {
+	// Migrate the schema
+	return db.AutoMigrate(
+		&User{},
+		&UserNonce{},
+		&UserAssetRecord{},
+		&Project{},
+		&ProjectBudget{},
+		&Guild{},
+		&GuildBudget{},
+		&CommonBudgetSource{},
+		&AppBundle{},
+		&AppBundleAuditLog{},
+		&Season{},
+		&Application{},
+		&ApplicationAuditLog{},
+		&TreasuryAsset{},
+		&TreasuryDetailedRecord{},
+		&TreasuryAuditLog{},
+		&Event{},
+		&Push{},
+		&MetaforoUser{},
+		&Proposal{},
+		&ProposalCategory{},
+		&ProposalContentBlock{},
+		&ProposalAuditLog{},
+		&ProposalComment{},
+		&ProposalComponentRecord{},
+		&ProposalUserVoteRecord{},
+		&ProposalVoteGate{},
+		&ProposalVoteRecord{},
+		&ProposalVoteOptionRecord{},
+		&ProposalComponent{},
+		&ProposalComponentAction{},
+		&ProposalTemplate{},
+		&CronJob{},
+		&SystemVariable{},
+		&SnsInviteCode{},
+		&SnsInviteRecord{},
+	)
 }

@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/rs/zerolog/log"
 	"github.com/shopspring/decimal"
 	"github.com/theseed-labs/os-backend/internal"
 	"github.com/xiaosongfu/gormfind"
@@ -23,6 +24,8 @@ const (
 	ProjectStatusOpen         ProjectStatus = "open"
 	ProjectStatusPendingClose               = "pending_close"
 	ProjectStatusClosed                     = "closed"
+	ProjectStatusClosing                    = "closing"
+	ProjectStatusCloseFailed                = "close_failed"
 )
 
 type Project struct {
@@ -46,6 +49,18 @@ type Project struct {
 	UpdatedAt time.Time `json:"-"`
 	CreateTs  int64     `json:"create_ts" gorm:"index"`
 	UpdateTs  int64     `json:"update_ts" gorm:"index"`
+
+	Label string `json:"label"`
+
+	SIP          string `json:"SIP" gorm:"index"`
+	Category     string `json:"Category"`
+	ApprovalLink string `json:"ApprovalLink"`
+	OverLink     string `json:"OverLink"`
+	Budgets      string `json:"Budgets"`
+	Deliverable  string `json:"Deliverable"`
+	PlanTime     string `json:"PlanTime"`
+	ContantWay   string `json:"ContantWay"`
+	OfficialLink string `json:"OfficialLink"`
 }
 
 type projectModel struct{}
@@ -87,13 +102,50 @@ func (*projectModel) List(db *gorm.DB, status string, page *gormfind.Page, showS
 	return data, total, nil
 }
 
+func (*projectModel) ListWithSearch(db *gorm.DB, status string, keywords *string, wallet *string, page *gormfind.Page, showSpecialProjectFlag bool) (data []*Project, total int64, err error) {
+	querySeg := db.Table("projects")
+	if !showSpecialProjectFlag {
+		querySeg = querySeg.Where("is_special = false")
+	}
+	if status != "" {
+		if strings.Contains(status, ",") {
+			querySeg = querySeg.Where("status IN ?", strings.Split(status, ","))
+		} else {
+			querySeg = querySeg.Where("status = ?", status)
+		}
+	}
+	// <--- search conditions --->
+	if keywords != nil {
+		querySeg.Where(fmt.Sprintf("name ILIKE '%%%s%%'", *keywords))
+	}
+	if wallet != nil {
+		w := fmt.Sprintf("%%\"%s\"%%", *wallet) // value is: `%0x123%`
+		querySeg.Where(fmt.Sprintf("sponsors::text ILIKE '%%%s%%'", w))
+	}
+	// <--- search conditions --->
+
+	total, err = gormfind.Count(querySeg)
+	if err != nil {
+		return
+	}
+
+	data, err = QueryRows[Project](querySeg, page)
+	if err != nil {
+		return
+	}
+
+	return data, total, nil
+}
+
 func (*projectModel) ListBySponsorOrMember(db *gorm.DB, wallet string, page *gormfind.Page) (data []*Project, total int64, err error) {
 	w := fmt.Sprintf("%%\"%s\"%%", wallet) // value is: `%"0x123"%`
 	// MySQL version
 	//querySeg := db.Table("projects").Where("sponsors LIKE ?", w).Or("members LIKE ?", w)
 
 	// PgVersion
-	querySeg := db.Table("projects").Where(fmt.Sprintf("sponsors::text ILIKE '%%%s%%'", w)).Or(fmt.Sprintf("members::text ILIKE '%%%s%%'", w))
+	querySeg := db.Table("projects").Where("is_special = false").Where(
+		db.Table("projects").Where(fmt.Sprintf("sponsors::text ILIKE '%%%s%%'", w)).Or(fmt.Sprintf("members::text ILIKE '%%%s%%'", w)),
+	)
 
 	total, err = gormfind.Count(querySeg)
 	if err != nil {
@@ -198,6 +250,18 @@ func (*projectModel) DepositBudget(db *gorm.DB, projectId uint, assetName string
 	})
 }
 
+// UpdateProjectStatus update project status to given value and update update_ts field
+func (*projectModel) UpdateProjectStatus(db *gorm.DB, projectId uint, status ProjectStatus) error {
+	if err := db.Where(&Project{ID: projectId}).Updates(&Project{
+		Status:   status,
+		UpdateTs: GetCurrentUtcEpochSecond(),
+	}).Error; err != nil {
+		log.Error().Msgf("Update project %d status to open error: %+v", projectId, err)
+		return err
+	}
+	return nil
+}
+
 // GetCityHallProject get cityhall project in DB
 func GetCityHallProject(db *gorm.DB) (*Project, error) {
 	project := Project{}
@@ -231,7 +295,7 @@ func GetOrCreateCityHallProject(db *gorm.DB, cityHallUsers []string) (*Project, 
 
 func createCityHallProject(db *gorm.DB, cityHallUsers []string) (*Project, error) {
 	project := Project{
-		Name:        "CityHall",
+		Name:        internal.CityHallProjectName,
 		IsSpecial:   true,
 		SpecialType: SpecialProjectCityHall,
 		Sponsors:    cityHallUsers,
@@ -248,16 +312,17 @@ func createCityHallProject(db *gorm.DB, cityHallUsers []string) (*Project, error
 	return &project, nil
 }
 
-func (p *Project) GenerateCasbinPolicies() [][]string {
+// GenerateCasbinPolicies generate casbin policies for specified project
+func GenerateCasbinPolicies(projectId uint) [][]string {
 	return [][]string{
 		// p, proj_sponsor_1, proj_1, modify
 		// p, proj_sponsor_1, proj_1, create_app
 		// p, proj_sponsor_1, proj_1, u_member
 		// p, proj_sponsor_1, proj_1, u_budget
-		{fmt.Sprintf("%s%d", internal.RoleProjSponsorPrefix, p.ID), fmt.Sprintf("%s%d", internal.ObjProjPrefix, p.ID), internal.ActModify},
-		{fmt.Sprintf("%s%d", internal.RoleProjSponsorPrefix, p.ID), fmt.Sprintf("%s%d", internal.ObjProjPrefix, p.ID), internal.ActCreateApplication},
-		{fmt.Sprintf("%s%d", internal.RoleProjSponsorPrefix, p.ID), fmt.Sprintf("%s%d", internal.ObjProjPrefix, p.ID), internal.ActUpdateMember},
-		{fmt.Sprintf("%s%d", internal.RoleProjSponsorPrefix, p.ID), fmt.Sprintf("%s%d", internal.ObjProjPrefix, p.ID), internal.ActUpdateBudget},
+		{fmt.Sprintf("%s%d", internal.RoleProjSponsorPrefix, projectId), fmt.Sprintf("%s%d", internal.ObjProjPrefix, projectId), internal.ActModify},
+		{fmt.Sprintf("%s%d", internal.RoleProjSponsorPrefix, projectId), fmt.Sprintf("%s%d", internal.ObjProjPrefix, projectId), internal.ActCreateApplication},
+		{fmt.Sprintf("%s%d", internal.RoleProjSponsorPrefix, projectId), fmt.Sprintf("%s%d", internal.ObjProjPrefix, projectId), internal.ActUpdateMember},
+		{fmt.Sprintf("%s%d", internal.RoleProjSponsorPrefix, projectId), fmt.Sprintf("%s%d", internal.ObjProjPrefix, projectId), internal.ActUpdateBudget},
 		//// p, proj_member_1, proj_1, modify
 		//// p, proj_member_1, proj_1, create_app
 		//{fmt.Sprintf("%s%d", api.RoleProjMemberPrefix, proj.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, proj.ID), api.ActModify},

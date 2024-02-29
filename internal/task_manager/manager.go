@@ -9,6 +9,7 @@ import (
 	"github.com/go-co-op/gocron/v2"
 	"github.com/rs/zerolog/log"
 	"github.com/theseed-labs/os-backend/internal"
+	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/config"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"gorm.io/gorm"
@@ -87,6 +88,15 @@ func (t *TaskManager) StartRunner() {
 		panic(err)
 	}
 
+	// Start refresh metaforo admin token task every 15 days
+	if _, err = t.Scheduler.NewJob(
+		gocron.DurationJob(time.Minute),
+		//gocron.DurationJob(time.Hour*time.Duration(15*24)),
+		gocron.NewTask(RefreshMetaforoAdminToken),
+	); err != nil {
+		panic(err)
+	}
+
 	go t.TaskDispatcher()
 
 	t.Scheduler.Start()
@@ -106,8 +116,8 @@ func (t *TaskManager) ScanTaskPool() {
 	endTime := time.Now().Add(t.CheckDuration).UTC()
 
 	err := t.DatabaseClient.Model(&model.CronJob{}).
-		Where("state = ? AND ((next_exec_ts >= ? AND next_exec_ts < ?) OR last_exec_ts=0)",
-			model.CronJobStateActive, startTime.Unix(), endTime.Unix()).Find(&tasksShouldBeExecuted).Error
+		Where("state = ? AND ((next_exec_ts >= ? AND next_exec_ts < ?) OR (last_exec_ts=0 AND next_exec_ts <= ?))",
+			model.CronJobStateActive, startTime.Unix(), endTime.Unix(), startTime.Unix()).Find(&tasksShouldBeExecuted).Error
 
 	if err != nil {
 		log.Error().Msgf("scan task pool error: %+v", err)
@@ -122,19 +132,24 @@ func (t *TaskManager) ScanTaskPool() {
 
 func (t *TaskManager) ActivateRefreshVoteStateJobIfRequired() error {
 	log.Debug().Msgf("activate refresh vote state job")
-	refreshVoteStateJob := &model.CronJob{
+
+	refreshProposalInfoJob := model.CronJob{
 		HandlerName: internal.TaskRefreshVotingProposalVoteInfo,
-		State:       model.CronJobStateActive,
 		CronExp:     internal.TaskRefreshVotingProposalVoteInfoCronExpr,
-		CreateTs:    time.Now().UTC().Unix(),
+		LastExecTs:  0,
 		NextExecTs:  cronexpr.MustParse(internal.TaskRefreshVotingProposalVoteInfoCronExpr).Next(time.Now()).UTC().Unix(),
 		JobParams:   fmt.Sprintf(`{"group_name": "%s"}`, t.AppConfig.MetaforoData.GroupName),
+		State:       model.CronJobStateActive,
 	}
 
-	if err := t.DatabaseClient.Model(&refreshVoteStateJob).Where("handler_name = ?", internal.TaskRefreshVotingProposalVoteInfo).Updates(&refreshVoteStateJob).Error; err != nil {
+	if err = t.DatabaseClient.Model(&model.CronJob{}).
+		Where("handler_name = ?", internal.TaskRefreshVotingProposalVoteInfo).
+		Updates(&refreshProposalInfoJob).
+		Updates(map[string]any{"last_exec_ts": 0, "state": model.CronJobStateActive}).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return t.DatabaseClient.Create(&refreshVoteStateJob).Error
+			return t.DatabaseClient.Create(&refreshProposalInfoJob).Error
 		} else {
+			log.Error().Msgf("Refresh vote state job update error: %+v", err)
 			return err
 		}
 	}
@@ -145,29 +160,40 @@ func (t *TaskManager) TaskDispatcher() {
 	log.Debug().Msgf("task dispatcher started")
 	for {
 		task := <-t.TaskChannel
+		log.Debug().Msgf("received task: %+v", task)
 		switch task.HandlerName {
 		case internal.TaskRefreshVotingProposalVoteInfo:
 			go RefreshVotingProposalInfoJob(t.DatabaseClient, task, task.JobParams)
-		case internal.TaskRewardNewApplication:
-			log.Debug().Msgf("new application reward")
-			go CreateAppBundleTask(t.DatabaseClient, task, task.JobParams, task.VoteType, task.VoteResult)
 		case internal.TaskVetoedProposal:
-			log.Debug().Msgf("new application reward")
-		case internal.TaskCloseGuild:
-		case internal.TaskCreateGuild:
+			log.Debug().Msgf("veto proposal task")
+			go CreateVetoProposalTask(t.DatabaseClient, task, task.JobParams)
+		case internal.TaskNewMotivationReward:
+			log.Debug().Msgf("motivation task")
+			CreateAppBundleTaskFromMotivationComponent(t.DatabaseClient, task, task.JobParams, task.VoteType, task.VoteResult)
+		case internal.TaskUpdateProposalState:
+			log.Debug().Msgf("update proposal state task")
+			go UpdateProposalSateTask(t.DatabaseClient, task, task.JobParams)
+		//case internal.TaskCloseGuild:
+		//case internal.TaskRewardNewApplication:
+		//case internal.TaskCreateGuild:
 		case internal.TaskCloseProject:
+			api.PrintStructAsJson(task, "TTT: Close project")
+			go CloseProjectTask(t.DatabaseClient, task, task.JobParams)
 		case internal.TaskCreateProject:
+			api.PrintStructAsJson(task, "TTT: Create project")
+			go CreateProjectTask(t.DatabaseClient, task, task.JobParams)
 		default:
 			// Handle unknown task
 			log.Warn().Msgf("unknown task name: %s task detail: %+v", task.HandlerName, task)
-			t.MarkTaskAsTerminated(task)
+			t.MarkTaskAsTerminatedAndSetProposalToExecuted(task)
 		}
 	}
 }
 
-func (t *TaskManager) MarkTaskAsTerminated(task *model.CronJob) {
+func (t *TaskManager) MarkTaskAsTerminatedAndSetProposalToExecuted(task *model.CronJob) {
 	task.State = model.CronJobStateTerminated
 	task.LastExecTs = model.GetCurrentUtcEpochSecond()
 	task.UpdateTs = model.GetCurrentUtcEpochSecond()
 	t.DatabaseClient.Updates(task)
+	t.DatabaseClient.Model(&model.Proposal{}).Where("id = ?", task.ProposalId).Update("state", model.ProposalStateExecuted)
 }

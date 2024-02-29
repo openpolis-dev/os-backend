@@ -101,7 +101,7 @@ func MetaforoActivities(ctx *gin.Context) {
 	})
 
 	var touchedProposals []*model.Proposal
-	err = db.Model(model.Proposal{}).Where("proposal_record_id in ?", proposalRecordIds).Select("id, proposal_record_id").Find(&touchedProposals).Error
+	err = db.Model(model.Proposal{}).Where("proposal_record_id in ?", proposalRecordIds).Find(&touchedProposals).Error
 	if err != nil {
 		log.Error().Msgf("get proposal error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
@@ -236,6 +236,8 @@ func LeaveMetaforoGroup(ctx *gin.Context) {
 //	@Param		JsonBody	body		metaforo.LoginResponse	true	"metaforo response after login"
 //	@success	200			{object}	api.Reply{data=nil}
 func PrepareMetaforoData(ctx *gin.Context) {
+	// The struct type LoginResponse here means this is the response from metaforo for user login.
+	// The data is passed from frontend directly to the backend so the struct name is not Response
 	var req metaforo.LoginResponse
 	err := ctx.BindJSON(&req)
 	if err != nil {

@@ -126,9 +126,61 @@ func RevokeVote(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, api.Success(nil))
 }
 
+// CloseVote closes all the votes in the proposal
+//
+//	@summary	close all votes belongs to the proposal
+//	@tags		Proposal
+//	@param		id		query		number				true	"proposal ID"
+//	@param		data	body		CloseVoteRequest	true	"revoke vote data"
+//	@success	200		{object}	api.Reply{data=nil}	"Success"
+//	@router		/proposals/close_vote/:id [post]
+func CloseVote(ctx *gin.Context) {
+	db, cfg := api.ForContextDBAndConfig(ctx)
+	proposalIdStr := ctx.Param("id")
+	reqData := CloseVoteRequest{}
+	if err := ctx.BindJSON(&reqData); err != nil {
+		log.Error().Msgf("parse request data error: %+v", err)
+		sdk.LogUserSideError(ctx, err)
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("parse request data error: %+v", err)))
+		return
+	}
+
+	if err := metaforo.CloseVote(
+		reqData.MetaforoAccessToken,
+		cfg.MetaforoData.GroupName,
+		reqData.MetaforoVoteId,
+	); err != nil {
+		log.Error().Msgf("close vote error: %+v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(fmt.Errorf("close vote error")))
+		return
+	}
+
+	// update proposal state after getting the vote result
+	dbProposal, metaforoProposalResponse, err := GetMetaforoProposalByInternalId(db, proposalIdStr, cfg.MetaforoData.GroupName)
+	pollStatusChanged, err := UpdateDbVoteOptionRecordsFromMetaforoProposalResponse(db, dbProposal.ID, metaforoProposalResponse)
+	if err != nil {
+		log.Error().Msgf("update propsal vote option records with metaforo response error: %+v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(fmt.Errorf("close vote error")))
+		return
+	}
+
+	if pollStatusChanged {
+		if err = HandleProposalPollStatusChange(db, dbProposal.ID); err != nil {
+			log.Error().Msgf("handle proposal poll status change error: %+v", err)
+			sdk.LogServerErrorToSentry(ctx, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(fmt.Errorf("close vote error")))
+			return
+		}
+	}
+
+	ctx.JSON(http.StatusOK, api.Success(nil))
+}
+
 // ShowVoteDetail returns vote detail for specified vote
 //
-//	@summary	revoke vote on existing metaforo vote
+//	@summary	show voter detail for specified vote option
 //	@tags		Proposal
 //	@param		vote_option_id	path		number										true	"Vote ID"
 //	@param		page			query		number										false	"page of the vote list"
@@ -187,10 +239,24 @@ func canUserVoteOnThread(db *gorm.DB, userWallet string, proposalIdString string
 		return false, err
 	}
 
-	var proposalCategory *model.ProposalCategory
-	err = db.Model(&model.ProposalCategory{}).
-		Joins("ProposalVoteGate").
-		Where(model.ProposalCategory{ID: proposal.ProposalCategoryID}).First(&proposalCategory).Error
+	var voteGates []*model.ProposalVoteGate
+	pTmplDbRcd := model.ProposalTemplate{
+		ID: *proposal.ProposalTemplateID,
+	}
 
-	return IsUserMetVoteGate(seepassData, proposalCategory.ProposalVoteGate), nil
+	err = db.Model(&pTmplDbRcd).Association("VoteGates").Find(&voteGates)
+	if err != nil {
+		log.Error().Msgf("get proposal template error: %+v", err)
+		return false, err
+	}
+
+	permArray := lo.Map(voteGates, func(r *model.ProposalVoteGate, _ int) bool {
+		return IsUserMetVoteGate(seepassData, r)
+	})
+
+	permResult := lo.Reduce(permArray, func(rslt bool, r bool, _ int) bool {
+		return rslt && r
+	}, true)
+
+	return permResult, nil
 }

@@ -2,7 +2,7 @@ package rewards
 
 import (
 	"bytes"
-	gob "encoding/gob"
+	"encoding/gob"
 	"errors"
 	"fmt"
 	"net/http"

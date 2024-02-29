@@ -18,6 +18,9 @@ casbin:
     - 0x183...3191
     - 0xc1e...1283
 
+cronJob:
+  checkAndUpdateUnverifiedSnsInvite: "@every 10m"
+
 push:
     desktop:
         oneSignalAppId: "app-id"
@@ -51,3 +54,15 @@ publicData:
       wallet: 0x444C1Cf57b65C011abA9BaBEd05C6b13C11b03b5
     - chainId: 137
       wallet: 0x4876eaD85CE358133fb80276EB3631D192196e24
+
+quickAccounting:
+    url: https://qa-api.taoist.dev
+    workspaceId: 1
+    categoryId: 1
+    categoryName: SeeDAO
+
+snsInvite:
+    entityType: guild
+    entityId: 2
+    entityName: 新手公会
+    applicant: 0x4564d5a8Bb409272F1FB4ae4c8b45fC0eaFd709D

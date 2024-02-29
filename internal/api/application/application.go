@@ -51,6 +51,7 @@ func ListApplicants(ctx *gin.Context) {
 		Select("applications.applicant, users.name").
 		Find(&rslt).Error
 	if err != nil {
+		log.Error().Msgf("query applications error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("query applications error")))
 		return
@@ -78,6 +79,7 @@ func List(ctx *gin.Context) {
 
 	rcds, total, err := model.GenerateFrontendApplicationRecords(db, &queryParams, true)
 	if err != nil {
+		log.Error().Msgf("list application API error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("query result error")))
 		return
@@ -136,6 +138,7 @@ func Create(ctx *gin.Context) {
 				Else("")
 			ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), obj, internal.ActCreateApplication)
 			if err != nil {
+				log.Error().Msgf("check permission error: %+v", err)
 				sdk.LogServerErrorToSentry(ctx, err)
 				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 				return err
@@ -194,6 +197,7 @@ func Create(ctx *gin.Context) {
 	})
 
 	if err != nil {
+		log.Error().Msgf("creation application records error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("creation application records error")))
 		return
@@ -221,6 +225,7 @@ func Download(ctx *gin.Context) {
 
 	rcds, _, err := model.GenerateFrontendApplicationRecords(db, &queryParams, false)
 	if err != nil {
+		log.Error().Msgf("list application API error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("query result error")))
 		return
@@ -242,6 +247,7 @@ func Download(ctx *gin.Context) {
 		w := csv.NewWriter(buf)
 		err = w.Write(csvHeaderList)
 		if err != nil {
+			log.Error().Msgf("write csv header error: %+v", err)
 			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("write csv header error")))
 			return
@@ -261,6 +267,7 @@ func Download(ctx *gin.Context) {
 				r.Status,
 			})
 			if err != nil {
+				log.Error().Msgf("write csv row error: %+v", err)
 				sdk.LogServerErrorToSentry(ctx, err)
 				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("write csv row error")))
 				return
@@ -284,6 +291,7 @@ func Download(ctx *gin.Context) {
 		f := excelize.NewFile()
 		streamWriter, err := f.NewStreamWriter("Sheet1")
 		if err != nil {
+			log.Error().Msgf("create excel stream writer error: %+v", err)
 			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create excel stream writer error")))
 			return
@@ -293,6 +301,7 @@ func Download(ctx *gin.Context) {
 		cell, _ := excelize.CoordinatesToCellName(1, 1)
 		title := lo.Map(csvHeaderList, func(item string, _ int) any { return item })
 		if err := streamWriter.SetRow(cell, title); err != nil {
+			log.Error().Msgf("write excel header error: %+v", err)
 			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("write excel header error")))
 			return
@@ -329,6 +338,7 @@ func Download(ctx *gin.Context) {
 		// write to response
 		err = f.Write(ctx.Writer)
 		if err != nil {
+			log.Error().Msgf("write excel to response error: %+v", err)
 			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("write excel to response error")))
 		}
@@ -347,6 +357,7 @@ func Download(ctx *gin.Context) {
 
 		err = os.WriteFile(tmpFile.Name(), jsonBytes, 0777)
 		if err != nil {
+			log.Error().Msgf("write json error: %+v", err)
 			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("write json error")))
 			return
@@ -357,23 +368,6 @@ func Download(ctx *gin.Context) {
 	} else {
 		_, _ = ctx.Writer.Write([]byte(""))
 	}
-}
-
-func DownloadUploadTemplate(ctx *gin.Context) {
-	lang := api.GetLangFromQuery(ctx, "en")
-	headerStr := internal.ApplicationUploadTemplateHeader[lang]
-	if header, found := internal.ApplicationUploadTemplateHeader[lang]; found {
-		headerStr = header
-	}
-
-	reader := strings.NewReader(headerStr)
-	contentLength := len(headerStr)
-
-	extraHeaders := map[string]string{
-		"Content-Disposition": `attachment; filename="upload-template.csv"`,
-	}
-
-	ctx.DataFromReader(http.StatusOK, int64(contentLength), "encoding/csv", reader, extraHeaders)
 }
 
 // Batch operations, most of the request bodies are ids
@@ -388,6 +382,7 @@ func BatchProcess(ctx *gin.Context) {
 	//  check permission: `(0x..., proj_and_guild, audit_app)`
 	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), internal.ObjProjAndGuild, internal.ActAuditApplication)
 	if err != nil {
+		log.Error().Msgf("check permission error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 		return
@@ -410,6 +405,7 @@ func BatchProcess(ctx *gin.Context) {
 	var applications []model.Application
 	err = db.Model(&model.Application{}).Where("state = ?", model.ApplicationStateApproved).Find(&applications).Error
 	if err != nil {
+		log.Error().Msgf("query approved applications error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("query approved applications error")))
 		return
@@ -419,6 +415,7 @@ func BatchProcess(ctx *gin.Context) {
 
 	err = model.BatchAuditApplication(db, common.FormatUserWallet(user.Wallet), &applications, model.AuditActionProcess, "", enforcer, push)
 	if err != nil {
+		log.Error().Msgf("process applications error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("process applications error")))
 		return
@@ -431,6 +428,7 @@ func BatchProcess(ctx *gin.Context) {
 	}
 	err = db.Model(&model.AppBundle{}).Where("id IN ?", lo.Keys(appBundleIds)).Update("state", model.ApplicationStateProcessing).Error
 	if err != nil {
+		log.Error().Msgf("process applications error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("process applications error")))
 		return
@@ -453,6 +451,7 @@ func BatchApprove(ctx *gin.Context) {
 	//  check permission: `(0x..., proj_and_guild, audit_app)`
 	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), internal.ObjProjAndGuild, internal.ActAuditApplication)
 	if err != nil {
+		log.Error().Msgf("check permission error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 		return
@@ -463,9 +462,11 @@ func BatchApprove(ctx *gin.Context) {
 		return
 	}
 
+	// FIXME: pass application ids instead of reference to applications
 	push := api.ForContextOnlyPush(ctx)
 	err = model.BatchAuditApplication(db, common.FormatUserWallet(user.Wallet), &applications, model.AuditActionApprove, "", enforcer, push)
 	if err != nil {
+		log.Error().Msgf("approve applications error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("approve applications error")))
 		return
@@ -489,6 +490,7 @@ func BatchReject(ctx *gin.Context) {
 	//  check permission: `(0x..., proj_and_guild, audit_app)`
 	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), internal.ObjProjAndGuild, internal.ActAuditApplication)
 	if err != nil {
+		log.Error().Msgf("check permission error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 		return
@@ -502,6 +504,7 @@ func BatchReject(ctx *gin.Context) {
 	push := api.ForContextOnlyPush(ctx)
 	err = model.BatchAuditApplication(db, common.FormatUserWallet(user.Wallet), &applications, model.AuditActionReject, "", enforcer, push)
 	if err != nil {
+		log.Error().Msgf("reject applications error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusBadRequest, api.ServerError(errors.New("reject applications error")))
 		return
@@ -519,6 +522,7 @@ func BatchComplete(ctx *gin.Context) {
 	//  check permission: `(0x..., proj_and_guild, audit_app)`
 	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), internal.ObjProjAndGuild, internal.ActAuditApplication)
 	if err != nil {
+		log.Error().Msgf("check permission error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 		return
@@ -540,9 +544,11 @@ func BatchComplete(ctx *gin.Context) {
 		return
 	}
 
+	// FIXME: pass application ids instead of reference to applications
 	push := api.ForContextOnlyPush(ctx)
 	err = model.BatchAuditApplication(db, common.FormatUserWallet(user.Wallet), &applications, model.AuditActionComplete, reqBody.Message, enforcer, push)
 	if err != nil {
+		log.Error().Msgf("complete applications error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusBadRequest, api.ServerError(errors.New("complete applications error")))
 		return
@@ -554,6 +560,7 @@ func BatchComplete(ctx *gin.Context) {
 	}
 	err = db.Model(&model.AppBundle{}).Where("id IN ?", lo.Keys(appBundleIds)).Update("state", model.ApplicationStateCompleted).Error
 	if err != nil {
+		log.Error().Msgf("complete applications error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusBadRequest, api.ServerError(errors.New("complete applications error")))
 		return
@@ -580,63 +587,6 @@ func Detail(ctx *gin.Context) {
 	application := &model.Application{}
 	getRecordOrReturnNotFound(ctx, application)
 	ctx.JSON(http.StatusOK, application)
-}
-
-func Approve(ctx *gin.Context) {
-	application := &model.Application{}
-	auditApplication(ctx, application, model.AuditActionApprove, "")
-	ctx.JSON(http.StatusOK, "")
-}
-
-func Reject(ctx *gin.Context) {
-	application := &model.Application{}
-	auditApplication(ctx, application, model.AuditActionReject, "")
-	ctx.JSON(http.StatusOK, "")
-}
-
-func Process(ctx *gin.Context) {
-	application := &model.Application{}
-	auditApplication(ctx, application, model.AuditActionProcess, "")
-	ctx.JSON(http.StatusOK, "")
-}
-
-func Complete(ctx *gin.Context) {
-	application := &model.Application{}
-	auditApplication(ctx, application, model.AuditActionComplete, "")
-	ctx.JSON(http.StatusOK, "")
-}
-
-func auditApplication(ctx *gin.Context, application *model.Application, auditAction model.AuditActionType, auditMsg string) {
-	getRecordOrReturnNotFound(ctx, application)
-
-	user, enforcer, db, _ := api.ForContext(ctx)
-	push := api.ForContextOnlyPush(ctx)
-
-	//  check permission: `(0x..., proj_and_guild, audit_app)`
-	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), internal.ObjProjAndGuild, internal.ActAuditApplication)
-	if err != nil {
-		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
-		return
-	}
-	if !ok {
-		ctx.JSON(http.StatusForbidden, api.Forbidden())
-		return
-	}
-
-	if application.ValidateAuditAction(auditAction) {
-		err = model.AuditApplication(db, common.FormatUserWallet(user.Wallet), application, auditAction, auditMsg, enforcer, push)
-		if err != nil {
-			sdk.LogServerErrorToSentry(ctx, err)
-			ctx.JSON(http.StatusBadRequest, api.ServerError(errors.New("approve application error")))
-			return
-		}
-	} else {
-		err := fmt.Errorf("application currently is at state %s, which is not suit for approve", application.State)
-		sdk.LogUserSideError(ctx, err)
-		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
-		return
-	}
 }
 
 func getRecordOrReturnNotFound(ctx *gin.Context, application *model.Application) {

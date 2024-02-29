@@ -1,17 +1,17 @@
 package model_test
 
 import (
+	"os"
 	"testing"
 
-	"github.com/glebarez/sqlite"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/shopspring/decimal"
 	"github.com/theseed-labs/os-backend/internal/model"
+	"github.com/theseed-labs/os-backend/internal/storage"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
-
-var db *gorm.DB
 
 const (
 	aliceWallet = "0xB5238ed5a631895024d5dD91EbC4361b59276455"
@@ -37,6 +37,7 @@ var tables = []any{
 	&model.TreasuryAsset{},
 	&model.TreasuryDetailedRecord{},
 	&model.TreasuryAuditLog{},
+	&model.Season{},
 }
 
 var (
@@ -49,11 +50,24 @@ var (
 
 var openProject, pendingCloseProject, closedProject *model.Project
 
+var db *gorm.DB
 var _ = BeforeSuite(func() {
-	db, _ = gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
+	dsn := os.Getenv("TEST_DATABASE_DSN")
+	debugFlag := os.Getenv("TEST_DATABASE_DEBUG")
+	logLv := logger.Error
+	if debugFlag != "" {
+		logLv = logger.Info
+	}
+	db, _ = storage.BuildGormClient("pg", dsn, logLv)
+	storage.InitCache()
 })
 
 func TestModel(t *testing.T) {
+	dsn := os.Getenv("TEST_DATABASE_DSN")
+	if dsn == "" {
+		t.Skip("skip test without TEST_DATABASE_DSN")
+	}
+
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Model Suite")
 }

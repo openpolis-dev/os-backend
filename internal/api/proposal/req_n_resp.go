@@ -6,8 +6,9 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
-	"github.com/theseed-labs/os-backend/internal/api/component"
+	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/common"
+	"github.com/theseed-labs/os-backend/internal/db_agent"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk/metaforo"
 	"gorm.io/gorm"
@@ -26,6 +27,7 @@ type ListProposalQueryParams struct {
 	CategoryId    uint   `form:"category_id"`
 	PendingSubmit int    `form:"pending_submit"`
 	Q             string `form:"q"`
+	Sip           string `form:"sip"`
 }
 
 // ComponentRequestData represents a component request, which contains component name and associated data
@@ -41,16 +43,15 @@ type ComponentRequestData struct {
 }
 
 type CreateOrUpdateProposalData struct {
-	TemplateId          uint                             `json:"template_id"`
-	Title               string                           `json:"title"`
-	ProposalCategoryId  uint                             `json:"proposal_category_id"`
-	ContentBlocks       []*FrontendContentBlockRecord    `json:"content_blocks"`
-	Components          map[string]*ComponentRequestData `json:"components"`
-	VoteGateId          uint                             `json:"vote_gate_id"`
-	MetaforoAccessToken string                           `json:"metaforo_access_token"`
-	SubmitToMetaforo    bool                             `json:"submit_to_metaforo"`
-	EditorType          int                              `json:"editor_type"`
-	VoteType            int                              `json:"vote_type"`
+	TemplateId              uint                          `json:"template_id"`
+	Title                   string                        `json:"title"`
+	ContentBlocks           []*FrontendContentBlockRecord `json:"content_blocks"`
+	Components              []*ComponentRequestData       `json:"components"`
+	MetaforoAccessToken     string                        `json:"metaforo_access_token"`
+	SubmitToMetaforo        bool                          `json:"submit_to_metaforo"`
+	EditorType              int                           `json:"editor_type"`
+	VoteOptions             []string                      `json:"vote_options"`
+	CreateProjectProposalId uint                          `json:"create_project_proposal_id"`
 }
 
 type RejectProposalData struct {
@@ -88,9 +89,26 @@ type RevokeVoteData struct {
 	MetaforoAccessToken string `json:"metaforo_access_token"`
 }
 
+type CloseVoteRequest struct {
+	MetaforoVoteId      int    `json:"vote_id"`
+	MetaforoAccessToken string `json:"metaforo_access_token"`
+}
+
 ///////////////////////
 // Response data definitions
 ///////////////////////
+
+// ComponentInstance indicates the component be added into proposal
+// It is generated from the Component object, and includes the data filled in proposal
+type ComponentInstance struct {
+	ID            uint   `json:"id"`
+	ComponentId   uint   `json:"component_id"`
+	ComponentName string `json:"name"`
+	Schema        string `json:"schema"`
+	Data          string `json:"data"`
+
+	CreateTs int64 `json:"create_ts"`
+}
 
 type FrontendProposalListRecord struct {
 	ID              uint   `json:"id"`
@@ -102,6 +120,7 @@ type FrontendProposalListRecord struct {
 	StateId         int    `json:"-"`
 	CreateTs        int64  `json:"create_ts"`
 	Version         uint   `json:"version"`
+	Sip             int    `json:"sip"`
 
 	// Vote related state
 	// TODO: Vote Gate related logic
@@ -110,9 +129,11 @@ type FrontendProposalListRecord struct {
 }
 
 type FrontendContentBlockRecord struct {
-	ID      uint   `json:"id"`
-	Title   string `json:"title"`
-	Content string `json:"content"`
+	ID            uint   `json:"id"`
+	Title         string `json:"title"`
+	Content       string `json:"content"`
+	Type          string `json:"type"`
+	ComponentList string `json:"name"`
 }
 
 type FrontendProposalEditHistories struct {
@@ -145,12 +166,18 @@ type FrontendProposalCommentRecord struct {
 	IsRejected bool `json:"is_rejected"` // indicate whether this comment is a rejected comment
 }
 
+type FrontendProposalVoteOptionRecord struct {
+	ID         uint   `json:"id"`
+	Label      string `json:"label"`
+	MetaforoId int    `json:"metaforo_id"`
+}
+
 type FrontendProposalDetailRecord struct {
-	ID            uint                           `json:"id"`
-	Title         string                         `json:"title"`
-	ContentBlocks []*FrontendContentBlockRecord  `json:"content_blocks"`
-	State         string                         `json:"state"`
-	Components    []*component.ComponentInstance `json:"components"`
+	ID            uint                          `json:"id"`
+	Title         string                        `json:"title"`
+	ContentBlocks []*FrontendContentBlockRecord `json:"content_blocks"`
+	State         string                        `json:"state"`
+	Components    []*ComponentInstance          `json:"components"`
 
 	ProposalCategoryId uint `json:"proposal_category_id"`
 
@@ -159,6 +186,8 @@ type FrontendProposalDetailRecord struct {
 	ApplicantAvatar string `json:"applicant_avatar"`
 	Reviewer        string `json:"reviewer"`
 	ReviewerAvatar  string `json:"reviewer_avatar"`
+
+	Sip int `json:"sip"`
 
 	// Arweave Hash
 	Arweave string `json:"arweave"`
@@ -181,11 +210,17 @@ type FrontendProposalDetailRecord struct {
 
 	VoteType int `json:"vote_type"`
 
+	OsVoteOptions []*FrontendProposalVoteOptionRecord `json:"os_vote_options"`
+
 	// Is current user voted for this proposal
 	IsVoted bool `json:"is_voted"`
 
-	IsBasedOnTemplate bool   `json:"is_based_on_template"`
-	TemplateName      string `json:"template_name"`
+	IsBasedOnCustomTemplate bool   `json:"is_based_on_custom_template"`
+	TemplateName            string `json:"template_name"`
+
+	IsInstantExecution bool  `json:"is_instant_execution"`
+	ExecutionTs        int64 `json:"execution_ts"`
+	PublicityTs        int64 `json:"publicity_ts"`
 
 	// Timestamps
 	CreateTs int64 `json:"create_ts"`
@@ -237,26 +272,30 @@ type associatedProposalData struct {
 // Some converter functions
 ///////////////////////
 
-func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal, startPostId int, accessToken string, metaforoGroupName string) (*FrontendProposalDetailRecord, error) {
+func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposalId uint, startPostId int, accessToken string, metaforoGroupName string) (*FrontendProposalDetailRecord, error) {
 	var proposalBlocks []*model.ProposalContentBlock
-	if err := db.Where(&model.ProposalContentBlock{ProposalID: proposal.ID}).Find(&proposalBlocks).Error; err != nil {
+	if err := db.Where(&model.ProposalContentBlock{ProposalID: proposalId}).Order("id").Find(&proposalBlocks).Error; err != nil {
 		return nil, err
 	}
 
 	var proposalComponentRecords []*model.ProposalComponentRecord
-	if err := db.Where(&model.ProposalComponentRecord{ProposalID: proposal.ID}).Find(&proposalComponentRecords).Error; err != nil {
+	if err := db.Where(&model.ProposalComponentRecord{ProposalID: proposalId}).
+		Where("component_id != ?", 0).
+		Order("id").Find(&proposalComponentRecords).Error; err != nil {
 		return nil, err
 	}
 
 	proposalContentResponse := lo.Map(proposalBlocks, func(item *model.ProposalContentBlock, _ int) *FrontendContentBlockRecord {
 		return &FrontendContentBlockRecord{
-			ID:      item.ID,
-			Title:   item.Title,
-			Content: item.Content,
+			ID:            item.ID,
+			Title:         item.Title,
+			Content:       item.Content,
+			Type:          item.Type,
+			ComponentList: item.ComponentList,
 		}
 	})
 
-	proposalComponentResponse := lo.Map(proposalComponentRecords, func(item *model.ProposalComponentRecord, _ int) *component.ComponentInstance {
+	proposalComponentResponse := lo.Map(proposalComponentRecords, func(item *model.ProposalComponentRecord, _ int) *ComponentInstance {
 		var componentRecord model.ProposalComponent
 		err := db.Find(&componentRecord, item.ComponentID).Error
 		if err != nil {
@@ -265,7 +304,7 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 		}
 
 		// Special processing for `associate_proposal`
-		if componentRecord.Name == "associate_proposal" {
+		if componentRecord.Name == internal.ComponentNameAssociateProposal {
 			var parsedData associatedProposalData
 			err := json.Unmarshal([]byte(item.Data), &parsedData)
 
@@ -273,7 +312,7 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 				log.Error().Msgf("unmarshal associate proposal data error: %+v", err)
 			} else {
 				var associatedProposalRecord model.Proposal
-				err = db.Find(&associatedProposalRecord, parsedData.Proposal.Id).Select("state").Error
+				err = db.Find(&associatedProposalRecord, parsedData.Proposal.Id).Error
 				if err != nil {
 					log.Error().Msgf("query associated proposal %d from DB error: %+v", parsedData.Proposal.Id, err)
 				} else {
@@ -281,7 +320,7 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 				}
 
 				var associatedApplicantRecord model.User
-				err = db.Model(&model.User{}).Where("wallet = ?", common.FormatUserWallet(parsedData.Applicant)).Select("avatar").First(&associatedApplicantRecord).Error
+				err = db.Model(&model.User{}).Where("wallet = ?", common.FormatUserWallet(parsedData.Applicant)).First(&associatedApplicantRecord).Error
 				if err != nil {
 					log.Error().Msgf("query associated applicant %s from DB error: %+v", parsedData.Applicant, err)
 				} else {
@@ -297,7 +336,7 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 			}
 		}
 
-		return &component.ComponentInstance{
+		return &ComponentInstance{
 			ID:            item.ID,
 			ComponentId:   item.ComponentID,
 			ComponentName: componentRecord.Name,
@@ -307,8 +346,11 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 		}
 	})
 
-	var applicantAvatarLink string
-	db.Model(model.User{}).Where("wallet = ?", common.FormatUserWallet(proposal.Applicant)).Select("avatar").First(&applicantAvatarLink)
+	var proposal model.Proposal
+	if err := db.Find(&proposal, proposalId).Error; err != nil {
+		log.Error().Msgf("query proposal %d from DB error: %+v", proposalId, err)
+		return nil, err
+	}
 
 	var editHistoryRecords []*FrontendProposalEditHistoryRecord
 	var frontendCommentsRecords []*FrontendProposalCommentRecord
@@ -325,14 +367,28 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 		commentCount = metaforoProposal.Thread.PostsCount
 		votes = metaforoProposal.Thread.Polls
 
-		err = UpdateDbRecordsFromMetaforoProposalResponse(db, proposal, metaforoProposal)
+		err = UpdateDbRecordsFromMetaforoProposalResponse(db, proposalId, metaforoProposal)
 		if err != nil {
+			log.Error().Msgf("update proposal %d from metaforo error: %+v", proposalId, err)
 			return nil, err
 		}
-		// TODO: Query UserVoteRecord and update isVoted field
 
-		err = db.Model(model.ProposalComment{}).Where("proposal_id = ? AND is_reject_comment = ?", proposal.ID, true).First(&rejectedComment).Error
+		pollStatusChanged, err := UpdateDbVoteOptionRecordsFromMetaforoProposalResponse(db, proposalId, metaforoProposal)
+		if err != nil {
+			log.Error().Msgf("update propsal vote option records with metaforo response error: %+v", err)
+			return nil, err
+		}
+
+		if pollStatusChanged {
+			if err = HandleProposalPollStatusChange(db, proposalId); err != nil {
+				log.Error().Msgf("handle proposal poll status change error: %+v", err)
+				return nil, err
+			}
+		}
+
+		err = db.Model(model.ProposalComment{}).Where("proposal_id = ? AND is_reject_comment = ?", proposalId, true).First(&rejectedComment).Error
 		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+			log.Error().Msgf("fetch rejected comment error: %+v", err)
 			return nil, err
 		}
 
@@ -374,9 +430,9 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 	}
 
 	templateName := ""
-	if proposal.TemplateId != 0 {
+	if proposal.ProposalTemplateID != nil {
 		var template model.ProposalTemplate
-		err := db.Find(&template, proposal.TemplateId).Error
+		err := db.Find(&template, *proposal.ProposalTemplateID).Error
 		if err != nil {
 			log.Error().Msgf("fetch proposal template error: %+v", err)
 			return nil, err
@@ -384,15 +440,59 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 		templateName = template.Name
 	}
 
+	proposalExecTs := int64(0)
+	var proposalCronJobs []*model.CronJob
+	if err = db.Where(&model.CronJob{ProposalId: proposalId}).Find(&proposalCronJobs).Error; err != nil {
+		log.Error().Msgf("get proposal cronjob error: %+v", err)
+	}
+
+	var voteRecords []*model.ProposalVoteRecord
+	err = db.Model(proposal).Association("VoteRecords").Find(&voteRecords)
+	if err != nil {
+		log.Error().Msgf("get vote records error: %+v", err)
+		return nil, err
+	}
+
+	proposalPublicityTs := proposal.CreateTs + proposal.PublicitySecond
+	for _, r := range voteRecords {
+		proposalPublicityTs = r.StartTs
+	}
+
+	for _, job := range proposalCronJobs {
+		if job.NextExecTs > proposalExecTs {
+			proposalExecTs = job.NextExecTs
+		}
+	}
+
+	var osVoteOptionRecords []*model.ProposalVoteOptionRecord
+	err = db.Model(&model.ProposalVoteOptionRecord{}).Where("proposal_id = ?", proposalId).Find(&osVoteOptionRecords).Error
+	if err != nil {
+		log.Error().Msgf("get vote option records error: %+v", err)
+		return nil, err
+	}
+
+	frontendVoteOptions := lo.Map(osVoteOptionRecords, func(r *model.ProposalVoteOptionRecord, _ int) *FrontendProposalVoteOptionRecord {
+		return &FrontendProposalVoteOptionRecord{
+			ID:         r.ID,
+			Label:      r.Text,
+			MetaforoId: r.MetaforoID,
+		}
+	})
+
+	// Refresh proposal record
+	if err = db.Find(&proposal, proposalId).Error; err != nil {
+		log.Error().Msgf("fetch proposal error: %+v", err)
+		return nil, err
+	}
 	return &FrontendProposalDetailRecord{
-		ID:                      proposal.ID,
+		ID:                      proposalId,
 		Title:                   proposal.Title,
 		ContentBlocks:           proposalContentResponse,
 		ProposalCategoryId:      proposal.ProposalCategoryID,
 		State:                   model.ProposalStateName[proposal.State],
 		Components:              proposalComponentResponse,
 		Applicant:               proposal.Applicant,
-		ApplicantAvatar:         applicantAvatarLink,
+		ApplicantAvatar:         db_agent.GetUserAvatar(proposal.Applicant),
 		IsRejected:              proposal.State == int(model.ProposalStateRejected),
 		RejectReason:            rejectedComment.Content,
 		RejectTs:                rejectedComment.CreateTs,
@@ -401,14 +501,19 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposal *model.Proposal
 			TotalCount: len(editHistoryRecords),
 			Lists:      editHistoryRecords,
 		},
-		Arweave:           proposal.ArweaveHash,
-		CommentCount:      commentCount,
-		Comments:          frontendCommentsRecords,
-		VoteGate:          voteGate,
-		Votes:             votes,
-		VoteType:          proposal.VoteType,
-		CreateTs:          proposal.CreateTs,
-		IsBasedOnTemplate: proposal.TemplateId != 0,
-		TemplateName:      templateName,
+		Sip:                     proposal.Sip,
+		Arweave:                 proposal.ArweaveHash,
+		CommentCount:            commentCount,
+		Comments:                frontendCommentsRecords,
+		VoteGate:                voteGate,
+		Votes:                   votes,
+		OsVoteOptions:           frontendVoteOptions,
+		VoteType:                proposal.VoteType,
+		CreateTs:                proposal.CreateTs,
+		IsBasedOnCustomTemplate: proposal.IsBasedOnCustomTemplate,
+		TemplateName:            templateName,
+		IsInstantExecution:      proposal.PendingExecutionSecond == 0,
+		ExecutionTs:             proposalExecTs,
+		PublicityTs:             proposalPublicityTs,
 	}, nil
 }

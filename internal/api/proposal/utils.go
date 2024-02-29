@@ -2,6 +2,8 @@ package proposal
 
 import (
 	"errors"
+	"reflect"
+	"strconv"
 
 	"github.com/rs/zerolog/log"
 	"github.com/theseed-labs/os-backend/internal/common"
@@ -17,6 +19,7 @@ SELECT p.id,
        u.avatar as applicant_avatar,
        pc.name  as category_name,
        p.create_ts,
+       p.sip,
        p.version,
        p.state as state_id
 FROM proposals p
@@ -26,6 +29,26 @@ FROM proposals p
               ON p.proposal_record_id = t2.proposal_record_id AND p.version = t2.max_version
          JOIN proposal_categories pc ON p.proposal_category_id = pc.id
          JOIN users u ON p.applicant = u.wallet`
+
+const ListProposalsSQLForGettingCreatingProjectProposal = `
+SELECT p.id,
+       p.title,
+       lower(p.applicant) as applicant,
+       u.avatar as applicant_avatar,
+       pc.name  as category_name,
+       p.create_ts,
+       p.sip,
+       projects.status as project_status,
+       p.version,
+       p.state as state_id
+FROM proposals p
+         JOIN (SELECT proposal_record_id, MAX(version) AS max_version
+               FROM proposals
+               GROUP BY proposal_record_id) t2
+              ON p.proposal_record_id = t2.proposal_record_id AND p.version = t2.max_version
+         JOIN proposal_categories pc ON p.proposal_category_id = pc.id
+         JOIN users u ON p.applicant = u.wallet
+         JOIN projects ON projects.s_ip = p.sip::text`
 
 const QueryMetaforoUserWithOsUserBaseSQL = `
 SELECT u.wallet            AS wallet,
@@ -71,18 +94,18 @@ func GetMetaforoProposalByInternalId(db *gorm.DB, proposalIdStr string, metaforo
 		return nil, nil, err
 	}
 
-	metaforoProposalRcd, err := metaforo.GetProposal(osProposalRcd.GetMetaforoThreadId(), metaforoGroupName, "", 0)
+	metaforoProposalResponse, err := metaforo.GetProposal(osProposalRcd.GetMetaforoThreadId(), metaforoGroupName, "", 0)
 	if err != nil {
 		log.Error().Msgf("get metaforo proposal error: %+v", err)
 		return nil, nil, err
 	}
 
-	err = UpdateDbRecordsFromMetaforoProposalResponse(db, osProposalRcd, metaforoProposalRcd)
+	err = UpdateDbRecordsFromMetaforoProposalResponse(db, osProposalRcd.ID, metaforoProposalResponse)
 	if err != nil {
 		log.Error().Msgf("update db records from metaforoProposalResponse error: %+v", err)
 	}
 
-	return osProposalRcd, metaforoProposalRcd, nil
+	return osProposalRcd, metaforoProposalResponse, nil
 }
 
 func GetLocalEditHistoriesWithOsUserData(db *gorm.DB, proposalRecordId string) ([]*FrontendProposalEditHistoryRecord, error) {
@@ -154,13 +177,21 @@ func GetProposalCommentsWithOsUserData(db *gorm.DB, metaforoComments []metaforo.
 			}
 		}
 
+		var mfContent string
+		switch reflect.TypeOf(metaforoComment.Content).Kind() {
+		case reflect.Float64:
+			mfContent = strconv.FormatFloat(metaforoComment.Content.(float64), 'f', -1, 64)
+		default:
+			mfContent = metaforoComment.Content.(string)
+		}
+
 		frontendCommentsRecords = append(frontendCommentsRecords, &FrontendProposalCommentRecord{
 			MetaforoPostId:      metaforoComment.Id,
-			Content:             metaforoComment.Content,
+			Content:             mfContent,
 			Wallet:              userWallet,
 			Avatar:              userAvatar,
 			ReplyMetaforoPostId: metaforoComment.ReplyPid,
-			Deleted:             metaforoComment.Deleted == 1,
+			Deleted:             metaforoComment.DeletedBy != nil,
 			Children:            childrenRecords,
 			ProposalTitle:       proposalTitle,
 			ProposalTs:          proposalTs,

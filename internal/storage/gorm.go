@@ -6,7 +6,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/theseed-labs/os-backend/internal/model"
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -36,50 +35,15 @@ func BuildGormClient(dbSchema string, dsn string, logLevel logger.LogLevel) (*go
 
 // InitGormDB inits gorm database connector
 func InitGormDB(dsn string, dbSchema string) {
+	InitGormDBWithLoggerLevel(dsn, dbSchema, logger.Info)
+}
+
+func InitGormDBWithLoggerLevel(dsn string, dbSchema string, logLevel logger.LogLevel) {
 	var err error
-	gormDB, err = BuildGormClient(dbSchema, dsn, logger.Info)
+	gormDB, err = BuildGormClient(dbSchema, dsn, logLevel)
 	if err != nil {
 		panic(fmt.Errorf("init gorm connection error: %+v", err))
 	}
-}
-
-// MigrateTables auto migrate models defined.
-func MigrateTables(db *gorm.DB) error {
-	// Migrate the schema
-	return db.AutoMigrate(
-		&model.User{},
-		&model.UserNonce{},
-		&model.UserAssetRecord{},
-		&model.Project{},
-		&model.ProjectBudget{},
-		&model.Guild{},
-		&model.GuildBudget{},
-		&model.AppBundle{},
-		&model.AppBundleAuditLog{},
-		&model.Season{},
-		&model.Application{},
-		&model.ApplicationAuditLog{},
-		&model.TreasuryAsset{},
-		&model.TreasuryDetailedRecord{},
-		&model.TreasuryAuditLog{},
-		&model.Event{},
-		&model.Push{},
-		&model.MetaforoUser{},
-		&model.Proposal{},
-		&model.ProposalCategory{},
-		&model.ProposalContentBlock{},
-		&model.ProposalAuditLog{},
-		&model.ProposalComment{},
-		&model.ProposalComponentRecord{},
-		&model.ProposalUserVoteRecord{},
-		&model.ProposalVoteGate{},
-		&model.ProposalVoteRecord{},
-		&model.ProposalVoteOptionRecord{},
-		&model.ProposalComponent{},
-		&model.ProposalComponentAction{},
-		&model.ProposalTemplate{},
-		&model.CronJob{},
-	)
 }
 
 // SeedDbRecords inits some const data records to database if not existing

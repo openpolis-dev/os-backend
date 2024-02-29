@@ -41,13 +41,14 @@ type AppBundleResponseRecord struct {
 }
 
 type ListAvailableProjectAndGuildResp struct {
-	Guilds   []*model.Guild   `json:"guilds"`
-	Projects []*model.Project `json:"projects"`
+	Guilds             []*model.Guild              `json:"guilds"`
+	Projects           []*model.Project            `json:"projects"`
+	CommonBudgetSource []*model.CommonBudgetSource `json:"common_budget_source"`
 }
 
 // ListAvailableProjectsAndGuilds returns available projects and guilds for current user
 //
-// @summary	List available projects and guilds for current user
+// @summary	List available projects and guilds for current user, and all common budget sources
 // @router		/available_projects_guilds [get]
 // @tags		AppBundle
 // @success	200	{object}	api.Reply{data=ListAvailableProjectAndGuildResp}
@@ -94,9 +95,18 @@ func ListAvailableProjectsAndGuilds(ctx *gin.Context) {
 		}
 	}
 
+	var commonBudgetSources []*model.CommonBudgetSource
+	err = db.Model(&model.CommonBudgetSource{}).Find(&commonBudgetSources).Error
+	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("list common budget sources error")))
+		return
+	}
+
 	ctx.JSON(http.StatusOK, api.Success(&ListAvailableProjectAndGuildResp{
 		guilds,
 		projects,
+		commonBudgetSources,
 	}))
 }
 
@@ -262,15 +272,16 @@ func CreateAppBundle(ctx *gin.Context) {
 		UpdateTs:     model.GetCurrentUtcEpochSecond(),
 		Type:         "NEW_REWARD",
 	}
-	err = db.Model(model.AppBundle{}).Create(&appBundle).Error
-	if err != nil {
-		log.Error().Msgf("Create app bundle records error: %+v", err)
-		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create app bundle record error")))
-		return
-	}
 
 	err = db.Transaction(func(tx *gorm.DB) error {
+		err = tx.Model(model.AppBundle{}).Create(&appBundle).Error
+		if err != nil {
+			log.Error().Msgf("Create app bundle records error: %+v", err)
+			sdk.LogServerErrorToSentry(ctx, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create app bundle record error")))
+			return err
+		}
+
 		appBundle.AppRecords = lo.Map(newAppBundleReq.Records, func(appRcdRequest *model.NewApplicationRequest, index int) *model.Application {
 			return &model.Application{
 				Type:             model.ApplicationNewReward,
@@ -360,7 +371,7 @@ func RejectAppBundles(ctx *gin.Context) {
 }
 
 func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState) {
-	db := api.ForContextOnlyDB(ctx)
+	db, cfg := api.ForContextDBAndConfig(ctx)
 	var idList []int
 	err := ctx.Bind(&idList)
 	if err != nil {
@@ -412,14 +423,17 @@ func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState
 		return
 	}
 
+	// send to QuickAccounting
+	var qaInputs []*sdk.QAInput
+	now := time.Now().In(internal.ProjectTimezone).Format(time.DateTime)
+
 	err = db.Transaction(func(tx *gorm.DB) error {
 		for _, appBundleRcd := range appBundleRcds {
-
 			appBundleRcd.State = newState
 			appBundleRcd.UpdateTs = model.GetCurrentUtcEpochSecond()
 			appBundleRcd.UpdatedAt = time.Now().In(internal.ProjectTimezone)
-			err = tx.Save(&appBundleRcd).Error
-			if err != nil {
+			if err = tx.Updates(&appBundleRcd).Error; err != nil {
+				log.Error().Msgf("update application state error: %+v, app bundle: %+v", err, appBundleRcd)
 				return err
 			}
 
@@ -445,20 +459,61 @@ func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState
 					return err
 				}
 
-				err = tx.Model(model.AppBundleAuditLog{}).Create(&model.AppBundleAuditLog{
-					AppBundleId: appBundleRcd.ID,
-					AppBundle:   appBundleRcd,
-					LogTs:       model.GetCurrentUtcEpochSecond(),
-					Operation:   action,
-					Operator:    common.FormatUserWallet(user.Wallet),
-					PreState:    model.ApplicationStateOpen,
-					PostState:   newState,
-					ExtraData:   "",
+				err = tx.Model(model.ApplicationAuditLog{}).Create(&model.ApplicationAuditLog{
+					ApplicationID: appRcd.ID,
+					LogTs:         model.GetCurrentUtcEpochSecond(),
+					Operation:     action,
+					Operator:      common.FormatUserWallet(user.Wallet),
+					PreState:      model.ApplicationStateOpen,
+					PostState:     newState,
+					ExtraData:     "",
 				}).Error
 				if err != nil {
 					log.Error().Msgf("create app bundle audit log record error: %+v, app bundle: %+v", err, appBundleRcd)
 					tx.Rollback()
 					return err
+				}
+
+				// send to QuickAccounting
+				if newState == model.ApplicationStateApproved {
+					// only send support token to QuickAccounting
+					if dc, exist := internal.AssertDecimalsAndContractAddr[appRcd.AssetName]; exist {
+						budgetSource := "unknown budget source"
+						if appRcd.EntityType == "guild" {
+							guild, _ := model.GuildModel.Detail(db, appRcd.EntityId)
+							if guild != nil {
+								budgetSource = guild.Name
+							}
+						} else if appRcd.EntityType == "project" {
+							proj, _ := model.ProjectModel.Detail(db, appRcd.EntityId)
+							if proj != nil {
+								budgetSource = proj.Name
+							}
+						}
+
+						var seasonRecord *model.Season
+						if err = tx.Find(&seasonRecord, appRcd.SeasonId).Error; err != nil {
+							log.Error().Msgf("find season error: %+v", err)
+							tx.Rollback()
+							return err
+						}
+
+						qaInputs = append(qaInputs, &sdk.QAInput{
+							Recipient:               appRcd.TargetUserWallet,
+							Amount:                  appRcd.AssetAmount.String(),
+							Decimals:                dc.Decimals,
+							CurrencyName:            appRcd.AssetName,
+							CurrencyContractAddress: dc.Addr,
+							BudgetSource:            budgetSource,
+							Session:                 seasonRecord.Name,
+							Item:                    appRcd.DetailedType,
+							Comment:                 appRcd.Comment,
+							Applicant:               appRcd.Applicant,
+							ApplyComment:            appBundleRcd.Comment,
+							Reviewer:                user.Wallet,
+							ReviewDate:              now,
+						})
+					}
 				}
 			}
 		}
@@ -469,6 +524,16 @@ func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("update app bundle state error")))
 		return
+	}
+
+	// send to QuickAccounting
+	if newState == model.ApplicationStateApproved {
+		// TODO when error occur should retry
+		err = sdk.SubmitToQuickAccounting(qaInputs, cfg)
+		if err != nil {
+			log.Error().Msgf("sumbit application to QuickAccounting error: %+v", err)
+			sdk.LogServerErrorToSentry(ctx, err)
+		}
 	}
 
 	ctx.JSON(http.StatusOK, api.Success(nil))

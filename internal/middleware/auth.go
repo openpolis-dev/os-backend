@@ -38,3 +38,21 @@ func AuthRequired(ctx *gin.Context) {
 	ctx.Next()
 	// --> after
 }
+
+func AdminPermissionRequired(ctx *gin.Context) {
+	cfg := ctx.Value(CfgKey).(*config.Config)
+
+	// check whether the admin token is existing, if not, always return 401
+	if cfg.Admin.AuthToken == "" {
+		ctx.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+
+	authHeader := ctx.GetHeader("AdminAuth")
+	if authHeader != cfg.Admin.AuthToken {
+		ctx.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+
+	ctx.Next()
+}

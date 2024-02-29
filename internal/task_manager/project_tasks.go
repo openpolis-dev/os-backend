@@ -16,6 +16,10 @@ type CreateProjectParam struct {
 	ProjectName string `json:"project_name"`
 	Applicant   string `json:"applicant"`
 	ProposalId  string `json:"proposal_id"`
+	Budget      string `json:"budget"`
+	Deliverable string `json:"deliverable"`
+	PlanTime    string `json:"plan_time"`
+	Sip         int    `json:"sip"`
 }
 
 type CloseProjectParam struct {
@@ -52,8 +56,12 @@ func CreateProjectTask(db *gorm.DB, job *model.CronJob, jobParams string) {
 			Proposals: []string{params.ProposalId},
 			Sponsors:  []string{params.Applicant},
 			Creator:   common.FormatUserWallet(params.Applicant),
-			CreateTs:  model.GetCurrentUtcEpochSecond(),
-			UpdateTs:  model.GetCurrentUtcEpochSecond(),
+			SIP:       fmt.Sprintf("%d", params.Sip),
+			PlanTime:  params.PlanTime,
+			Budgets:   params.Budget,
+
+			CreateTs: model.GetCurrentUtcEpochSecond(),
+			UpdateTs: model.GetCurrentUtcEpochSecond(),
 		}
 		err = model.ProjectModel.CreateOrUpdate(tx, &proj)
 		if err != nil {
@@ -72,7 +80,7 @@ func CreateProjectTask(db *gorm.DB, job *model.CronJob, jobParams string) {
 
 		// update permission
 		enforcer := storage.GetEnforcer()
-		policies := proj.GenerateCasbinPolicies()
+		policies := model.GenerateCasbinPolicies(proj.ID)
 		_, err = enforcer.AddPolicies(policies)
 		if err != nil {
 			log.Warn().Msgf("create project error: %+v", err)

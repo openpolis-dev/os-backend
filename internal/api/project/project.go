@@ -1,6 +1,7 @@
 package project
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -35,6 +36,15 @@ type (
 		Proposals []string `json:"proposals"`
 
 		Budgets []*BudgetParam `json:"budgets"`
+
+		SIP          string `json:"SIP"`
+		Category     string `json:"Category"`
+		ApprovalLink string `json:"ApprovalLink"`
+		OverLink     string `json:"OverLink"`
+		Deliverable  string `json:"Deliverable"`
+		PlanTime     string `json:"PlanTime"`
+		ContantWay   string `json:"ContantWay"`
+		OfficialLink string `json:"OfficialLink"`
 	}
 	BudgetParam struct {
 		Name        string          `json:"name"`
@@ -42,9 +52,14 @@ type (
 	}
 	UpdateReq struct {
 		LogoStr string `json:"logo"`
-		Name    string `json:"name"`
-		Intro   string `json:"intro"`
-		Desc    string `json:"desc"`
+		// Name    string `json:"name"`
+		// Intro   string `json:"intro"`
+		Desc string `json:"desc"`
+
+		Sponsors     []string `json:"sponsors"`
+		OverLink     string   `json:"OverLink"`
+		ContantWay   string   `json:"ContantWay"`
+		OfficialLink string   `json:"OfficialLink"`
 	}
 	DetailReply struct {
 		model.Project
@@ -89,16 +104,35 @@ func Create(ctx *gin.Context) {
 	// remove duplicate proposals
 	proposals := lo.Uniq[string](req.Proposals)
 
+	// budgets
+	budgets, _ := json.Marshal(req.Budgets)
+
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
-	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), internal.ObjProj, internal.ActCreate)
+	// ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), internal.ObjProj, internal.ActCreate)
+	// if err != nil {
+	// 	sdk.LogServerErrorToSentry(ctx, err)
+	// 	ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
+	// 	return
+	// }
+	// if !ok {
+	// 	sdk.LogForbiddenError(ctx, user.Wallet, internal.ObjProj, internal.ActCreate)
+	// 	ctx.JSON(http.StatusForbidden, api.Forbidden())
+	// 	return
+	// }
+
+	//  check permission
+	ok, err := enforcer.HasRoleForUser(common.FormatUserWallet(user.Wallet), internal.RoleHall)
 	if err != nil {
+		log.Error().Msgf("check permission error %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall permission error")))
 		return
 	}
+
 	if !ok {
-		sdk.LogForbiddenError(ctx, user.Wallet, internal.ObjProj, internal.ActCreate)
+		log.Warn().Msgf("permission deny for user %s", common.FormatUserWallet(user.Wallet))
+		sdk.LogForbiddenError(ctx, user.Wallet, internal.RoleHall, "access")
 		ctx.JSON(http.StatusForbidden, api.Forbidden())
 		return
 	}
@@ -118,6 +152,16 @@ func Create(ctx *gin.Context) {
 		UpdatedAt: time.Now().In(internal.ProjectTimezone),
 		CreateTs:  model.GetCurrentUtcEpochSecond(),
 		UpdateTs:  model.GetCurrentUtcEpochSecond(),
+
+		SIP:          req.SIP,
+		Category:     req.Category,
+		ApprovalLink: req.ApprovalLink,
+		OverLink:     req.OverLink,
+		Budgets:      string(budgets),
+		Deliverable:  req.Deliverable,
+		PlanTime:     req.PlanTime,
+		ContantWay:   req.ContantWay,
+		OfficialLink: req.OfficialLink,
 	}
 	err = model.ProjectModel.CreateOrUpdate(tx, &proj)
 	if err != nil {
@@ -230,18 +274,18 @@ func Update(ctx *gin.Context) {
 
 	user, enforcer, db, _ := api.ForContext(ctx)
 	//  check permission
-	permObject := buildProjectPermObject(id)
-	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), permObject, internal.ActModify)
-	if err != nil {
-		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
-		return
-	}
-	if !ok {
-		sdk.LogForbiddenError(ctx, user.Wallet, permObject, internal.ActModify)
-		ctx.JSON(http.StatusForbidden, api.Forbidden())
-		return
-	}
+	// permObject := buildProjectPermObject(id)
+	// ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), permObject, internal.ActModify)
+	// if err != nil {
+	// 	sdk.LogServerErrorToSentry(ctx, err)
+	// 	ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
+	// 	return
+	// }
+	// if !ok {
+	// 	sdk.LogForbiddenError(ctx, user.Wallet, permObject, internal.ActModify)
+	// 	ctx.JSON(http.StatusForbidden, api.Forbidden())
+	// 	return
+	// }
 
 	proj, err := model.ProjectModel.Detail(db, uint(id))
 	if err != nil {
@@ -252,6 +296,59 @@ func Update(ctx *gin.Context) {
 	if proj == nil {
 		ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("project %d not exist", id)))
 		return
+	}
+
+	//  check permission
+	overProject := false
+	if (len(req.OverLink) > 0) || (len(req.Sponsors) > 0) {
+		ok, err := enforcer.HasRoleForUser(common.FormatUserWallet(user.Wallet), internal.RoleHall)
+		if err != nil {
+			log.Error().Msgf("check permission error %+v", err)
+			sdk.LogServerErrorToSentry(ctx, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall permission error")))
+			return
+		}
+
+		if !ok {
+			log.Warn().Msgf("permission deny for user %s", common.FormatUserWallet(user.Wallet))
+			sdk.LogForbiddenError(ctx, user.Wallet, internal.RoleHall, "access")
+			ctx.JSON(http.StatusForbidden, api.Forbidden())
+			return
+		}
+
+		sponsors := lo.Map[string](req.Sponsors, func(item string, _ int) string {
+			return common.FormatUserWallet(item)
+		})
+
+		proj.Sponsors = sponsors
+		proj.OverLink = req.OverLink
+		if len(req.OverLink) > 0 {
+			overProject = true
+		}
+	} else {
+		ok, err := enforcer.HasRoleForUser(common.FormatUserWallet(user.Wallet), internal.RoleHall)
+		if err != nil {
+			log.Error().Msgf("check permission error %+v", err)
+			sdk.LogServerErrorToSentry(ctx, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall permission error")))
+			return
+		}
+
+		if !ok {
+			if len(proj.Sponsors) > 0 {
+				if common.FormatUserWallet(proj.Sponsors[0]) != common.FormatUserWallet(user.Wallet) {
+					log.Warn().Msgf("permission deny for user %s", common.FormatUserWallet(user.Wallet))
+					sdk.LogForbiddenError(ctx, user.Wallet, "RoleSponsors", "access")
+					ctx.JSON(http.StatusForbidden, api.Forbidden())
+					return
+				}
+			} else {
+				log.Warn().Msgf("permission deny for user %s", common.FormatUserWallet(user.Wallet))
+				sdk.LogForbiddenError(ctx, user.Wallet, internal.RoleHall, "access")
+				ctx.JSON(http.StatusForbidden, api.Forbidden())
+				return
+			}
+		}
 	}
 
 	// project can be updated only when its status is 'open'
@@ -268,11 +365,19 @@ func Update(ctx *gin.Context) {
 
 	// update logo and name
 	proj.Logo = logoUrl
-	proj.Name = req.Name
-	proj.Intro = req.Intro
+	// proj.Name = req.Name
+	// proj.Intro = req.Intro
 	proj.Desc = req.Desc
+	proj.ContantWay = req.ContantWay
+	proj.OfficialLink = req.OfficialLink
+
+	if overProject {
+		proj.Status = model.ProjectStatusClosed
+	}
+
 	proj.UpdateTs = model.GetCurrentUtcEpochSecond()
 	proj.UpdatedAt = time.Now().In(internal.ProjectTimezone)
+
 	err = model.ProjectModel.CreateOrUpdate(db, proj)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
@@ -409,6 +514,8 @@ func Detail(ctx *gin.Context) {
 //	@router			/projects [get]
 //	@tags			Project
 //	@param			status		query		string	false	"status array, e.g. 'open,pending_close'"	Enum(open pending_close closed)
+//	@param			keywords	query		string	false	"search keywords"
+//	@param			wallet		query		string	false	"search wallet"
 //	@param			page		query		string	false	"which page"
 //	@param			size		query		string	false	"size of each page"
 //	@param			sort_field	query		string	false	"sort by which field"
@@ -423,7 +530,19 @@ func List(ctx *gin.Context) {
 	showSpecialProjectsParam := ctx.Query("show_special")
 	showSpecialProjectFlag := strings.EqualFold(showSpecialProjectsParam, "true")
 
-	projects, total, err := model.ProjectModel.List(db, status, page, showSpecialProjectFlag)
+	keywords := ctx.Query("keywords")
+	var k *string
+	if keywords != "" {
+		k = &keywords
+	}
+
+	wallet := ctx.Query("wallet")
+	var w *string
+	if wallet != "" {
+		w = &wallet
+	}
+
+	projects, total, err := model.ProjectModel.ListWithSearch(db, status, k, w, page, showSpecialProjectFlag)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("list projects error")))

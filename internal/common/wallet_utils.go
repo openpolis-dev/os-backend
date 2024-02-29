@@ -5,10 +5,12 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/ethereum/go-ethereum/common"
 	"golang.org/x/crypto/sha3"
 )
 
 // ToChecksumAddress converts an Ethereum address to its checksum representation.
+// Note: this function has been changed to common.ToHexAddress function, this func kept here for reference
 func ToChecksumAddress(address string) string {
 	// Remove the "0x" prefix and convert to lowercase
 	address = strings.Replace(strings.ToLower(address), "0x", "", 1)
@@ -53,7 +55,7 @@ func ToChecksumAddress(address string) string {
 }
 
 func FormatUserWallet(wallet string) string {
-	return ToChecksumAddress(strings.TrimSpace(strings.ToLower(wallet)))
+	return common.HexToAddress(strings.TrimSpace(strings.ToLower(wallet))).Hex()
 }
 
 // ToFrontendWallet convert wallet address to frontend required format, currently the requirement is lowercased
