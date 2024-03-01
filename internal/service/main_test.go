@@ -1,16 +1,16 @@
 package service
 
 import (
-	"fmt"
-	"log"
-	"os"
+	"context"
 	"testing"
 	"time"
 
-	"github.com/glebarez/sqlite"
+	"github.com/testcontainers/testcontainers-go"
+	postgresmodules "github.com/testcontainers/testcontainers-go/modules/postgres"
+	"github.com/testcontainers/testcontainers-go/wait"
 	"github.com/theseed-labs/os-backend/internal/model"
+	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
 )
 
 const (
@@ -24,19 +24,21 @@ const (
 var conn *gorm.DB
 
 func TestMain(m *testing.M) {
-	var err error
-	conn, err = gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{
-		Logger: logger.New(
-			log.New(os.Stdout, "\r\n", log.LstdFlags),
-			logger.Config{
-				SlowThreshold: 20 * time.Millisecond,
-				LogLevel:      logger.Silent,
-			},
-		),
-	})
+	// ===>1 start postgres container
+	ctx := context.Background()
+	postgresContainer, err := postgresmodules.RunContainer(ctx,
+		testcontainers.WithImage("docker.io/postgres:16.2-alpine"),
+		testcontainers.WithWaitStrategy(wait.ForLog("database system is ready to accept connections").WithOccurrence(2).WithStartupTimeout(5*time.Second)),
+	)
 	if err != nil {
 		panic(err)
 	}
+
+	// ===>2 connect to postgres
+	dsn, _ := postgresContainer.ConnectionString(ctx) // eg. `postgres://postgres:postgres@localhost:58209/postgres?`
+	conn, err = gorm.Open(postgres.Open(dsn))
+
+	// ===>3 auto migrate
 	err = conn.AutoMigrate(
 		&model.SnsInviteCode{},
 		&model.SnsInviteRecord{},
@@ -51,8 +53,21 @@ func TestMain(m *testing.M) {
 	}
 
 	m.Run()
+
+	// ===>4 terminate postgres container
+	err = postgresContainer.Terminate(ctx)
+	if err != nil {
+		panic(err)
+	}
 }
 
-func truncateTable(tableName string) {
-	conn.Exec(fmt.Sprintf("TRUNCATE table %s", tableName))
+func truncateTables() {
+	conn.Exec("TRUNCATE table sns_invite_codes")
+	conn.Exec("TRUNCATE table sns_invite_records")
+	conn.Exec("TRUNCATE table seasons")
+	conn.Exec("TRUNCATE table app_bundles")
+	conn.Exec("TRUNCATE table app_bundle_audit_logs")
+	conn.Exec("TRUNCATE table applications")
+	conn.Exec("TRUNCATE table application_audit_log")
+	//conn.Exec("TRUNCATE table xx")
 }
