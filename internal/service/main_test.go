@@ -62,12 +62,6 @@ func TestMain(m *testing.M) {
 }
 
 func truncateTables() {
-	conn.Exec("TRUNCATE table sns_invite_codes")
-	conn.Exec("TRUNCATE table sns_invite_records")
-	conn.Exec("TRUNCATE table seasons")
-	conn.Exec("TRUNCATE table app_bundles")
-	conn.Exec("TRUNCATE table app_bundle_audit_logs")
-	conn.Exec("TRUNCATE table applications")
-	conn.Exec("TRUNCATE table application_audit_log")
-	//conn.Exec("TRUNCATE table xx")
+	conn.Exec("TRUNCATE table sns_invite_codes,sns_invite_records")
+	conn.Exec("TRUNCATE table application_audit_logs,applications,app_bundle_audit_logs,app_bundles,seasons")
 }
