@@ -157,7 +157,7 @@ func CloseVote(ctx *gin.Context) {
 	}
 
 	// update proposal state after getting the vote result
-	dbProposal, metaforoProposalResponse, err := GetMetaforoProposalByInternalId(db, proposalIdStr, cfg.MetaforoData.GroupName)
+	dbProposal, metaforoProposalResponse, err := GetMetaforoProposalByInternalId(db, proposalIdStr, cfg.MetaforoData.GroupName, reqData.MetaforoAccessToken)
 	pollStatusChanged, err := UpdateDbVoteOptionRecordsFromMetaforoProposalResponse(db, dbProposal.ID, metaforoProposalResponse)
 	if err != nil {
 		log.Error().Msgf("update propsal vote option records with metaforo response error: %+v", err)

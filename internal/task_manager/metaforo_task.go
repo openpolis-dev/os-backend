@@ -32,6 +32,8 @@ func RefreshVotingProposalInfoJob(db *gorm.DB, job *model.CronJob, jobParams str
 		return
 	}
 
+	cfg := storage.GetConfig()
+
 	execResult := ""
 	jobFailed := false
 
@@ -66,7 +68,7 @@ func RefreshVotingProposalInfoJob(db *gorm.DB, job *model.CronJob, jobParams str
 			} else {
 				for _, dbRcd := range proposals {
 					metaforoThreadId := dbRcd.GetMetaforoThreadId()
-					metaforoProposalData, err := metaforo.GetProposal(metaforoThreadId, params.GroupName, "", 0)
+					metaforoProposalData, err := metaforo.GetProposal(metaforoThreadId, params.GroupName, cfg.MetaforoData.AccessToken, 0)
 					if err != nil {
 						log.Warn().Msgf("get metaforo proposal error: %+v", err)
 						jobFailed = true

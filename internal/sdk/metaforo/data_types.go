@@ -458,6 +458,10 @@ type GroupInfo struct {
 	} `json:"group_extra_info"`
 }
 
+type UserDetailResponseForProfileAPI struct {
+	User *UserDetailResponse `json:"user"`
+}
+
 type UserDetailResponse struct {
 	Id            int           `json:"id"`
 	Email         interface{}   `json:"email"`
@@ -476,20 +480,18 @@ type UserDetailResponse struct {
 	Deleted       int           `json:"deleted"`
 	PoapBadge     []interface{} `json:"poap_badge"`
 	Badge         []interface{} `json:"badge"`
-	Title         struct {
-		Field1 []struct {
-			UserId       int         `json:"user_id"`
-			Name         string      `json:"name"`
-			Color        string      `json:"color"`
-			Type         int         `json:"type"`
-			Id           int         `json:"id"`
-			Icon         *string     `json:"icon"`
-			UnicodeEmoji interface{} `json:"unicode_emoji"`
-			Background   string      `json:"background"`
-			GroupId      int         `json:"group_id"`
-			Logo         string      `json:"logo"`
-			GroupName    string      `json:"group_name"`
-		} `json:"4649"`
+	Title         map[string][]struct {
+		UserId       int         `json:"user_id"`
+		Name         string      `json:"name"`
+		Color        string      `json:"color"`
+		Type         int         `json:"type"`
+		Id           int         `json:"id"`
+		Icon         *string     `json:"icon"`
+		UnicodeEmoji interface{} `json:"unicode_emoji"`
+		Background   string      `json:"background"`
+		GroupId      int         `json:"group_id"`
+		Logo         string      `json:"logo"`
+		GroupName    string      `json:"group_name"`
 	} `json:"title"`
 	Nfts            []interface{} `json:"nfts"`
 	IsUserFollow    bool          `json:"is_user_follow"`

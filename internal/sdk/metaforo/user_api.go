@@ -26,11 +26,11 @@ func UserActivities(userId, filter, perPage, session string) ([]*UserActivity, s
 	return resp.UserActivities, resp.Session, nil
 }
 
-func UserDetail(userId string) (*UserDetailResponse, error) {
-	apiPath := fmt.Sprintf("/api/profile/%s", userId)
+func UserDetail(userId int) (*UserDetailResponseForProfileAPI, error) {
+	apiPath := fmt.Sprintf("/api/profile/%d", userId)
 
 	// send request
-	_, resp, err := doHttpRequest[UserDetailResponse](&httpRequestData{
+	_, resp, err := doHttpRequest[UserDetailResponseForProfileAPI](&httpRequestData{
 		ApiUri:     apiBase + apiPath,
 		HttpMethod: "GET",
 		Header:     BaseHeader,
