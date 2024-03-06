@@ -8,11 +8,13 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"github.com/theseed-labs/os-backend/internal/api"
+	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/config"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk/metaforo"
 	"github.com/theseed-labs/os-backend/internal/storage"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 	"gorm.io/gorm/logger"
 )
 
@@ -64,7 +66,7 @@ func main() {
 
 		for i := *syncStartPage; i < *syncEndPage; i++ {
 			log.Debug().Msgf("parse page %d", i)
-			SyncProposals(db, *syncGroup, i, *syncSize)
+			SyncProposalList(db, *syncGroup, i, *syncSize)
 			time.Sleep(2 * time.Second)
 		}
 
@@ -90,7 +92,9 @@ func main() {
 	}
 }
 
-func SyncProposals(db *gorm.DB, grpName string, page int, size int) {
+// SyncProposalList syncs proposal from list API, this API returns category, title, brief content and poll status.
+// Some detailed data like poll detail, comments, etc. should be fetched from detailed API.
+func SyncProposalList(db *gorm.DB, grpName string, page int, size int) {
 	proposals, _ := metaforo.ListProposals(&metaforo.PaginationParams{
 		Page:            page,
 		PerPage:         size,
@@ -113,31 +117,81 @@ func SyncProposals(db *gorm.DB, grpName string, page int, size int) {
 
 			proposalRecordId := fmt.Sprintf("metaforo:%d", thread.Id)
 
+			mfUserRcd := model.MetaforoUser{MetaforoUserId: thread.User.Id}
+			err, _ = upsertDbRcd(tx, map[string]any{"metaforo_user_id": thread.User.Id}, &mfUserRcd)
+			if err != nil {
+				log.Error().Msgf("upsert metaforo user record error: %+v", err)
+				return err
+			}
+
+			applicantAddr := mfUserRcd.UserWallet
+			if mfUserRcd.UserWallet == "" {
+				log.Debug().Msgf("Try to get user detail info for userId: %d", thread.User.Id)
+				userDetailResp, err := metaforo.UserDetail(thread.User.Id)
+				if err != nil {
+					log.Error().Msgf("get user detail error: %+v", err)
+					return err
+				}
+				applicantAddr = common.FormatUserWallet(userDetailResp.User.Web3PublicKey)
+
+				// Update metaforo user record with fetched user wallet
+				err, _ = upsertDbRcd(tx, map[string]any{"metaforo_user_id": userDetailResp.User.Id}, &model.MetaforoUser{UserWallet: applicantAddr})
+				if err != nil {
+					log.Error().Msgf("upsert metaforo user record error: %+v", err)
+					return err
+				}
+			}
+
+			if applicantAddr == "" {
+				log.Warn().Msgf("fetch user wallet error for user id: %d", thread.User.Id)
+			}
+
+			applicantAddr = common.FormatUserWallet(applicantAddr)
+			// Create user from given wallet if not existing
+			err, createdUserCount := upsertDbRcd(db, map[string]any{"wallet": applicantAddr}, &model.User{
+				Wallet: applicantAddr,
+			})
+			if createdUserCount > 1 {
+				log.Debug().Msgf("new user created: %s", applicantAddr)
+			}
+
+			pollStatus := thread.PollStatus
+			pState := int(model.ProposalStateExecuted)
+			if pollStatus == "on" {
+				pState = int(model.ProposalStateVoting)
+			}
+
+			proposalRecord := model.Proposal{
+				CreateTs: thread.UpdatedAt.Unix(),
+				Title:    thread.Title,
+				State:    pState,
+				//ContentBlocks:      []*model.ProposalContentBlock{&contentBlock},
+				ProposalCategoryID: categoryRecord.ID,
+				ProposalRecordId:   proposalRecordId,
+				Version:            1,
+				Applicant:          applicantAddr,
+				IsHidden:           false,
+			}
+
+			err, createdCount := upsertDbRcd(tx, map[string]any{"proposal_record_id": proposalRecordId, "version": 1}, &proposalRecord)
+			if err != nil {
+				log.Error().Msgf("upsert proposal record error: %+v", err)
+				panic(err)
+			}
+
 			// Build content
 			contentBlock := model.ProposalContentBlock{
 				CreateTs:   thread.UpdatedAt.Unix(),
 				Title:      "Proposal Content",
 				Content:    fmt.Sprintf("%s", thread.FirstPost.Content),
-				ProposalID: 0,
+				ProposalID: proposalRecord.ID,
 			}
-
-			proposalRecord := model.Proposal{
-				CreateTs:           thread.UpdatedAt.Unix(),
-				State:              int(model.ProposalStateApproved),
-				Title:              thread.Title,
-				ContentBlocks:      []*model.ProposalContentBlock{&contentBlock},
-				ProposalCategoryID: categoryRecord.ID,
-				ProposalRecordId:   proposalRecordId,
-				Version:            1,
-				Applicant:          "",
-				IsHidden:           false,
-			}
-
-			cond := model.Proposal{ProposalRecordId: proposalRecordId, Version: 1}
-			err, createdCount := upsertDbRcd(tx, &cond, &proposalRecord)
+			err, _ = upsertDbRcd(tx, map[string]any{"proposal_id": proposalRecord.ID}, &contentBlock)
 			if err != nil {
+				log.Error().Msgf("upsert proposal content block error: %+v", err)
 				panic(err)
 			}
+
 			totalCreatedRecordCount += createdCount
 		}
 
@@ -147,8 +201,13 @@ func SyncProposals(db *gorm.DB, grpName string, page int, size int) {
 		return nil
 	})
 	if err != nil {
+		log.Error().Msgf("transaction error: %+v", err)
 		panic(err)
 	}
+}
+
+func SyncProposalDetail(db *gorm.DB, grpName string, page int, size int) {
+	metaforo.GetProposal(0, grpName, "", 0)
 }
 
 func SyncCategories(db *gorm.DB, grpName string) {
@@ -161,9 +220,8 @@ func SyncCategories(db *gorm.DB, grpName string) {
 			if category.ParentId != 0 {
 				log.Warn().Msgf("category record %+v has parent id, please update manually", category)
 			}
-			cond := model.ProposalCategory{MetaforoId: category.CategoryId}
 			data := model.ProposalCategory{MetaforoId: category.CategoryId, Name: category.Name}
-			err, _ = upsertDbRcd(tx, &cond, &data)
+			err, _ = upsertDbRcd(tx, map[string]any{"metaforo_id": category.CategoryId}, &data)
 			if err != nil {
 				log.Error().Msgf("upsert proposal category record error: %+v", err)
 				return err
@@ -171,9 +229,8 @@ func SyncCategories(db *gorm.DB, grpName string) {
 
 			if len(category.Children) > 0 {
 				for _, childCategory := range category.Children {
-					childCond := model.ProposalCategory{MetaforoId: childCategory.CategoryId}
 					childData := model.ProposalCategory{Name: childCategory.Name, ParentID: dbCategoryRcd.ID, MetaforoId: childCategory.CategoryId}
-					err, _ = upsertDbRcd(tx, &childCond, &childData)
+					err, _ = upsertDbRcd(tx, map[string]any{"metaforo_id": childCategory.CategoryId}, &childData)
 					if err != nil {
 						log.Error().Msgf("upsert child proposal category record error: %+v", err)
 						panic(err)
@@ -207,19 +264,21 @@ func SyncNftGate(db *gorm.DB, grpName string) {
 	}
 }
 
-func upsertDbRcd[T any](db *gorm.DB, cond *T, data *T) (error, int) {
+func upsertDbRcd[T any](db *gorm.DB, cond map[string]any, data T) (error, int) {
 	var dbRcd T
 	var createdRecord = 0
 	tx := db.Where(cond).Limit(1).Find(&dbRcd)
+	log.Error().Msgf("upsertDbRcd cond: %+v, affect rows: %d", cond, tx.RowsAffected)
+
 	if tx.Error != nil {
 		log.Error().Msgf("upsertDbRcd error: %s", tx.Error)
 	} else if tx.RowsAffected == 0 {
 		// No record found, create it
-		db.Create(data)
+		db.Clauses(clause.Returning{}).Create(&data)
 		createdRecord = 1
 	} else if tx.RowsAffected == 1 {
 		// Update existing record
-		db.Where(cond).Create(data)
+		db.Clauses(clause.Returning{}).Where(cond).Updates(&data)
 	} else {
 		err = fmt.Errorf("upsertDbRcd error: unexpected rows affected: %d", tx.RowsAffected)
 		log.Error().Msgf(err.Error())
