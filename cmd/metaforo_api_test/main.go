@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
@@ -13,6 +14,7 @@ import (
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk/metaforo"
 	"github.com/theseed-labs/os-backend/internal/storage"
+	"github.com/valyala/fasthttp"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	"gorm.io/gorm/logger"
@@ -30,6 +32,7 @@ func main() {
 	syncEndPage := syncCommand.Int("end-page", 1, "End page number")
 	syncSize := syncCommand.Int("size", 10, "Page size")
 	syncGroup := syncCommand.String("group", "testttt", "Group name")
+	syncQuillToMdService := syncCommand.String("quill-service", "https://delta2html-api-0x2t.hello-what.workers.dev", "service to convert quill to markdown")
 	syncCategoryFlag := syncCommand.Bool("sync-category", false, "sync category flag, default false")
 	syncGateFlag := syncCommand.Bool("sync-vote-gate", false, "sync gate flag, default false")
 
@@ -66,7 +69,7 @@ func main() {
 
 		for i := *syncStartPage; i < *syncEndPage; i++ {
 			log.Debug().Msgf("parse page %d", i)
-			SyncProposalList(db, *syncGroup, i, *syncSize)
+			SyncProposalList(db, *syncGroup, i, *syncSize, *syncQuillToMdService)
 			time.Sleep(2 * time.Second)
 		}
 
@@ -94,7 +97,7 @@ func main() {
 
 // SyncProposalList syncs proposal from list API, this API returns category, title, brief content and poll status.
 // Some detailed data like poll detail, comments, etc. should be fetched from detailed API.
-func SyncProposalList(db *gorm.DB, grpName string, page int, size int) {
+func SyncProposalList(db *gorm.DB, grpName string, page int, size int, quillServiceUrl string) {
 	proposals, _ := metaforo.ListProposals(&metaforo.PaginationParams{
 		Page:            page,
 		PerPage:         size,
@@ -171,6 +174,7 @@ func SyncProposalList(db *gorm.DB, grpName string, page int, size int) {
 				Version:            1,
 				Applicant:          applicantAddr,
 				IsHidden:           false,
+				//IsImported:         true,
 			}
 
 			err, createdCount := upsertDbRcd(tx, map[string]any{"proposal_record_id": proposalRecordId, "version": 1}, &proposalRecord)
@@ -183,14 +187,50 @@ func SyncProposalList(db *gorm.DB, grpName string, page int, size int) {
 			contentBlock := model.ProposalContentBlock{
 				CreateTs:   thread.UpdatedAt.Unix(),
 				Title:      "Proposal Content",
-				Content:    fmt.Sprintf("%s", thread.FirstPost.Content),
 				ProposalID: proposalRecord.ID,
 			}
+			contentStr := fmt.Sprintf("%s", thread.FirstPost.Content)
+			if thread.FirstPost.EditorType == 0 {
+				// Quill format data, convert to html and back to markdown
+				req := fasthttp.AcquireRequest()
+				resp := fasthttp.AcquireResponse()
+				defer fasthttp.ReleaseRequest(req)
+				defer fasthttp.ReleaseResponse(resp)
+
+				req.Header.SetMethod("POST")
+				req.SetRequestURI(quillServiceUrl)
+				req.Header.SetContentType("application/json")
+
+				reqData := map[string]string{"data": contentStr}
+				reqDataBytes, err := json.Marshal(reqData)
+				if err != nil {
+					panic(err)
+				}
+				req.SetBody(reqDataBytes)
+				if err = fasthttp.Do(req, resp); err != nil {
+					log.Error().Msgf("quill service error: %+v", err)
+					panic(err)
+				}
+
+				mdBytes := resp.Body()
+				log.Error().Msgf("quill service response: %s", string(mdBytes))
+				contentBlock.Content = string(mdBytes)
+			} else {
+				contentBlock.Content = contentStr
+			}
+
 			err, _ = upsertDbRcd(tx, map[string]any{"proposal_id": proposalRecord.ID}, &contentBlock)
 			if err != nil {
 				log.Error().Msgf("upsert proposal content block error: %+v", err)
 				panic(err)
 			}
+
+			// Create fake proposal vote record
+			err, _ = upsertDbRcd(tx, map[string]any{"proposal_id": proposalRecord.ID}, &model.ProposalVoteRecord{
+				Title:      "",
+				State:      "",
+				ProposalID: proposalRecord.ID,
+			})
 
 			totalCreatedRecordCount += createdCount
 		}
