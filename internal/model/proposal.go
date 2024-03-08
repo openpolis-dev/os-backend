@@ -552,3 +552,14 @@ type ExtraResultCheckRuleData struct {
 	CheckType string `json:"check_type"` // Check type, ratio or count
 	Value     string `json:"value"`      // Value for the rule
 }
+
+type MetaforoVoteCount struct {
+	ID       uint  `gorm:"primaryKey"`
+	CreateTs int64 `gorm:"index"`
+
+	// Season information of vote records
+	SeasonId uint `json:"season_id" gorm:"index"`
+
+	UserWallet string `json:"user_wallet" gorm:"index"`
+	Count      int    `json:"count"`
+}
