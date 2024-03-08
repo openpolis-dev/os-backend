@@ -110,6 +110,11 @@ func SyncProposalList(db *gorm.DB, grpName string, page int, size int, quillServ
 	err = db.Transaction(func(tx *gorm.DB) error {
 		var totalCreatedRecordCount = 0
 		for _, thread := range proposals {
+			if thread.PollStatus == "on" {
+				log.Debug().Msgf("skip voting thread: %+v", thread)
+				continue
+			}
+
 			categoryRecord := model.ProposalCategory{
 				MetaforoId: thread.CategoryIndexId,
 			}
@@ -308,7 +313,6 @@ func upsertDbRcd[T any](db *gorm.DB, cond map[string]any, data T) (error, int) {
 	var dbRcd T
 	var createdRecord = 0
 	tx := db.Where(cond).Limit(1).Find(&dbRcd)
-	log.Error().Msgf("upsertDbRcd cond: %+v, affect rows: %d", cond, tx.RowsAffected)
 
 	if tx.Error != nil {
 		log.Error().Msgf("upsertDbRcd error: %s", tx.Error)
