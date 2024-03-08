@@ -173,7 +173,7 @@ type Thread struct {
 	UpdatedAt       time.Time `json:"updated_at"`
 	LikesCount      int       `json:"likes_count"`
 	PostsCount      int       `json:"posts_count"`
-	CategoryIndexId uint      `json:"category_index_id"`
+	CategoryIndexId int       `json:"category_index_id"`
 	CategoryId      uint      `json:"category_id"`
 	CategoryName    string    `json:"category_name"`
 	IsDelete        int       `json:"is_delete"`

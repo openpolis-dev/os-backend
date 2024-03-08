@@ -70,7 +70,7 @@ func main() {
 		for i := *syncStartPage; i < *syncEndPage; i++ {
 			log.Debug().Msgf("parse page %d", i)
 			SyncProposalList(db, *syncGroup, i, *syncSize, *syncQuillToMdService)
-			time.Sleep(2 * time.Second)
+			time.Sleep(30 * time.Second)
 		}
 
 	case "vote":
@@ -115,11 +115,17 @@ func SyncProposalList(db *gorm.DB, grpName string, page int, size int, quillServ
 				continue
 			}
 
+			if thread.CategoryIndexId == -1 {
+				log.Warn().Msgf("skip category index id is -1: %+v", thread)
+				continue
+			}
+
 			categoryRecord := model.ProposalCategory{
-				MetaforoId: thread.CategoryIndexId,
+				MetaforoId: uint(thread.CategoryIndexId),
 			}
 			err := db.Where(categoryRecord).Find(&categoryRecord).Error
 			if err != nil {
+				api.PrintStructAsJson(thread, "Thread causes the error")
 				panic(err)
 			}
 
@@ -218,7 +224,6 @@ func SyncProposalList(db *gorm.DB, grpName string, page int, size int, quillServ
 				}
 
 				mdBytes := resp.Body()
-				log.Error().Msgf("quill service response: %s", string(mdBytes))
 				contentBlock.Content = string(mdBytes)
 			} else {
 				contentBlock.Content = contentStr
