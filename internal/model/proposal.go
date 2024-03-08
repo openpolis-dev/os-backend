@@ -558,8 +558,8 @@ type MetaforoVoteCount struct {
 	CreateTs int64 `gorm:"index"`
 
 	// Season information of vote records
-	SeasonId uint `json:"season_id" gorm:"index"`
+	SeasonId uint `json:"season_id" gorm:"uniqueIndex:vote_count_season_index"`
 
-	UserWallet string `json:"user_wallet" gorm:"index"`
+	UserWallet string `json:"user_wallet" gorm:"uniqueIndex:vote_count_season_index"`
 	Count      int    `json:"count"`
 }
