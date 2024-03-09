@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"encoding/gob"
 	"errors"
+	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
@@ -15,22 +15,9 @@ import (
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk"
-	"github.com/theseed-labs/os-backend/internal/static_data"
 	"github.com/theseed-labs/os-backend/internal/storage"
+	"gorm.io/gorm"
 )
-
-// MySQL version
-//const dbQuery = `select season_id,
-//       target_user_wallet,
-//       sum(asset_amount) as season_total,
-//       seasons.name      as season_name,
-//       seasons.idx       as season_idx
-//from applications
-//         join seasons on season_id = seasons.id
-//where applications.type = 'NEW_REWARD'
-//  and applications.asset_name = 'SCR'
-//  and applications.sub_type IN (NULL ,"")
-//GROUP by season_id, target_user_wallet`
 
 // Pg version
 const dbQuery = `select season_id,
@@ -132,6 +119,22 @@ func seasonCreditWeight(seasonIdx, currSeasonIdx uint) decimal.Decimal {
 	return decimal.NewFromInt(1).Div(decimal.NewFromInt(2).Pow(decimal.NewFromInt(int64(currSeasonIdx - seasonIdx))))
 }
 
+func getSeasonVoteRecords(db *gorm.DB, currentSeason *model.Season) map[string]int {
+	var voteCounts []model.MetaforoVoteCount
+	if err := db.Model(&voteCounts).Where("season_id = ?", currentSeason.ID).Find(&voteCounts).Error; err != nil {
+		log.Warn().Msgf("query metaforo vote count error: %+v, no vote count returned", err)
+		return nil
+	}
+
+	log.Debug().Msgf("calc metaforo vote count for season %d", currentSeason.Idx)
+	userVoteCounts := make(map[string]int)
+	for _, dbRcd := range voteCounts {
+		userVoteCounts[common.FormatUserWallet(dbRcd.UserWallet)] = dbRcd.Count
+	}
+
+	return userVoteCounts
+}
+
 // AggrScr returns aggregated credit score and node calculation result
 //
 //	@router		/data_srv/aggr_scr [get]
@@ -148,12 +151,13 @@ func AggrScr(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get current season error")))
 		return
 	}
+	log.Debug().Msgf("current season: %+v", currentSeason)
 
 	seedHolderCount := make(map[string]int)
 
 	// If season has been snapshoted, get snapshot data with timestamp saved in DB,
 	// otherwise the season end timestamp will be used for event end data
-	// After getting the timesamp, invoke Indexer service to get seed count
+	// After getting the timestamp, invoke Indexer service to get seed count
 	if currentSeason.SeedSnapshotSaved {
 		seedHolderCount = getSeedHolderData(currentSeason.SeedSnapshotAt)
 	} else {
@@ -162,7 +166,12 @@ func AggrScr(ctx *gin.Context) {
 
 	// Result for db sql query, which are grouped query
 	var aggregatedSeasonCredits []AggregatedSeasonCredit
-	db.Raw(dbQuery).Find(&aggregatedSeasonCredits)
+	if err = db.Raw(dbQuery).Find(&aggregatedSeasonCredits).Error; err != nil {
+		log.Error().Msgf("query aggregated credit score error: %+v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("query aggregated credit score error")))
+		return
+	}
 
 	// userCredits saves all credits by user wallet
 	userCredits := make(map[string]UserCreditRecord)
@@ -174,22 +183,8 @@ func AggrScr(ctx *gin.Context) {
 	// Category the records with user wallet, and calculate season total credits
 
 	// Load metaforo vote count
-	metaforoVoteCount := make(map[string]int)
-
-	switch currentSeason.Idx {
-	case 3:
-		log.Debug().Msgf("using vote data from season 3")
-		metaforoVoteCount = static_data.MetaforoVoteCountS3
-	case 4:
-		log.Debug().Msgf("using vote data from season 4")
-		metaforoVoteCount = static_data.MetaforoVoteCountS4
-	case 5:
-		log.Debug().Msgf("using vote data from season 5")
-		metaforoVoteCount = static_data.MetaforoVoteCountS5
-	default:
-		log.Warn().Msgf("no meatforo voting data for season %d", currentSeason.Idx)
-	}
-	api.PrintStructAsJson(metaforoVoteCount, "TTT: vote count")
+	metaforoVoteCount := getSeasonVoteRecords(db, currentSeason)
+	api.PrintStructAsJson(metaforoVoteCount, fmt.Sprintf("metaforo vote count for season: %s", currentSeason.Name))
 
 	activateWalletCount := 0
 
@@ -262,8 +257,7 @@ func AggrScr(ctx *gin.Context) {
 			}
 		})
 
-		lowerCasedWallet := strings.ToLower(wallet)
-		userMetaforoVoteCount := model.GetMapValueOrDefault[string, int](metaforoVoteCount, lowerCasedWallet, 0)
+		userMetaforoVoteCount := model.GetMapValueOrDefault[string, int](metaforoVoteCount, wallet, 0)
 		metaforoVoteReward := metaforoVoteRewardUnit.Mul(decimal.NewFromInt(int64(userMetaforoVoteCount)))
 		if !metaforoVoteReward.Equal(decimal.Zero) {
 			mintRewardData[wallet] = metaforoVoteReward.String()

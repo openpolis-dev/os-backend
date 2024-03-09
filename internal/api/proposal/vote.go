@@ -9,10 +9,12 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	"github.com/theseed-labs/os-backend/internal/api"
+	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk"
 	"github.com/theseed-labs/os-backend/internal/sdk/metaforo"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type VoterInfo struct {
@@ -157,7 +159,7 @@ func CloseVote(ctx *gin.Context) {
 	}
 
 	// update proposal state after getting the vote result
-	dbProposal, metaforoProposalResponse, err := GetMetaforoProposalByInternalId(db, proposalIdStr, cfg.MetaforoData.GroupName)
+	dbProposal, metaforoProposalResponse, err := GetMetaforoProposalByInternalId(db, proposalIdStr, cfg.MetaforoData.GroupName, reqData.MetaforoAccessToken)
 	pollStatusChanged, err := UpdateDbVoteOptionRecordsFromMetaforoProposalResponse(db, dbProposal.ID, metaforoProposalResponse)
 	if err != nil {
 		log.Error().Msgf("update propsal vote option records with metaforo response error: %+v", err)
@@ -219,6 +221,76 @@ func ShowVoteDetail(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(fmt.Errorf("get vote list error")))
 		return
 	}
+
+	// Update metaforo user record if UID not found in DB
+	missingMfUserIds := map[int]*metaforo.UserDetailResponseForProfileAPI{}
+	for _, mfVoterRecord := range voterList {
+		var rcdCount int64
+		if err = db.Model(&model.MetaforoUser{}).Where(&model.MetaforoUser{MetaforoUserId: mfVoterRecord.UserId}).Count(&rcdCount).Error; err != nil {
+			log.Error().Msgf("count metaforo user record error: %+v", err)
+			sdk.LogServerErrorToSentry(ctx, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(fmt.Errorf("get metaforo user record error")))
+			return
+		}
+		if rcdCount == 0 {
+			mfUserData, err := metaforo.UserDetail(mfVoterRecord.UserId)
+			if err != nil {
+				log.Error().Msgf("get metaforo user detail error: %+v", err)
+				sdk.LogServerErrorToSentry(ctx, err)
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(fmt.Errorf("get metaforo user detail error")))
+				return
+			}
+			missingMfUserIds[mfVoterRecord.UserId] = mfUserData
+		}
+	}
+
+	// Create MetaforoUser and User record from API data
+	err = db.Transaction(func(tx *gorm.DB) error {
+		for userId, profileData := range missingMfUserIds {
+			metaforoUser := model.MetaforoUser{
+				MetaforoUserId: userId,
+				UserWallet:     common.FormatUserWallet(profileData.User.Web3PublicKey),
+			}
+			mfUserTx := tx.Where(&model.MetaforoUser{MetaforoUserId: userId}).Find(&metaforoUser)
+
+			if mfUserTx.Error != nil {
+				log.Error().Msgf("get metaforo user record error: %+v", mfUserTx.Error)
+				sdk.LogServerErrorToSentry(ctx, mfUserTx.Error)
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(fmt.Errorf("get metaforo user record error")))
+				return mfUserTx.Error
+			} else if mfUserTx.RowsAffected == 0 {
+				if err = tx.Create(&metaforoUser).Error; err != nil {
+					log.Error().Msgf("create metaforo user record error: %+v", err)
+					sdk.LogServerErrorToSentry(ctx, err)
+					ctx.JSON(http.StatusInternalServerError, api.ServerError(fmt.Errorf("create metaforo user record error")))
+					return err
+				}
+			} else if mfUserTx.RowsAffected == 1 {
+				if err = tx.Updates(&metaforoUser).Error; err != nil {
+					log.Error().Msgf("update metaforo user record error: %+v", err)
+					sdk.LogServerErrorToSentry(ctx, err)
+					ctx.JSON(http.StatusInternalServerError, api.ServerError(fmt.Errorf("update metaforo user record error")))
+					return err
+				}
+			} else {
+				err = fmt.Errorf("unexpected rows affected: %d", mfUserTx.RowsAffected)
+				log.Error().Msgf(err.Error())
+				sdk.LogServerErrorToSentry(ctx, err)
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(fmt.Errorf("unexpected rows affected: %d", mfUserTx.RowsAffected)))
+				return err
+			}
+
+			// Create user record if not existing
+			userRecord := model.User{Wallet: metaforoUser.UserWallet}
+			db.Clauses(clause.OnConflict{DoNothing: true}).Model(&model.User{}).Where(&userRecord).Assign(model.User{
+				CreateTs: model.GetCurrentUtcEpochSecond(),
+				UpdateTs: model.GetCurrentUtcEpochSecond(),
+				Avatar:   profileData.User.PhotoUrl,
+				Name:     profileData.User.Username,
+			}).FirstOrCreate(&userRecord)
+		}
+		return nil
+	})
 
 	metaforoUserIds := lo.Map(voterList, func(item *metaforo.UserPollRecord, index int) int { return item.UserId })
 	userRecords, err := GetOsUserFromMetaforoUserId(db, metaforoUserIds)

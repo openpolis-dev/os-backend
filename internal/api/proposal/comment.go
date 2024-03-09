@@ -43,7 +43,7 @@ func AddComment(ctx *gin.Context) {
 
 	user, _, db, cfg := api.ForContext(ctx)
 	proposalIdStr := ctx.Param("id")
-	proposalRcd, proposalMetaforoData, err := GetMetaforoProposalByInternalId(db, proposalIdStr, cfg.MetaforoData.GroupName)
+	proposalRcd, proposalMetaforoData, err := GetMetaforoProposalByInternalId(db, proposalIdStr, cfg.MetaforoData.GroupName, addComment.MetaforoAccessToken)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			log.Warn().Msgf("proposal %s not found", proposalIdStr)

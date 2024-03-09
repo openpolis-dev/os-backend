@@ -439,6 +439,9 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		// Schedule jobs routers
 		jobsRouter := adminGroup.Group("/jobs")
 		jobsRouter.GET("/list", cron_jobs.List)
+
+		// metaforo mint count update
+		adminGroup.POST("/metaforo_mint_data_update", data_srv.UpdateMetaforoVoteData)
 	}
 
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
