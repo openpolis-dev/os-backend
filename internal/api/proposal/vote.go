@@ -14,6 +14,7 @@ import (
 	"github.com/theseed-labs/os-backend/internal/sdk"
 	"github.com/theseed-labs/os-backend/internal/sdk/metaforo"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type VoterInfo struct {
@@ -243,7 +244,7 @@ func ShowVoteDetail(ctx *gin.Context) {
 		}
 	}
 
-	// Create MetaforoUserRecord from API data
+	// Create MetaforoUser and User record from API data
 	err = db.Transaction(func(tx *gorm.DB) error {
 		for userId, profileData := range missingMfUserIds {
 			metaforoUser := model.MetaforoUser{
@@ -278,6 +279,15 @@ func ShowVoteDetail(ctx *gin.Context) {
 				ctx.JSON(http.StatusInternalServerError, api.ServerError(fmt.Errorf("unexpected rows affected: %d", mfUserTx.RowsAffected)))
 				return err
 			}
+
+			// Create user record if not existing
+			userRecord := model.User{Wallet: metaforoUser.UserWallet}
+			db.Clauses(clause.OnConflict{DoNothing: true}).Model(&model.User{}).Where(&userRecord).Assign(model.User{
+				CreateTs: model.GetCurrentUtcEpochSecond(),
+				UpdateTs: model.GetCurrentUtcEpochSecond(),
+				Avatar:   profileData.User.PhotoUrl,
+				Name:     profileData.User.Username,
+			}).FirstOrCreate(&userRecord)
 		}
 		return nil
 	})
