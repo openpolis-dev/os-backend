@@ -128,13 +128,15 @@ func CreateAppBundleTaskFromMotivationComponent(db *gorm.DB, job *model.CronJob,
 						EntityId:   prjDbRcd.ID,
 					}
 
-					var appBundleRecordsCount int64
-					db.Model(&existingAppBundle).Where(&existingAppBundle).Count(&appBundleRecordsCount)
-					log.Debug().Msgf("Found %d records for app bundle", appBundleRecordsCount)
-					if appBundleRecordsCount > 0 {
-						log.Error().Msgf("appliation bundle with sip %s is already exist", prjDbRcd.SIP)
-						execResult = fmt.Sprintf("app bundle for project %d is existing", prjDbRcd.ID)
-						jobFailed = true
+					if prjDbRcd.Name != internal.CityHallProjectName {
+						var appBundleRecordsCount int64
+						db.Model(&existingAppBundle).Where(&existingAppBundle).Count(&appBundleRecordsCount)
+						log.Debug().Msgf("Found %d records for app bundle", appBundleRecordsCount)
+						if appBundleRecordsCount > 0 {
+							log.Error().Msgf("appliation bundle with sip %s is already exist", prjDbRcd.SIP)
+							execResult = fmt.Sprintf("app bundle for project %d is existing", prjDbRcd.ID)
+							jobFailed = true
+						}
 					}
 
 					// TODO: Duplicated code *NewAppBundleAndApplication*

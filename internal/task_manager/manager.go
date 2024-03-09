@@ -90,8 +90,7 @@ func (t *TaskManager) StartRunner() {
 
 	// Start refresh metaforo admin token task every 15 days
 	if _, err = t.Scheduler.NewJob(
-		gocron.DurationJob(time.Minute),
-		//gocron.DurationJob(time.Hour*time.Duration(15*24)),
+		gocron.DurationJob(time.Hour*time.Duration(15*24)),
 		gocron.NewTask(RefreshMetaforoAdminToken),
 	); err != nil {
 		panic(err)

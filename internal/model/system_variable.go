@@ -169,11 +169,6 @@ func UpdateMetaforoAdminToken(db *gorm.DB, adminToken string) error {
 		log.Error().Msgf("invalid metaforo info cache error: %+v", err)
 		return err
 	}
-	err = storage.InvalidCache(internal.SysVarMfAdminToken)
-	if err != nil {
-		log.Error().Msgf("invalid metaforo info cache error: %+v", err)
-		return err
-	}
 	return nil
 }
 

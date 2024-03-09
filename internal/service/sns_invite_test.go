@@ -10,10 +10,8 @@ import (
 )
 
 func TestGetMySnsInviteCode(t *testing.T) {
-	t.Skip("skip this case for now since it can't be run in CI")
-	// ---> prepare
-	truncateTable(model.TableSnsInviteCode)
-	truncateTable(model.TableSnsInviteRecord)
+	// ---> truncate tables before all
+	truncateTables()
 
 	type args struct {
 		userWallet string
@@ -44,10 +42,8 @@ func TestGetMySnsInviteCode(t *testing.T) {
 }
 
 func TestSnsInvitedBy(t *testing.T) {
-	t.Skip("skip this case for now since it can't be run in CI")
-	// ---> prepare
-	truncateTable(model.TableSnsInviteCode)
-	truncateTable(model.TableSnsInviteRecord)
+	// ---> truncate tables before all
+	truncateTables()
 
 	wallet1Code, _ := GetMySnsInviteCode(conn, wallet1)
 
@@ -133,10 +129,8 @@ func TestSnsInvitedBy(t *testing.T) {
 }
 
 func TestGetMySnsInviteRewards(t *testing.T) {
-	t.Skip("skip this case for now since it can't be run in CI")
-	// ---> prepare
-	truncateTable(model.TableSnsInviteCode)
-	truncateTable(model.TableSnsInviteRecord)
+	// ---> truncate tables before all
+	truncateTables()
 
 	wallet1Code, _ := GetMySnsInviteCode(conn, wallet1)
 	wallet2Code, _ := GetMySnsInviteCode(conn, wallet2)
@@ -188,15 +182,8 @@ func TestGetMySnsInviteRewards(t *testing.T) {
 }
 
 func TestCheckAndUpdateUnverifiedSnsInvite(t *testing.T) {
-	t.Skip("skip this case for now since it can't be run in CI")
-	// ---> prepare
-	truncateTable(model.TableSnsInviteCode)
-	truncateTable(model.TableSnsInviteRecord)
-	truncateTable("seasons")
-	truncateTable("app_bundles")
-	truncateTable("app_bundle_audit_logs")
-	truncateTable("applications")
-	truncateTable("application_audit_logs")
+	// ---> truncate tables before all
+	truncateTables()
 
 	// prepare config
 	cfg := &config.Config{

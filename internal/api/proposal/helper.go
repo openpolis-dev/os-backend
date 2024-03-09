@@ -576,7 +576,7 @@ func SaveProposalToMetaforo(db *gorm.DB, origProposalRecordId uint, voteType int
 	}
 
 	// Get metaforo proposal detail
-	metaforoProposalResponse, err = metaforo.GetProposal(metaforoThreadId, metaforoGroupName, "", 0)
+	metaforoProposalResponse, err = metaforo.GetProposal(metaforoThreadId, metaforoGroupName, metaforoAccessToken, 0)
 	if err != nil {
 		log.Error().Msgf("get metaforoProposal %d error: %+v", metaforoThreadId, err)
 		return err
