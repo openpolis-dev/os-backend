@@ -327,7 +327,7 @@ type ProposalVoteGate struct {
 	TokenAddress string `gorm:"index"`
 	TokenId      string
 	Amount       string // Amount for specified gate
-	MetaforoId   uint
+	MetaforoId   int
 
 	Name string // Name of the vote gate
 }
@@ -348,9 +348,9 @@ func (pvg *ProposalVoteGate) TokenTypeName() string {
 func (pvg *ProposalVoteGate) ChainName() string {
 	switch pvg.ChainType {
 	case 1:
-		return "Polygon"
-	case 8:
 		return "ETH"
+	case 8:
+		return "Polygon"
 	case 7:
 		return "Bsc"
 	case 9:

@@ -353,8 +353,8 @@ type Category struct {
 }
 
 type TokenGateSetting struct {
-	Id      uint `json:"id"`
-	GroupId int  `json:"group_id"`
+	Id      int `json:"id"`
+	GroupId int `json:"group_id"`
 
 	// GetUserToken spec for this gate record.
 	// Regards TokenType field, here are the available values
@@ -809,15 +809,20 @@ type NewVoteFormRequest struct {
 
 	// Who can vote
 	// 1: Everyone
-	// 2: Require specified token and amount
-	// 3: Require specified NFT
+	// 2: Require specified token and amount (ERC20)
+	// 3: Require specified NFT (ERC721/ERC1155)
 	VoteType string `json:"voteType"`
 
-	// TODO: What's the meaning of those fields?
-	ChainType    ChainType `json:"chain_type"`
-	ContractType int       `json:"contract_type"`
-	SettingId    int       `json:"setting_id"`
-	Period       string    `json:"period"`
+	// chain type: 1: eth, 8: polygon, 7: bsc, 9: arbitrum
+	ChainType ChainType `json:"chain_type"`
+
+	// ContractType: 0: ERC20 or None, 1: ERC721, 2: ERC1155
+	ContractType int `json:"contract_type"`
+
+	// Vote gate ID
+	SettingId int `json:"setting_id"`
+
+	Period string `json:"period"`
 
 	// Vote start and end UTC datetime string, YYYY-mm-DD HH:MM:SS format
 	CloseAt     string `json:"close_at"`
@@ -827,8 +832,13 @@ type NewVoteFormRequest struct {
 	Max int `json:"max"`
 
 	// Vote gate, the MinTokens only works when VoteType is 2
-	MinTokens    string `json:"min_tokens"`
+	MinTokens string `json:"min_tokens"`
+
+	// Token address
 	TokenAddress string `json:"token_address"`
+
+	// Token ID used for ERC1155
+	TokenId int `json:"token_id"`
 
 	// TODO: What's the meaning of those fields?
 	TokenIcon  string `json:"token_icon"`
@@ -837,7 +847,6 @@ type NewVoteFormRequest struct {
 
 	PollCategory       string        `json:"PollCategory"`
 	LastCategroyChange string        `json:"LastCategroyChange"`
-	TokenId            int           `json:"token_id"`
 	Strategy           []interface{} `json:"strategy"`
 	Quorum             bool          `json:"quorum"`
 	Weight             bool          `json:"weight"`
