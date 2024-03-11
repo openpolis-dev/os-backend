@@ -76,7 +76,7 @@ type UserActivity struct {
 }
 
 type Tag struct {
-	Name        string `json:"name"`
+	Name        any    `json:"name"`
 	Color       string `json:"color"`
 	ThreadCount int    `json:"thread_count"`
 	Id          int    `json:"id"`

@@ -298,18 +298,25 @@ func SyncNftGate(db *gorm.DB, grpName string) {
 
 	if groupInfo != nil {
 		for _, pollSetting := range groupInfo.PollSetting {
+			tokenIdStr := fmt.Sprintf("%d", pollSetting.TokenId)
 			nftGateConf := model.ProposalVoteGate{
 				ChainType:    int(pollSetting.ChainType),
 				TokenType:    int(pollSetting.TokenType),
-				TokenAddress: pollSetting.Address,
-				TokenId:      fmt.Sprintf("%d", pollSetting.TokenId),
+				TokenAddress: common.FormatUserWallet(pollSetting.Address),
+				TokenId:      tokenIdStr,
 				Name:         pollSetting.Alias,
 				MetaforoId:   pollSetting.Id,
 			}
-			err := db.Where(model.ProposalVoteGate{MetaforoId: pollSetting.Id}).Assign(nftGateConf).FirstOrCreate(&nftGateConf).Error
+			err, createdCnt := upsertDbRcd(db, map[string]any{
+				"chain_type":    int(pollSetting.ChainType),
+				"token_type":    int(pollSetting.TokenType),
+				"token_address": common.FormatUserWallet(pollSetting.Address),
+				"token_id":      tokenIdStr,
+			}, &nftGateConf)
 			if err != nil {
 				panic(err)
 			}
+			log.Error().Msgf("upsert nft gate record: %+v, created %d records", nftGateConf, createdCnt)
 		}
 	}
 }
