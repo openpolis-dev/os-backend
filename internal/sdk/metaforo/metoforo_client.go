@@ -75,8 +75,8 @@ func doHttpRequest[T any](requestData *httpRequestData) (int, *T, error) {
 	}
 
 	if err := fasthttp.Do(req, resp); err != nil {
-		log.Trace().Msgf("Request: %+v", req)
-		log.Trace().Msgf("Response: %+v", resp)
+		log.Error().Msgf("Request: %+v", req)
+		log.Error().Msgf("Response: %+v", resp)
 		log.Error().Msgf("Send request error: %s, req: %+v, resp: %+v", err, req, resp)
 	}
 
