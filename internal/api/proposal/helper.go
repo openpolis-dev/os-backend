@@ -554,7 +554,21 @@ func SaveProposalToMetaforo(db *gorm.DB, origProposalRecordId uint, voteType int
 
 		// Regards vote record, the data is generated here, and uploaded to metaforo in CreateProposal API.
 		// And the db records will be updated by data returned from Metaforo
-		voteFormBytes, err := BuildMetaforoVoteFormDataBytes(db, origProposalRecordId, voteStartTime, voteEndTime)
+		var pTmpl model.ProposalTemplate
+		err = db.Find(&pTmpl, origProposalRecord.ProposalTemplateID).Error
+		if err != nil {
+			log.Error().Msgf("get proposal template error: %+v", err)
+			return err
+		}
+
+		var voteGates []*model.ProposalVoteGate
+		err = db.Model(&pTmpl).Association("VoteGates").Find(&voteGates)
+		if err != nil {
+			log.Error().Msgf("get vote gates error: %+v", err)
+			return err
+		}
+
+		voteFormBytes, err := BuildMetaforoVoteFormDataBytes(db, origProposalRecordId, voteGates, voteStartTime, voteEndTime)
 		if err != nil {
 			log.Error().Msgf("build metaforoProposal vote data error: %+v", err)
 			return err
@@ -637,11 +651,50 @@ func prepareOsVoteOptions(voteType int, customVoteOptions []string) []string {
 // Returns:
 // - []byte: The byte representation of the vote form data.
 // - error: An error if there was a problem generating the byte representation.
-func BuildMetaforoVoteFormDataBytes(db *gorm.DB, proposalId uint, startTime time.Time, endTime time.Time) ([]byte, error) {
+func BuildMetaforoVoteFormDataBytes(db *gorm.DB, proposalId uint, voteGates []*model.ProposalVoteGate, startTime time.Time, endTime time.Time) ([]byte, error) {
 	voteRecords, err := db_agent.GetProposalVoteRecord(db, proposalId)
 	if err != nil {
 		log.Error().Msgf("fetch proposal vote record error: %+v", err)
 		return nil, err
+	}
+
+	// Vote params explanation
+	// voteType: 1 = no vote gate, 2 = ERC20, 3 = ERC721/ERC1155
+	// chain_type: 1 = eth, 8 = polygon, 7 = bsc, 9 = arbitrum
+	// setting_id: vote gate ID saved in metaforo
+	// min_tokens: ERC20 token amount
+	// token_address: address for token
+	// token_id: token ID for ERC1155
+	// contract_type: 1 = ERC721, 2 = ERC1155
+	voteGateId := 0
+	voteType := 1
+	tokenAddress := ""
+	contractType := 0
+	chainType := 0
+	tokenId := 0
+	minToken := "0"
+	if len(voteGates) > 0 {
+		if len(voteGates) > 1 {
+			log.Warn().Msgf("found %d vote gates for proposal %d, only the first one will be used", len(voteGates), proposalId)
+		}
+		api.PrintStructAsJson(voteGates[0], "TTT: vote gate")
+		voteGateId = voteGates[0].MetaforoId
+		switch voteGates[0].TokenType {
+		case 0: // ERC20
+			voteType = 2
+			minToken = voteGates[0].Amount
+		case 1: // ERC721
+			voteType = 3
+			contractType = 1
+		case 2: // ERC1155
+			voteType = 3
+			contractType = 2
+			tokenId, _ = strconv.Atoi(voteGates[0].TokenId)
+		}
+		tokenAddress = voteGates[0].TokenAddress
+		chainType = voteGates[0].ChainType
+
+		log.Info().Msgf("create proposal %d with vote gate: %+v", proposalId, voteGates[0])
 	}
 
 	voteData := make([]*metaforo.NewVoteFormRequest, 0)
@@ -658,22 +711,25 @@ func BuildMetaforoVoteFormDataBytes(db *gorm.DB, proposalId uint, startTime time
 			Title:              voteRecords[idx].Title,
 			ShowType:           "1",
 			ShowResult:         true,
-			ChartType:          "1",
-			VoteType:           "1",
-			ChainType:          0,
-			ContractType:       0,
-			SettingId:          0,
 			Period:             "1",
 			CloseAt:            endTime.Format(time.RFC3339),
 			VoteStartAt:        startTime.Format(time.RFC3339),
 			Max:                1,
-			MinTokens:          "0",
 			PollCategory:       "0",
 			LastCategroyChange: "0",
-			TokenId:            0,
 			Quorum:             false,
 			Weight:             true,
 			Step:               2,
+			ChartType:          "1",
+
+			// Params for vote gate
+			SettingId:    voteGateId,
+			VoteType:     fmt.Sprintf("%d", voteType),
+			ContractType: contractType,
+			ChainType:    metaforo.ChainType(chainType),
+			TokenId:      tokenId,
+			TokenAddress: tokenAddress,
+			MinTokens:    minToken,
 		})
 	}
 
