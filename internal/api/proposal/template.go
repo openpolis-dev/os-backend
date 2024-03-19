@@ -140,7 +140,8 @@ func ListTemplatesWithPerm(ctx *gin.Context) {
 			return nil
 		}
 
-		if userSeepassData == nil {
+		// Stop using the template if user has no seepass data or template is disabled
+		if userSeepassData == nil || tmplDbRcd.IsDisabled {
 			r.HasPermToUse = false
 		} else {
 			permArray := lo.Map(useTemplateVoteGates, func(r *model.ProposalVoteGate, _ int) bool {
