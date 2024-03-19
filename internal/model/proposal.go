@@ -545,6 +545,9 @@ type ProposalTemplate struct {
 
 	// Hide some template for some reason
 	IsHidden bool
+
+	// Disable this template, which can be shown in frontend but can't be used
+	IsDisabled bool
 }
 
 type ExtraResultCheckRuleData struct {
