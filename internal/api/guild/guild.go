@@ -47,8 +47,9 @@ type (
 		// Intro   string `json:"intro"`
 		Desc string `json:"desc"`
 
-		ContantWay   string `json:"ContantWay"`
-		OfficialLink string `json:"OfficialLink"`
+		Sponsors     []string `json:"sponsors"`
+		ContantWay   string   `json:"ContantWay"`
+		OfficialLink string   `json:"OfficialLink"`
 	}
 	DetailReply struct {
 		model.Guild
@@ -400,6 +401,10 @@ func Update(ctx *gin.Context) {
 	// guild.Name = req.Name
 	// guild.Intro = req.Intro
 	guild.Desc = req.Desc
+
+	guild.Sponsors = lo.Map[string](req.Sponsors, func(item string, _ int) string {
+		return common.FormatUserWallet(item)
+	})
 
 	guild.ContantWay = req.ContantWay
 	guild.OfficialLink = req.OfficialLink
