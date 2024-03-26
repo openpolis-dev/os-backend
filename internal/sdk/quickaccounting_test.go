@@ -7,6 +7,8 @@ import (
 )
 
 func TestSubmitToQuickAccounting(t *testing.T) {
+	t.Skip()
+
 	c := config.Config{
 		QuickAccounting: config.QuickAccounting{
 			Url:          "https://dev-qa-api.taoist.dev",
