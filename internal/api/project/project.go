@@ -108,20 +108,8 @@ func Create(ctx *gin.Context) {
 	budgets, _ := json.Marshal(req.Budgets)
 
 	user, enforcer, db, _ := api.ForContext(ctx)
-	//  check permission
-	// ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), internal.ObjProj, internal.ActCreate)
-	// if err != nil {
-	// 	sdk.LogServerErrorToSentry(ctx, err)
-	// 	ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
-	// 	return
-	// }
-	// if !ok {
-	// 	sdk.LogForbiddenError(ctx, user.Wallet, internal.ObjProj, internal.ActCreate)
-	// 	ctx.JSON(http.StatusForbidden, api.Forbidden())
-	// 	return
-	// }
 
-	//  check permission
+	// Check permission, Only CityHall member can create project
 	ok, err := enforcer.HasRoleForUser(common.FormatUserWallet(user.Wallet), internal.RoleHall)
 	if err != nil {
 		log.Error().Msgf("check permission error %+v", err)
@@ -188,45 +176,10 @@ func Create(ctx *gin.Context) {
 		return
 	}
 
-	// add policies
-	policies := [][]string{
-		// p, proj_sponsor_1, proj_1, modify
-		// p, proj_sponsor_1, proj_1, create_app
-		// p, proj_sponsor_1, proj_1, u_member
-		// p, proj_sponsor_1, proj_1, u_budget
-		{fmt.Sprintf("%s%d", internal.RoleProjSponsorPrefix, proj.ID), fmt.Sprintf("%s%d", internal.ObjProjPrefix, proj.ID), internal.ActModify},
-		{fmt.Sprintf("%s%d", internal.RoleProjSponsorPrefix, proj.ID), fmt.Sprintf("%s%d", internal.ObjProjPrefix, proj.ID), internal.ActCreateApplication},
-		{fmt.Sprintf("%s%d", internal.RoleProjSponsorPrefix, proj.ID), fmt.Sprintf("%s%d", internal.ObjProjPrefix, proj.ID), internal.ActUpdateMember},
-		{fmt.Sprintf("%s%d", internal.RoleProjSponsorPrefix, proj.ID), fmt.Sprintf("%s%d", internal.ObjProjPrefix, proj.ID), internal.ActUpdateBudget},
-		//// p, proj_member_1, proj_1, modify
-		//// p, proj_member_1, proj_1, create_app
-		//{fmt.Sprintf("%s%d", api.RoleProjMemberPrefix, proj.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, proj.ID), api.ActModify},
-		//{fmt.Sprintf("%s%d", api.RoleProjMemberPrefix, proj.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, proj.ID), api.ActCreateApplication},
-	}
-	_, err = enforcer.AddPolicies(policies)
+	// set policies for sponsor user
+	err = model.SetWalletPermissionAsProjectSponsor(enforcer, proj.ID, common.FormatUserWallet(user.Wallet))
 	if err != nil {
-		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("add policies error")))
-		return
-	}
-	// add roles
-	sponsorGroupingPolicies := lo.Map(req.Sponsors, func(sponsor string, _ int) []string {
-		// g, 0xc13..1283 proj_sponsor_1
-		return []string{common.FormatUserWallet(sponsor), fmt.Sprintf("%s%d", internal.RoleProjSponsorPrefix, proj.ID)}
-	})
-	//memberGroupingPolicies := lo.Map(req.Members, func(member string, _ int) []string {
-	//	// g, 0xc13..1283 proj_member_1
-	//	return []string{strings.ToLower(member), fmt.Sprintf("%s%d", api.RoleProjMemberPrefix, proj.ID)}
-	//})
-	//groupingPolicies := append(memberGroupingPolicies, sponsorGroupingPolicies...)
-	_, err = enforcer.AddGroupingPolicies(sponsorGroupingPolicies)
-	if err != nil {
-		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("add grouping policies error")))
-		return
-	}
-	err = enforcer.SavePolicy()
-	if err != nil {
+		log.Error().Msgf("set wallet permission error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("save policy error")))
 		return
@@ -273,68 +226,88 @@ func Update(ctx *gin.Context) {
 	}
 
 	user, enforcer, db, _ := api.ForContext(ctx)
-	//  check permission
-	// permObject := buildProjectPermObject(id)
-	// ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), permObject, internal.ActModify)
-	// if err != nil {
-	// 	sdk.LogServerErrorToSentry(ctx, err)
-	// 	ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
-	// 	return
-	// }
-	// if !ok {
-	// 	sdk.LogForbiddenError(ctx, user.Wallet, permObject, internal.ActModify)
-	// 	ctx.JSON(http.StatusForbidden, api.Forbidden())
-	// 	return
-	// }
-
 	proj, err := model.ProjectModel.Detail(db, uint(id))
 	if err != nil {
+		log.Error().Msgf("get project error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get project error")))
 		return
 	}
+
 	if proj == nil {
+		log.Error().Msgf("project %d not exist", id)
+		sdk.LogUserSideError(ctx, err)
 		ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("project %d not exist", id)))
 		return
 	}
 
-	//  check permission
+	// check permission, updating some fields require city hall permission
+	ok, err := enforcer.HasRoleForUser(common.FormatUserWallet(user.Wallet), internal.RoleHall)
+	if err != nil {
+		log.Error().Msgf("check permission error %+v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall permission error")))
+		return
+	}
+
+	requesterHasCityHallPerm := ok
+
+	sponsorsBeforeUpdate := lo.SliceToMap(proj.Sponsors, func(item string) (string, bool) { return item, true })
+
 	overProject := false
 	if (len(req.OverLink) > 0) || (len(req.Sponsors) > 0) {
-		ok, err := enforcer.HasRoleForUser(common.FormatUserWallet(user.Wallet), internal.RoleHall)
-		if err != nil {
-			log.Error().Msgf("check permission error %+v", err)
-			sdk.LogServerErrorToSentry(ctx, err)
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall permission error")))
-			return
-		}
-
-		if !ok {
+		// Only city hall can update overlink and sponsors
+		if !requesterHasCityHallPerm {
 			log.Warn().Msgf("permission deny for user %s", common.FormatUserWallet(user.Wallet))
 			sdk.LogForbiddenError(ctx, user.Wallet, internal.RoleHall, "access")
 			ctx.JSON(http.StatusForbidden, api.Forbidden())
 			return
 		}
 
-		sponsors := lo.Map[string](req.Sponsors, func(item string, _ int) string {
+		sponsors := lo.Uniq(lo.Map[string](req.Sponsors, func(item string, _ int) string {
 			return common.FormatUserWallet(item)
-		})
+		}))
 
 		proj.Sponsors = sponsors
 		proj.OverLink = req.OverLink
 		if len(req.OverLink) > 0 {
 			overProject = true
 		}
-	} else {
-		ok, err := enforcer.HasRoleForUser(common.FormatUserWallet(user.Wallet), internal.RoleHall)
-		if err != nil {
-			log.Error().Msgf("check permission error %+v", err)
-			sdk.LogServerErrorToSentry(ctx, err)
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall permission error")))
-			return
+
+		// Update sponsor permission
+		// Get new added sponsors and set permission
+		newSponsors := make(map[string]bool)
+		for _, sponsorWallet := range proj.Sponsors {
+			newSponsors[sponsorWallet] = true
+			if found, _ := sponsorsBeforeUpdate[sponsorWallet]; !found {
+				// the sponsor is new added to project, add permission for the new wallet address
+				log.Debug().Msgf("set sponsor permission for %s", sponsorWallet)
+				err = model.SetWalletPermissionAsProjectSponsor(enforcer, proj.ID, sponsorWallet)
+				if err != nil {
+					log.Error().Msgf("set sponsor permission error %+v", err)
+					sdk.LogServerErrorToSentry(ctx, err)
+					ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("set sponsor permission error")))
+					return
+				}
+			}
 		}
 
-		if !ok {
+		// Get removed sponsors
+		for sponsorWallet, _ := range newSponsors {
+			if _, found := sponsorsBeforeUpdate[sponsorWallet]; !found {
+				log.Debug().Msgf("unset sponsor permission for %s", sponsorWallet)
+				err = model.RemoveWalletPermissionFromProjectSponsor(enforcer, proj.ID, sponsorWallet)
+				if err != nil {
+					log.Error().Msgf("unset sponsor permission error %+v", err)
+					sdk.LogServerErrorToSentry(ctx, err)
+					ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("unset sponsor permission error")))
+					return
+				}
+			}
+		}
+	} else {
+		if !requesterHasCityHallPerm {
+			// only sponsor can update project data
 			if len(proj.Sponsors) > 0 {
 				if common.FormatUserWallet(proj.Sponsors[0]) != common.FormatUserWallet(user.Wallet) {
 					log.Warn().Msgf("permission deny for user %s", common.FormatUserWallet(user.Wallet))

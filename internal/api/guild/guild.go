@@ -190,20 +190,8 @@ func Create(ctx *gin.Context) {
 	proposals := lo.Uniq[string](req.Proposals)
 
 	user, enforcer, db, _ := api.ForContext(ctx)
-	//  check permission
-	// ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), internal.ObjGuild, internal.ActCreate)
-	// if err != nil {
-	// 	sdk.LogServerErrorToSentry(ctx, err)
-	// 	ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
-	// 	return
-	// }
-	// if !ok {
-	// 	sdk.LogForbiddenError(ctx, user.Wallet, internal.ObjGuild, internal.ActCreate)
-	// 	ctx.JSON(http.StatusForbidden, api.Forbidden())
-	// 	return
-	// }
 
-	//  check permission
+	// Check permission, Only CityHall member can create guild
 	ok, err := enforcer.HasRoleForUser(common.FormatUserWallet(user.Wallet), internal.RoleHall)
 	if err != nil {
 		log.Error().Msgf("check permission error %+v", err)
@@ -262,45 +250,10 @@ func Create(ctx *gin.Context) {
 		return
 	}
 
-	// add policies
-	policies := [][]string{
-		// p, guild_sponsor_1, guild_1, modify
-		// p, guild_sponsor_1, guild_1, create_app
-		// p, guild_sponsor_1, guild_1, u_member
-		// p, guild_sponsor_1, guild_1, u_budget
-		{fmt.Sprintf("%s%d", internal.RoleGuildSponsorPrefix, guild.ID), fmt.Sprintf("%s%d", internal.ObjGuildPrefix, guild.ID), internal.ActModify},
-		{fmt.Sprintf("%s%d", internal.RoleGuildSponsorPrefix, guild.ID), fmt.Sprintf("%s%d", internal.ObjGuildPrefix, guild.ID), internal.ActCreateApplication},
-		{fmt.Sprintf("%s%d", internal.RoleGuildSponsorPrefix, guild.ID), fmt.Sprintf("%s%d", internal.ObjGuildPrefix, guild.ID), internal.ActUpdateMember},
-		{fmt.Sprintf("%s%d", internal.RoleGuildSponsorPrefix, guild.ID), fmt.Sprintf("%s%d", internal.ObjGuildPrefix, guild.ID), internal.ActUpdateBudget},
-		//// p, guild_member_1, guild_1, modify
-		//// p, guild_member_1, guild_1, create_app
-		//{fmt.Sprintf("%s%d", api.RoleGuildMemberPrefix, guild.ID), fmt.Sprintf("%s%d", api.ObjGuildPrefix, guild.ID), api.ActModify},
-		//{fmt.Sprintf("%s%d", api.RoleGuildMemberPrefix, guild.ID), fmt.Sprintf("%s%d", api.ObjGuildPrefix, guild.ID), api.ActCreateApplication},
-	}
-	_, err = enforcer.AddPolicies(policies)
+	// set policies for sponsor user
+	err = model.SetWalletPermissionAsGuildSponsor(enforcer, guild.ID, common.FormatUserWallet(user.Wallet))
 	if err != nil {
-		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("add policies error")))
-		return
-	}
-	// add roles
-	sponsorGroupingPolicies := lo.Map(req.Sponsors, func(sponsor string, _ int) []string {
-		// g, 0xc13..1283 guild_sponsor_1
-		return []string{common.FormatUserWallet(sponsor), fmt.Sprintf("%s%d", internal.RoleGuildSponsorPrefix, guild.ID)}
-	})
-	//memberGroupingPolicies := lo.Map(req.Members, func(member string, _ int) []string {
-	//	// g, 0xc13..1283 guild_member_1
-	//	return []string{strings.ToLower(member), fmt.Sprintf("%s%d", api.RoleGuildMemberPrefix, guild.ID)}
-	//})
-	//groupingPolicies := append(memberGroupingPolicies, sponsorGroupingPolicies...)
-	_, err = enforcer.AddGroupingPolicies(sponsorGroupingPolicies)
-	if err != nil {
-		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("add grouping policies error")))
-		return
-	}
-	err = enforcer.SavePolicy()
-	if err != nil {
+		log.Error().Msgf("set wallet permission error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("save policy error")))
 		return
@@ -348,21 +301,8 @@ func Update(ctx *gin.Context) {
 	}
 
 	user, enforcer, db, _ := api.ForContext(ctx)
-	//  check permission
-	// permObject := buildGuildPermObject(id)
-	// ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), permObject, internal.ActModify)
-	// if err != nil {
-	// 	sdk.LogServerErrorToSentry(ctx, err)
-	// 	ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
-	// 	return
-	// }
-	// if !ok {
-	// 	sdk.LogForbiddenError(ctx, user.Wallet, permObject, internal.ActModify)
-	// 	ctx.JSON(http.StatusForbidden, api.Forbidden())
-	// 	return
-	// }
 
-	//  check permission
+	// Check permission, Only CityHall member can update guild
 	ok, err := enforcer.HasRoleForUser(common.FormatUserWallet(user.Wallet), internal.RoleHall)
 	if err != nil {
 		log.Error().Msgf("check permission error %+v", err)
@@ -402,9 +342,42 @@ func Update(ctx *gin.Context) {
 	// guild.Intro = req.Intro
 	guild.Desc = req.Desc
 
-	guild.Sponsors = lo.Map[string](req.Sponsors, func(item string, _ int) string {
-		return common.FormatUserWallet(item)
+	sponsorsBeforeUpdate := make(map[string]bool)
+	lo.ForEach[string](guild.Sponsors, func(item string, _ int) {
+		sponsorsBeforeUpdate[item] = true
 	})
+
+	newSponsorMap := make(map[string]bool)
+	guild.Sponsors = lo.Map[string](req.Sponsors, func(item string, _ int) string {
+		_w := common.FormatUserWallet(item)
+		newSponsorMap[_w] = true
+		return _w
+	})
+
+	// Update permissions
+	// New sponsors
+	for sponsorWallet, _ := range newSponsorMap {
+		if found, _ := sponsorsBeforeUpdate[sponsorWallet]; !found {
+			log.Debug().Msgf("add sponsor %s", sponsorWallet)
+			err = model.SetWalletPermissionAsGuildSponsor(enforcer, guild.ID, sponsorWallet)
+			if err != nil {
+				log.Error().Msgf("add sponsor %s error: %+v", sponsorWallet, err)
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+				return
+			}
+		}
+	}
+
+	for sponsorWallet, _ := range sponsorsBeforeUpdate {
+		if found, _ := newSponsorMap[sponsorWallet]; !found {
+			log.Debug().Msgf("remove sponsor %s", sponsorWallet)
+			err = model.RemoveWalletPermissionAsGuildSponsor(enforcer, guild.ID, sponsorWallet)
+			if err != nil {
+				log.Error().Msgf("remove sponsor %s error: %+v", sponsorWallet, err)
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+			}
+		}
+	}
 
 	guild.ContantWay = req.ContantWay
 	guild.OfficialLink = req.OfficialLink

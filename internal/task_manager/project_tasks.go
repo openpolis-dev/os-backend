@@ -80,7 +80,7 @@ func CreateProjectTask(db *gorm.DB, job *model.CronJob, jobParams string) {
 
 		// update permission
 		enforcer := storage.GetEnforcer()
-		policies := model.GenerateCasbinPolicies(proj.ID)
+		policies := model.GenerateCasbinPoliciesForProject(proj.ID)
 		_, err = enforcer.AddPolicies(policies)
 		if err != nil {
 			log.Warn().Msgf("create project error: %+v", err)
