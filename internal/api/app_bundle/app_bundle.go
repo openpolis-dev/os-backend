@@ -73,7 +73,7 @@ func ListAvailableProjectsAndGuilds(ctx *gin.Context) {
 			return
 		}
 
-		projects, _, err = model.ProjectModel.List(db, "open", nil, false)
+		projects, _, err = model.ProjectModel.List(db, "open", nil, true)
 		if err != nil {
 			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("list projects error")))
