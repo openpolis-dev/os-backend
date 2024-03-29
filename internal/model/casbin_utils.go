@@ -93,7 +93,7 @@ func GenerateGroupingPoliciesForGuild(guildId uint, memberList []string) [][]str
 	//groupingPolicies := append(memberGroupingPolicies, sponsorGroupingPolicies...)
 }
 
-func SetWalletPermissionAsGuildSponsor(enforcer *casbin.SyncedEnforcer, guildId uint, wallet string) error {
+func SetWalletPermissionAsGuildSponsor(enforcer *casbin.SyncedEnforcer, guildId uint, walletList []string) error {
 	// add policies
 	policies := [][]string{
 		// p, guild_sponsor_1, guild_1, modify
@@ -116,7 +116,7 @@ func SetWalletPermissionAsGuildSponsor(enforcer *casbin.SyncedEnforcer, guildId 
 	}
 
 	// add roles
-	sponsorGroupingPolicies := GenerateGroupingPoliciesForGuild(guildId, []string{wallet})
+	sponsorGroupingPolicies := GenerateGroupingPoliciesForGuild(guildId, walletList)
 	_, err = enforcer.AddGroupingPolicies(sponsorGroupingPolicies)
 	if err != nil {
 		log.Error().Msgf("add grouping policies error: %+v", err)
@@ -124,8 +124,8 @@ func SetWalletPermissionAsGuildSponsor(enforcer *casbin.SyncedEnforcer, guildId 
 	}
 	return enforcer.SavePolicy()
 }
-func RemoveWalletPermissionAsGuildSponsor(enforcer *casbin.SyncedEnforcer, guildId uint, wallet string) error {
-	groupingPolicies := GenerateGroupingPoliciesForGuild(guildId, []string{wallet})
+func RemoveWalletPermissionFromGuildSponsor(enforcer *casbin.SyncedEnforcer, guildId uint, walletList []string) error {
+	groupingPolicies := GenerateGroupingPoliciesForGuild(guildId, walletList)
 	_, err = enforcer.RemoveGroupingPolicies(groupingPolicies)
 	if err != nil {
 		log.Error().Msgf("Remove grouping policies error: %+v", err)

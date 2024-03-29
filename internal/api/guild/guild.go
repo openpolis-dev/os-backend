@@ -174,15 +174,12 @@ func Create(ctx *gin.Context) {
 	}
 
 	// convert all wallet to checksum address
-	sponsors := lo.Map[string](req.Sponsors, func(item string, _ int) string {
+	sponsors := lo.Uniq(lo.Map(req.Sponsors, func(item string, _ int) string {
 		return common.FormatUserWallet(item)
-	})
-	members := lo.Map[string](req.Members, func(item string, _ int) string {
+	}))
+	members := lo.Uniq(lo.Map(req.Members, func(item string, _ int) string {
 		return common.FormatUserWallet(item)
-	})
-	// remove duplicate sponsors and members
-	sponsors = lo.Uniq[string](sponsors)
-	members = lo.Uniq[string](members)
+	}))
 	// remove sponsors from members
 	members = lo.Without[string](members, sponsors...)
 
@@ -251,7 +248,7 @@ func Create(ctx *gin.Context) {
 	}
 
 	// set policies for sponsor user
-	err = model.SetWalletPermissionAsGuildSponsor(enforcer, guild.ID, common.FormatUserWallet(user.Wallet))
+	err = model.SetWalletPermissionAsGuildSponsor(enforcer, guild.ID, []string{common.FormatUserWallet(user.Wallet)})
 	if err != nil {
 		log.Error().Msgf("set wallet permission error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
@@ -329,6 +326,9 @@ func Update(ctx *gin.Context) {
 		return
 	}
 
+	// Save current sponsors
+	sponsorsBeforeUpdate := lo.SliceToMap(guild.Sponsors, func(item string) (string, bool) { return item, true })
+
 	// update logo
 	logoUrl, err := sdk.GetAwsClient().UploadEntityLogo(guild.ID, "guild", req.LogoStr)
 	if err != nil {
@@ -336,47 +336,42 @@ func Update(ctx *gin.Context) {
 		return
 	}
 
+	sponsors := lo.Uniq(lo.Map[string](req.Sponsors, func(item string, _ int) string {
+		return common.FormatUserWallet(item)
+	}))
+
 	// update name
 	guild.Logo = logoUrl
+	guild.Sponsors = sponsors
 	// guild.Name = req.Name
 	// guild.Intro = req.Intro
 	guild.Desc = req.Desc
 
-	sponsorsBeforeUpdate := make(map[string]bool)
-	lo.ForEach[string](guild.Sponsors, func(item string, _ int) {
-		sponsorsBeforeUpdate[item] = true
-	})
-
-	newSponsorMap := make(map[string]bool)
-	guild.Sponsors = lo.Map[string](req.Sponsors, func(item string, _ int) string {
-		_w := common.FormatUserWallet(item)
-		newSponsorMap[_w] = true
-		return _w
-	})
-
 	// Update permissions
-	// New sponsors
-	for sponsorWallet, _ := range newSponsorMap {
-		if found, _ := sponsorsBeforeUpdate[sponsorWallet]; !found {
-			log.Debug().Msgf("add sponsor %s", sponsorWallet)
-			err = model.SetWalletPermissionAsGuildSponsor(enforcer, guild.ID, sponsorWallet)
-			if err != nil {
-				log.Error().Msgf("add sponsor %s error: %+v", sponsorWallet, err)
-				ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
-				return
-			}
-		}
+	newSponsorsMap := lo.SliceToMap(sponsors, func(item string) (string, bool) { return item, true })
+	newAddedSponsors := lo.Keys(lo.OmitByKeys(newSponsorsMap, lo.Keys(sponsorsBeforeUpdate)))
+	removedSponsors := lo.Keys(lo.OmitByKeys(sponsorsBeforeUpdate, sponsors))
+
+	log.Debug().Msgf("new added sponsors: %+v, removed sponsors: %+v", newAddedSponsors, removedSponsors)
+
+	err = model.SetWalletPermissionAsGuildSponsor(enforcer, guild.ID, newAddedSponsors)
+	if err != nil {
+		log.Error().Msgf("set sponsor permission error %+v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("set sponsor permission error")))
+		return
+	} else {
+		log.Debug().Msgf("set project sponsor permission for %s", newAddedSponsors)
 	}
 
-	for sponsorWallet, _ := range sponsorsBeforeUpdate {
-		if found, _ := newSponsorMap[sponsorWallet]; !found {
-			log.Debug().Msgf("remove sponsor %s", sponsorWallet)
-			err = model.RemoveWalletPermissionAsGuildSponsor(enforcer, guild.ID, sponsorWallet)
-			if err != nil {
-				log.Error().Msgf("remove sponsor %s error: %+v", sponsorWallet, err)
-				ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
-			}
-		}
+	err = model.RemoveWalletPermissionFromGuildSponsor(enforcer, guild.ID, removedSponsors)
+	if err != nil {
+		log.Error().Msgf("unset sponsor permission error %+v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("unset sponsor permission error")))
+		return
+	} else {
+		log.Debug().Msgf("unset project sponsor permission for %s", removedSponsors)
 	}
 
 	guild.ContantWay = req.ContantWay
