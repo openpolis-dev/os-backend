@@ -230,23 +230,36 @@ func CreateAppBundle(ctx *gin.Context) {
 	}
 
 	user, enforcer, db, _ := api.ForContext(ctx)
-
-	// Check permission, using ActCreateApplication for now, can be changed to new permission if required
-	// TODO: Merge to separated functions
-	obj := lo.
-		If(newAppBundleReq.Entity == "project", fmt.Sprintf("%s%d", internal.ObjProjPrefix, newAppBundleReq.EntityId)).
-		ElseIf(newAppBundleReq.Entity == "guild", fmt.Sprintf("%s%d", internal.ObjGuildPrefix, newAppBundleReq.EntityId)).
-		Else("")
-	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), obj, internal.ActCreateApplication)
+	ok, err := enforcer.HasRoleForUser(common.FormatUserWallet(user.Wallet), internal.RoleHall)
 	if err != nil {
+		log.Error().Msgf("check permission error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 		return
 	}
+
 	if !ok {
-		sdk.LogForbiddenError(ctx, user.Wallet, obj, internal.ActCreateApplication)
-		ctx.JSON(http.StatusForbidden, api.Forbidden())
-		return
+		log.Debug().Msgf("user %s has no hall permission, check whether user is sponsor", user.Wallet)
+
+		// Check permission, using ActCreateApplication for now, can be changed to new permission if required
+		// TODO: Merge to separated functions
+		obj := lo.
+			If(newAppBundleReq.Entity == "project", fmt.Sprintf("%s%d", internal.ObjProjPrefix, newAppBundleReq.EntityId)).
+			ElseIf(newAppBundleReq.Entity == "guild", fmt.Sprintf("%s%d", internal.ObjGuildPrefix, newAppBundleReq.EntityId)).
+			Else("")
+		ok, err = enforcer.Enforce(common.FormatUserWallet(user.Wallet), obj, internal.ActCreateApplication)
+		if err != nil {
+			sdk.LogServerErrorToSentry(ctx, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
+			return
+		}
+		if !ok {
+			sdk.LogForbiddenError(ctx, user.Wallet, obj, internal.ActCreateApplication)
+			ctx.JSON(http.StatusForbidden, api.Forbidden())
+			return
+		}
+	} else {
+		log.Debug().Msgf("user %s has hall permission, can create app bundle", user.Wallet)
 	}
 
 	seasonRecord, err := model.GetCurrentSeason(db)
