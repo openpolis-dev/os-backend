@@ -275,21 +275,20 @@ func Update(ctx *gin.Context) {
 		}
 
 		// Update sponsor permission
-		// Get new added sponsors and set permission
-		newSponsorsMap := lo.SliceToMap(sponsors, func(item string) (string, bool) { return item, true })
-		newAddedSponsors := lo.Keys(lo.OmitByKeys(newSponsorsMap, lo.Keys(sponsorsBeforeUpdate)))
+		// 1. Grant casbin permission for all existing sponsors
+		// 2. Remove casbin permission for all removed sponsors
 		removedSponsors := lo.Keys(lo.OmitByKeys(sponsorsBeforeUpdate, sponsors))
 
-		log.Debug().Msgf("new added sponsors: %+v, removed sponsors: %+v", newAddedSponsors, removedSponsors)
+		log.Debug().Msgf("set sponsors permission: %+v, removed sponsors: %+v", sponsors, removedSponsors)
 
-		err = model.SetWalletPermissionAsProjectSponsor(enforcer, proj.ID, newAddedSponsors)
+		err = model.SetWalletPermissionAsProjectSponsor(enforcer, proj.ID, sponsors)
 		if err != nil {
 			log.Error().Msgf("set sponsor permission error %+v", err)
 			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("set sponsor permission error")))
 			return
 		} else {
-			log.Debug().Msgf("set project sponsor permission for %s", newAddedSponsors)
+			log.Debug().Msgf("set project sponsor permission for %s", sponsors)
 		}
 
 		err = model.RemoveWalletPermissionFromProjectSponsor(enforcer, proj.ID, removedSponsors)
