@@ -54,14 +54,14 @@ func CreateProjectCasbinPolicies(enforcer *casbin.SyncedEnforcer, projectId uint
 	return err
 }
 
-func SetWalletPermissionAsProjectSponsor(enforcer *casbin.SyncedEnforcer, projectId uint, wallet string) error {
+func SetWalletPermissionAsProjectSponsor(enforcer *casbin.SyncedEnforcer, projectId uint, walletList []string) error {
 	err = CreateProjectCasbinPolicies(enforcer, projectId)
 	if err != nil {
 		log.Error().Msgf("Create project policies error: %+v", err)
 		return err
 	}
 
-	groupingPolicies := GenerateGroupingPoliciesForProject(projectId, []string{wallet}, nil)
+	groupingPolicies := GenerateGroupingPoliciesForProject(projectId, walletList, nil)
 	log.Debug().Msgf("grouping policies for project %d: %+v", projectId, groupingPolicies)
 	if _, err = enforcer.AddGroupingPolicies(groupingPolicies); err != nil {
 		log.Error().Msgf("Add grouping policies error: %+v", err)
@@ -71,8 +71,8 @@ func SetWalletPermissionAsProjectSponsor(enforcer *casbin.SyncedEnforcer, projec
 	return enforcer.SavePolicy()
 }
 
-func RemoveWalletPermissionFromProjectSponsor(enforcer *casbin.SyncedEnforcer, projectId uint, wallet string) error {
-	groupingPolicies := GenerateGroupingPoliciesForProject(projectId, []string{wallet}, nil)
+func RemoveWalletPermissionFromProjectSponsor(enforcer *casbin.SyncedEnforcer, projectId uint, walletList []string) error {
+	groupingPolicies := GenerateGroupingPoliciesForProject(projectId, walletList, nil)
 	_, err = enforcer.RemoveGroupingPolicies(groupingPolicies)
 	if err != nil {
 		log.Error().Msgf("Remove grouping policies error: %+v", err)

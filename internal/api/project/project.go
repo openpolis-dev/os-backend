@@ -177,7 +177,7 @@ func Create(ctx *gin.Context) {
 	}
 
 	// set policies for sponsor user
-	err = model.SetWalletPermissionAsProjectSponsor(enforcer, proj.ID, common.FormatUserWallet(user.Wallet))
+	err = model.SetWalletPermissionAsProjectSponsor(enforcer, proj.ID, []string{common.FormatUserWallet(user.Wallet)})
 	if err != nil {
 		log.Error().Msgf("set wallet permission error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
@@ -276,34 +276,30 @@ func Update(ctx *gin.Context) {
 
 		// Update sponsor permission
 		// Get new added sponsors and set permission
-		newSponsors := make(map[string]bool)
-		for _, sponsorWallet := range proj.Sponsors {
-			newSponsors[sponsorWallet] = true
-			if found, _ := sponsorsBeforeUpdate[sponsorWallet]; !found {
-				// the sponsor is new added to project, add permission for the new wallet address
-				log.Debug().Msgf("set sponsor permission for %s", sponsorWallet)
-				err = model.SetWalletPermissionAsProjectSponsor(enforcer, proj.ID, sponsorWallet)
-				if err != nil {
-					log.Error().Msgf("set sponsor permission error %+v", err)
-					sdk.LogServerErrorToSentry(ctx, err)
-					ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("set sponsor permission error")))
-					return
-				}
-			}
+		newSponsorsMap := lo.SliceToMap(sponsors, func(item string) (string, bool) { return item, true })
+		newAddedSponsors := lo.Keys(lo.OmitByKeys(newSponsorsMap, lo.Keys(sponsorsBeforeUpdate)))
+		removedSponsors := lo.Keys(lo.OmitByKeys(sponsorsBeforeUpdate, sponsors))
+
+		log.Debug().Msgf("new added sponsors: %+v, removed sponsors: %+v", newAddedSponsors, removedSponsors)
+
+		err = model.SetWalletPermissionAsProjectSponsor(enforcer, proj.ID, newAddedSponsors)
+		if err != nil {
+			log.Error().Msgf("set sponsor permission error %+v", err)
+			sdk.LogServerErrorToSentry(ctx, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("set sponsor permission error")))
+			return
+		} else {
+			log.Debug().Msgf("set project sponsor permission for %s", newAddedSponsors)
 		}
 
-		// Get removed sponsors
-		for sponsorWallet, _ := range newSponsors {
-			if _, found := sponsorsBeforeUpdate[sponsorWallet]; !found {
-				log.Debug().Msgf("unset sponsor permission for %s", sponsorWallet)
-				err = model.RemoveWalletPermissionFromProjectSponsor(enforcer, proj.ID, sponsorWallet)
-				if err != nil {
-					log.Error().Msgf("unset sponsor permission error %+v", err)
-					sdk.LogServerErrorToSentry(ctx, err)
-					ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("unset sponsor permission error")))
-					return
-				}
-			}
+		err = model.RemoveWalletPermissionFromProjectSponsor(enforcer, proj.ID, removedSponsors)
+		if err != nil {
+			log.Error().Msgf("unset sponsor permission error %+v", err)
+			sdk.LogServerErrorToSentry(ctx, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("unset sponsor permission error")))
+			return
+		} else {
+			log.Debug().Msgf("unset project sponsor permission for %s", removedSponsors)
 		}
 	} else {
 		if !requesterHasCityHallPerm {
