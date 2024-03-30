@@ -8,6 +8,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/casbin/casbin/v2"
+	gormadapter "github.com/casbin/gorm-adapter/v3"
 	"github.com/samber/lo"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/config"
@@ -598,6 +600,51 @@ func SeedData(cfg SeedDataConfig, db *gorm.DB) error {
 	})
 }
 
+func updateEntityCasbinPermission(db *gorm.DB) {
+	adapter, err := gormadapter.NewAdapterByDB(db)
+	if err != nil {
+		panic(err)
+	}
+	enforcer, err := casbin.NewSyncedEnforcer("rbac_model.conf", adapter)
+	if err != nil {
+		panic(err)
+	}
+
+	// Update project casbin policies
+	var projects []*model.Project
+	err = db.Model(projects).Find(&projects).Error
+	if err != nil {
+		panic(err)
+	}
+
+	for _, project := range projects {
+		if project.Sponsors == nil || len(project.Sponsors) == 0 {
+			continue
+		}
+		err = model.SetWalletPermissionAsProjectSponsor(enforcer, project.ID, project.Sponsors)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	// Update guild casbin policies
+	var guilds []*model.Guild
+	err = db.Model(guilds).Find(&guilds).Error
+	if err != nil {
+		panic(err)
+	}
+
+	for _, guild := range guilds {
+		if guild.Sponsors == nil || len(guild.Sponsors) == 0 {
+			continue
+		}
+		err = model.SetWalletPermissionAsGuildSponsor(enforcer, guild.ID, guild.Sponsors)
+		if err != nil {
+			panic(err)
+		}
+	}
+}
+
 func main() {
 	cfg := config.LoadConfig("config.yml")
 	storage.InitGormDB(cfg.DataSource.Dsn, cfg.Casbin.DriverName)
@@ -618,6 +665,8 @@ func main() {
 		fmt.Println("Usage: dbutils <command> [arguments]")
 		fmt.Println("Available commands:")
 		fmt.Println("  migrate")
+		fmt.Println("  seed")
+		fmt.Println("  fixperm")
 		os.Exit(1)
 	}
 
@@ -640,6 +689,8 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
+	case "fixperm":
+		updateEntityCasbinPermission(db)
 	default:
 		fmt.Printf("Unknown command: %s\n", os.Args[1])
 		os.Exit(1)
