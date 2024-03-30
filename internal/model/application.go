@@ -286,7 +286,7 @@ func completeApplication(tx *gorm.DB, operatorWallet string, application *Applic
 		// clean rbac if passed in enforcer
 		if enforcer != nil {
 			// remove policies
-			policies := GenerateCasbinPolicies(application.EntityId)
+			policies := GenerateCasbinPoliciesForProject(application.EntityId)
 			if _, err := enforcer.RemovePolicies(policies); err != nil {
 				log.Error().Msgf("remove casbin policies error: %+v", err)
 				return err
