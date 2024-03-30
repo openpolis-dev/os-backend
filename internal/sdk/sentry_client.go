@@ -60,13 +60,16 @@ func LogMessageToSentry(ctx *gin.Context, msg string, tags map[string]string) {
 }
 
 func LogServerErrorToSentry(ctx *gin.Context, err error) {
+	log.Error().Msgf("server error: %+v", err)
 	LogMessageToSentry(ctx, err.Error(), map[string]string{"error_scope": "server"})
 }
 
 func LogForbiddenError(ctx *gin.Context, userWallet string, targetToAccess string, action string) {
+	log.Warn().Msgf("user %s is forbidden to target %s with action %s", common.FormatUserWallet(userWallet), targetToAccess, action)
 	LogMessageToSentry(ctx, fmt.Sprintf("user %s is forbidden to target %s with action %s", common.FormatUserWallet(userWallet), targetToAccess, action), map[string]string{"error_scope": "user", "type": "forbidden"})
 }
 
 func LogUserSideError(ctx *gin.Context, err error) {
+	log.Warn().Msgf("user side error: %+v", err)
 	LogMessageToSentry(ctx, err.Error(), map[string]string{"error_scope": "user"})
 }

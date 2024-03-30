@@ -311,21 +311,3 @@ func createCityHallProject(db *gorm.DB, cityHallUsers []string) (*Project, error
 	}
 	return &project, nil
 }
-
-// GenerateCasbinPolicies generate casbin policies for specified project
-func GenerateCasbinPolicies(projectId uint) [][]string {
-	return [][]string{
-		// p, proj_sponsor_1, proj_1, modify
-		// p, proj_sponsor_1, proj_1, create_app
-		// p, proj_sponsor_1, proj_1, u_member
-		// p, proj_sponsor_1, proj_1, u_budget
-		{fmt.Sprintf("%s%d", internal.RoleProjSponsorPrefix, projectId), fmt.Sprintf("%s%d", internal.ObjProjPrefix, projectId), internal.ActModify},
-		{fmt.Sprintf("%s%d", internal.RoleProjSponsorPrefix, projectId), fmt.Sprintf("%s%d", internal.ObjProjPrefix, projectId), internal.ActCreateApplication},
-		{fmt.Sprintf("%s%d", internal.RoleProjSponsorPrefix, projectId), fmt.Sprintf("%s%d", internal.ObjProjPrefix, projectId), internal.ActUpdateMember},
-		{fmt.Sprintf("%s%d", internal.RoleProjSponsorPrefix, projectId), fmt.Sprintf("%s%d", internal.ObjProjPrefix, projectId), internal.ActUpdateBudget},
-		//// p, proj_member_1, proj_1, modify
-		//// p, proj_member_1, proj_1, create_app
-		//{fmt.Sprintf("%s%d", api.RoleProjMemberPrefix, proj.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, proj.ID), api.ActModify},
-		//{fmt.Sprintf("%s%d", api.RoleProjMemberPrefix, proj.ID), fmt.Sprintf("%s%d", api.ObjProjPrefix, proj.ID), api.ActCreateApplication},
-	}
-}
