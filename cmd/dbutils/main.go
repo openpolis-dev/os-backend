@@ -626,28 +626,30 @@ func updateEntityCasbinPermission(db *gorm.DB) {
 		panic(err)
 	}
 
-	var rolePolicies [][]string
 	var groupingPolicies [][]string
 	for i := range projects {
 		p := projects[i]
-		rolePolicies = append(rolePolicies, model.GenerateCasbinPoliciesForProject(p.ID)...)
+
+		_, err = enforcer.AddPolicies(model.GenerateCasbinPoliciesForProject(p.ID))
+		if err != nil {
+			panic(err)
+		}
+
 		if p.Sponsors != nil && len(p.Sponsors) > 0 {
 			groupingPolicies = append(groupingPolicies, model.GenerateGroupingPoliciesForProject(p.ID, p.Sponsors, nil)...)
 		}
 	}
+
 	for i := range guilds {
 		g := guilds[i]
-		rolePolicies = append(rolePolicies, model.GenerateCasbinPoliciesForGuild(g.ID)...)
+		_, err = enforcer.AddPolicies(model.GenerateCasbinPoliciesForGuild(g.ID))
+		if err != nil {
+			panic(err)
+		}
+
 		if g.Sponsors != nil && len(g.Sponsors) > 0 {
 			groupingPolicies = append(groupingPolicies, model.GenerateGroupingPoliciesForGuild(g.ID, g.Sponsors)...)
 		}
-	}
-
-	api.PrintStructAsJson(rolePolicies, "rolePolicies")
-
-	_, err = enforcer.AddPolicies(rolePolicies)
-	if err != nil {
-		panic(err)
 	}
 
 	_, err = enforcer.AddGroupingPolicies(groupingPolicies)
@@ -679,55 +681,38 @@ func verifyEntityCasbinPermission(db *gorm.DB) {
 		panic(err)
 	}
 
-	roles := lo.Map(projects, func(project *model.Project, _ int) string {
-		return fmt.Sprintf("%s%d", internal.RoleProjSponsorPrefix, project.ID)
-	})
+	missingPermAccounts := make(map[string]bool)
+	for _, prj := range projects {
+		for _, sponsor := range prj.Sponsors {
+			obj := fmt.Sprintf("%s%d", internal.ObjProjPrefix, prj.ID)
+			ok, err := enforcer.Enforce(common.FormatUserWallet(sponsor), obj, internal.ActCreateApplication)
+			if err != nil {
+				panic(err)
+			}
 
-	roles = append(roles, lo.Map(guilds, func(guild *model.Guild, _ int) string {
-		return fmt.Sprintf("%s%d", internal.RoleGuildSponsorPrefix, guild.ID)
-	})...)
-
-	rolesMap := lo.SliceToMap(roles, func(role string) (string, bool) { return role, true })
-
-	entitySponsorsMap := make(map[string]map[string]bool)
-	for i := range projects {
-		p := projects[i]
-		if p.Sponsors == nil || len(p.Sponsors) == 0 {
-			continue
-		}
-
-		entitySponsorsMap[fmt.Sprintf("%s%d", internal.RoleProjSponsorPrefix, p.ID)] = lo.SliceToMap(p.Sponsors, func(wallet string) (string, bool) { return common.ToFrontendWallet(wallet), true })
-	}
-
-	for i := range guilds {
-		g := guilds[i]
-		if g.Sponsors == nil || len(g.Sponsors) == 0 {
-			continue
-		}
-
-		entitySponsorsMap[fmt.Sprintf("%s%d", internal.RoleGuildSponsorPrefix, g.ID)] = lo.SliceToMap(g.Sponsors, func(wallet string) (string, bool) { return common.ToFrontendWallet(wallet), true })
-	}
-
-	// Verify item 1: verify whether all project and guild roles are existing in roles list
-	casbinRoles := enforcer.GetAllRoles()
-	missingRoles := lo.OmitByKeys(rolesMap, casbinRoles)
-	api.PrintStructAsJson(lo.Keys(missingRoles), "missing roles")
-
-	// Verify item 2: verify whether all project / guild sponsor has correct group policy
-	casbinGroupPolicies := enforcer.GetGroupingPolicy()
-	missingGroupPolicies := make(map[string]bool)
-	for i := range casbinGroupPolicies {
-		r := casbinGroupPolicies[i]
-		if walletMap, grpFound := entitySponsorsMap[r[1]]; !grpFound {
-			missingGroupPolicies[r[1]] = true
-		} else {
-			if _, walletFound := walletMap[r[0]]; !walletFound {
-				missingGroupPolicies[fmt.Sprintf("%s:%s", r[1], r[0])] = true
+			if !ok {
+				missingPermAccounts[fmt.Sprintf("%s|project.%d", common.FormatUserWallet(sponsor), prj.ID)] = true
 			}
 		}
 	}
 
-	api.PrintStructAsJson(lo.Keys(missingGroupPolicies), "missing policies")
+	for _, guild := range guilds {
+		for _, sponsor := range guild.Sponsors {
+			obj := fmt.Sprintf("%s%d", internal.ObjGuildPrefix, guild.ID)
+			ok, err := enforcer.Enforce(common.FormatUserWallet(sponsor), obj, internal.ActCreateApplication)
+			if err != nil {
+				panic(err)
+			}
+
+			if !ok {
+				missingPermAccounts[fmt.Sprintf("%s|guild.%d", common.FormatUserWallet(sponsor), guild.ID)] = true
+			}
+		}
+	}
+
+	if len(missingPermAccounts) > 0 {
+		api.PrintStructAsJson(lo.Keys(missingPermAccounts), "Missing permission accounts")
+	}
 }
 
 func main() {
