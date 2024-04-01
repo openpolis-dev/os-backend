@@ -11,6 +11,8 @@ import (
 	"github.com/casbin/casbin/v2"
 	gormadapter "github.com/casbin/gorm-adapter/v3"
 	"github.com/samber/lo"
+	"github.com/theseed-labs/os-backend/internal"
+	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/config"
 	"github.com/theseed-labs/os-backend/internal/model"
@@ -617,16 +619,6 @@ func updateEntityCasbinPermission(db *gorm.DB) {
 		panic(err)
 	}
 
-	for _, project := range projects {
-		if project.Sponsors == nil || len(project.Sponsors) == 0 {
-			continue
-		}
-		err = model.SetWalletPermissionAsProjectSponsor(enforcer, project.ID, project.Sponsors)
-		if err != nil {
-			panic(err)
-		}
-	}
-
 	// Update guild casbin policies
 	var guilds []*model.Guild
 	err = db.Model(guilds).Find(&guilds).Error
@@ -634,15 +626,108 @@ func updateEntityCasbinPermission(db *gorm.DB) {
 		panic(err)
 	}
 
-	for _, guild := range guilds {
-		if guild.Sponsors == nil || len(guild.Sponsors) == 0 {
-			continue
-		}
-		err = model.SetWalletPermissionAsGuildSponsor(enforcer, guild.ID, guild.Sponsors)
-		if err != nil {
-			panic(err)
+	var rolePolicies [][]string
+	var groupingPolicies [][]string
+	for i := range projects {
+		p := projects[i]
+		rolePolicies = append(rolePolicies, model.GenerateCasbinPoliciesForProject(p.ID)...)
+		if p.Sponsors != nil && len(p.Sponsors) > 0 {
+			groupingPolicies = append(groupingPolicies, model.GenerateGroupingPoliciesForProject(p.ID, p.Sponsors, nil)...)
 		}
 	}
+	for i := range guilds {
+		g := guilds[i]
+		rolePolicies = append(rolePolicies, model.GenerateCasbinPoliciesForGuild(g.ID)...)
+		if g.Sponsors != nil && len(g.Sponsors) > 0 {
+			groupingPolicies = append(groupingPolicies, model.GenerateGroupingPoliciesForGuild(g.ID, g.Sponsors)...)
+		}
+	}
+
+	api.PrintStructAsJson(rolePolicies, "rolePolicies")
+
+	_, err = enforcer.AddPolicies(rolePolicies)
+	if err != nil {
+		panic(err)
+	}
+
+	_, err = enforcer.AddGroupingPolicies(groupingPolicies)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func verifyEntityCasbinPermission(db *gorm.DB) {
+	adapter, err := gormadapter.NewAdapterByDB(db)
+	if err != nil {
+		panic(err)
+	}
+	enforcer, err := casbin.NewSyncedEnforcer("rbac_model.conf", adapter)
+	if err != nil {
+		panic(err)
+	}
+
+	var projects []*model.Project
+	var guilds []*model.Guild
+
+	err = db.Model(projects).Find(&projects).Error
+	if err != nil {
+		panic(err)
+	}
+
+	err = db.Model(guilds).Find(&guilds).Error
+	if err != nil {
+		panic(err)
+	}
+
+	roles := lo.Map(projects, func(project *model.Project, _ int) string {
+		return fmt.Sprintf("%s%d", internal.RoleProjSponsorPrefix, project.ID)
+	})
+
+	roles = append(roles, lo.Map(guilds, func(guild *model.Guild, _ int) string {
+		return fmt.Sprintf("%s%d", internal.RoleGuildSponsorPrefix, guild.ID)
+	})...)
+
+	rolesMap := lo.SliceToMap(roles, func(role string) (string, bool) { return role, true })
+
+	entitySponsorsMap := make(map[string]map[string]bool)
+	for i := range projects {
+		p := projects[i]
+		if p.Sponsors == nil || len(p.Sponsors) == 0 {
+			continue
+		}
+
+		entitySponsorsMap[fmt.Sprintf("%s%d", internal.RoleProjSponsorPrefix, p.ID)] = lo.SliceToMap(p.Sponsors, func(wallet string) (string, bool) { return common.ToFrontendWallet(wallet), true })
+	}
+
+	for i := range guilds {
+		g := guilds[i]
+		if g.Sponsors == nil || len(g.Sponsors) == 0 {
+			continue
+		}
+
+		entitySponsorsMap[fmt.Sprintf("%s%d", internal.RoleGuildSponsorPrefix, g.ID)] = lo.SliceToMap(g.Sponsors, func(wallet string) (string, bool) { return common.ToFrontendWallet(wallet), true })
+	}
+
+	// Verify item 1: verify whether all project and guild roles are existing in roles list
+	casbinRoles := enforcer.GetAllRoles()
+	missingRoles := lo.OmitByKeys(rolesMap, casbinRoles)
+	api.PrintStructAsJson(lo.Keys(missingRoles), "missing roles")
+
+	// Verify item 2: verify whether all project / guild sponsor has correct group policy
+	casbinGroupPolicies := enforcer.GetGroupingPolicy()
+	missingGroupPolicies := make(map[string]bool)
+	for i := range casbinGroupPolicies {
+		r := casbinGroupPolicies[i]
+		if walletMap, grpFound := entitySponsorsMap[r[1]]; !grpFound {
+			missingGroupPolicies[r[1]] = true
+		} else {
+			if _, walletFound := walletMap[r[0]]; !walletFound {
+				missingGroupPolicies[fmt.Sprintf("%s:%s", r[1], r[0])] = true
+			}
+		}
+	}
+
+	api.PrintStructAsJson(lo.Keys(missingGroupPolicies), "missing policies")
 }
 
 func main() {
@@ -691,6 +776,8 @@ func main() {
 		}
 	case "fixperm":
 		updateEntityCasbinPermission(db)
+	case "verifyperm":
+		verifyEntityCasbinPermission(db)
 	default:
 		fmt.Printf("Unknown command: %s\n", os.Args[1])
 		os.Exit(1)
