@@ -626,7 +626,6 @@ func updateEntityCasbinPermission(db *gorm.DB) {
 		panic(err)
 	}
 
-	var groupingPolicies [][]string
 	for i := range projects {
 		p := projects[i]
 
@@ -636,7 +635,10 @@ func updateEntityCasbinPermission(db *gorm.DB) {
 		}
 
 		if p.Sponsors != nil && len(p.Sponsors) > 0 {
-			groupingPolicies = append(groupingPolicies, model.GenerateGroupingPoliciesForProject(p.ID, p.Sponsors, nil)...)
+			_, err = enforcer.AddGroupingPolicies(model.GenerateGroupingPoliciesForProject(p.ID, p.Sponsors, nil))
+			if err != nil {
+				panic(err)
+			}
 		}
 	}
 
@@ -648,11 +650,13 @@ func updateEntityCasbinPermission(db *gorm.DB) {
 		}
 
 		if g.Sponsors != nil && len(g.Sponsors) > 0 {
-			groupingPolicies = append(groupingPolicies, model.GenerateGroupingPoliciesForGuild(g.ID, g.Sponsors)...)
+			_, err = enforcer.AddGroupingPolicies(model.GenerateGroupingPoliciesForGuild(g.ID, g.Sponsors))
+			if err != nil {
+				panic(err)
+			}
 		}
 	}
 
-	_, err = enforcer.AddGroupingPolicies(groupingPolicies)
 	if err != nil {
 		panic(err)
 	}
