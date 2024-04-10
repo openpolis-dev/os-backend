@@ -266,21 +266,25 @@ func CreateAppBundle(ctx *gin.Context) {
 		var sponsorsList []string
 		switch newAppBundleReq.Entity {
 		case "project":
-			err = db.Model(&model.Project{}).Where("id = ?", newAppBundleReq.EntityId).Pluck("sponsors", &sponsorsList).Error
+			var projectRecord *model.Project
+			err = db.Model(&model.Project{}).Where("id = ?", newAppBundleReq.EntityId).First(&projectRecord).Error
 			if err != nil {
 				log.Error().Msgf("check permission for project %d error: %+v", newAppBundleReq.EntityId, err)
 				sdk.LogServerErrorToSentry(ctx, err)
 				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 				return
 			}
+			sponsorsList = projectRecord.Sponsors
 		case "guild":
-			err = db.Model(&model.Guild{}).Where("id = ?", newAppBundleReq.EntityId).Pluck("sponsors", &sponsorsList).Error
+			var guildRecord *model.Guild
+			err = db.Model(&model.Guild{}).Where("id = ?", newAppBundleReq.EntityId).First(&guildRecord).Error
 			if err != nil {
 				log.Error().Msgf("check permission for guild %d error: %+v", newAppBundleReq.EntityId, err)
 				sdk.LogServerErrorToSentry(ctx, err)
 				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 				return
 			}
+			sponsorsList = guildRecord.Sponsors
 		default:
 			sdk.LogUserSideError(ctx, errors.New("invalid entity type"))
 			ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("invalid entity type")))
