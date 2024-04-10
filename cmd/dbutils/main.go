@@ -20,6 +20,7 @@ import (
 	"gopkg.in/yaml.v3"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+	"gorm.io/gorm/logger"
 )
 
 var err error
@@ -721,7 +722,8 @@ func verifyEntityCasbinPermission(db *gorm.DB) {
 
 func main() {
 	cfg := config.LoadConfig("config.yml")
-	storage.InitGormDB(cfg.DataSource.Dsn, cfg.Casbin.DriverName)
+	//storage.InitGormDB(cfg.DataSource.Dsn, cfg.Casbin.DriverName)
+	storage.InitGormDBWithLoggerLevel(cfg.DataSource.Dsn, cfg.Casbin.DriverName, logger.Error)
 	db := storage.GetGormDB()
 
 	migrateCmd := flag.NewFlagSet("migrate", flag.ExitOnError)
@@ -741,6 +743,7 @@ func main() {
 		fmt.Println("  migrate")
 		fmt.Println("  seed")
 		fmt.Println("  fixperm")
+		fmt.Println("  verifyperm")
 		os.Exit(1)
 	}
 
