@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -241,20 +242,61 @@ func CreateAppBundle(ctx *gin.Context) {
 	if !ok {
 		log.Debug().Msgf("user %s has no hall permission, check whether user is sponsor", user.Wallet)
 
-		// Check permission, using ActCreateApplication for now, can be changed to new permission if required
-		// TODO: Merge to separated functions
-		obj := lo.
-			If(newAppBundleReq.Entity == "project", fmt.Sprintf("%s%d", internal.ObjProjPrefix, newAppBundleReq.EntityId)).
-			ElseIf(newAppBundleReq.Entity == "guild", fmt.Sprintf("%s%d", internal.ObjGuildPrefix, newAppBundleReq.EntityId)).
-			Else("")
-		ok, err = enforcer.Enforce(common.FormatUserWallet(user.Wallet), obj, internal.ActCreateApplication)
-		if err != nil {
-			sdk.LogServerErrorToSentry(ctx, err)
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
-			return
+		// 2024.4.10
+		// casbin based check has got some problems and have no time to find solution,
+		// so change to a simple check of sponsor address stored in entity record
+		//// Check permission, using ActCreateApplication for now, can be changed to new permission if required
+		//obj := lo.
+		//	If(newAppBundleReq.Entity == "project", fmt.Sprintf("%s%d", internal.ObjProjPrefix, newAppBundleReq.EntityId)).
+		//	ElseIf(newAppBundleReq.Entity == "guild", fmt.Sprintf("%s%d", internal.ObjGuildPrefix, newAppBundleReq.EntityId)).
+		//	Else("")
+		//ok, err = enforcer.Enforce(common.FormatUserWallet(user.Wallet), obj, internal.ActCreateApplication)
+		//if err != nil {
+		//	sdk.LogServerErrorToSentry(ctx, err)
+		//	ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
+		//	return
+		//}
+		//if !ok {
+		//	sdk.LogForbiddenError(ctx, user.Wallet, obj, internal.ActCreateApplication)
+		//	ctx.JSON(http.StatusForbidden, api.Forbidden())
+		//	return
+		//}
+
+		// Verify whether user is in sponsor list
+		var sponsorsList []string
+		switch newAppBundleReq.Entity {
+		case "project":
+			var projectRecord *model.Project
+			err = db.Model(&model.Project{}).Where("id = ?", newAppBundleReq.EntityId).First(&projectRecord).Error
+			if err != nil {
+				log.Error().Msgf("check permission for project %d error: %+v", newAppBundleReq.EntityId, err)
+				sdk.LogServerErrorToSentry(ctx, err)
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
+				return
+			}
+			sponsorsList = projectRecord.Sponsors
+		case "guild":
+			var guildRecord *model.Guild
+			err = db.Model(&model.Guild{}).Where("id = ?", newAppBundleReq.EntityId).First(&guildRecord).Error
+			if err != nil {
+				log.Error().Msgf("check permission for guild %d error: %+v", newAppBundleReq.EntityId, err)
+				sdk.LogServerErrorToSentry(ctx, err)
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
+				return
+			}
+			sponsorsList = guildRecord.Sponsors
+		default:
+			sdk.LogUserSideError(ctx, errors.New("invalid entity type"))
+			ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("invalid entity type")))
 		}
-		if !ok {
-			sdk.LogForbiddenError(ctx, user.Wallet, obj, internal.ActCreateApplication)
+
+		if lo.ContainsBy(sponsorsList, func(sponsorWallet string) bool {
+			return strings.EqualFold(sponsorWallet, user.Wallet)
+		}) {
+			log.Debug().Msgf("user %s is sponsor of %s_%d, can create app bundle", user.Wallet, newAppBundleReq.Entity, newAppBundleReq.EntityId)
+		} else {
+			log.Error().Msgf("user %s is not sponsor, cannot create app bundle", user.Wallet)
+			sdk.LogUserSideError(ctx, errors.New("user is not sponsor"))
 			ctx.JSON(http.StatusForbidden, api.Forbidden())
 			return
 		}
