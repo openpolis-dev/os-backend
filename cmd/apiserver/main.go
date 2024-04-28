@@ -436,9 +436,13 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		proposalTmplAdminRouter := adminGroup.Group("/proposal_tmpl")
 		proposalTmplAdminRouter.POST("/update", proposal.UpdateTemplate)
 
+		userAdminRouter := adminGroup.Group("/user")
+		userAdminRouter.POST("/check_vote_permission", user.CheckVotePermission)
+
 		// Schedule jobs routers
 		jobsRouter := adminGroup.Group("/jobs")
 		jobsRouter.GET("/list", cron_jobs.List)
+		//jobsRouter.GET("/update_mf_admin_token", cron_jobs.UpdateMfAdminToken)
 
 		// metaforo mint count update
 		adminGroup.POST("/metaforo_mint_data_update", data_srv.UpdateMetaforoVoteData)

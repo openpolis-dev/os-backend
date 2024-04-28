@@ -17,13 +17,13 @@ type GetMySnsInviteCodeReply struct {
 
 // GetMySnsInviteCode get my sns invite code
 //
-// @Summary get my sns invite code
-// @Description get my sns invite code
-// @Tags SnsInvite
-// @Accept json
-// @Produce json
-// @Success 200 {object} api.Reply{data=GetMySnsInviteCodeReply}
-// @Router /sns_invite/my_sns_invite_code [get]
+//	@Summary		get my sns invite code
+//	@Description	get my sns invite code
+//	@Tags			SnsInvite
+//	@Accept			json
+//	@Produce		json
+//	@Success		200	{object}	api.Reply{data=GetMySnsInviteCodeReply}
+//	@Router			/sns_invite/my_sns_invite_code [get]
 func GetMySnsInviteCode(ctx *gin.Context) {
 	user, db := api.ForContextUserAndDB(ctx)
 
@@ -44,13 +44,13 @@ type GetMySnsInviteRewardsReply struct {
 
 // GetMySnsInviteRewards get my sns invite rewards
 //
-// @Summary get my sns invite rewards
-// @Description get my sns invite rewards
-// @Tags SnsInvite
-// @Accept json
-// @Produce json
-// @Success 200 {object} api.Reply{data=GetMySnsInviteRewardsReply}
-// @Router /sns_invite/my_sns_invite_rewards [get]
+//	@Summary		get my sns invite rewards
+//	@Description	get my sns invite rewards
+//	@Tags			SnsInvite
+//	@Accept			json
+//	@Produce		json
+//	@Success		200	{object}	api.Reply{data=GetMySnsInviteRewardsReply}
+//	@Router			/sns_invite/my_sns_invite_rewards [get]
 func GetMySnsInviteRewards(ctx *gin.Context) {
 	user, db := api.ForContextUserAndDB(ctx)
 
@@ -66,14 +66,14 @@ func GetMySnsInviteRewards(ctx *gin.Context) {
 
 // SnsInvitedBy
 //
-// @Summary invited by someone for register sns
-// @Description invited by someone for register sns
-// @Tags SnsInvite
-// @Accept json
-// @Produce json
-// @Param invite_code path string true "invite code"
-// @Success 200 {object} api.Reply
-// @Router /sns_invite/invited_by/{invite_code} [post]
+//	@Summary		invited by someone for register sns
+//	@Description	invited by someone for register sns
+//	@Tags			SnsInvite
+//	@Accept			json
+//	@Produce		json
+//	@Param			invite_code	path		string	true	"invite code"
+//	@Success		200			{object}	api.Reply
+//	@Router			/sns_invite/invited_by/{invite_code} [post]
 func SnsInvitedBy(ctx *gin.Context) {
 	user, db := api.ForContextUserAndDB(ctx)
 	if !model.IsSnsInvitationEnabled(db) {

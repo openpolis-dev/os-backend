@@ -172,21 +172,6 @@ definitions:
           type: string
         type: array
     type: object
-  component.ComponentInstance:
-    properties:
-      component_id:
-        type: integer
-      create_ts:
-        type: integer
-      data:
-        type: string
-      id:
-        type: integer
-      name:
-        type: string
-      schema:
-        type: string
-    type: object
   data_srv.CreditDetail:
     properties:
       activity_credit:
@@ -343,6 +328,10 @@ definitions:
         type: string
       logo:
         type: string
+      sponsors:
+        items:
+          type: string
+        type: array
     type: object
   guild.UpdateStaffsReq:
     properties:
@@ -428,33 +417,32 @@ definitions:
       stripe_cus_id:
         type: string
       title:
-        properties:
-          "4649":
-            items:
-              properties:
-                background:
-                  type: string
-                color:
-                  type: string
-                group_id:
-                  type: integer
-                group_name:
-                  type: string
-                icon:
-                  type: string
-                id:
-                  type: integer
-                logo:
-                  type: string
-                name:
-                  type: string
-                type:
-                  type: integer
-                unicode_emoji: {}
-                user_id:
-                  type: integer
-              type: object
-            type: array
+        additionalProperties:
+          items:
+            properties:
+              background:
+                type: string
+              color:
+                type: string
+              group_id:
+                type: integer
+              group_name:
+                type: string
+              icon:
+                type: string
+              id:
+                type: integer
+              logo:
+                type: string
+              name:
+                type: string
+              type:
+                type: integer
+              unicode_emoji: {}
+              user_id:
+                type: integer
+            type: object
+          type: array
         type: object
       updated_at:
         type: string
@@ -1051,6 +1039,21 @@ definitions:
       vote_id:
         type: integer
     type: object
+  proposal.ComponentInstance:
+    properties:
+      component_id:
+        type: integer
+      create_ts:
+        type: integer
+      data:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      schema:
+        type: string
+    type: object
   proposal.ComponentRequestData:
     properties:
       auto_action:
@@ -1092,22 +1095,16 @@ definitions:
         type: integer
       metaforo_access_token:
         type: string
-      proposal_category_id:
-        type: integer
       submit_to_metaforo:
         type: boolean
       template_id:
         type: integer
       title:
         type: string
-      vote_gate_id:
-        type: integer
       vote_options:
         items:
           type: string
         type: array
-      vote_type:
-        type: integer
     type: object
   proposal.DeleteCommentData:
     properties:
@@ -1208,7 +1205,7 @@ definitions:
         type: array
       components:
         items:
-          $ref: '#/definitions/component.ComponentInstance'
+          $ref: '#/definitions/proposal.ComponentInstance'
         type: array
       content_blocks:
         items:
@@ -1233,6 +1230,10 @@ definitions:
       is_voted:
         description: Is current user voted for this proposal
         type: boolean
+      os_vote_options:
+        items:
+          $ref: '#/definitions/proposal.FrontendProposalVoteOptionRecord'
+        type: array
       proposal_category_id:
         type: integer
       publicity_ts:
@@ -1303,6 +1304,15 @@ definitions:
       title:
         type: string
       version:
+        type: integer
+    type: object
+  proposal.FrontendProposalVoteOptionRecord:
+    properties:
+      id:
+        type: integer
+      label:
+        type: string
+      metaforo_id:
         type: integer
     type: object
   proposal.FrontendVoteGateResponse:
@@ -1528,6 +1538,18 @@ definitions:
     x-enum-varnames:
     - WalletNameMetamask
     - WalletNameJoyid
+  sns_invite.GetMySnsInviteCodeReply:
+    properties:
+      invite_code:
+        type: string
+    type: object
+  sns_invite.GetMySnsInviteRewardsReply:
+    properties:
+      invite_count:
+        type: integer
+      total_rewards:
+        type: string
+    type: object
   user.JoinOrLeaveGroupReq:
     properties:
       group_name:
@@ -3003,7 +3025,7 @@ paths:
                     $ref: '#/definitions/proposal.JointMetaforoAndOsUser'
                   type: array
               type: object
-      summary: revoke vote on existing metaforo vote
+      summary: show voter detail for specified vote option
       tags:
       - Proposal
   /proposals/withdraw/:id:
@@ -3272,6 +3294,67 @@ paths:
       summary: get nonce of SeeAuth
       tags:
       - SeeAuth
+  /sns_invite/invited_by/{invite_code}:
+    post:
+      consumes:
+      - application/json
+      description: invited by someone for register sns
+      parameters:
+      - description: invite code
+        in: path
+        name: invite_code
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.Reply'
+      summary: invited by someone for register sns
+      tags:
+      - SnsInvite
+  /sns_invite/my_sns_invite_code:
+    get:
+      consumes:
+      - application/json
+      description: get my sns invite code
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  $ref: '#/definitions/sns_invite.GetMySnsInviteCodeReply'
+              type: object
+      summary: get my sns invite code
+      tags:
+      - SnsInvite
+  /sns_invite/my_sns_invite_rewards:
+    get:
+      consumes:
+      - application/json
+      description: get my sns invite rewards
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  $ref: '#/definitions/sns_invite.GetMySnsInviteRewardsReply'
+              type: object
+      summary: get my sns invite rewards
+      tags:
+      - SnsInvite
   /url_for_uploading_s3:
     get:
       parameters:
