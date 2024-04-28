@@ -748,6 +748,7 @@ func BuildMetaforoVoteFormDataBytes(db *gorm.DB, proposalId uint, voteGates []*m
 // TODO: Change to use indexer data
 
 func IsUserMetVoteGate(userSeepassData *sdk.SeepassResponse, proposalVoteGate *model.ProposalVoteGate) bool {
+	log.Debug().Msgf("check user met vote gate: %+v, seepass data: %+v", proposalVoteGate, userSeepassData)
 	if userSeepassData == nil {
 		return false
 	}
@@ -777,7 +778,7 @@ func IsUserMetVoteGate(userSeepassData *sdk.SeepassResponse, proposalVoteGate *m
 	case 1:
 		// ERC721
 		if strings.EqualFold(proposalVoteGate.TokenAddress, internal.SeedContractAddr) {
-			return len(userSeepassData.Seed) > 1
+			return len(userSeepassData.Seed) > 0
 		} else {
 			log.Warn().Msgf("unknown erc721 token, mark ask true")
 			return true

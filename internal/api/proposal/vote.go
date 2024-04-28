@@ -303,6 +303,7 @@ func canUserVoteOnThread(db *gorm.DB, userWallet string, proposalIdString string
 		log.Error().Msgf("get proposal error: %+v", err)
 		return false, err
 	}
+	log.Debug().Msgf("check voting permission of %s for proposal: %+v", userWallet, proposal)
 
 	// Verify NFT gate
 	seepassData, err := api.GetCachedSeepassData(sdk.GetSppClient(), userWallet, false)
@@ -325,10 +326,12 @@ func canUserVoteOnThread(db *gorm.DB, userWallet string, proposalIdString string
 	permArray := lo.Map(voteGates, func(r *model.ProposalVoteGate, _ int) bool {
 		return IsUserMetVoteGate(seepassData, r)
 	})
+	log.Debug().Msgf("voting perm array of %s for proposal: %d is %+v", userWallet, proposal.ID, permArray)
 
 	permResult := lo.Reduce(permArray, func(rslt bool, r bool, _ int) bool {
 		return rslt && r
 	}, true)
+	log.Debug().Msgf("voting perm result of %s for proposal: %d is %+v", userWallet, proposal.ID, permResult)
 
 	return permResult, nil
 }
