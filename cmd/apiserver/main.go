@@ -225,6 +225,7 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		projGroup := v1.Group("/projects")
 		projGroup.GET("/", project.List)
 		projGroup.GET("/:id", project.Detail)
+		projGroup.GET("/:id/budgets", project.ShowBudgets)
 
 		// guild routers
 		guildGroup := v1.Group("/guilds")
