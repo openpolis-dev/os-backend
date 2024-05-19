@@ -35,7 +35,7 @@ type (
 		Members   []string `json:"members"`
 		Proposals []string `json:"proposals"`
 
-		Budgets []*BudgetParam `json:"budgets"`
+		Budgets []*BudgetResp `json:"budgets"`
 
 		SIP          string `json:"SIP"`
 		Category     string `json:"Category"`
@@ -46,10 +46,19 @@ type (
 		ContantWay   string `json:"ContantWay"`
 		OfficialLink string `json:"OfficialLink"`
 	}
-	BudgetParam struct {
-		Name        string          `json:"name"`
-		TotalAmount decimal.Decimal `json:"total_amount"`
+
+	BudgetResp struct {
+		AssetName    string `json:"asset_name"`
+		TotalAmount  string `json:"total_amount"`
+		UsedAmount   string `json:"used_amount"`
+		RemainAmount string `json:"remain_amount"`
+
+		AdvanceRatio        string `json:"advance_ratio"`
+		TotalAdvanceAmount  string `json:"total_advance_amount"`
+		UsedAdvanceAmount   string `json:"used_advance_amount"`
+		RemainAdvanceAmount string `json:"remain_advance_amount"`
 	}
+
 	UpdateReq struct {
 		LogoStr string `json:"logo"`
 		// Name    string `json:"name"`
@@ -63,7 +72,7 @@ type (
 	}
 	DetailReply struct {
 		model.Project
-		Budgets []*model.ProjectBudget `json:"budgets"`
+		Budgets []*BudgetResp `json:"budgets"`
 	}
 	UpdateBudgetReq struct {
 		Id          uint            `json:"id"`
@@ -469,9 +478,22 @@ func Detail(ctx *gin.Context) {
 		return
 	}
 
+	budgetResp := lo.Map(budgets, func(r *model.ProjectBudget, _ int) *BudgetResp {
+		return &BudgetResp{
+			AssetName:           r.AssetName,
+			TotalAmount:         r.TotalAmount.String(),
+			UsedAmount:          r.UsedAmount.String(),
+			RemainAmount:        r.RemainAmount.String(),
+			AdvanceRatio:        r.AdvanceRatio.String(),
+			TotalAdvanceAmount:  r.TotalAdvanceAmount.String(),
+			UsedAdvanceAmount:   r.UsedAdvanceAmount.String(),
+			RemainAdvanceAmount: r.RemainAdvanceAmount.String(),
+		}
+	})
+
 	ctx.JSON(http.StatusOK, api.Success(&DetailReply{
 		Project: *NormalizeWalletAddrInProject(proj),
-		Budgets: budgets,
+		Budgets: budgetResp,
 	}))
 }
 
@@ -905,6 +927,48 @@ func UpdateBudget(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, api.Success(nil))
+}
+
+// ShowBudgets show project budget records or return empty list
+//
+//	@summary	Show project budgets
+//	@tags		Project
+//	@accept		json
+//	@produce	json
+//	@param		id			path		int				true	"project id"
+//	@success	200			{object}	api.Reply
+//	@router		/projects/{id}/update_budget [post]
+func ShowBudgets(ctx *gin.Context) {
+	idParam := ctx.Param("id")
+	id, err := strconv.Atoi(idParam)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
+		return
+	}
+
+	db := api.ForContextOnlyDB(ctx)
+
+	budgets, err := model.ProjectBudgetModel.ListByProjectId(db, uint(id))
+	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get project budgets error")))
+		return
+	}
+
+	budgetResp := lo.Map(budgets, func(r *model.ProjectBudget, _ int) *BudgetResp {
+		return &BudgetResp{
+			AssetName:           r.AssetName,
+			TotalAmount:         r.TotalAmount.String(),
+			UsedAmount:          r.UsedAmount.String(),
+			RemainAmount:        r.RemainAmount.String(),
+			AdvanceRatio:        r.AdvanceRatio.String(),
+			TotalAdvanceAmount:  r.TotalAdvanceAmount.String(),
+			UsedAdvanceAmount:   r.UsedAdvanceAmount.String(),
+			RemainAdvanceAmount: r.RemainAdvanceAmount.String(),
+		}
+	})
+
+	ctx.JSON(http.StatusOK, api.Success(budgetResp))
 }
 
 // ------ ------ ------ ------ ------ ------ ------ ------ ------

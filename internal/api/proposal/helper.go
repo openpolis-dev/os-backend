@@ -49,6 +49,29 @@ type budgetComponentDataP1 struct {
 	} `json:"typeTest"`
 }
 
+func (r *budgetComponentDataP1) prepareBudgetRecords(proposalId uint) []*model.ProjectBudget {
+	totalBudgetAmount := decimal.RequireFromString(r.Amount)
+	advancedRatio := decimal.Zero
+	totalAdvanceAmount := decimal.Zero
+
+	return []*model.ProjectBudget{
+		{
+			ProposalID:          proposalId,
+			ProjectID:           0,
+			AssetName:           r.AssetInfo.Name,
+			TotalAmount:         totalBudgetAmount,
+			UsedAmount:          decimal.Zero,
+			RemainAmount:        totalBudgetAmount,
+			AdvanceRatio:        advancedRatio,
+			TotalAdvanceAmount:  totalAdvanceAmount,
+			UsedAdvanceAmount:   decimal.Zero,
+			RemainAdvanceAmount: totalAdvanceAmount,
+			CreateTs:            model.GetCurrentUtcEpochSecond(),
+			UpdateTs:            model.GetCurrentUtcEpochSecond(),
+		},
+	}
+}
+
 type budgetComponentData struct {
 	Applicant  string `json:"applicant"`
 	BudgetList []struct {
@@ -61,6 +84,32 @@ type budgetComponentData struct {
 		} `json:"typeTest"`
 	} `json:"budgetList"`
 	ProposalId string `json:"proposal_id"`
+}
+
+func (r *budgetComponentData) prepareBudgetRecords(proposalId uint) []*model.ProjectBudget {
+	projectBudgetRcds := make([]*model.ProjectBudget, 0)
+	for _, r := range r.BudgetList {
+		totalBudgetAmount := decimal.RequireFromString(r.Amount)
+		advancedRatio := decimal.Zero
+		totalAdvanceAmount := decimal.Zero
+
+		projectBudgetRcds = append(projectBudgetRcds, &model.ProjectBudget{
+			ProposalID:          proposalId,
+			ProjectID:           0,
+			AssetName:           r.AssetInfo.Name,
+			TotalAmount:         totalBudgetAmount,
+			UsedAmount:          decimal.Zero,
+			RemainAmount:        totalBudgetAmount,
+			AdvanceRatio:        advancedRatio,
+			TotalAdvanceAmount:  totalAdvanceAmount,
+			UsedAdvanceAmount:   decimal.Zero,
+			RemainAdvanceAmount: totalAdvanceAmount,
+			CreateTs:            model.GetCurrentUtcEpochSecond(),
+			UpdateTs:            model.GetCurrentUtcEpochSecond(),
+		})
+	}
+
+	return projectBudgetRcds
 }
 
 type projectBudgetData struct {
@@ -1560,6 +1609,9 @@ func CreateProjectFromAutoTasks(db *gorm.DB, proposalId uint) (*model.Project, e
 		return nil, err
 	}
 
+	// Saves db budget records data
+	var projectBudgetRcds []*model.ProjectBudget
+
 	for _, pComponentRecord := range pComponents {
 		api.PrintStructAsJson(pComponentRecord, "TTT: component record")
 		if compName, found := getProposalComponentIdNameMapping(db)[pComponentRecord.ComponentID]; found {
@@ -1570,16 +1622,8 @@ func CreateProjectFromAutoTasks(db *gorm.DB, proposalId uint) (*model.Project, e
 					log.Error().Msgf("unmarshal project deliverables data error: %+v", err)
 					return nil, err
 				}
-				projectBudgetRcd := projectBudgetData{
-					Name:        fmt.Sprintf("%s %s", budgetParams.Amount, budgetParams.AssetInfo.Name),
-					TotalAmount: "0",
-				}
-				prjBudgetBytes, err := json.Marshal([]projectBudgetData{projectBudgetRcd})
-				if err != nil {
-					log.Error().Msgf("unmarshal project deliverables data error: %+v", err)
-					return nil, err
-				}
-				newProjectData.Budgets = string(prjBudgetBytes)
+
+				projectBudgetRcds = budgetParams.prepareBudgetRecords(proposalId)
 			} else if compName == internal.ComponentNameBudget {
 				var budgetParams budgetComponentData
 				err := json.Unmarshal([]byte(pComponentRecord.Data), &budgetParams)
@@ -1588,13 +1632,7 @@ func CreateProjectFromAutoTasks(db *gorm.DB, proposalId uint) (*model.Project, e
 					return nil, err
 				}
 
-				projectBudgetRcds := make([]*projectBudgetData, 0)
-				for _, item := range budgetParams.BudgetList {
-					projectBudgetRcds = append(projectBudgetRcds, &projectBudgetData{
-						Name:        fmt.Sprintf("%s %s", item.Amount, item.AssetInfo.Name),
-						TotalAmount: "0",
-					})
-				}
+				projectBudgetRcds = budgetParams.prepareBudgetRecords(proposalId)
 
 				prjBudgetBytes, err := json.Marshal(projectBudgetRcds)
 				if err != nil {
@@ -1631,6 +1669,17 @@ func CreateProjectFromAutoTasks(db *gorm.DB, proposalId uint) (*model.Project, e
 	if err = db.Create(&newProjectData).Error; err != nil {
 		log.Error().Msgf("create project error: %+v", err)
 		return nil, err
+	}
+
+	if len(projectBudgetRcds) > 0 {
+		projectBudgetRcds = lo.Map(projectBudgetRcds, func(item *model.ProjectBudget, index int) *model.ProjectBudget {
+			item.ProjectID = newProjectData.ID
+			return item
+		})
+		if err = db.Create(&projectBudgetRcds).Error; err != nil {
+			log.Error().Msgf("create project budget record error: %+v", err)
+			return nil, err
+		}
 	}
 
 	return &newProjectData, nil
