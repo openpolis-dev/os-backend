@@ -495,7 +495,7 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposalId uint, startPo
 		if err != nil {
 			log.Error().Msgf("fetch project budget error: %+v", err)
 		} else {
-			budgetsResponse = model.ProjectBudgetModel.BuildBudgetResponse(budgetRecords)
+			budgetsResponse = project.GenerateBudgetResp(budgetRecords)
 		}
 	}
 
