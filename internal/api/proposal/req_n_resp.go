@@ -3,10 +3,12 @@ package proposal
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	"github.com/theseed-labs/os-backend/internal"
+	"github.com/theseed-labs/os-backend/internal/api/project"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/db_agent"
 	"github.com/theseed-labs/os-backend/internal/model"
@@ -224,6 +226,11 @@ type FrontendProposalDetailRecord struct {
 
 	// Timestamps
 	CreateTs int64 `json:"create_ts"`
+
+	// Associated project ID, used for close_project proposal
+	AssociatedProjectId uint `json:"associated_project_id"`
+
+	AssociatedProjectBudgets []*project.BudgetResp `json:"associated_project_budgets"`
 }
 
 type FrontendProposalCategory struct {
@@ -303,8 +310,8 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposalId uint, startPo
 			return nil
 		}
 
-		// Special processing for `associate_proposal`
 		if componentRecord.Name == internal.ComponentNameAssociateProposal {
+			// Special processing for `associate_proposal`
 			var parsedData associatedProposalData
 			err := json.Unmarshal([]byte(item.Data), &parsedData)
 
@@ -479,6 +486,19 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposalId uint, startPo
 		}
 	})
 
+	// Check whether the proposal has associated project
+	var associatedProject *model.Project
+	budgetsResponse := make([]*project.BudgetResp, 0)
+	err = db.Where(&model.Project{SIP: fmt.Sprintf("%d", proposal.Sip)}).First(&associatedProject).Error
+	if err == nil {
+		budgetRecords, err := model.ProjectBudgetModel.ListByProjectId(db, associatedProject.ID)
+		if err != nil {
+			log.Error().Msgf("fetch project budget error: %+v", err)
+		} else {
+			budgetsResponse = model.ProjectBudgetModel.BuildBudgetResponse(budgetRecords)
+		}
+	}
+
 	// Refresh proposal record
 	if err = db.Find(&proposal, proposalId).Error; err != nil {
 		log.Error().Msgf("fetch proposal error: %+v", err)
@@ -501,19 +521,20 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposalId uint, startPo
 			TotalCount: len(editHistoryRecords),
 			Lists:      editHistoryRecords,
 		},
-		Sip:                     proposal.Sip,
-		Arweave:                 proposal.ArweaveHash,
-		CommentCount:            commentCount,
-		Comments:                frontendCommentsRecords,
-		VoteGate:                voteGate,
-		Votes:                   votes,
-		OsVoteOptions:           frontendVoteOptions,
-		VoteType:                proposal.VoteType,
-		CreateTs:                proposal.CreateTs,
-		IsBasedOnCustomTemplate: proposal.IsBasedOnCustomTemplate,
-		TemplateName:            templateName,
-		IsInstantExecution:      proposal.PendingExecutionSecond == 0,
-		ExecutionTs:             proposalExecTs,
-		PublicityTs:             proposalPublicityTs,
+		Sip:                      proposal.Sip,
+		Arweave:                  proposal.ArweaveHash,
+		CommentCount:             commentCount,
+		Comments:                 frontendCommentsRecords,
+		VoteGate:                 voteGate,
+		Votes:                    votes,
+		OsVoteOptions:            frontendVoteOptions,
+		VoteType:                 proposal.VoteType,
+		CreateTs:                 proposal.CreateTs,
+		IsBasedOnCustomTemplate:  proposal.IsBasedOnCustomTemplate,
+		TemplateName:             templateName,
+		IsInstantExecution:       proposal.PendingExecutionSecond == 0,
+		ExecutionTs:              proposalExecTs,
+		PublicityTs:              proposalPublicityTs,
+		AssociatedProjectBudgets: budgetsResponse,
 	}, nil
 }

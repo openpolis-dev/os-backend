@@ -478,18 +478,7 @@ func Detail(ctx *gin.Context) {
 		return
 	}
 
-	budgetResp := lo.Map(budgets, func(r *model.ProjectBudget, _ int) *BudgetResp {
-		return &BudgetResp{
-			AssetName:           r.AssetName,
-			TotalAmount:         r.TotalAmount.String(),
-			UsedAmount:          r.UsedAmount.String(),
-			RemainAmount:        r.RemainAmount.String(),
-			AdvanceRatio:        r.AdvanceRatio.String(),
-			TotalAdvanceAmount:  r.TotalAdvanceAmount.String(),
-			UsedAdvanceAmount:   r.UsedAdvanceAmount.String(),
-			RemainAdvanceAmount: r.RemainAdvanceAmount.String(),
-		}
-	})
+	budgetResp := model.ProjectBudgetModel.BuildBudgetResponse(budgets)
 
 	ctx.JSON(http.StatusOK, api.Success(&DetailReply{
 		Project: *NormalizeWalletAddrInProject(proj),
@@ -955,19 +944,7 @@ func ShowBudgets(ctx *gin.Context) {
 		return
 	}
 
-	budgetResp := lo.Map(budgets, func(r *model.ProjectBudget, _ int) *BudgetResp {
-		return &BudgetResp{
-			AssetName:           r.AssetName,
-			TotalAmount:         r.TotalAmount.String(),
-			UsedAmount:          r.UsedAmount.String(),
-			RemainAmount:        r.RemainAmount.String(),
-			AdvanceRatio:        r.AdvanceRatio.String(),
-			TotalAdvanceAmount:  r.TotalAdvanceAmount.String(),
-			UsedAdvanceAmount:   r.UsedAdvanceAmount.String(),
-			RemainAdvanceAmount: r.RemainAdvanceAmount.String(),
-		}
-	})
-
+	budgetResp := model.ProjectBudgetModel.BuildBudgetResponse(budgets)
 	ctx.JSON(http.StatusOK, api.Success(budgetResp))
 }
 
