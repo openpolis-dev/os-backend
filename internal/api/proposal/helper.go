@@ -112,11 +112,6 @@ func (r *budgetComponentData) prepareBudgetRecords(proposalId uint) []*model.Pro
 	return projectBudgetRcds
 }
 
-type projectBudgetData struct {
-	Name        string `json:"name"`
-	TotalAmount string `json:"total_amount"`
-}
-
 type commonCreateProjectRelatedData struct {
 	Desc string `json:"description"`
 }
