@@ -3,9 +3,7 @@ package model
 import (
 	"time"
 
-	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
-	"github.com/theseed-labs/os-backend/internal/api/project"
 	"github.com/xiaosongfu/gormfind"
 	"gorm.io/gorm"
 )
@@ -57,19 +55,4 @@ func (*projectBudgetModel) ListByProjectId(db *gorm.DB, projID uint) ([]*Project
 func (*projectBudgetModel) QueryByProjectIdAndBudgetProps(db *gorm.DB, projID uint, assetName string) (*ProjectBudget, error) {
 	querySeg := db.Where(&ProjectBudget{ProjectID: projID, AssetName: assetName})
 	return gormfind.Row[ProjectBudget](querySeg)
-}
-
-func (*projectBudgetModel) BuildBudgetResponse(budgetRcds []*ProjectBudget) []*project.BudgetResp {
-	return lo.Map(budgetRcds, func(r *ProjectBudget, _ int) *project.BudgetResp {
-		return &project.BudgetResp{
-			AssetName:           r.AssetName,
-			TotalAmount:         r.TotalAmount.String(),
-			UsedAmount:          r.UsedAmount.String(),
-			RemainAmount:        r.RemainAmount.String(),
-			AdvanceRatio:        r.AdvanceRatio.String(),
-			TotalAdvanceAmount:  r.TotalAdvanceAmount.String(),
-			UsedAdvanceAmount:   r.UsedAdvanceAmount.String(),
-			RemainAdvanceAmount: r.RemainAdvanceAmount.String(),
-		}
-	})
 }
