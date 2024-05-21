@@ -147,6 +147,75 @@ func GetProposalFromStringId(db *gorm.DB, idStr string) (*model.Proposal, error)
 	return &proposalRecord, nil
 }
 
+// ValidateProposalComponentParams validate proposal component params, currently it contains
+// * For motivation components, if the proposal has associated project, verify the total amount is not greater than the (project budget - advance amount)
+func ValidateProposalComponentParams(db *gorm.DB, reqData *CreateOrUpdateProposalData, userWallet string, proposalId uint, cfg *config.Config) error {
+	log.Error().Msgf("TTT: validate proposal component params: %+v", reqData)
+	for _, componentData := range reqData.Components {
+		log.Error().Msgf("TTT: validate proposal component params: %+v", componentData)
+		switch componentData.Name {
+		case internal.ComponentNameMotivation:
+			if reqData.CreateProjectProposalId == 0 {
+				log.Debug().Msgf("proposal %d is not associated with any project", proposalId)
+				continue
+			}
+
+			// Get project_budget records to get total amount of the budgets
+			projectBudgets, err := model.ProjectBudgetModel.ListByProjectId(db, reqData.CreateProjectProposalId)
+			log.Error().Msgf("TTT: project budgts: %+v", projectBudgets)
+			if err != nil {
+				log.Error().Msgf("get create project proposal %d error: %+v", reqData.CreateProjectProposalId, err)
+				return err
+			}
+
+			if len(projectBudgets) == 0 {
+				err = fmt.Errorf("project %d has no budget", reqData.CreateProjectProposalId)
+				log.Error().Msg(err.Error())
+				return err
+			}
+
+			remainBudgetAmount := lo.SliceToMap(projectBudgets, func(budget *model.ProjectBudget) (string, decimal.Decimal) {
+				return budget.AssetName, budget.RemainAmount
+			})
+
+			log.Error().Msgf("TTT: remain budget amount: %+v", remainBudgetAmount)
+
+			log.Error().Msgf("TTT: Component data: %+v", componentData)
+
+			var motivationComponentData *model.ComponentMotivationData
+			componentDataBytes, err := json.Marshal(componentData.Data)
+			if err != nil {
+				log.Error().Msgf("marshal motivation component budget list error: %+v", err)
+				return err
+			}
+			err = json.Unmarshal(componentDataBytes, &motivationComponentData)
+			if err != nil {
+				log.Error().Msgf("unmarshal motivation component budget list error: %+v", err)
+				return err
+			}
+
+			componentRewardAmountData := lo.SliceToMap(motivationComponentData.RewardList, func(reward *model.ComponentMotivationRewardRecord) (string, decimal.Decimal) {
+				return reward.AssetInfo.Name, decimal.RequireFromString(reward.Amount)
+			})
+			log.Error().Msgf("TTT: component reward amount: %+v", componentRewardAmountData)
+
+			for assetName, remainBudgetAmount := range remainBudgetAmount {
+				if componentBudgetAmount, found := componentRewardAmountData[assetName]; found {
+					if componentBudgetAmount.GreaterThan(remainBudgetAmount) {
+						return errors.New(fmt.Sprintf("motivation component %s budget amount %s is greater than project budget %s", assetName, componentBudgetAmount.String(), remainBudgetAmount.String()))
+					}
+				}
+			}
+
+			continue
+		default:
+			// Other components are not checking now
+			continue
+		}
+	}
+	return nil
+}
+
 func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, userWallet string, proposalId uint, cfg *config.Config) (*model.Proposal, error) {
 	// If proposalIdStr is not 0, this request should be an update action, otherwise it is a creation action.
 	// Create:
@@ -168,6 +237,14 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 		return nil, err
 	}
 	defer ReleaseUpdateProposalDbLock(proposalId)
+
+	// Validate component data before processing the proposal
+	componentValidationError := ValidateProposalComponentParams(db, reqData, userWallet, proposalId, cfg)
+	if componentValidationError != nil {
+		err = fmt.Errorf("component data validation error: %+v", componentValidationError)
+		log.Error().Msg(err.Error())
+		return nil, err
+	}
 
 	log.Debug().Msgf("save proposal record to DB: %+v, proposalIdStr: %d, user wallet: %s", reqData, proposalId, userWallet)
 
