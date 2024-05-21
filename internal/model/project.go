@@ -8,6 +8,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/shopspring/decimal"
 	"github.com/theseed-labs/os-backend/internal"
+	"github.com/theseed-labs/os-backend/internal/service"
 	"github.com/xiaosongfu/gormfind"
 	"gorm.io/gorm"
 )
@@ -187,7 +188,7 @@ func (*projectModel) ListBySponsor(db *gorm.DB, sponsor string, status string, p
 // If the budget is already existing, the total will be updated to passed in value, and the remain will also be updated by the delta
 func (*projectModel) SetBudget(db *gorm.DB, projectId uint, assertName string, totalAmount decimal.Decimal) error {
 	return db.Transaction(func(tx *gorm.DB) error {
-		budgetRecord, err := ProjectBudgetModel.QueryByProjectIdAndBudgetProps(tx, projectId, assertName)
+		budgetRecord, err := service.ProjectBudgetModel.QueryByProjectIdAndBudgetProps(tx, projectId, assertName)
 		if err != nil {
 			return err
 		}
@@ -205,13 +206,13 @@ func (*projectModel) SetBudget(db *gorm.DB, projectId uint, assertName string, t
 			budgetRecord.RemainAmount = totalAmount.Sub(budgetRecord.UsedAmount)
 		}
 
-		return ProjectBudgetModel.Update(tx, budgetRecord)
+		return service.ProjectBudgetModel.Update(tx, budgetRecord)
 	})
 }
 
 func (*projectModel) WithdrawBudget(db *gorm.DB, projectId uint, assetName string, tokenAmount decimal.Decimal) error {
 	return db.Transaction(func(tx *gorm.DB) error {
-		budgetRcd, err := ProjectBudgetModel.QueryByProjectIdAndBudgetProps(tx, projectId, assetName)
+		budgetRcd, err := service.ProjectBudgetModel.QueryByProjectIdAndBudgetProps(tx, projectId, assetName)
 		if err != nil {
 			return err
 		}
@@ -229,7 +230,7 @@ func (*projectModel) WithdrawBudget(db *gorm.DB, projectId uint, assetName strin
 // DepositBudget deposits budget back to project, e.g. application for reward has been rejected
 func (*projectModel) DepositBudget(db *gorm.DB, projectId uint, assetName string, tokenAmount decimal.Decimal) error {
 	return db.Transaction(func(tx *gorm.DB) error {
-		budgetRcd, err := ProjectBudgetModel.QueryByProjectIdAndBudgetProps(tx, projectId, assetName)
+		budgetRcd, err := service.ProjectBudgetModel.QueryByProjectIdAndBudgetProps(tx, projectId, assetName)
 		if err != nil {
 			return err
 		}

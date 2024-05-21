@@ -18,6 +18,7 @@ import (
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk"
+	"github.com/theseed-labs/os-backend/internal/service"
 	"gorm.io/gorm"
 )
 
@@ -471,7 +472,7 @@ func Detail(ctx *gin.Context) {
 		return
 	}
 
-	budgets, err := model.ProjectBudgetModel.ListByProjectId(db, proj.ID)
+	budgets, err := service.ProjectBudgetModel.ListByProjectId(db, proj.ID)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get project budgets error")))
@@ -896,7 +897,7 @@ func UpdateBudget(ctx *gin.Context) {
 		return
 	}
 
-	budget, err := model.ProjectBudgetModel.Detail(db, req.Id)
+	budget, err := service.ProjectBudgetModel.Detail(db, req.Id)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get project budget error")))
@@ -908,7 +909,7 @@ func UpdateBudget(ctx *gin.Context) {
 	budget.RemainAmount = budget.TotalAmount.Sub(budget.UsedAmount)
 	budget.UpdateTs = model.GetCurrentUtcEpochSecond()
 	budget.UpdatedAt = time.Now().In(internal.ProjectTimezone)
-	err = model.ProjectBudgetModel.Update(db, budget)
+	err = service.ProjectBudgetModel.Update(db, budget)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("update project budget error")))
@@ -937,7 +938,7 @@ func ShowBudgets(ctx *gin.Context) {
 
 	db := api.ForContextOnlyDB(ctx)
 
-	budgets, err := model.ProjectBudgetModel.ListByProjectId(db, uint(id))
+	budgets, err := service.ProjectBudgetModel.ListByProjectId(db, uint(id))
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get project budgets error")))

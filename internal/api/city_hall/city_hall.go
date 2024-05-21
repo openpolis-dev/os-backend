@@ -17,6 +17,7 @@ import (
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk"
+	"github.com/theseed-labs/os-backend/internal/service"
 	"gorm.io/gorm"
 )
 
@@ -78,7 +79,7 @@ func Info(ctx *gin.Context) {
 		return
 	}
 
-	budgets, err := model.ProjectBudgetModel.ListByProjectId(db, cityHallProject.ID)
+	budgets, err := service.ProjectBudgetModel.ListByProjectId(db, cityHallProject.ID)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall budget error")))
@@ -170,7 +171,7 @@ func UpdateBudget(ctx *gin.Context) {
 	budget.RemainAmount = budget.TotalAmount.Sub(budget.UsedAmount)
 	budget.UpdatedAt = time.Now().In(internal.ProjectTimezone)
 	budget.UpdateTs = model.GetCurrentUtcEpochSecond()
-	err = model.ProjectBudgetModel.Update(db, &budget)
+	err = service.ProjectBudgetModel.Update(db, &budget)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("update cityhall budget error")))
@@ -239,7 +240,7 @@ func UpdateMember(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("update cityhall member error")))
 		return
 	case http.StatusOK:
-		budgets, err := model.ProjectBudgetModel.ListByProjectId(db, cityHallProject.ID)
+		budgets, err := service.ProjectBudgetModel.ListByProjectId(db, cityHallProject.ID)
 		if err != nil {
 			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall budget error")))
@@ -311,7 +312,7 @@ func BatchUpdateMembers(ctx *gin.Context) {
 			}
 		}
 	}
-	budgets, err := model.ProjectBudgetModel.ListByProjectId(db, cityHallProject.ID)
+	budgets, err := service.ProjectBudgetModel.ListByProjectId(db, cityHallProject.ID)
 	if err != nil {
 		log.Error().Msgf("get project budget error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)

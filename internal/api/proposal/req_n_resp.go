@@ -13,6 +13,7 @@ import (
 	"github.com/theseed-labs/os-backend/internal/db_agent"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk/metaforo"
+	"github.com/theseed-labs/os-backend/internal/service"
 	"gorm.io/gorm"
 )
 
@@ -384,6 +385,8 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposalId uint, startPo
 		if err != nil {
 			log.Error().Msgf("update propsal vote option records with metaforo response error: %+v", err)
 			return nil, err
+		} else {
+			log.Debug().Msgf("poll of proposal %d status changed: %+v", proposalId, pollStatusChanged)
 		}
 
 		if pollStatusChanged {
@@ -491,7 +494,7 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposalId uint, startPo
 	budgetsResponse := make([]*project.BudgetResp, 0)
 	err = db.Where(&model.Project{SIP: fmt.Sprintf("%d", proposal.Sip)}).First(&associatedProject).Error
 	if err == nil {
-		budgetRecords, err := model.ProjectBudgetModel.ListByProjectId(db, associatedProject.ID)
+		budgetRecords, err := service.ProjectBudgetModel.ListByProjectId(db, associatedProject.ID)
 		if err != nil {
 			log.Error().Msgf("fetch project budget error: %+v", err)
 		} else {
