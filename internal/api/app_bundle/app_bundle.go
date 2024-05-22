@@ -328,6 +328,8 @@ func CreateAppBundle(ctx *gin.Context) {
 				return budget.AssetName, budget.RemainAdvanceAmount
 			})
 
+			requestAssetAmount := make(map[string]decimal.Decimal)
+
 			for _, appRecord := range newAppBundleReq.Records {
 				remainAdvanceAmount, found := advanceRemainAmountRecord[appRecord.AssetName]
 				if !found {
@@ -340,6 +342,24 @@ func CreateAppBundle(ctx *gin.Context) {
 
 				if remainAdvanceAmount.LessThan(appRecord.Amount) {
 					err := fmt.Errorf("project %d has insufficient advance amount for asset %s", newAppBundleReq.EntityId, appRecord.AssetName)
+					log.Error().Msg(err.Error())
+					sdk.LogUserSideError(ctx, err)
+					ctx.JSON(http.StatusBadRequest, api.ServerError(err))
+					return
+				}
+
+				// Sum total amount for each asset
+				if _, found := requestAssetAmount[appRecord.AssetName]; !found {
+					requestAssetAmount[appRecord.AssetName] = appRecord.Amount
+				} else {
+					requestAssetAmount[appRecord.AssetName] = requestAssetAmount[appRecord.AssetName].Add(appRecord.Amount)
+				}
+			}
+
+			// Check total amount
+			for assetName, amount := range requestAssetAmount {
+				if amount.GreaterThan(advanceRemainAmountRecord[assetName]) {
+					err := fmt.Errorf("project %d has insufficient advance amount for asset %s", newAppBundleReq.EntityId, assetName)
 					log.Error().Msg(err.Error())
 					sdk.LogUserSideError(ctx, err)
 					ctx.JSON(http.StatusBadRequest, api.ServerError(err))
