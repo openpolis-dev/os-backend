@@ -37,6 +37,7 @@ GET {{host}}/v1/projects/{{project_id}}
 
 %}
 
+
 ### Try to create application within advance amount limitation
 POST {{host}}/v1/app_bundles/
 Content-Type: application/json
@@ -52,7 +53,7 @@ Authorization: Bearer {{auth_token}}
     "entity_id": 256,
     "target_user_wallet": "0xEe3d9DeFdD97560c56402b3467869f293bfa35dC",
     "asset_name": "SCR",
-    "amount": "10",
+    "amount": "15",
     "detailed_type": "test_rwd",
     "comment": "test single asset type"
   }]
@@ -90,7 +91,7 @@ POST {{host}}/v1/app_bundle_reject
 Content-Type: application/json
 Authorization: Bearer {{auth_token}}
 
-[137]
+[139]
 
 > {%
     client.test("Request executed successfully", function() {
