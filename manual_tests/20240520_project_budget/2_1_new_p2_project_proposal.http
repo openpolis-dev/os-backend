@@ -62,12 +62,12 @@ Authorization: Bearer {{auth_token}}
       "data": {
         "budgetList": [
           {
-            "amount": "10000",
+            "amount": "20000",
             "typeTest": {
               "id": 1,
               "name": "SCR"
             },
-            "proportion": "5",
+            "proportion": "25",
             "description": "asdfasdf"
           }
         ]
