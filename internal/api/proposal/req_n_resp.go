@@ -384,6 +384,8 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposalId uint, startPo
 		if err != nil {
 			log.Error().Msgf("update propsal vote option records with metaforo response error: %+v", err)
 			return nil, err
+		} else {
+			log.Debug().Msgf("poll of proposal %d status changed: %+v", proposalId, pollStatusChanged)
 		}
 
 		if pollStatusChanged {

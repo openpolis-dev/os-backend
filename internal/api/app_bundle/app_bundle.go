@@ -223,12 +223,12 @@ func ListAppBundle(ctx *gin.Context) {
 func CreateAppBundle(ctx *gin.Context) {
 	var newAppBundleReq model.NewAppBundleRequest
 	if err := ctx.BindJSON(&newAppBundleReq); err != nil {
-		if err != nil {
-			sdk.LogUserSideError(ctx, err)
-			ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("parse request error: %+v", err)))
-		}
+		sdk.LogUserSideError(ctx, err)
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("parse request error: %+v", err)))
 		return
 	}
+
+	// TODO: If the associated project has budget, guarantee the total amount does not exceed the (budget - advanced_amount)
 
 	user, enforcer, db, _ := api.ForContext(ctx)
 	ok, err := enforcer.HasRoleForUser(common.FormatUserWallet(user.Wallet), internal.RoleHall)
@@ -309,6 +309,44 @@ func CreateAppBundle(ctx *gin.Context) {
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get current season error")))
 		return
+	}
+
+	// Validate project budgets
+	if newAppBundleReq.Entity == "project" {
+		projectBudgets, err := model.ProjectBudgetModel.ListByProjectId(db, newAppBundleReq.EntityId)
+		if err != nil {
+			sdk.LogServerErrorToSentry(ctx, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get project budgets error")))
+			return
+		}
+
+		if len(projectBudgets) == 0 {
+			log.Debug().Msgf("project %d has no budget record, ignore checking of amount submitted", newAppBundleReq.EntityId)
+		} else {
+			// Only advance remain amount can be applied here
+			advanceRemainAmountRecord := lo.SliceToMap(projectBudgets, func(budget *model.ProjectBudget) (string, decimal.Decimal) {
+				return budget.AssetName, budget.RemainAdvanceAmount
+			})
+
+			for _, appRecord := range newAppBundleReq.Records {
+				remainAdvanceAmount, found := advanceRemainAmountRecord[appRecord.AssetName]
+				if !found {
+					err := fmt.Errorf("incorrect asset name %s for project %d", appRecord.AssetName, newAppBundleReq.EntityId)
+					log.Error().Msg(err.Error())
+					sdk.LogUserSideError(ctx, err)
+					ctx.JSON(http.StatusBadRequest, api.ServerError(err))
+					return
+				}
+
+				if remainAdvanceAmount.LessThan(appRecord.Amount) {
+					err := fmt.Errorf("project %d has insufficient advance amount for asset %s", newAppBundleReq.EntityId, appRecord.AssetName)
+					log.Error().Msg(err.Error())
+					sdk.LogUserSideError(ctx, err)
+					ctx.JSON(http.StatusBadRequest, api.ServerError(err))
+					return
+				}
+			}
+		}
 	}
 
 	// TODO: Duplicated code *NewAppBundleAndApplication*

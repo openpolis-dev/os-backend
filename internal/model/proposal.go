@@ -566,3 +566,23 @@ type MetaforoVoteCount struct {
 	UserWallet string `json:"user_wallet" gorm:"uniqueIndex:vote_count_season_index"`
 	Count      int    `json:"count"`
 }
+
+// Type defs for component schema
+// In some case, the backend need checking content in schema so need to parse the structure.
+// The data should be sync with schema saved in database
+
+// ComponentMotivationData saves structure of budget list submitted from proposal component `motivation'
+// This struct should be sync with proposal_component database records
+type ComponentMotivationData struct {
+	RewardList []*ComponentMotivationRewardRecord `json:"budgetList"`
+}
+
+type ComponentMotivationRewardRecord struct {
+	Address   string `json:"address"`
+	AssetInfo struct {
+		Id   int    `json:"id"`
+		Name string `json:"name"`
+	} `json:"assetInfo"`
+	Amount      string `json:"amount"`
+	Description string `json:"description"`
+}

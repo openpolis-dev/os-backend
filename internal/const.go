@@ -110,6 +110,7 @@ const (
 	ComponentNameDeadline          = "deadline"
 	ComponentNameCreateProject     = "create_project"
 	ComponentNameAssociateProposal = "associate_proposal"
+	ComponentNameMotivation        = "motivation"
 
 	ContentBlockContentName = "内容"
 )

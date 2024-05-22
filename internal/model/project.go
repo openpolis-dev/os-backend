@@ -311,3 +311,31 @@ func createCityHallProject(db *gorm.DB, cityHallUsers []string) (*Project, error
 	}
 	return &project, nil
 }
+
+type projectBudgetModel struct{}
+
+var ProjectBudgetModel projectBudgetModel
+
+func (*projectBudgetModel) Create(db *gorm.DB, budgets []*ProjectBudget) error {
+	tx := db.Create(budgets)
+	return tx.Error
+}
+
+func (*projectBudgetModel) Update(db *gorm.DB, budget *ProjectBudget) error {
+	return db.Save(budget).Error
+}
+
+func (*projectBudgetModel) Detail(db *gorm.DB, id uint) (*ProjectBudget, error) {
+	querySeg := db.Where("id = ?", id)
+	return gormfind.Row[ProjectBudget](querySeg)
+}
+
+func (*projectBudgetModel) ListByProjectId(db *gorm.DB, projID uint) ([]*ProjectBudget, error) {
+	querySeg := db.Where("project_id = ?", projID)
+	return QueryRows[ProjectBudget](querySeg, nil)
+}
+
+func (*projectBudgetModel) QueryByProjectIdAndBudgetProps(db *gorm.DB, projID uint, assetName string) (*ProjectBudget, error) {
+	querySeg := db.Where(&ProjectBudget{ProjectID: projID, AssetName: assetName})
+	return gormfind.Row[ProjectBudget](querySeg)
+}
