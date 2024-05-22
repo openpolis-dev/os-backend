@@ -91,8 +91,8 @@ func (r *budgetComponentData) prepareBudgetRecords(proposalId uint) []*model.Pro
 	projectBudgetRcds := make([]*model.ProjectBudget, 0)
 	for _, r := range r.BudgetList {
 		totalBudgetAmount := decimal.RequireFromString(r.Amount)
-		advancedRatio := decimal.Zero
-		totalAdvanceAmount := decimal.Zero
+		advancedRatio := decimal.RequireFromString(r.Proportion).Div(decimal.NewFromInt(100))
+		totalAdvanceAmount := totalBudgetAmount.Mul(advancedRatio).Round(0)
 
 		projectBudgetRcds = append(projectBudgetRcds, &model.ProjectBudget{
 			ProposalID:          proposalId,
@@ -1719,13 +1719,6 @@ func CreateProjectFromAutoTasks(db *gorm.DB, proposalId uint) (*model.Project, e
 				}
 
 				projectBudgetRcds = budgetParams.prepareBudgetRecords(proposalId)
-
-				prjBudgetBytes, err := json.Marshal(projectBudgetRcds)
-				if err != nil {
-					log.Error().Msgf("unmarshal project deliverables data error: %+v", err)
-					return nil, err
-				}
-				newProjectData.Budgets = string(prjBudgetBytes)
 			} else if compName == internal.ComponentNameDeliverables {
 				var deliverableParams commonCreateProjectRelatedData
 				err := json.Unmarshal([]byte(pComponentRecord.Data), &deliverableParams)
