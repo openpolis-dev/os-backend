@@ -1,0 +1,69 @@
+### Login to service with hall
+POST {{host}}/v1/user/login
+Content-Type: application/json
+
+{
+  "wallet": "0xEe3d9DeFdD97560c56402b3467869f293bfa35dC",
+  "wallet_type": "aaaaa",
+  "is_eip191_prefix": false,
+  "domain": "testfoobar",
+  "message": "test msg",
+  "timestamp": 1,
+  "signature": "1"
+}
+
+> {%
+    client.test("Request executed successfully", function() {
+        client.assert(response.status === 200, "Response status is not 200");
+        client.global.set("auth_token", response.body.data.token);
+    });
+%}
+
+### Validate project has budgets
+< {%
+    request.variables.set("project_id", "255")
+%}
+GET {{host}}/v1/projects/{{project_id}}
+
+> {%
+    client.test("Request executed successfully", function() {
+        client.assert(response.status === 200, "Response status is not 200");
+    });
+
+    client.test("Project has budget record", function() {
+        client.assert(response.body.hasOwnProperty("data"), "Cannot find 'data' in response");
+        client.assert(response.body.data.hasOwnProperty("budgets"), "Cannot find 'budgets' in response");
+    });
+
+%}
+
+### Try to create application that exceeded the remain advance amount
+POST {{host}}/v1/app_bundles/
+Content-Type: application/json
+Authorization: Bearer {{auth_token}}
+
+{
+  "entity": "project",
+  "entity_id": 255,
+  "comment": "Test app bundles",
+  "records": [{
+    "type": "new_reward",
+    "entity": "project",
+    "entity_id": 255,
+    "target_user_wallet": "0xEe3d9DeFdD97560c56402b3467869f293bfa35dC",
+    "asset_name": "SCR",
+    "amount": "501",
+    "detailed_type": "test_rwd",
+    "comment": "test single asset type"
+  }]
+}
+
+> {%
+    client.test("Request executed successfully", function() {
+        client.assert(response.status !== 200, "Response should have error");
+    });
+
+    client.test("Response should return correct error", function() {
+        client.assert(response.body.msg.indexOf(" insufficient advance amount") !== -1, "Response should return correct error");
+    });
+%}

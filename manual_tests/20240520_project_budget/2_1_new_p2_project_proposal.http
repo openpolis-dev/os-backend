@@ -1,0 +1,118 @@
+### Login to service with hall
+POST {{host}}/v1/user/login
+Content-Type: application/json
+
+{
+  "wallet": "0xEe3d9DeFdD97560c56402b3467869f293bfa35dC",
+  "wallet_type": "aaaaa",
+  "is_eip191_prefix": false,
+  "domain": "testfoobar",
+  "message": "test msg",
+  "timestamp": 1,
+  "signature": "1"
+}
+
+> {%
+    client.test("Request executed successfully", function() {
+        client.assert(response.status === 200, "Response status is not 200");
+        client.global.set("auth_token", response.body.data.token);
+    });
+%}
+
+### Create reward application proposal with numerical vote options
+POST {{host}}/v1/proposals/create
+Authorization: Bearer {{auth_token}}
+
+{
+  "title": "测试p2立项提案请求参数",
+  "proposal_category_id": 49,
+  "vote_type": 1,
+  "vote_options": null,
+  "content_blocks": [
+    {
+      "title": "",
+      "type": "preview",
+      "content": "[]"
+    },
+    {
+      "title": "背景",
+      "content": "这是背景",
+      "hint": "请写明项目发起的缘由和目标。需要体现与活跃社区的相关性，以便后期获得足够社区成员的支持。可以思考的问题如下，你希望解决什么问题？这个问题的影响有多大？你希望通过这个提案达到什么样的目标？"
+    },
+    {
+      "title": "内容",
+      "content": "这是内容",
+      "hint": "请写明项目推进节奏、重要执行环节、项目成员及预算分配明细。可以思考的问题如下，你打算如何实施这个提案？需要哪些资源及如何分配？谁会负责执行？提案的执行时间表是怎样的？有哪些重要的里程碑？最重要的是：该提案内容与SeeDAO产生怎么样的关联与影响？"
+    },
+    {
+      "title": "立项信息",
+      "type": "components",
+      "content": "P2 提案可申请不超过 50000 SCR 和不超过 1000 USDT 的激励",
+      "name": "[\"budget_p1\",\"deliverables\",\"deadline\"]"
+    },
+    {
+      "title": "备注",
+      "content": "这是备注",
+      "hint": "模版中未提及但重要的内容可以在此处提及。"
+    }
+  ],
+  "components": [
+    {
+      "name": "budget",
+      "data": {
+        "budgetList": [
+          {
+            "amount": "10000",
+            "typeTest": {
+              "id": 1,
+              "name": "SCR"
+            },
+            "proportion": "5",
+            "description": "asdfasdf"
+          }
+        ]
+      }
+    },
+    {
+      "name": "deliverables",
+      "data": {
+        "description": "这是交付物"
+      }
+    },
+    {
+      "name": "deadline",
+      "data": {
+        "description": "2024-05-31T16:00:00.000Z"
+      }
+    }
+  ],
+  "template_id": 15,
+  "submit_to_metaforo": true,
+  "metaforo_access_token": "29580|nbcr2gSKeZ1UUQcrbDDOEXqPxvir3CZhfxmHcFEk"
+}
+
+> {%
+    client.test("Request executed successfully", function() {
+        client.assert(response.status === 200, "Response status is not 200");
+        client.global.set("proposal_id", response.body.data.id);
+    });
+%}
+
+### Approve proposal
+POST {{host}}/v1/proposals/approve/{{proposal_id}}
+Authorization: Bearer {{auth_token}}
+
+> {%
+    client.test("Request executed successfully", function() {
+        client.assert(response.status === 200, "Response status is not 200");
+    });
+%}
+
+#### Show proposals
+GET {{host}}/v1/proposals/show/{{proposal_id}}
+
+> {%
+    client.test("Request executed successfully", function() {
+        client.assert(response.status === 200, "Response status is not 200");
+    });
+%}
