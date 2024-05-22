@@ -24,6 +24,7 @@ import (
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk"
 	"github.com/theseed-labs/os-backend/internal/sdk/metaforo"
+	"github.com/theseed-labs/os-backend/internal/service"
 	"github.com/theseed-labs/os-backend/internal/storage"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -160,8 +161,21 @@ func ValidateProposalComponentParams(db *gorm.DB, reqData *CreateOrUpdateProposa
 				continue
 			}
 
+			// Get project from create_project_proposal_id
+			associatedProject, err := service.ProposalService.GetAssociatedProjectByProposalId(db, reqData.CreateProjectProposalId)
+			if err != nil {
+				log.Error().Msgf("get create project proposal %d error: %+v", reqData.CreateProjectProposalId, err)
+				return err
+			}
+
+			if associatedProject == nil {
+				err = fmt.Errorf("project %d is not associated with proposal %d", reqData.CreateProjectProposalId, proposalId)
+				log.Error().Msg(err.Error())
+				return err
+			}
+
 			// Get project_budget records to get total amount of the budgets
-			projectBudgets, err := model.ProjectBudgetModel.ListByProjectId(db, reqData.CreateProjectProposalId)
+			projectBudgets, err := model.ProjectBudgetModel.ListByProjectId(db, associatedProject.ID)
 			log.Error().Msgf("TTT: project budgts: %+v", projectBudgets)
 			if err != nil {
 				log.Error().Msgf("get create project proposal %d error: %+v", reqData.CreateProjectProposalId, err)
