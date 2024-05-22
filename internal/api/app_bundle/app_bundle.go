@@ -311,6 +311,9 @@ func CreateAppBundle(ctx *gin.Context) {
 		return
 	}
 
+	// Variable to save used asset amount for the project if this app bundle created successfully, which will be used to update project budget records
+	assetAmountUsedInThisRequest := make(map[string]decimal.Decimal)
+
 	// Validate project budgets
 	if newAppBundleReq.Entity == "project" {
 		projectBudgets, err := model.ProjectBudgetModel.ListByProjectId(db, newAppBundleReq.EntityId)
@@ -364,6 +367,9 @@ func CreateAppBundle(ctx *gin.Context) {
 					sdk.LogUserSideError(ctx, err)
 					ctx.JSON(http.StatusBadRequest, api.ServerError(err))
 					return
+				} else {
+					// Save asset amount will be used.
+					assetAmountUsedInThisRequest[assetName] = amount
 				}
 			}
 		}
@@ -439,7 +445,7 @@ func CreateAppBundle(ctx *gin.Context) {
 			return err
 		}
 
-		return tx.Model(model.AppBundleAuditLog{}).Create(&model.AppBundleAuditLog{
+		err = tx.Model(model.AppBundleAuditLog{}).Create(&model.AppBundleAuditLog{
 			AppBundleId: appBundle.ID,
 			AppBundle:   appBundle,
 			LogTs:       model.GetCurrentUtcEpochSecond(),
@@ -449,6 +455,21 @@ func CreateAppBundle(ctx *gin.Context) {
 			PostState:   model.ApplicationStateOpen,
 			ExtraData:   "",
 		}).Error
+
+		if err != nil {
+			log.Error().Msgf("Create app bundle audit log records error: %+v", err)
+			return err
+		}
+
+		for assetName, usedAmount := range assetAmountUsedInThisRequest {
+			err = model.ProjectBudgetModel.WithdrawSingleAsset(tx, newAppBundleReq.EntityId, assetName, usedAmount)
+			if err != nil {
+				log.Error().Msgf("withdraw budget asset %s error: %+v", assetName, err)
+				return err
+			}
+		}
+
+		return err
 	})
 
 	if err != nil {
@@ -536,7 +557,7 @@ func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState
 		return
 	}
 
-	// send to QuickAccounting
+	// prepare QuickAccounting records
 	var qaInputs []*sdk.QAInput
 	now := time.Now().In(internal.ProjectTimezone).Format(time.DateTime)
 
