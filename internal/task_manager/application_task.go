@@ -122,23 +122,6 @@ func CreateAppBundleTaskFromMotivationComponent(db *gorm.DB, job *model.CronJob,
 				}
 
 				if !jobFailed {
-					// Limit only one motivation component record for one proposal
-					existingAppBundle := model.AppBundle{
-						EntityType: "project",
-						EntityId:   prjDbRcd.ID,
-					}
-
-					if prjDbRcd.Name != internal.CityHallProjectName {
-						var appBundleRecordsCount int64
-						db.Model(&existingAppBundle).Where(&existingAppBundle).Count(&appBundleRecordsCount)
-						log.Debug().Msgf("Found %d records for app bundle", appBundleRecordsCount)
-						if appBundleRecordsCount > 0 {
-							log.Error().Msgf("appliation bundle with sip %s is already exist", prjDbRcd.SIP)
-							execResult = fmt.Sprintf("app bundle for project %d is existing", prjDbRcd.ID)
-							jobFailed = true
-						}
-					}
-
 					// TODO: Duplicated code *NewAppBundleAndApplication*
 					// Create AppBundle
 					appBundle := model.AppBundle{
