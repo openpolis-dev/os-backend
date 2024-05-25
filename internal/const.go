@@ -27,7 +27,7 @@ var ApplicationDownloadHeader = map[string]string{
 const USDTContractAddr = "0xdAC17F958D2ee523a2206206994597C13D831ec7"
 
 const ScrContractType = "erc20"
-const ScrContractAddr = "0xc74DEE15a4700D5df797bDD3982EE649A3Bb8c6C"
+const ScrContractAddr = "0xE4825A1a31a76f72befa47f7160B132AA03813E0"
 
 const SeedContractType = "erc721"
 const SeedContractAddr = "0x30093266E34a816a53e302bE3e59a93B52792FD4"
