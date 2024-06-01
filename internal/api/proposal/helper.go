@@ -847,10 +847,14 @@ func UpdateArweaveHashFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcdId 
 
 	err = db.Transaction(func(tx *gorm.DB) error {
 		for idx := 0; idx < min(metaforoProposal.Thread.EditHistory.Count, len(dbProposals)); idx++ {
-			tx.Model(&dbProposals[idx]).Where("id = ?", dbProposals[idx].ID).Update("arweave_hash", metaforoProposal.Thread.EditHistory.Lists[idx].Arweave)
+			tx.Model(&model.Proposal{}).Where(
+				"id = ? AND arweave_hash != ?", dbProposals[idx].ID, metaforoProposal.Thread.EditHistory.Lists[idx].Arweave,
+			).Update("arweave_hash", metaforoProposal.Thread.EditHistory.Lists[idx].Arweave)
 			if idx == 0 {
 				// Save arwave hash data to record for setting it correctly in response
-				tx.Model(&model.Proposal{}).Where(&model.Proposal{ID: dbProposalRcdId}).Updates(model.Proposal{ArweaveHash: metaforoProposal.Thread.EditHistory.Lists[idx].Arweave})
+				tx.Model(&model.Proposal{}).Where(
+					"id = ? AND arweave_hash != ?", dbProposalRcdId, metaforoProposal.Thread.EditHistory.Lists[idx].Arweave,
+				).Updates(model.Proposal{ArweaveHash: metaforoProposal.Thread.EditHistory.Lists[idx].Arweave})
 			}
 		}
 		return nil
