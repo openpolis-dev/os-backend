@@ -55,63 +55,55 @@ func RefreshVotingProposalInfoJob(db *gorm.DB, job *model.CronJob, jobParams str
 		AND p1.proposal_record_id != ''
  		AND p1.state IN ?`
 
-		if err = db.Transaction(func(tx *gorm.DB) error {
-			err = tx.Raw(querySql, []model.ProposalState{
-				model.ProposalStateVoting,
-				model.ProposalStateApproved,
-				model.ProposalStateDraft,
-			}).Find(&proposals).Error
-			if err != nil {
-				log.Warn().Msgf("get proposal list error: %+v", err)
-				jobFailed = true
-				return err
-			} else {
-				for _, dbRcd := range proposals {
-					metaforoThreadId := dbRcd.GetMetaforoThreadId()
-					metaforoProposalData, err := metaforo.GetProposal(metaforoThreadId, params.GroupName, cfg.MetaforoData.AccessToken, 0)
-					if err != nil {
-						log.Warn().Msgf("get metaforo proposal error: %+v", err)
-						jobFailed = true
-						execResult = err.Error()
-						continue
-					}
+		err := db.Raw(querySql, []model.ProposalState{
+			model.ProposalStateVoting,
+			model.ProposalStateApproved,
+			model.ProposalStateDraft,
+		}).Find(&proposals).Error
 
+		if err != nil {
+			log.Warn().Msgf("get proposal list error: %+v", err)
+			jobFailed = true
+		} else {
+			for _, dbRcd := range proposals {
+				metaforoThreadId := dbRcd.GetMetaforoThreadId()
+				metaforoProposalData, err := metaforo.GetProposal(metaforoThreadId, params.GroupName, cfg.MetaforoData.AccessToken, 0)
+				if err != nil {
+					log.Warn().Msgf("get metaforo proposal error: %+v", err)
+					continue
+				}
+
+				// Start transaction to update db records
+				if err = db.Transaction(func(tx *gorm.DB) error {
 					err = proposal.UpdateDbRecordsFromMetaforoProposalResponse(tx, dbRcd.ID, metaforoProposalData)
 					if err != nil {
 						log.Warn().Msgf("update propsal with metaforo response error: %+v", err)
-						jobFailed = true
-						execResult = err.Error()
 						return err
 					}
 
 					pollStatusChanged, err := proposal.UpdateDbVoteOptionRecordsFromMetaforoProposalResponse(tx, dbRcd.ID, metaforoProposalData)
 					if err != nil {
 						log.Warn().Msgf("update propsal vote option records with metaforo response error: %+v", err)
-						jobFailed = true
-						execResult = err.Error()
 						return err
 					}
 
 					if pollStatusChanged {
 						if err = proposal.HandleProposalPollStatusChange(tx, dbRcd.ID); err != nil {
 							log.Warn().Msgf("handle proposal poll status change error: %+v", err)
-							jobFailed = true
-							execResult = err.Error()
 							return err
 						}
 					}
+					return nil
+				}); err != nil {
+					log.Warn().Msgf("update proposal %d error: %+v, continue", dbRcd.ID, err)
+					continue
 				}
-
-				log.Debug().Msgf("refresh db proposal info from metaforo response: %+v", proposals)
-				return nil
 			}
-		}); err != nil {
-			log.Warn().Msgf("transaction error: %+v", err)
-			jobFailed = true
-			execResult = err.Error()
 		}
+
 		time.Sleep(1 * time.Second)
 	}
+
 	// Calculate next time after execution done
 	if err = updateJobExecutionInfoForNextRun(db, job, execResult, jobFailed); err != nil {
 		log.Warn().Msgf("update cron job error: %+v", err)
