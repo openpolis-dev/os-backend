@@ -23,6 +23,11 @@ type VoterInfo struct {
 	Avatar         string `json:"avatar"`
 }
 
+type userVoteDetailInfo struct {
+	JointMetaforoAndOsUser
+	VoteWeight int `json:"weight"`
+}
+
 // CheckVotePermission checks whether current user can vote on this proposal
 //
 //	@summary	Check whether user has permission to vote in thread
@@ -186,7 +191,7 @@ func CloseVote(ctx *gin.Context) {
 //	@tags		Proposal
 //	@param		vote_option_id	path		number										true	"Vote ID"
 //	@param		page			query		number										false	"page of the vote list"
-//	@success	200				{object}	api.Reply{data=[]JointMetaforoAndOsUser}	"Success"
+//	@success	200				{object}	api.Reply{data=[]userVoteDetailInfo}	"Success"
 //	@router		/proposals/vote_detail/:vote_option_id [get]
 func ShowVoteDetail(ctx *gin.Context) {
 	voteIdStr := ctx.Param("vote_option_id")
@@ -292,9 +297,29 @@ func ShowVoteDetail(ctx *gin.Context) {
 		return nil
 	})
 
+	// Extract weight value for each user
+	userWeightMap := lo.SliceToMap(voterList, func(item *metaforo.UserPollRecord) (int, int) { return item.Uid, item.Weight })
+
 	metaforoUserIds := lo.Map(voterList, func(item *metaforo.UserPollRecord, index int) int { return item.UserId })
 	userRecords, err := GetOsUserFromMetaforoUserId(db, metaforoUserIds)
-	ctx.JSON(http.StatusOK, api.Success(userRecords))
+	if err != nil {
+		rslt := lo.Map(userRecords, func(u *JointMetaforoAndOsUser, _ int) *userVoteDetailInfo {
+			weight, found := userWeightMap[u.MetaforoUserID]
+			if !found {
+				log.Warn().Msgf("no weight found for user: %d", u.MetaforoUserID)
+				weight = 0
+			}
+			return &userVoteDetailInfo{
+				*u,
+				weight,
+			}
+		})
+		ctx.JSON(http.StatusOK, api.Success(rslt))
+	} else {
+		log.Error().Msgf("check user vote permission error: %+v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(fmt.Errorf("list user vote detail error")))
+	}
 }
 
 func canUserVoteOnThread(db *gorm.DB, userWallet string, proposalIdString string) (bool, error) {
