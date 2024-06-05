@@ -730,6 +730,10 @@ func UpdateProposalStateAndLaunchStateChangeActions(db *gorm.DB, user *middlewar
 		return 0, err
 	}
 
+	// Login to admin account to avoid token expiration
+	//metaforo.Login(cfg.Metaforo.GroupName, cfg.Metaforo.AdminWallet, cfg.Metaforo.Sign, cfg.Metaforo.SignMsg, cfg.Metaforo.WalletType)
+	RefreshMetaforoAdminToken()
+
 	// Check whether user has permission to the change the proposal state
 	switch newState {
 	case model.ProposalStateWithdrawn:

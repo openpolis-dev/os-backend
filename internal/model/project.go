@@ -209,47 +209,6 @@ func (*projectModel) SetBudget(db *gorm.DB, projectId uint, assertName string, t
 	})
 }
 
-func (*projectModel) WithdrawBudget(db *gorm.DB, projectId uint, assetName string, tokenAmount decimal.Decimal) error {
-	return db.Transaction(func(tx *gorm.DB) error {
-		budgetRcd, err := ProjectBudgetModel.QueryByProjectIdAndBudgetProps(tx, projectId, assetName)
-		if err != nil {
-			return err
-		}
-
-		if budgetRcd == nil {
-			return fmt.Errorf("project %d has no budget record with asset %s", projectId, assetName)
-		}
-
-		budgetRcd.UsedAmount = budgetRcd.UsedAmount.Add(tokenAmount)
-		budgetRcd.RemainAmount = budgetRcd.RemainAmount.Sub(tokenAmount)
-		return tx.Save(budgetRcd).Error
-	})
-}
-
-// DepositBudget deposits budget back to project, e.g. application for reward has been rejected
-func (*projectModel) DepositBudget(db *gorm.DB, projectId uint, assetName string, tokenAmount decimal.Decimal) error {
-	return db.Transaction(func(tx *gorm.DB) error {
-		budgetRcd, err := ProjectBudgetModel.QueryByProjectIdAndBudgetProps(tx, projectId, assetName)
-		if err != nil {
-			return err
-		}
-
-		if budgetRcd == nil {
-			return tx.Save(&ProjectBudget{
-				ProjectID:    projectId,
-				AssetName:    assetName,
-				TotalAmount:  tokenAmount,
-				UsedAmount:   decimal.Zero,
-				RemainAmount: tokenAmount,
-			}).Error
-		} else {
-			budgetRcd.UsedAmount = budgetRcd.UsedAmount.Sub(tokenAmount)
-			budgetRcd.RemainAmount = budgetRcd.RemainAmount.Add(tokenAmount)
-			return tx.Save(budgetRcd).Error
-		}
-	})
-}
-
 // UpdateProjectStatus update project status to given value and update update_ts field
 func (*projectModel) UpdateProjectStatus(db *gorm.DB, projectId uint, status ProjectStatus) error {
 	if err := db.Where(&Project{ID: projectId}).Updates(&Project{
@@ -310,4 +269,105 @@ func createCityHallProject(db *gorm.DB, cityHallUsers []string) (*Project, error
 		return nil, err
 	}
 	return &project, nil
+}
+
+type projectBudgetModel struct{}
+
+var ProjectBudgetModel projectBudgetModel
+
+func (*projectBudgetModel) Create(db *gorm.DB, budgets []*ProjectBudget) error {
+	tx := db.Create(budgets)
+	return tx.Error
+}
+
+func (*projectBudgetModel) Update(db *gorm.DB, budget *ProjectBudget) error {
+	return db.Save(budget).Error
+}
+
+func (*projectBudgetModel) Detail(db *gorm.DB, id uint) (*ProjectBudget, error) {
+	querySeg := db.Where("id = ?", id)
+	return gormfind.Row[ProjectBudget](querySeg)
+}
+
+func (*projectBudgetModel) ListByProjectId(db *gorm.DB, projID uint) ([]*ProjectBudget, error) {
+	querySeg := db.Where("project_id = ?", projID)
+	return QueryRows[ProjectBudget](querySeg, nil)
+}
+
+func (*projectBudgetModel) QueryByProjectIdAndBudgetProps(db *gorm.DB, projID uint, assetName string) (*ProjectBudget, error) {
+	querySeg := db.Where(&ProjectBudget{ProjectID: projID, AssetName: assetName})
+	return gormfind.Row[ProjectBudget](querySeg)
+}
+
+func (*projectBudgetModel) WithdrawSingleAsset(db *gorm.DB, projID uint, assetName string, amount decimal.Decimal) error {
+	return db.Transaction(func(tx *gorm.DB) error {
+		budgetRcd, err := ProjectBudgetModel.QueryByProjectIdAndBudgetProps(tx, projID, assetName)
+		if err != nil {
+			log.Error().Msgf("query project %d budget %s error: %+v", projID, assetName, err)
+			return err
+		}
+
+		updateClause := map[string]any{
+			"id": budgetRcd.ID,
+		}
+
+		if budgetRcd.RemainAmount.LessThan(amount) {
+			err = fmt.Errorf("project %d budget %s remain amount %s is less than request value %s", projID, assetName, budgetRcd.RemainAdvanceAmount.String(), amount.String())
+			log.Error().Msgf(err.Error())
+			return err
+		} else {
+			updateClause["used_amount"] = budgetRcd.UsedAmount.Add(amount)
+			updateClause["remain_amount"] = budgetRcd.RemainAmount.Sub(amount)
+		}
+
+		// Handle budget record with advance ratio
+		if !budgetRcd.AdvanceRatio.Equal(decimal.Zero) {
+			if budgetRcd.RemainAdvanceAmount.LessThan(amount) {
+				err = fmt.Errorf("project %d budget %s remain advance amount %s is less than request value %s", projID, assetName, budgetRcd.RemainAdvanceAmount.String(), amount.String())
+				log.Error().Msgf(err.Error())
+				return err
+			} else {
+				updateClause["used_advance_amount"] = budgetRcd.UsedAdvanceAmount.Add(amount)
+				updateClause["remain_advance_amount"] = budgetRcd.RemainAdvanceAmount.Sub(amount)
+			}
+		}
+
+		return tx.Model(&budgetRcd).Updates(updateClause).Error
+	})
+}
+func (*projectBudgetModel) DepositSingleAsset(db *gorm.DB, projID uint, assetName string, amount decimal.Decimal) error {
+	return db.Transaction(func(tx *gorm.DB) error {
+		budgetRcd, err := ProjectBudgetModel.QueryByProjectIdAndBudgetProps(tx, projID, assetName)
+		if err != nil {
+			log.Error().Msgf("query project %d budget %s error: %+v", projID, assetName, err)
+			return err
+		}
+
+		updateClause := map[string]any{
+			"id": budgetRcd.ID,
+		}
+
+		if budgetRcd.UsedAmount.LessThan(amount) {
+			err = fmt.Errorf("project %d budget %s used amount %s is less than request value %s", projID, assetName, budgetRcd.UsedAmount.String(), amount.String())
+			log.Error().Msgf(err.Error())
+			return err
+		} else {
+			updateClause["used_amount"] = budgetRcd.UsedAmount.Sub(amount)
+			updateClause["remain_amount"] = budgetRcd.RemainAmount.Add(amount)
+		}
+
+		// Handle budget record with advance ratio
+		if !budgetRcd.AdvanceRatio.Equal(decimal.Zero) {
+			if budgetRcd.UsedAdvanceAmount.LessThan(amount) {
+				err = fmt.Errorf("project %d budget %s used advance amount %s is less than request value %s", projID, assetName, budgetRcd.UsedAdvanceAmount.String(), amount.String())
+				log.Error().Msgf(err.Error())
+				return err
+			} else {
+				updateClause["used_advance_amount"] = budgetRcd.UsedAdvanceAmount.Sub(amount)
+				updateClause["remain_advance_amount"] = budgetRcd.RemainAdvanceAmount.Add(amount)
+			}
+		}
+
+		return tx.Model(&budgetRcd).Updates(updateClause).Error
+	})
 }

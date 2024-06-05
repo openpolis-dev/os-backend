@@ -10,6 +10,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api"
+	"github.com/theseed-labs/os-backend/internal/api/proposal"
 	"github.com/theseed-labs/os-backend/internal/config"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"gorm.io/gorm"
@@ -88,10 +89,10 @@ func (t *TaskManager) StartRunner() {
 		panic(err)
 	}
 
-	// Start refresh metaforo admin token task every 15 days
+	// Start refresh metaforo admin token task every days
 	if _, err = t.Scheduler.NewJob(
-		gocron.DurationJob(time.Hour*time.Duration(15*24)),
-		gocron.NewTask(RefreshMetaforoAdminToken),
+		gocron.DurationJob(time.Hour*time.Duration(24)),
+		gocron.NewTask(proposal.RefreshMetaforoAdminToken),
 	); err != nil {
 		panic(err)
 	}

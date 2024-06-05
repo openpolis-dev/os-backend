@@ -29,6 +29,7 @@ from applications
          join seasons on season_id = seasons.id
 where applications.type = 'NEW_REWARD'
   and applications.asset_name = 'SCR'
+  and applications.state in ('approved', 'completed')
   and applications.sub_type IN (NULL ,'')
 GROUP by season_id, target_user_wallet, seasons.name, season_idx`
 

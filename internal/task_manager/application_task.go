@@ -122,29 +122,12 @@ func CreateAppBundleTaskFromMotivationComponent(db *gorm.DB, job *model.CronJob,
 				}
 
 				if !jobFailed {
-					// Limit only one motivation component record for one proposal
-					existingAppBundle := model.AppBundle{
-						EntityType: "project",
-						EntityId:   prjDbRcd.ID,
-					}
-
-					if prjDbRcd.Name != internal.CityHallProjectName {
-						var appBundleRecordsCount int64
-						db.Model(&existingAppBundle).Where(&existingAppBundle).Count(&appBundleRecordsCount)
-						log.Debug().Msgf("Found %d records for app bundle", appBundleRecordsCount)
-						if appBundleRecordsCount > 0 {
-							log.Error().Msgf("appliation bundle with sip %s is already exist", prjDbRcd.SIP)
-							execResult = fmt.Sprintf("app bundle for project %d is existing", prjDbRcd.ID)
-							jobFailed = true
-						}
-					}
-
 					// TODO: Duplicated code *NewAppBundleAndApplication*
 					// Create AppBundle
 					appBundle := model.AppBundle{
 						Applicant:    common.FormatUserWallet(params.Applicant),
 						SeasonId:     currentSeason.ID,
-						State:        model.ApplicationStateOpen,
+						State:        model.ApplicationStateApproved,
 						ShadowRecord: false,
 						CreateTs:     model.GetCurrentUtcEpochSecond(),
 						UpdateTs:     model.GetCurrentUtcEpochSecond(),
@@ -171,7 +154,7 @@ func CreateAppBundleTaskFromMotivationComponent(db *gorm.DB, job *model.CronJob,
 									return &model.Application{
 										Type:             model.ApplicationNewReward,
 										Applicant:        common.FormatUserWallet(params.Applicant),
-										State:            model.ApplicationStateOpen,
+										State:            model.ApplicationStateApproved,
 										CreatedAt:        time.Now().In(internal.ProjectTimezone),
 										UpdatedAt:        time.Now().In(internal.ProjectTimezone),
 										CreateTs:         model.GetCurrentUtcEpochSecond(),
@@ -194,16 +177,26 @@ func CreateAppBundleTaskFromMotivationComponent(db *gorm.DB, job *model.CronJob,
 							}
 
 							// Create application audit logs
-							appAuditLogs := lo.Map(appBundle.AppRecords, func(app *model.Application, _ int) *model.ApplicationAuditLog {
-								return &model.ApplicationAuditLog{
-									ApplicationID: app.ID,
+							var appAuditLogs []*model.ApplicationAuditLog
+							for _, appRcd := range appBundle.AppRecords {
+								appAuditLogs = append(appAuditLogs, &model.ApplicationAuditLog{
+									ApplicationID: appRcd.ID,
 									LogTs:         model.GetCurrentUtcEpochSecond(),
 									Operation:     model.AuditActionNew,
 									Operator:      common.FormatUserWallet(params.Applicant),
 									PreState:      "",
 									PostState:     model.ApplicationStateOpen,
-								}
-							})
+								})
+								appAuditLogs = append(appAuditLogs, &model.ApplicationAuditLog{
+									ApplicationID: appRcd.ID,
+									LogTs:         model.GetCurrentUtcEpochSecond(),
+									Operation:     model.AuditActionApprove,
+									Operator:      common.FormatUserWallet(params.Applicant),
+									PreState:      model.ApplicationStateOpen,
+									PostState:     model.ApplicationStateApproved,
+								})
+							}
+
 							err = tx.Model(model.ApplicationAuditLog{}).Create(&appAuditLogs).Error
 							if err != nil {
 								log.Error().Msgf("Create application audit log records error: %+v", err)

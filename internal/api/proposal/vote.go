@@ -23,6 +23,11 @@ type VoterInfo struct {
 	Avatar         string `json:"avatar"`
 }
 
+type userVoteDetailInfo struct {
+	JointMetaforoAndOsUser
+	VoteWeight int `json:"weight"`
+}
+
 // CheckVotePermission checks whether current user can vote on this proposal
 //
 //	@summary	Check whether user has permission to vote in thread
@@ -186,7 +191,7 @@ func CloseVote(ctx *gin.Context) {
 //	@tags		Proposal
 //	@param		vote_option_id	path		number										true	"Vote ID"
 //	@param		page			query		number										false	"page of the vote list"
-//	@success	200				{object}	api.Reply{data=[]JointMetaforoAndOsUser}	"Success"
+//	@success	200				{object}	api.Reply{data=[]userVoteDetailInfo}	"Success"
 //	@router		/proposals/vote_detail/:vote_option_id [get]
 func ShowVoteDetail(ctx *gin.Context) {
 	voteIdStr := ctx.Param("vote_option_id")
@@ -292,9 +297,30 @@ func ShowVoteDetail(ctx *gin.Context) {
 		return nil
 	})
 
+	// Extract weight value for each user
+	userWeightMap := lo.SliceToMap(voterList, func(item *metaforo.UserPollRecord) (int, int) { return item.Uid, item.Weight })
+
 	metaforoUserIds := lo.Map(voterList, func(item *metaforo.UserPollRecord, index int) int { return item.UserId })
 	userRecords, err := GetOsUserFromMetaforoUserId(db, metaforoUserIds)
-	ctx.JSON(http.StatusOK, api.Success(userRecords))
+	if err != nil {
+		log.Error().Msgf("list user vote detail error: %+v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(fmt.Errorf("list user vote detail error")))
+		return
+	}
+
+	rslt := lo.Map(userRecords, func(u *JointMetaforoAndOsUser, _ int) *userVoteDetailInfo {
+		weight, found := userWeightMap[u.MetaforoUserID]
+		if !found {
+			log.Warn().Msgf("no weight found for user: %d", u.MetaforoUserID)
+			weight = 0
+		}
+		return &userVoteDetailInfo{
+			*u,
+			weight,
+		}
+	})
+	ctx.JSON(http.StatusOK, api.Success(rslt))
 }
 
 func canUserVoteOnThread(db *gorm.DB, userWallet string, proposalIdString string) (bool, error) {
@@ -303,6 +329,7 @@ func canUserVoteOnThread(db *gorm.DB, userWallet string, proposalIdString string
 		log.Error().Msgf("get proposal error: %+v", err)
 		return false, err
 	}
+	log.Debug().Msgf("check voting permission of %s for proposal: %+v", userWallet, proposal)
 
 	// Verify NFT gate
 	seepassData, err := api.GetCachedSeepassData(sdk.GetSppClient(), userWallet, false)
@@ -325,10 +352,12 @@ func canUserVoteOnThread(db *gorm.DB, userWallet string, proposalIdString string
 	permArray := lo.Map(voteGates, func(r *model.ProposalVoteGate, _ int) bool {
 		return IsUserMetVoteGate(seepassData, r)
 	})
+	log.Debug().Msgf("voting perm array of %s for proposal: %d is %+v", userWallet, proposal.ID, permArray)
 
 	permResult := lo.Reduce(permArray, func(rslt bool, r bool, _ int) bool {
 		return rslt && r
 	}, true)
+	log.Debug().Msgf("voting perm result of %s for proposal: %d is %+v", userWallet, proposal.ID, permResult)
 
 	return permResult, nil
 }

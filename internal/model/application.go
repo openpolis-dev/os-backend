@@ -225,6 +225,14 @@ func doAuditApplicationInTransaction(tx *gorm.DB, operatorWallet string, applica
 				return err
 			}
 		}
+
+		// Reject application should restore budget in project
+		if application.EntityType == "project" {
+			if err = ProjectBudgetModel.DepositSingleAsset(tx, application.EntityId, application.AssetName, application.AssetAmount); err != nil {
+				log.Error().Msgf("restore project %d budget error: %+v", application.EntityId, err)
+				return err
+			}
+		}
 	} else if action == AuditActionComplete {
 		application.CompleteMessage = extraMsg
 	}

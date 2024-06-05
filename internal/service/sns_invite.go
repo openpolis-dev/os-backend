@@ -11,7 +11,6 @@ import (
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/config"
 	"github.com/theseed-labs/os-backend/internal/model"
-	"github.com/theseed-labs/os-backend/internal/sdk"
 	"gorm.io/gorm"
 )
 
@@ -185,31 +184,31 @@ func CheckAndUpdateUnverifiedSnsInvite(cfg *config.Config, db *gorm.DB) error {
 					return err
 				}
 
-				// 3 send application to QuickAccounting
-				// TODO when error occur should retry
-				now := time.Now().In(internal.ProjectTimezone).Format(time.DateTime)
-				dc := internal.AssertDecimalsAndContractAddr[internal.SNSInviteRewardsToken]
-				qaInputs := []*sdk.QAInput{
-					{
-						Recipient:               recipient,
-						Amount:                  row.SCRRewards.String(),
-						Decimals:                dc.Decimals,
-						CurrencyName:            internal.SNSInviteRewardsToken,
-						CurrencyContractAddress: dc.Addr,
-						BudgetSource:            cfg.SnsInvite.EntityName,
-						Session:                 currentSeason.Name,
-						Item:                    internal.SNSInviteItem,
-						Comment:                 internal.SNSInviteItem,
-						Applicant:               applicant,
-						ApplyComment:            "",
-						Reviewer:                "",
-						ReviewDate:              now,
-					},
-				}
-				err = sdk.SubmitToQuickAccounting(qaInputs, cfg)
-				if err != nil {
-					log.Error().Msgf("sumbit application to QuickAccounting error: %+v", err)
-				}
+				//// 3 send application to QuickAccounting
+				//// TODO when error occur should retry
+				//now := time.Now().In(internal.ProjectTimezone).Format(time.DateTime)
+				//dc := internal.AssertDecimalsAndContractAddr[internal.SNSInviteRewardsToken]
+				//qaInputs := []*sdk.QAInput{
+				//	{
+				//		Recipient:               recipient,
+				//		Amount:                  row.SCRRewards.String(),
+				//		Decimals:                dc.Decimals,
+				//		CurrencyName:            internal.SNSInviteRewardsToken,
+				//		CurrencyContractAddress: dc.Addr,
+				//		BudgetSource:            cfg.SnsInvite.EntityName,
+				//		Session:                 currentSeason.Name,
+				//		Item:                    internal.SNSInviteItem,
+				//		Comment:                 internal.SNSInviteItem,
+				//		Applicant:               applicant,
+				//		ApplyComment:            "",
+				//		Reviewer:                "",
+				//		ReviewDate:              now,
+				//	},
+				//}
+				//err = sdk.SubmitToQuickAccounting(qaInputs, cfg)
+				//if err != nil {
+				//	log.Error().Msgf("sumbit application to QuickAccounting error: %+v", err)
+				//}
 
 				return nil
 			})

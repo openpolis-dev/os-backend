@@ -8,7 +8,11 @@ import (
 	"os"
 	"strings"
 
+	"github.com/casbin/casbin/v2"
+	gormadapter "github.com/casbin/gorm-adapter/v3"
 	"github.com/samber/lo"
+	"github.com/theseed-labs/os-backend/internal"
+	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/config"
 	"github.com/theseed-labs/os-backend/internal/model"
@@ -16,6 +20,7 @@ import (
 	"gopkg.in/yaml.v3"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+	"gorm.io/gorm/logger"
 )
 
 var err error
@@ -598,9 +603,127 @@ func SeedData(cfg SeedDataConfig, db *gorm.DB) error {
 	})
 }
 
+func updateEntityCasbinPermission(db *gorm.DB) {
+	adapter, err := gormadapter.NewAdapterByDB(db)
+	if err != nil {
+		panic(err)
+	}
+	enforcer, err := casbin.NewSyncedEnforcer("rbac_model.conf", adapter)
+	if err != nil {
+		panic(err)
+	}
+
+	// Update project casbin policies
+	var projects []*model.Project
+	err = db.Model(projects).Find(&projects).Error
+	if err != nil {
+		panic(err)
+	}
+
+	// Update guild casbin policies
+	var guilds []*model.Guild
+	err = db.Model(guilds).Find(&guilds).Error
+	if err != nil {
+		panic(err)
+	}
+
+	for i := range projects {
+		p := projects[i]
+
+		_, err = enforcer.AddPolicies(model.GenerateCasbinPoliciesForProject(p.ID))
+		if err != nil {
+			panic(err)
+		}
+
+		if p.Sponsors != nil && len(p.Sponsors) > 0 {
+			_, err = enforcer.AddGroupingPolicies(model.GenerateGroupingPoliciesForProject(p.ID, p.Sponsors, nil))
+			if err != nil {
+				panic(err)
+			}
+		}
+	}
+
+	for i := range guilds {
+		g := guilds[i]
+		_, err = enforcer.AddPolicies(model.GenerateCasbinPoliciesForGuild(g.ID))
+		if err != nil {
+			panic(err)
+		}
+
+		if g.Sponsors != nil && len(g.Sponsors) > 0 {
+			_, err = enforcer.AddGroupingPolicies(model.GenerateGroupingPoliciesForGuild(g.ID, g.Sponsors))
+			if err != nil {
+				panic(err)
+			}
+		}
+	}
+
+	if err != nil {
+		panic(err)
+	}
+}
+
+func verifyEntityCasbinPermission(db *gorm.DB) {
+	adapter, err := gormadapter.NewAdapterByDB(db)
+	if err != nil {
+		panic(err)
+	}
+	enforcer, err := casbin.NewSyncedEnforcer("rbac_model.conf", adapter)
+	if err != nil {
+		panic(err)
+	}
+
+	var projects []*model.Project
+	var guilds []*model.Guild
+
+	err = db.Model(projects).Find(&projects).Error
+	if err != nil {
+		panic(err)
+	}
+
+	err = db.Model(guilds).Find(&guilds).Error
+	if err != nil {
+		panic(err)
+	}
+
+	missingPermAccounts := make(map[string]bool)
+	for _, prj := range projects {
+		for _, sponsor := range prj.Sponsors {
+			obj := fmt.Sprintf("%s%d", internal.ObjProjPrefix, prj.ID)
+			ok, err := enforcer.Enforce(common.FormatUserWallet(sponsor), obj, internal.ActCreateApplication)
+			if err != nil {
+				panic(err)
+			}
+
+			if !ok {
+				missingPermAccounts[fmt.Sprintf("%s|project.%d", common.FormatUserWallet(sponsor), prj.ID)] = true
+			}
+		}
+	}
+
+	for _, guild := range guilds {
+		for _, sponsor := range guild.Sponsors {
+			obj := fmt.Sprintf("%s%d", internal.ObjGuildPrefix, guild.ID)
+			ok, err := enforcer.Enforce(common.FormatUserWallet(sponsor), obj, internal.ActCreateApplication)
+			if err != nil {
+				panic(err)
+			}
+
+			if !ok {
+				missingPermAccounts[fmt.Sprintf("%s|guild.%d", common.FormatUserWallet(sponsor), guild.ID)] = true
+			}
+		}
+	}
+
+	if len(missingPermAccounts) > 0 {
+		api.PrintStructAsJson(lo.Keys(missingPermAccounts), "Missing permission accounts")
+	}
+}
+
 func main() {
 	cfg := config.LoadConfig("config.yml")
-	storage.InitGormDB(cfg.DataSource.Dsn, cfg.Casbin.DriverName)
+	//storage.InitGormDB(cfg.DataSource.Dsn, cfg.Casbin.DriverName)
+	storage.InitGormDBWithLoggerLevel(cfg.DataSource.Dsn, cfg.Casbin.DriverName, logger.Error)
 	db := storage.GetGormDB()
 
 	migrateCmd := flag.NewFlagSet("migrate", flag.ExitOnError)
@@ -618,6 +741,9 @@ func main() {
 		fmt.Println("Usage: dbutils <command> [arguments]")
 		fmt.Println("Available commands:")
 		fmt.Println("  migrate")
+		fmt.Println("  seed")
+		fmt.Println("  fixperm")
+		fmt.Println("  verifyperm")
 		os.Exit(1)
 	}
 
@@ -640,6 +766,10 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
+	case "fixperm":
+		updateEntityCasbinPermission(db)
+	case "verifyperm":
+		verifyEntityCasbinPermission(db)
 	default:
 		fmt.Printf("Unknown command: %s\n", os.Args[1])
 		os.Exit(1)

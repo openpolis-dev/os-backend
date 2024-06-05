@@ -2163,7 +2163,7 @@ const docTemplate = `{
                 "tags": [
                     "Proposal"
                 ],
-                "summary": "revoke vote on existing metaforo vote",
+                "summary": "show voter detail for specified vote option",
                 "parameters": [
                     {
                         "type": "number",
@@ -2642,6 +2642,108 @@ const docTemplate = `{
                                     "properties": {
                                         "data": {
                                             "$ref": "#/definitions/user.RefreshNonceReply"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/sns_invite/invited_by/{invite_code}": {
+            "post": {
+                "description": "invited by someone for register sns",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "SnsInvite"
+                ],
+                "summary": "invited by someone for register sns",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "invite code",
+                        "name": "invite_code",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.Reply"
+                        }
+                    }
+                }
+            }
+        },
+        "/sns_invite/my_sns_invite_code": {
+            "get": {
+                "description": "get my sns invite code",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "SnsInvite"
+                ],
+                "summary": "get my sns invite code",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Reply"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/sns_invite.GetMySnsInviteCodeReply"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/sns_invite/my_sns_invite_rewards": {
+            "get": {
+                "description": "get my sns invite rewards",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "SnsInvite"
+                ],
+                "summary": "get my sns invite rewards",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Reply"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/sns_invite.GetMySnsInviteRewardsReply"
                                         }
                                     }
                                 }
@@ -3424,29 +3526,6 @@ const docTemplate = `{
                 }
             }
         },
-        "component.ComponentInstance": {
-            "type": "object",
-            "properties": {
-                "component_id": {
-                    "type": "integer"
-                },
-                "create_ts": {
-                    "type": "integer"
-                },
-                "data": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "schema": {
-                    "type": "string"
-                }
-            }
-        },
         "data_srv.CreditDetail": {
             "type": "object",
             "properties": {
@@ -3679,6 +3758,12 @@ const docTemplate = `{
                 },
                 "logo": {
                     "type": "string"
+                },
+                "sponsors": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },
@@ -3805,43 +3890,41 @@ const docTemplate = `{
                 },
                 "title": {
                     "type": "object",
-                    "properties": {
-                        "4649": {
-                            "type": "array",
-                            "items": {
-                                "type": "object",
-                                "properties": {
-                                    "background": {
-                                        "type": "string"
-                                    },
-                                    "color": {
-                                        "type": "string"
-                                    },
-                                    "group_id": {
-                                        "type": "integer"
-                                    },
-                                    "group_name": {
-                                        "type": "string"
-                                    },
-                                    "icon": {
-                                        "type": "string"
-                                    },
-                                    "id": {
-                                        "type": "integer"
-                                    },
-                                    "logo": {
-                                        "type": "string"
-                                    },
-                                    "name": {
-                                        "type": "string"
-                                    },
-                                    "type": {
-                                        "type": "integer"
-                                    },
-                                    "unicode_emoji": {},
-                                    "user_id": {
-                                        "type": "integer"
-                                    }
+                    "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "background": {
+                                    "type": "string"
+                                },
+                                "color": {
+                                    "type": "string"
+                                },
+                                "group_id": {
+                                    "type": "integer"
+                                },
+                                "group_name": {
+                                    "type": "string"
+                                },
+                                "icon": {
+                                    "type": "string"
+                                },
+                                "id": {
+                                    "type": "integer"
+                                },
+                                "logo": {
+                                    "type": "string"
+                                },
+                                "name": {
+                                    "type": "string"
+                                },
+                                "type": {
+                                    "type": "integer"
+                                },
+                                "unicode_emoji": {},
+                                "user_id": {
+                                    "type": "integer"
                                 }
                             }
                         }
@@ -4741,6 +4824,29 @@ const docTemplate = `{
                 }
             }
         },
+        "proposal.ComponentInstance": {
+            "type": "object",
+            "properties": {
+                "component_id": {
+                    "type": "integer"
+                },
+                "create_ts": {
+                    "type": "integer"
+                },
+                "data": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "schema": {
+                    "type": "string"
+                }
+            }
+        },
         "proposal.ComponentRequestData": {
             "type": "object",
             "properties": {
@@ -4803,9 +4909,6 @@ const docTemplate = `{
                 "metaforo_access_token": {
                     "type": "string"
                 },
-                "proposal_category_id": {
-                    "type": "integer"
-                },
                 "submit_to_metaforo": {
                     "type": "boolean"
                 },
@@ -4815,17 +4918,11 @@ const docTemplate = `{
                 "title": {
                     "type": "string"
                 },
-                "vote_gate_id": {
-                    "type": "integer"
-                },
                 "vote_options": {
                     "type": "array",
                     "items": {
                         "type": "string"
                     }
-                },
-                "vote_type": {
-                    "type": "integer"
                 }
             }
         },
@@ -4974,7 +5071,7 @@ const docTemplate = `{
                 "components": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/component.ComponentInstance"
+                        "$ref": "#/definitions/proposal.ComponentInstance"
                     }
                 },
                 "content_blocks": {
@@ -5009,6 +5106,12 @@ const docTemplate = `{
                 "is_voted": {
                     "description": "Is current user voted for this proposal",
                     "type": "boolean"
+                },
+                "os_vote_options": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/proposal.FrontendProposalVoteOptionRecord"
+                    }
                 },
                 "proposal_category_id": {
                     "type": "integer"
@@ -5116,6 +5219,20 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "version": {
+                    "type": "integer"
+                }
+            }
+        },
+        "proposal.FrontendProposalVoteOptionRecord": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "label": {
+                    "type": "string"
+                },
+                "metaforo_id": {
                     "type": "integer"
                 }
             }
@@ -5453,6 +5570,25 @@ const docTemplate = `{
                 "WalletNameMetamask",
                 "WalletNameJoyid"
             ]
+        },
+        "sns_invite.GetMySnsInviteCodeReply": {
+            "type": "object",
+            "properties": {
+                "invite_code": {
+                    "type": "string"
+                }
+            }
+        },
+        "sns_invite.GetMySnsInviteRewardsReply": {
+            "type": "object",
+            "properties": {
+                "invite_count": {
+                    "type": "integer"
+                },
+                "total_rewards": {
+                    "type": "string"
+                }
+            }
         },
         "user.JoinOrLeaveGroupReq": {
             "type": "object",
