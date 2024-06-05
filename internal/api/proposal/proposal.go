@@ -20,6 +20,7 @@ import (
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk"
 	"github.com/theseed-labs/os-backend/internal/sdk/metaforo"
+	"github.com/theseed-labs/os-backend/internal/task_manager"
 	"github.com/xiaosongfu/gormfind"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -729,6 +730,10 @@ func UpdateProposalStateAndLaunchStateChangeActions(db *gorm.DB, user *middlewar
 		log.Error().Msgf("get proposal template error: %+v", err)
 		return 0, err
 	}
+
+	// Login to admin account to avoid token expiration
+	//metaforo.Login(cfg.Metaforo.GroupName, cfg.Metaforo.AdminWallet, cfg.Metaforo.Sign, cfg.Metaforo.SignMsg, cfg.Metaforo.WalletType)
+	task_manager.RefreshMetaforoAdminToken()
 
 	// Check whether user has permission to the change the proposal state
 	switch newState {

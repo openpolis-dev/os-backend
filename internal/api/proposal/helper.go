@@ -26,6 +26,7 @@ import (
 	"github.com/theseed-labs/os-backend/internal/sdk/metaforo"
 	"github.com/theseed-labs/os-backend/internal/service"
 	"github.com/theseed-labs/os-backend/internal/storage"
+	"github.com/theseed-labs/os-backend/internal/task_manager"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -668,6 +669,7 @@ func SaveProposalToMetaforo(db *gorm.DB, origProposalRecordId uint, voteType int
 
 		// Get vote record from original record and update the timestamp
 		// The updated vote record will be saved by response in GetProposal function
+		task_manager.RefreshMetaforoAdminToken()
 		for _, record := range voteRecords {
 			err = metaforo.UpdateVoteTime(
 				metaforoAccessToken,
