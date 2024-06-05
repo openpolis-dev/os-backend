@@ -26,7 +26,6 @@ import (
 	"github.com/theseed-labs/os-backend/internal/sdk/metaforo"
 	"github.com/theseed-labs/os-backend/internal/service"
 	"github.com/theseed-labs/os-backend/internal/storage"
-	"github.com/theseed-labs/os-backend/internal/task_manager"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -669,7 +668,7 @@ func SaveProposalToMetaforo(db *gorm.DB, origProposalRecordId uint, voteType int
 
 		// Get vote record from original record and update the timestamp
 		// The updated vote record will be saved by response in GetProposal function
-		task_manager.RefreshMetaforoAdminToken()
+		RefreshMetaforoAdminToken()
 		for _, record := range voteRecords {
 			err = metaforo.UpdateVoteTime(
 				metaforoAccessToken,
@@ -1893,4 +1892,34 @@ func updateProposalAssociatedProjectStatusInCloseProjectToClosing(db *gorm.DB, r
 		}
 	}
 	return nil
+}
+
+func RefreshMetaforoAdminToken() {
+	log.Debug().Msgf("refresh metaforo admin token job")
+	db := storage.GetGormDB()
+	mfData, err := model.GetMetaforoData(db)
+	if err != nil {
+		log.Error().Msgf("get metaforo data error: %+v", err)
+		return
+	}
+
+	seeAuthToken, err := model.GetSeeAuthPk(db)
+	if err != nil {
+		log.Error().Msgf("get see auth pk error: %+v", err)
+		return
+	}
+
+	mfAdminTokenResp, err := metaforo.GetUserToken(mfData[internal.SysVarMfAdminWalletPk], mfData[internal.SysVarMfAdminWalletAddr], seeAuthToken)
+	if err != nil {
+		log.Error().Msgf("get metaforo user token error: %+v", err)
+		return
+	}
+
+	log.Debug().Msgf("prepare to update metaforo admin token")
+	err = model.UpdateMetaforoAdminToken(db, mfAdminTokenResp.Token)
+	if err != nil {
+		log.Error().Msgf("update metaforo admin token error: %+v", err)
+	} else {
+		log.Debug().Msgf("update metaforo admin token done")
+	}
 }
