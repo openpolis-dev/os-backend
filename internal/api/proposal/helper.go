@@ -1245,6 +1245,7 @@ func UpdateProposalStateAfterVoteClosed(db *gorm.DB, proposalId uint, pVoteRcd *
 			}
 		}
 	case model.ProposalVoteTypeDecision:
+		log.Debug().Msgf("vote type decision, totalVoterCount: %d", totalVoterCount)
 		if totalVoterCount == 0 {
 			proposalFinalState = model.ProposalStateVoteFailed
 		} else {
@@ -1254,6 +1255,7 @@ func UpdateProposalStateAfterVoteClosed(db *gorm.DB, proposalId uint, pVoteRcd *
 					approvedCount = r.VoterCount
 				}
 			}
+			log.Debug().Msgf("vote type decision, approvedCount: %d, totalVoterCount: %d", approvedCount, totalVoterCount)
 
 			if approvedCount > totalVoterCount/2 {
 				proposalFinalState = model.ProposalStateVotePassed
@@ -1262,6 +1264,7 @@ func UpdateProposalStateAfterVoteClosed(db *gorm.DB, proposalId uint, pVoteRcd *
 				proposalFinalState = model.ProposalStateVoteFailed
 				voteResult = "0"
 			}
+			log.Debug().Msgf("vote type decision, final state %d", proposalFinalState)
 		}
 	case model.ProposalVoteTypeNumericAvg:
 		if totalVoterCount == 0 {
