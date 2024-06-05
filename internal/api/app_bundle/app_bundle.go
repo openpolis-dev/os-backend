@@ -505,7 +505,7 @@ func RejectAppBundles(ctx *gin.Context) {
 }
 
 func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState) {
-	db, cfg := api.ForContextDBAndConfig(ctx)
+	db, _ := api.ForContextDBAndConfig(ctx)
 	var idList []int
 	err := ctx.Bind(&idList)
 	if err != nil {
@@ -660,15 +660,15 @@ func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState
 		return
 	}
 
-	// send to QuickAccounting
-	if newState == model.ApplicationStateApproved {
-		// TODO when error occur should retry
-		err = sdk.SubmitToQuickAccounting(qaInputs, cfg)
-		if err != nil {
-			log.Error().Msgf("sumbit application to QuickAccounting error: %+v", err)
-			sdk.LogServerErrorToSentry(ctx, err)
-		}
-	}
+	//// send to QuickAccounting
+	//if newState == model.ApplicationStateApproved {
+	//	// TODO when error occur should retry
+	//	err = sdk.SubmitToQuickAccounting(qaInputs, cfg)
+	//	if err != nil {
+	//		log.Error().Msgf("sumbit application to QuickAccounting error: %+v", err)
+	//		sdk.LogServerErrorToSentry(ctx, err)
+	//	}
+	//}
 
 	ctx.JSON(http.StatusOK, api.Success(nil))
 }
