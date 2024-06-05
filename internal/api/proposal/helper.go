@@ -1092,6 +1092,7 @@ func UpdateDbVoteOptionRecordsFromMetaforoProposalResponse(db *gorm.DB, dbPropos
 					optLabel = voteOpt.Html.(string)
 				}
 
+				api.PrintStructAsJson(voteOpt, "TTT: vote option")
 				voterCount := voteOpt.Weights
 				if voterCount == 0 {
 					voterCount = voteOpt.Voters
