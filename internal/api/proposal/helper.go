@@ -1092,14 +1092,20 @@ func UpdateDbVoteOptionRecordsFromMetaforoProposalResponse(db *gorm.DB, dbPropos
 					optLabel = voteOpt.Html.(string)
 				}
 
+				voterCount := voteOpt.Weights
+				if voterCount == 0 {
+					voterCount = voteOpt.Voters
+				}
+
 				err = tx.Model(&model.ProposalVoteOptionRecord{}).
 					Where("proposal_id = ? AND text =?", dbProposalRcdId, optLabel).
 					Updates(&model.ProposalVoteOptionRecord{
 						// check this proposal 'https://forum.seedao.xyz/thread/search-52075', it has two voters has 2 seeds,
 						// the result's `Voters` is `27`, but the `Weights` is `29`, so we change to use `Weights` property
+						// If the vote is not created with wegiht, the weights value will be 0, change back to use voters
 						// @2024/06/05
 						//VoterCount:     voteOpt.Voters,
-						VoterCount:     voteOpt.Weights,
+						VoterCount:     voterCount,
 						MetaforoID:     voteOpt.Id,
 						MetaforoVoteID: poll.Id,
 					}).Error
