@@ -303,23 +303,24 @@ func ShowVoteDetail(ctx *gin.Context) {
 	metaforoUserIds := lo.Map(voterList, func(item *metaforo.UserPollRecord, index int) int { return item.UserId })
 	userRecords, err := GetOsUserFromMetaforoUserId(db, metaforoUserIds)
 	if err != nil {
-		rslt := lo.Map(userRecords, func(u *JointMetaforoAndOsUser, _ int) *userVoteDetailInfo {
-			weight, found := userWeightMap[u.MetaforoUserID]
-			if !found {
-				log.Warn().Msgf("no weight found for user: %d", u.MetaforoUserID)
-				weight = 0
-			}
-			return &userVoteDetailInfo{
-				*u,
-				weight,
-			}
-		})
-		ctx.JSON(http.StatusOK, api.Success(rslt))
-	} else {
-		log.Error().Msgf("check user vote permission error: %+v", err)
+		log.Error().Msgf("list user vote detail error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(fmt.Errorf("list user vote detail error")))
+		return
 	}
+
+	rslt := lo.Map(userRecords, func(u *JointMetaforoAndOsUser, _ int) *userVoteDetailInfo {
+		weight, found := userWeightMap[u.MetaforoUserID]
+		if !found {
+			log.Warn().Msgf("no weight found for user: %d", u.MetaforoUserID)
+			weight = 0
+		}
+		return &userVoteDetailInfo{
+			*u,
+			weight,
+		}
+	})
+	ctx.JSON(http.StatusOK, api.Success(rslt))
 }
 
 func canUserVoteOnThread(db *gorm.DB, userWallet string, proposalIdString string) (bool, error) {
