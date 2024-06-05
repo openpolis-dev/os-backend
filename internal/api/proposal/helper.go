@@ -1917,6 +1917,7 @@ func RefreshMetaforoAdminToken() {
 
 	log.Debug().Msgf("prepare to update metaforo admin token")
 	err = model.UpdateMetaforoAdminToken(db, mfAdminTokenResp.Token)
+	storage.GetConfig().MetaforoData.AccessToken = mfAdminTokenResp.Token
 	if err != nil {
 		log.Error().Msgf("update metaforo admin token error: %+v", err)
 	} else {
