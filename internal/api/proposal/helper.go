@@ -1095,7 +1095,11 @@ func UpdateDbVoteOptionRecordsFromMetaforoProposalResponse(db *gorm.DB, dbPropos
 				err = tx.Model(&model.ProposalVoteOptionRecord{}).
 					Where("proposal_id = ? AND text =?", dbProposalRcdId, optLabel).
 					Updates(&model.ProposalVoteOptionRecord{
-						VoterCount:     voteOpt.Voters,
+						// check this proposal 'https://forum.seedao.xyz/thread/search-52075', it has two voters has 2 seeds,
+						// the result's `Voters` is `27`, but the `Weights` is `29`, so we change to use `Weights` property
+						// @2024/06/05
+						//VoterCount:     voteOpt.Voters,
+						VoterCount:     voteOpt.Weights,
 						MetaforoID:     voteOpt.Id,
 						MetaforoVoteID: poll.Id,
 					}).Error
