@@ -74,7 +74,7 @@ func ListAvailableProjectsAndGuilds(ctx *gin.Context) {
 			return
 		}
 
-		projects, _, err = model.ProjectModel.List(db, "open", nil, true)
+		projects, _, err = model.ProjectModel.List(db, "open,close_failed", nil, true)
 		if err != nil {
 			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("list projects error")))
@@ -223,12 +223,12 @@ func ListAppBundle(ctx *gin.Context) {
 func CreateAppBundle(ctx *gin.Context) {
 	var newAppBundleReq model.NewAppBundleRequest
 	if err := ctx.BindJSON(&newAppBundleReq); err != nil {
-		if err != nil {
-			sdk.LogUserSideError(ctx, err)
-			ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("parse request error: %+v", err)))
-		}
+		sdk.LogUserSideError(ctx, err)
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("parse request error: %+v", err)))
 		return
 	}
+
+	// TODO: If the associated project has budget, guarantee the total amount does not exceed the (budget - advanced_amount)
 
 	user, enforcer, db, _ := api.ForContext(ctx)
 	ok, err := enforcer.HasRoleForUser(common.FormatUserWallet(user.Wallet), internal.RoleHall)
@@ -311,6 +311,70 @@ func CreateAppBundle(ctx *gin.Context) {
 		return
 	}
 
+	// Variable to save used asset amount for the project if this app bundle created successfully, which will be used to update project budget records
+	assetAmountUsedInThisRequest := make(map[string]decimal.Decimal)
+
+	// Validate project budgets
+	if newAppBundleReq.Entity == "project" {
+		projectBudgets, err := model.ProjectBudgetModel.ListByProjectId(db, newAppBundleReq.EntityId)
+		if err != nil {
+			sdk.LogServerErrorToSentry(ctx, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get project budgets error")))
+			return
+		}
+
+		if len(projectBudgets) == 0 {
+			log.Debug().Msgf("project %d has no budget record, ignore checking of amount submitted", newAppBundleReq.EntityId)
+		} else {
+			// Only advance remain amount can be applied here
+			advanceRemainAmountRecord := lo.SliceToMap(projectBudgets, func(budget *model.ProjectBudget) (string, decimal.Decimal) {
+				return budget.AssetName, budget.RemainAdvanceAmount
+			})
+
+			requestAssetAmount := make(map[string]decimal.Decimal)
+
+			for _, appRecord := range newAppBundleReq.Records {
+				remainAdvanceAmount, found := advanceRemainAmountRecord[appRecord.AssetName]
+				if !found {
+					err := fmt.Errorf("incorrect asset name %s for project %d", appRecord.AssetName, newAppBundleReq.EntityId)
+					log.Error().Msg(err.Error())
+					sdk.LogUserSideError(ctx, err)
+					ctx.JSON(http.StatusBadRequest, api.ServerError(err))
+					return
+				}
+
+				if remainAdvanceAmount.LessThan(appRecord.Amount) {
+					err := fmt.Errorf("project %d has insufficient advance amount for asset %s", newAppBundleReq.EntityId, appRecord.AssetName)
+					log.Error().Msg(err.Error())
+					sdk.LogUserSideError(ctx, err)
+					ctx.JSON(http.StatusBadRequest, api.ServerError(err))
+					return
+				}
+
+				// Sum total amount for each asset
+				if _, found := requestAssetAmount[appRecord.AssetName]; !found {
+					requestAssetAmount[appRecord.AssetName] = appRecord.Amount
+				} else {
+					requestAssetAmount[appRecord.AssetName] = requestAssetAmount[appRecord.AssetName].Add(appRecord.Amount)
+				}
+			}
+
+			// Check total amount
+			for assetName, amount := range requestAssetAmount {
+				if amount.GreaterThan(advanceRemainAmountRecord[assetName]) {
+					err := fmt.Errorf("project %d has insufficient advance amount for asset %s", newAppBundleReq.EntityId, assetName)
+					log.Error().Msg(err.Error())
+					sdk.LogUserSideError(ctx, err)
+					ctx.JSON(http.StatusBadRequest, api.ServerError(err))
+					return
+				} else {
+					// Save asset amount will be used.
+					assetAmountUsedInThisRequest[assetName] = amount
+				}
+			}
+		}
+	}
+
 	// TODO: Duplicated code *NewAppBundleAndApplication*
 	appBundle := model.AppBundle{
 		Comment:      newAppBundleReq.Comment,
@@ -381,7 +445,7 @@ func CreateAppBundle(ctx *gin.Context) {
 			return err
 		}
 
-		return tx.Model(model.AppBundleAuditLog{}).Create(&model.AppBundleAuditLog{
+		err = tx.Model(model.AppBundleAuditLog{}).Create(&model.AppBundleAuditLog{
 			AppBundleId: appBundle.ID,
 			AppBundle:   appBundle,
 			LogTs:       model.GetCurrentUtcEpochSecond(),
@@ -391,6 +455,21 @@ func CreateAppBundle(ctx *gin.Context) {
 			PostState:   model.ApplicationStateOpen,
 			ExtraData:   "",
 		}).Error
+
+		if err != nil {
+			log.Error().Msgf("Create app bundle audit log records error: %+v", err)
+			return err
+		}
+
+		for assetName, usedAmount := range assetAmountUsedInThisRequest {
+			err = model.ProjectBudgetModel.WithdrawSingleAsset(tx, newAppBundleReq.EntityId, assetName, usedAmount)
+			if err != nil {
+				log.Error().Msgf("withdraw budget asset %s error: %+v", assetName, err)
+				return err
+			}
+		}
+
+		return err
 	})
 
 	if err != nil {
@@ -426,7 +505,7 @@ func RejectAppBundles(ctx *gin.Context) {
 }
 
 func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState) {
-	db, cfg := api.ForContextDBAndConfig(ctx)
+	db, _ := api.ForContextDBAndConfig(ctx)
 	var idList []int
 	err := ctx.Bind(&idList)
 	if err != nil {
@@ -478,7 +557,7 @@ func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState
 		return
 	}
 
-	// send to QuickAccounting
+	// prepare QuickAccounting records
 	var qaInputs []*sdk.QAInput
 	now := time.Now().In(internal.ProjectTimezone).Format(time.DateTime)
 
@@ -581,15 +660,15 @@ func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState
 		return
 	}
 
-	// send to QuickAccounting
-	if newState == model.ApplicationStateApproved {
-		// TODO when error occur should retry
-		err = sdk.SubmitToQuickAccounting(qaInputs, cfg)
-		if err != nil {
-			log.Error().Msgf("sumbit application to QuickAccounting error: %+v", err)
-			sdk.LogServerErrorToSentry(ctx, err)
-		}
-	}
+	//// send to QuickAccounting
+	//if newState == model.ApplicationStateApproved {
+	//	// TODO when error occur should retry
+	//	err = sdk.SubmitToQuickAccounting(qaInputs, cfg)
+	//	if err != nil {
+	//		log.Error().Msgf("sumbit application to QuickAccounting error: %+v", err)
+	//		sdk.LogServerErrorToSentry(ctx, err)
+	//	}
+	//}
 
 	ctx.JSON(http.StatusOK, api.Success(nil))
 }

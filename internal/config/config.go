@@ -92,10 +92,15 @@ type (
 		GroupID     int    `json:"groupID" yaml:"groupID"`
 		AccessToken string `json:"accessToken" yaml:"accessToken"`
 
-		Assets []struct {
+		ProposalAssets []struct {
 			ID   uint   `json:"id" yaml:"id"`
 			Name string `json:"name" yaml:"name"`
-		} `json:"assets" yaml:"assets"`
+		} `json:"proposal_assets" yaml:"proposal_assets"`
+
+		ApplicationAssets []struct {
+			ID   uint   `json:"id" yaml:"id"`
+			Name string `json:"name" yaml:"name"`
+		} `json:"application_assets" yaml:"application_assets"`
 
 		// ProposalPrefix adds a prefix to all proposals created in OS system
 		ProposalPrefix string `json:"proposalPrefix" yaml:"proposalPrefix"`

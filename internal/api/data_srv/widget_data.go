@@ -38,7 +38,8 @@ const (
 	WidgetDataTypeProjectList          WidgetDataType = "project_list"
 	WidgetDataTypeGuildList                           = "guild_list"
 	WidgetDataTypeEntityList                          = "entity_list"
-	WidgetDataTypeAssetType                           = "asset_type"
+	WidgetDataTypeAssetForProposal                    = "asset_type_proposal"
+	WidgetDataTypeAssetForApplication                 = "asset_type_app"
 	WidgetDataTypePassedProposals                     = "passed_proposals"
 	WidgetDataTypeCanBeVetoedProposals                = "can_be_vetoed_proposals"
 )
@@ -121,9 +122,16 @@ func WidgetData(ctx *gin.Context) {
 		}
 		ctx.JSON(http.StatusOK, api.Success(lo.Union(projectRcds, guildRcds)))
 		return
-	case WidgetDataTypeAssetType:
+	case WidgetDataTypeAssetForProposal:
 		var assetResponse []*WidgetDataResponse
-		for _, asset := range cfg.MetaforoData.Assets {
+		for _, asset := range cfg.MetaforoData.ProposalAssets {
+			assetResponse = append(assetResponse, &WidgetDataResponse{ID: asset.ID, Name: asset.Name})
+		}
+		ctx.JSON(http.StatusOK, api.Success(assetResponse))
+		return
+	case WidgetDataTypeAssetForApplication:
+		var assetResponse []*WidgetDataResponse
+		for _, asset := range cfg.MetaforoData.ApplicationAssets {
 			assetResponse = append(assetResponse, &WidgetDataResponse{ID: asset.ID, Name: asset.Name})
 		}
 		ctx.JSON(http.StatusOK, api.Success(assetResponse))

@@ -24,6 +24,7 @@ import (
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk"
 	"github.com/theseed-labs/os-backend/internal/sdk/metaforo"
+	"github.com/theseed-labs/os-backend/internal/service"
 	"github.com/theseed-labs/os-backend/internal/storage"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -49,6 +50,29 @@ type budgetComponentDataP1 struct {
 	} `json:"typeTest"`
 }
 
+func (r *budgetComponentDataP1) prepareBudgetRecords(proposalId uint) []*model.ProjectBudget {
+	totalBudgetAmount := decimal.RequireFromString(r.Amount)
+	advancedRatio := decimal.Zero
+	totalAdvanceAmount := decimal.Zero
+
+	return []*model.ProjectBudget{
+		{
+			ProposalID:          proposalId,
+			ProjectID:           0,
+			AssetName:           r.AssetInfo.Name,
+			TotalAmount:         totalBudgetAmount,
+			UsedAmount:          decimal.Zero,
+			RemainAmount:        totalBudgetAmount,
+			AdvanceRatio:        advancedRatio,
+			TotalAdvanceAmount:  totalAdvanceAmount,
+			UsedAdvanceAmount:   decimal.Zero,
+			RemainAdvanceAmount: totalAdvanceAmount,
+			CreateTs:            model.GetCurrentUtcEpochSecond(),
+			UpdateTs:            model.GetCurrentUtcEpochSecond(),
+		},
+	}
+}
+
 type budgetComponentData struct {
 	Applicant  string `json:"applicant"`
 	BudgetList []struct {
@@ -63,9 +87,30 @@ type budgetComponentData struct {
 	ProposalId string `json:"proposal_id"`
 }
 
-type projectBudgetData struct {
-	Name        string `json:"name"`
-	TotalAmount string `json:"total_amount"`
+func (r *budgetComponentData) prepareBudgetRecords(proposalId uint) []*model.ProjectBudget {
+	projectBudgetRcds := make([]*model.ProjectBudget, 0)
+	for _, r := range r.BudgetList {
+		totalBudgetAmount := decimal.RequireFromString(r.Amount)
+		advancedRatio := decimal.RequireFromString(r.Proportion).Div(decimal.NewFromInt(100))
+		totalAdvanceAmount := totalBudgetAmount.Mul(advancedRatio).Round(0)
+
+		projectBudgetRcds = append(projectBudgetRcds, &model.ProjectBudget{
+			ProposalID:          proposalId,
+			ProjectID:           0,
+			AssetName:           r.AssetInfo.Name,
+			TotalAmount:         totalBudgetAmount,
+			UsedAmount:          decimal.Zero,
+			RemainAmount:        totalBudgetAmount,
+			AdvanceRatio:        advancedRatio,
+			TotalAdvanceAmount:  totalAdvanceAmount,
+			UsedAdvanceAmount:   decimal.Zero,
+			RemainAdvanceAmount: totalAdvanceAmount,
+			CreateTs:            model.GetCurrentUtcEpochSecond(),
+			UpdateTs:            model.GetCurrentUtcEpochSecond(),
+		})
+	}
+
+	return projectBudgetRcds
 }
 
 type commonCreateProjectRelatedData struct {
@@ -103,6 +148,88 @@ func GetProposalFromStringId(db *gorm.DB, idStr string) (*model.Proposal, error)
 	return &proposalRecord, nil
 }
 
+// ValidateProposalComponentParams validate proposal component params, currently it contains
+// * For motivation components, if the proposal has associated project, verify the total amount is not greater than the (project budget - advance amount)
+func ValidateProposalComponentParams(db *gorm.DB, reqData *CreateOrUpdateProposalData, userWallet string, proposalId uint, cfg *config.Config) error {
+	log.Error().Msgf("TTT: validate proposal component params: %+v", reqData)
+	for _, componentData := range reqData.Components {
+		log.Error().Msgf("TTT: validate proposal component params: %+v", componentData)
+		switch componentData.Name {
+		case internal.ComponentNameMotivation:
+			if reqData.CreateProjectProposalId == 0 {
+				log.Debug().Msgf("proposal %d is not associated with any project", proposalId)
+				continue
+			}
+
+			// Get project from create_project_proposal_id
+			associatedProject, err := service.ProposalService.GetAssociatedProjectByProposalId(db, reqData.CreateProjectProposalId)
+			if err != nil {
+				log.Error().Msgf("get create project proposal %d error: %+v", reqData.CreateProjectProposalId, err)
+				return err
+			}
+
+			if associatedProject == nil {
+				err = fmt.Errorf("project %d is not associated with proposal %d", reqData.CreateProjectProposalId, proposalId)
+				log.Error().Msg(err.Error())
+				return err
+			}
+
+			// Get project_budget records to get total amount of the budgets
+			projectBudgets, err := model.ProjectBudgetModel.ListByProjectId(db, associatedProject.ID)
+			log.Error().Msgf("TTT: project budgts: %+v", projectBudgets)
+			if err != nil {
+				log.Error().Msgf("get create project proposal %d error: %+v", reqData.CreateProjectProposalId, err)
+				return err
+			}
+
+			if len(projectBudgets) == 0 {
+				err = fmt.Errorf("project %d has no budget", reqData.CreateProjectProposalId)
+				log.Error().Msg(err.Error())
+				return err
+			}
+
+			remainBudgetAmount := lo.SliceToMap(projectBudgets, func(budget *model.ProjectBudget) (string, decimal.Decimal) {
+				return budget.AssetName, budget.RemainAmount
+			})
+
+			log.Error().Msgf("TTT: remain budget amount: %+v", remainBudgetAmount)
+
+			log.Error().Msgf("TTT: Component data: %+v", componentData)
+
+			var motivationComponentData *model.ComponentMotivationData
+			componentDataBytes, err := json.Marshal(componentData.Data)
+			if err != nil {
+				log.Error().Msgf("marshal motivation component budget list error: %+v", err)
+				return err
+			}
+			err = json.Unmarshal(componentDataBytes, &motivationComponentData)
+			if err != nil {
+				log.Error().Msgf("unmarshal motivation component budget list error: %+v", err)
+				return err
+			}
+
+			componentRewardAmountData := lo.SliceToMap(motivationComponentData.RewardList, func(reward *model.ComponentMotivationRewardRecord) (string, decimal.Decimal) {
+				return reward.AssetInfo.Name, decimal.RequireFromString(reward.Amount)
+			})
+			log.Error().Msgf("TTT: component reward amount: %+v", componentRewardAmountData)
+
+			for assetName, remainBudgetAmount := range remainBudgetAmount {
+				if componentBudgetAmount, found := componentRewardAmountData[assetName]; found {
+					if componentBudgetAmount.GreaterThan(remainBudgetAmount) {
+						return errors.New(fmt.Sprintf("motivation component %s budget amount %s is greater than project budget %s", assetName, componentBudgetAmount.String(), remainBudgetAmount.String()))
+					}
+				}
+			}
+
+			continue
+		default:
+			// Other components are not checking now
+			continue
+		}
+	}
+	return nil
+}
+
 func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, userWallet string, proposalId uint, cfg *config.Config) (*model.Proposal, error) {
 	// If proposalIdStr is not 0, this request should be an update action, otherwise it is a creation action.
 	// Create:
@@ -124,6 +251,14 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 		return nil, err
 	}
 	defer ReleaseUpdateProposalDbLock(proposalId)
+
+	// Validate component data before processing the proposal
+	componentValidationError := ValidateProposalComponentParams(db, reqData, userWallet, proposalId, cfg)
+	if componentValidationError != nil {
+		err = fmt.Errorf("component data validation error: %+v", componentValidationError)
+		log.Error().Msg(err.Error())
+		return nil, err
+	}
 
 	log.Debug().Msgf("save proposal record to DB: %+v, proposalIdStr: %d, user wallet: %s", reqData, proposalId, userWallet)
 
@@ -533,6 +668,7 @@ func SaveProposalToMetaforo(db *gorm.DB, origProposalRecordId uint, voteType int
 
 		// Get vote record from original record and update the timestamp
 		// The updated vote record will be saved by response in GetProposal function
+		RefreshMetaforoAdminToken()
 		for _, record := range voteRecords {
 			err = metaforo.UpdateVoteTime(
 				metaforoAccessToken,
@@ -956,10 +1092,21 @@ func UpdateDbVoteOptionRecordsFromMetaforoProposalResponse(db *gorm.DB, dbPropos
 					optLabel = voteOpt.Html.(string)
 				}
 
+				api.PrintStructAsJson(voteOpt, "TTT: vote option")
+				voterCount := voteOpt.Weights
+				if voterCount == 0 {
+					voterCount = voteOpt.Voters
+				}
+
 				err = tx.Model(&model.ProposalVoteOptionRecord{}).
 					Where("proposal_id = ? AND text =?", dbProposalRcdId, optLabel).
 					Updates(&model.ProposalVoteOptionRecord{
-						VoterCount:     voteOpt.Voters,
+						// check this proposal 'https://forum.seedao.xyz/thread/search-52075', it has two voters has 2 seeds,
+						// the result's `Voters` is `27`, but the `Weights` is `29`, so we change to use `Weights` property
+						// If the vote is not created with wegiht, the weights value will be 0, change back to use voters
+						// @2024/06/05
+						//VoterCount:     voteOpt.Voters,
+						VoterCount:     voterCount,
 						MetaforoID:     voteOpt.Id,
 						MetaforoVoteID: poll.Id,
 					}).Error
@@ -1105,6 +1252,7 @@ func UpdateProposalStateAfterVoteClosed(db *gorm.DB, proposalId uint, pVoteRcd *
 			}
 		}
 	case model.ProposalVoteTypeDecision:
+		log.Debug().Msgf("vote type decision, totalVoterCount: %d", totalVoterCount)
 		if totalVoterCount == 0 {
 			proposalFinalState = model.ProposalStateVoteFailed
 		} else {
@@ -1114,6 +1262,7 @@ func UpdateProposalStateAfterVoteClosed(db *gorm.DB, proposalId uint, pVoteRcd *
 					approvedCount = r.VoterCount
 				}
 			}
+			log.Debug().Msgf("vote type decision, approvedCount: %d, totalVoterCount: %d", approvedCount, totalVoterCount)
 
 			if approvedCount > totalVoterCount/2 {
 				proposalFinalState = model.ProposalStateVotePassed
@@ -1122,6 +1271,7 @@ func UpdateProposalStateAfterVoteClosed(db *gorm.DB, proposalId uint, pVoteRcd *
 				proposalFinalState = model.ProposalStateVoteFailed
 				voteResult = "0"
 			}
+			log.Debug().Msgf("vote type decision, final state %d", proposalFinalState)
 		}
 	case model.ProposalVoteTypeNumericAvg:
 		if totalVoterCount == 0 {
@@ -1564,6 +1714,9 @@ func CreateProjectFromAutoTasks(db *gorm.DB, proposalId uint) (*model.Project, e
 		return nil, err
 	}
 
+	// Saves db budget records data
+	var projectBudgetRcds []*model.ProjectBudget
+
 	for _, pComponentRecord := range pComponents {
 		api.PrintStructAsJson(pComponentRecord, "TTT: component record")
 		if compName, found := getProposalComponentIdNameMapping(db)[pComponentRecord.ComponentID]; found {
@@ -1574,16 +1727,8 @@ func CreateProjectFromAutoTasks(db *gorm.DB, proposalId uint) (*model.Project, e
 					log.Error().Msgf("unmarshal project deliverables data error: %+v", err)
 					return nil, err
 				}
-				projectBudgetRcd := projectBudgetData{
-					Name:        fmt.Sprintf("%s %s", budgetParams.Amount, budgetParams.AssetInfo.Name),
-					TotalAmount: "0",
-				}
-				prjBudgetBytes, err := json.Marshal([]projectBudgetData{projectBudgetRcd})
-				if err != nil {
-					log.Error().Msgf("unmarshal project deliverables data error: %+v", err)
-					return nil, err
-				}
-				newProjectData.Budgets = string(prjBudgetBytes)
+
+				projectBudgetRcds = budgetParams.prepareBudgetRecords(proposalId)
 			} else if compName == internal.ComponentNameBudget {
 				var budgetParams budgetComponentData
 				err := json.Unmarshal([]byte(pComponentRecord.Data), &budgetParams)
@@ -1592,20 +1737,7 @@ func CreateProjectFromAutoTasks(db *gorm.DB, proposalId uint) (*model.Project, e
 					return nil, err
 				}
 
-				projectBudgetRcds := make([]*projectBudgetData, 0)
-				for _, item := range budgetParams.BudgetList {
-					projectBudgetRcds = append(projectBudgetRcds, &projectBudgetData{
-						Name:        fmt.Sprintf("%s %s", item.Amount, item.AssetInfo.Name),
-						TotalAmount: "0",
-					})
-				}
-
-				prjBudgetBytes, err := json.Marshal(projectBudgetRcds)
-				if err != nil {
-					log.Error().Msgf("unmarshal project deliverables data error: %+v", err)
-					return nil, err
-				}
-				newProjectData.Budgets = string(prjBudgetBytes)
+				projectBudgetRcds = budgetParams.prepareBudgetRecords(proposalId)
 			} else if compName == internal.ComponentNameDeliverables {
 				var deliverableParams commonCreateProjectRelatedData
 				err := json.Unmarshal([]byte(pComponentRecord.Data), &deliverableParams)
@@ -1635,6 +1767,17 @@ func CreateProjectFromAutoTasks(db *gorm.DB, proposalId uint) (*model.Project, e
 	if err = db.Create(&newProjectData).Error; err != nil {
 		log.Error().Msgf("create project error: %+v", err)
 		return nil, err
+	}
+
+	if len(projectBudgetRcds) > 0 {
+		projectBudgetRcds = lo.Map(projectBudgetRcds, func(item *model.ProjectBudget, index int) *model.ProjectBudget {
+			item.ProjectID = newProjectData.ID
+			return item
+		})
+		if err = db.Create(&projectBudgetRcds).Error; err != nil {
+			log.Error().Msgf("create project budget record error: %+v", err)
+			return nil, err
+		}
 	}
 
 	return &newProjectData, nil
@@ -1763,4 +1906,35 @@ func updateProposalAssociatedProjectStatusInCloseProjectToClosing(db *gorm.DB, r
 		}
 	}
 	return nil
+}
+
+func RefreshMetaforoAdminToken() {
+	log.Debug().Msgf("refresh metaforo admin token job")
+	db := storage.GetGormDB()
+	mfData, err := model.GetMetaforoData(db)
+	if err != nil {
+		log.Error().Msgf("get metaforo data error: %+v", err)
+		return
+	}
+
+	seeAuthToken, err := model.GetSeeAuthPk(db)
+	if err != nil {
+		log.Error().Msgf("get see auth pk error: %+v", err)
+		return
+	}
+
+	mfAdminTokenResp, err := metaforo.GetUserToken(mfData[internal.SysVarMfAdminWalletPk], mfData[internal.SysVarMfAdminWalletAddr], seeAuthToken)
+	if err != nil {
+		log.Error().Msgf("get metaforo user token error: %+v", err)
+		return
+	}
+
+	log.Debug().Msgf("prepare to update metaforo admin token")
+	err = model.UpdateMetaforoAdminToken(db, mfAdminTokenResp.Token)
+	storage.GetConfig().MetaforoData.AccessToken = mfAdminTokenResp.Token
+	if err != nil {
+		log.Error().Msgf("update metaforo admin token error: %+v", err)
+	} else {
+		log.Debug().Msgf("update metaforo admin token done")
+	}
 }
