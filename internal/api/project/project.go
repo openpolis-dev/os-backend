@@ -35,7 +35,7 @@ type (
 		Members   []string `json:"members"`
 		Proposals []string `json:"proposals"`
 
-		Budgets []*BudgetResp `json:"budgets"`
+		Budgets []*ProjectBudgetResp `json:"budgets"`
 
 		SIP          string `json:"SIP"`
 		Category     string `json:"Category"`
@@ -47,7 +47,7 @@ type (
 		OfficialLink string `json:"OfficialLink"`
 	}
 
-	BudgetResp struct {
+	ProjectBudgetResp struct {
 		AssetName    string `json:"asset_name"`
 		TotalAmount  string `json:"total_amount"`
 		UsedAmount   string `json:"used_amount"`
@@ -72,7 +72,7 @@ type (
 	}
 	DetailReply struct {
 		model.Project
-		Budgets []*BudgetResp `json:"budgets"`
+		Budgets []*ProjectBudgetResp `json:"budgets"`
 	}
 	UpdateBudgetReq struct {
 		Id          uint            `json:"id"`
@@ -478,7 +478,7 @@ func Detail(ctx *gin.Context) {
 		return
 	}
 
-	budgetResp := GenerateBudgetResp(budgets)
+	budgetResp := GenerateProjectBudgetResp(budgets)
 
 	ctx.JSON(http.StatusOK, api.Success(&DetailReply{
 		Project: *NormalizeWalletAddrInProject(proj),
@@ -944,7 +944,7 @@ func ShowBudgets(ctx *gin.Context) {
 		return
 	}
 
-	budgetResp := GenerateBudgetResp(budgets)
+	budgetResp := GenerateProjectBudgetResp(budgets)
 	ctx.JSON(http.StatusOK, api.Success(budgetResp))
 }
 
@@ -1035,9 +1035,9 @@ func NormalizeWalletAddrInProject(project *model.Project) *model.Project {
 	return project
 }
 
-func GenerateBudgetResp(budgetRcds []*model.ProjectBudget) []*BudgetResp {
-	return lo.Map(budgetRcds, func(r *model.ProjectBudget, _ int) *BudgetResp {
-		return &BudgetResp{
+func GenerateProjectBudgetResp(budgetRcds []*model.ProjectBudget) []*ProjectBudgetResp {
+	return lo.Map(budgetRcds, func(r *model.ProjectBudget, _ int) *ProjectBudgetResp {
+		return &ProjectBudgetResp{
 			AssetName:           r.AssetName,
 			TotalAmount:         r.TotalAmount.String(),
 			UsedAmount:          r.UsedAmount.String(),

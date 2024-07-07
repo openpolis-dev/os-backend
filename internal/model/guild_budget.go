@@ -9,16 +9,19 @@ import (
 )
 
 type GuildBudget struct {
-	ID           uint            `json:"id" gorm:"primaryKey"`
-	GuildID      uint            `json:"guild_id"` // guild_id
-	Name         string          `json:"name"`
-	TotalAmount  decimal.Decimal `json:"total_amount" sql:"type:decimal(20,8);"`  // total_amount
+	ID      uint   `json:"id" gorm:"primaryKey"`
+	GuildID uint   `json:"guild_id"` // guild_id
+	Name    string `json:"name"`
+
+	AssetName    string          `json:"asset_name"`
+	TotalAmount  decimal.Decimal `json:"total_amount" sql:"type:decimal(20,8);"`  // total_amount = used_amount + remain_amount
 	UsedAmount   decimal.Decimal `json:"used_amount" sql:"type:decimal(20,8);"`   // used_amount
 	RemainAmount decimal.Decimal `json:"remain_amount" sql:"type:decimal(20,8);"` // remain_amount
-	CreatedAt    time.Time       `json:"-"`
-	UpdatedAt    time.Time       `json:"-"`
-	CreateTs     int64           `json:"create_ts" gorm:"index"`
-	UpdateTs     int64           `json:"update_ts" gorm:"index"`
+
+	CreatedAt time.Time `json:"-"`
+	UpdatedAt time.Time `json:"-"`
+	CreateTs  int64     `json:"create_ts" gorm:"index"`
+	UpdateTs  int64     `json:"update_ts" gorm:"index"`
 }
 
 type guildBudgetModel struct{}
