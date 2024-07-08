@@ -9,9 +9,8 @@ import (
 )
 
 type GuildBudget struct {
-	ID      uint   `json:"id" gorm:"primaryKey"`
-	GuildID uint   `json:"guild_id"` // guild_id
-	Name    string `json:"name"`
+	ID      uint `json:"id" gorm:"primaryKey"`
+	GuildID uint `json:"guild_id"` // guild_id
 
 	AssetName    string          `json:"asset_name"`
 	TotalAmount  decimal.Decimal `json:"total_amount" sql:"type:decimal(20,8);"`  // total_amount = used_amount + remain_amount

@@ -132,7 +132,7 @@ func (*guildModel) SetBudget(db *gorm.DB, guildId uint, assertName string, total
 		if budgetRecord == nil {
 			budgetRecord = &GuildBudget{
 				GuildID:      guildId,
-				Name:         assertName,
+				AssetName:    assertName,
 				TotalAmount:  totalAmount,
 				RemainAmount: totalAmount,
 			}
@@ -174,7 +174,7 @@ func (*guildModel) DepositBudget(db *gorm.DB, guildId uint, assetName string, as
 		if budgetRcd == nil {
 			return tx.Save(&GuildBudget{
 				GuildID:      guildId,
-				Name:         assetName,
+				AssetName:    assetName,
 				TotalAmount:  assetAmount,
 				UsedAmount:   decimal.Zero,
 				RemainAmount: assetAmount,
