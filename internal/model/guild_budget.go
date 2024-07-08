@@ -57,7 +57,7 @@ func (*guildBudgetModel) WithdrawSingleAsset(db *gorm.DB, guildId uint, assetNam
 	return db.Transaction(func(tx *gorm.DB) error {
 		budgetRcd, err := GuildBudgetModel.QueryByGuildIdAndAssetName(tx, guildId, assetName)
 		if err != nil {
-			log.Error().Msgf("query project %d budget %s error: %+v", guildId, assetName, err)
+			log.Error().Msgf("query guild %d budget %s error: %+v", guildId, assetName, err)
 			return err
 		}
 
@@ -66,7 +66,7 @@ func (*guildBudgetModel) WithdrawSingleAsset(db *gorm.DB, guildId uint, assetNam
 		}
 
 		if budgetRcd.RemainAmount.LessThan(amount) {
-			err = fmt.Errorf("project %d budget %s remain amount %s is less than request value %s", guildId, assetName, budgetRcd.RemainAmount.String(), amount.String())
+			err = fmt.Errorf("guild %d budget %s remain amount %s is less than request value %s", guildId, assetName, budgetRcd.RemainAmount.String(), amount.String())
 			log.Error().Msgf(err.Error())
 			return err
 		} else {
