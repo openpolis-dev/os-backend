@@ -230,7 +230,7 @@ type FrontendProposalDetailRecord struct {
 	// Associated project ID, used for close_project proposal
 	AssociatedProjectId uint `json:"associated_project_id"`
 
-	AssociatedProjectBudgets []*project.BudgetResp `json:"associated_project_budgets"`
+	AssociatedProjectBudgets []*project.ProjectBudgetResp `json:"associated_project_budgets"`
 }
 
 type FrontendProposalCategory struct {
@@ -490,14 +490,14 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposalId uint, startPo
 
 	// Check whether the proposal has associated project
 	var associatedProject *model.Project
-	budgetsResponse := make([]*project.BudgetResp, 0)
+	budgetsResponse := make([]*project.ProjectBudgetResp, 0)
 	err = db.Where(&model.Project{SIP: fmt.Sprintf("%d", proposal.Sip)}).First(&associatedProject).Error
 	if err == nil {
 		budgetRecords, err := model.ProjectBudgetModel.ListByProjectId(db, associatedProject.ID)
 		if err != nil {
 			log.Error().Msgf("fetch project budget error: %+v", err)
 		} else {
-			budgetsResponse = project.GenerateBudgetResp(budgetRecords)
+			budgetsResponse = project.GenerateProjectBudgetResp(budgetRecords)
 		}
 	}
 

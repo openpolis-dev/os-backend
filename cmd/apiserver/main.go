@@ -231,6 +231,7 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		guildGroup := v1.Group("/guilds")
 		guildGroup.GET("/", guild.List)
 		guildGroup.GET("/:id", guild.Detail)
+		guildGroup.GET("/:id/budgets", guild.ShowBudgets)
 
 		commonBudgetSourceGroup := v1.Group("/common_budget_sources")
 		commonBudgetSourceGroup.GET("/", common_budget_sources.List)
