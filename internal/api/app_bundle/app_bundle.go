@@ -323,7 +323,7 @@ func CreateAppBundle(ctx *gin.Context) {
 	if isCityHallProject {
 		log.Debug().Msgf("project %d is city hall project, ignore checking of budget", newAppBundleReq.EntityId)
 	} else if newAppBundleReq.Entity == "project" {
-		projectBudgets, err := model.GuildBud.ListByProjectId(db, newAppBundleReq.EntityId)
+		projectBudgets, err := model.ProjectBudgetModel.ListByProjectId(db, newAppBundleReq.EntityId)
 		if err != nil {
 			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get project budgets error")))
@@ -369,6 +369,64 @@ func CreateAppBundle(ctx *gin.Context) {
 			// Check total amount
 			for assetName, amount := range requestAssetAmount {
 				if amount.GreaterThan(advanceRemainAmountRecord[assetName]) {
+					err := fmt.Errorf("project %d has insufficient advance amount for asset %s", newAppBundleReq.EntityId, assetName)
+					log.Error().Msg(err.Error())
+					sdk.LogUserSideError(ctx, err)
+					ctx.JSON(http.StatusBadRequest, api.ServerError(err))
+					return
+				} else {
+					// Save asset amount will be used.
+					assetAmountUsedInThisRequest[assetName] = amount
+				}
+			}
+		}
+	} else if newAppBundleReq.Entity == "guild" {
+		guildBudgets, err := model.GuildBudgetModel.ListByGuildId(db, newAppBundleReq.EntityId)
+		if err != nil {
+			sdk.LogServerErrorToSentry(ctx, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get guild budgets error")))
+			return
+		}
+
+		if len(guildBudgets) == 0 {
+			log.Debug().Msgf("guild %d has no budget record, ignore checking of amount submitted", newAppBundleReq.EntityId)
+		} else {
+			// Only advance remain amount can be applied here
+			guildRemainBudgets := lo.SliceToMap(guildBudgets, func(budget *model.GuildBudget) (string, decimal.Decimal) {
+				return budget.AssetName, budget.RemainAmount
+			})
+
+			requestAssetAmount := make(map[string]decimal.Decimal)
+
+			for _, appRecord := range newAppBundleReq.Records {
+				remainAmount, found := guildRemainBudgets[appRecord.AssetName]
+				if !found {
+					err := fmt.Errorf("incorrect asset name %s for project %d", appRecord.AssetName, newAppBundleReq.EntityId)
+					log.Error().Msg(err.Error())
+					sdk.LogUserSideError(ctx, err)
+					ctx.JSON(http.StatusBadRequest, api.ServerError(err))
+					return
+				}
+
+				if remainAmount.LessThan(appRecord.Amount) {
+					err := fmt.Errorf("project %d has insufficient advance amount for asset %s", newAppBundleReq.EntityId, appRecord.AssetName)
+					log.Error().Msg(err.Error())
+					sdk.LogUserSideError(ctx, err)
+					ctx.JSON(http.StatusBadRequest, api.ServerError(err))
+					return
+				}
+
+				// Sum total amount for each asset
+				if _, found := requestAssetAmount[appRecord.AssetName]; !found {
+					requestAssetAmount[appRecord.AssetName] = appRecord.Amount
+				} else {
+					requestAssetAmount[appRecord.AssetName] = requestAssetAmount[appRecord.AssetName].Add(appRecord.Amount)
+				}
+			}
+
+			// Check total amount
+			for assetName, amount := range requestAssetAmount {
+				if amount.GreaterThan(guildRemainBudgets[assetName]) {
 					err := fmt.Errorf("project %d has insufficient advance amount for asset %s", newAppBundleReq.EntityId, assetName)
 					log.Error().Msg(err.Error())
 					sdk.LogUserSideError(ctx, err)
@@ -468,11 +526,21 @@ func CreateAppBundle(ctx *gin.Context) {
 			return err
 		}
 
-		for assetName, usedAmount := range assetAmountUsedInThisRequest {
-			err = model.ProjectBudgetModel.WithdrawSingleAsset(tx, newAppBundleReq.EntityId, assetName, usedAmount)
-			if err != nil {
-				log.Error().Msgf("withdraw budget asset %s error: %+v", assetName, err)
-				return err
+		if newAppBundleReq.Entity == "project" && !isCityHallProject {
+			for assetName, usedAmount := range assetAmountUsedInThisRequest {
+				err = model.GuildBudgetModel.WithdrawSingleAsset(tx, newAppBundleReq.EntityId, assetName, usedAmount)
+				if err != nil {
+					log.Error().Msgf("withdraw budget asset %s error: %+v", assetName, err)
+					return err
+				}
+			}
+		} else if newAppBundleReq.Entity == "guild" {
+			for assetName, usedAmount := range assetAmountUsedInThisRequest {
+				err = model.GuildBudgetModel.WithdrawSingleAsset(tx, newAppBundleReq.EntityId, assetName, usedAmount)
+				if err != nil {
+					log.Error().Msgf("withdraw budget asset %s error: %+v", assetName, err)
+					return err
+				}
 			}
 		}
 

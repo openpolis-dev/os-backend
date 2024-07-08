@@ -1,8 +1,10 @@
 package model
 
 import (
+	"fmt"
 	"time"
 
+	"github.com/rs/zerolog/log"
 	"github.com/shopspring/decimal"
 	"github.com/xiaosongfu/gormfind"
 	"gorm.io/gorm"
@@ -49,4 +51,29 @@ func (*guildBudgetModel) ListByGuildId(db *gorm.DB, guildID uint) ([]*GuildBudge
 func (*guildBudgetModel) QueryByGuildIdAndAssetName(db *gorm.DB, guildID uint, assetName string) (*GuildBudget, error) {
 	querySeg := db.Where("guild_id = ?", guildID).Where("name = ?", assetName)
 	return gormfind.Row[GuildBudget](querySeg)
+}
+
+func (*guildBudgetModel) WithdrawSingleAsset(db *gorm.DB, guildId uint, assetName string, amount decimal.Decimal) error {
+	return db.Transaction(func(tx *gorm.DB) error {
+		budgetRcd, err := GuildBudgetModel.QueryByGuildIdAndAssetName(tx, guildId, assetName)
+		if err != nil {
+			log.Error().Msgf("query project %d budget %s error: %+v", guildId, assetName, err)
+			return err
+		}
+
+		updateClause := map[string]any{
+			"id": budgetRcd.ID,
+		}
+
+		if budgetRcd.RemainAmount.LessThan(amount) {
+			err = fmt.Errorf("project %d budget %s remain amount %s is less than request value %s", guildId, assetName, budgetRcd.RemainAmount.String(), amount.String())
+			log.Error().Msgf(err.Error())
+			return err
+		} else {
+			updateClause["used_amount"] = budgetRcd.UsedAmount.Add(amount)
+			updateClause["remain_amount"] = budgetRcd.RemainAmount.Sub(amount)
+		}
+
+		return tx.Model(&budgetRcd).Updates(updateClause).Error
+	})
 }
