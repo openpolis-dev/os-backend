@@ -239,6 +239,8 @@ func CreateAppBundle(ctx *gin.Context) {
 		return
 	}
 
+	isCityHallProject := false
+
 	if !ok {
 		log.Debug().Msgf("user %s has no hall permission, check whether user is sponsor", user.Wallet)
 
@@ -273,6 +275,9 @@ func CreateAppBundle(ctx *gin.Context) {
 				sdk.LogServerErrorToSentry(ctx, err)
 				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
 				return
+			}
+			if projectRecord.IsSpecial && projectRecord.SpecialType == model.SpecialProjectCityHall {
+				isCityHallProject = true
 			}
 			sponsorsList = projectRecord.Sponsors
 		case "guild":
@@ -315,8 +320,10 @@ func CreateAppBundle(ctx *gin.Context) {
 	assetAmountUsedInThisRequest := make(map[string]decimal.Decimal)
 
 	// Validate project budgets
-	if newAppBundleReq.Entity == "project" {
-		projectBudgets, err := model.ProjectBudgetModel.ListByProjectId(db, newAppBundleReq.EntityId)
+	if isCityHallProject {
+		log.Debug().Msgf("project %d is city hall project, ignore checking of budget", newAppBundleReq.EntityId)
+	} else if newAppBundleReq.Entity == "project" {
+		projectBudgets, err := model.GuildBud.ListByProjectId(db, newAppBundleReq.EntityId)
 		if err != nil {
 			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get project budgets error")))
