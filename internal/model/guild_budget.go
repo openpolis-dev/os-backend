@@ -77,3 +77,28 @@ func (*guildBudgetModel) WithdrawSingleAsset(db *gorm.DB, guildId uint, assetNam
 		return tx.Model(&budgetRcd).Updates(updateClause).Error
 	})
 }
+
+func (*guildBudgetModel) DepositSingleAsset(db *gorm.DB, guildId uint, assetName string, amount decimal.Decimal) error {
+	return db.Transaction(func(tx *gorm.DB) error {
+		budgetRcd, err := GuildBudgetModel.QueryByGuildIdAndAssetName(tx, guildId, assetName)
+		if err != nil {
+			log.Error().Msgf("query guild %d budget %s error: %+v", guildId, assetName, err)
+			return err
+		}
+
+		updateClause := map[string]any{
+			"id": budgetRcd.ID,
+		}
+
+		if budgetRcd.UsedAmount.LessThan(amount) {
+			err = fmt.Errorf("guild %d budget %s used amount %s is less than request value %s", guildId, assetName, budgetRcd.UsedAmount.String(), amount.String())
+			log.Error().Msgf(err.Error())
+			return err
+		} else {
+			updateClause["used_amount"] = budgetRcd.UsedAmount.Sub(amount)
+			updateClause["remain_amount"] = budgetRcd.RemainAmount.Add(amount)
+		}
+
+		return tx.Model(&budgetRcd).Updates(updateClause).Error
+	})
+}
