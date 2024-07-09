@@ -232,6 +232,11 @@ func doAuditApplicationInTransaction(tx *gorm.DB, operatorWallet string, applica
 				log.Error().Msgf("restore project %d budget error: %+v", application.EntityId, err)
 				return err
 			}
+		} else if application.EntityType == "guild" {
+			if err = GuildBudgetModel.DepositSingleAsset(tx, application.EntityId, application.AssetName, application.AssetAmount); err != nil {
+				log.Error().Msgf("restore guild %d budget error: %+v", application.EntityId, err)
+				return err
+			}
 		}
 	} else if action == AuditActionComplete {
 		application.CompleteMessage = extraMsg
