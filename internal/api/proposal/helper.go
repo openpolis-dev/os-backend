@@ -668,6 +668,16 @@ func SaveProposalToMetaforo(db *gorm.DB, origProposalRecordId uint, voteType int
 
 		// Get vote record from original record and update the timestamp
 		// The updated vote record will be saved by response in GetProposal function
+		voteStartTime := time.Unix(updatedProposalRecord.CreateTs, 0).Add(origProposalRecord.PublicityDuration())
+		voteEndTime := time.Unix(updatedProposalRecord.CreateTs, 0).Add(origProposalRecord.PublicityDuration() + origProposalRecord.VoteDuration())
+		log.Debug().Msgf("Resubmit withdraw propoesal, vote start time: %s, vote end time: %s", voteStartTime.Format(time.RFC3339), voteEndTime.Format(time.RFC3339))
+
+		if voteStartTime.Before(time.Now().UTC()) {
+			err = fmt.Errorf("proposal vote start time %s is earlier than now", voteStartTime.String())
+			log.Error().Msg(err.Error())
+			return err
+		}
+
 		RefreshMetaforoAdminToken()
 		for _, record := range voteRecords {
 			err = metaforo.UpdateVoteTime(
