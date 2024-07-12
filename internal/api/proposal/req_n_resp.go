@@ -469,9 +469,6 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposalId uint, startPo
 	}
 
 	proposalPublicityTs := firstProposalDbRecord.CreateTs + firstProposalDbRecord.PublicitySecond
-	for _, r := range voteRecords {
-		proposalPublicityTs = r.StartTs
-	}
 
 	for _, job := range proposalCronJobs {
 		if job.NextExecTs > proposalExecTs {

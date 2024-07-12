@@ -193,6 +193,22 @@ func Update(ctx *gin.Context) {
 		return
 	}
 
+	firstProposalRcd, err := GetFirstProposalWithRecordId(db, proposalRcd.ProposalRecordId)
+	if err != nil {
+		log.Error().Msgf("get first proposal with record id %s error: %+v", proposalRcd.ProposalRecordId, err)
+		sdk.LogUserSideError(ctx, err)
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("get proposal error")))
+		return
+	}
+
+	if firstProposalRcd.CreateTs+firstProposalRcd.PublicitySecond > time.Now().Unix() {
+		err = fmt.Errorf("proposal id %s has expired the publicity time, can't be updated by user %+v", proposalIdStr, user.Wallet)
+		log.Error().Msg(err.Error())
+		sdk.LogUserSideError(ctx, err)
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("proposal has expired and can't be updated")))
+		return
+	}
+
 	// Proposal is in updatable state
 
 	// Parsing request to create proposal object
