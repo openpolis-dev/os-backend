@@ -359,6 +359,12 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposalId uint, startPo
 		return nil, err
 	}
 
+	firstProposalDbRecord, err := GetFirstProposalWithRecordId(db, proposal.ProposalRecordId)
+	if err != nil {
+		log.Error().Msgf("get first proposal record error: %+v", err)
+		return nil, err
+	}
+
 	var editHistoryRecords []*FrontendProposalEditHistoryRecord
 	var frontendCommentsRecords []*FrontendProposalCommentRecord
 	var votes []metaforo.PollRecord
@@ -418,7 +424,7 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposalId uint, startPo
 	// Fetch vote_gate info
 	// TODO: duplicated code in vote check logic, use function to replace it.
 	var proposalCategory *model.ProposalCategory
-	err := db.Model(&model.ProposalCategory{}).
+	err = db.Model(&model.ProposalCategory{}).
 		Joins("ProposalVoteGate").
 		Where(model.ProposalCategory{ID: proposal.ProposalCategoryID}).First(&proposalCategory).Error
 	if err != nil {
@@ -462,7 +468,7 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposalId uint, startPo
 		return nil, err
 	}
 
-	proposalPublicityTs := proposal.CreateTs + proposal.PublicitySecond
+	proposalPublicityTs := firstProposalDbRecord.CreateTs + firstProposalDbRecord.PublicitySecond
 	for _, r := range voteRecords {
 		proposalPublicityTs = r.StartTs
 	}

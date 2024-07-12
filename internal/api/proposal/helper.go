@@ -666,8 +666,7 @@ func SaveProposalToMetaforo(db *gorm.DB, dbProposalId uint, voteType int, metafo
 			return err
 		}
 
-		var firstProposalDbRecord model.Proposal
-		err = db.Model(firstProposalDbRecord).Where("proposal_record_id = ?", origProposalRecord.ProposalRecordId).Preload("VoteRecords").Order("create_ts asc").First(&firstProposalDbRecord).Error
+		firstProposalDbRecord, err := GetFirstProposalWithRecordId(db, origProposalRecord.ProposalRecordId)
 		if err != nil {
 			log.Error().Msgf("get first proposal record error: %+v", err)
 			return err
