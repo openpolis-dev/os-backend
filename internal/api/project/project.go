@@ -1,7 +1,6 @@
 package project
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -35,7 +34,8 @@ type (
 		Members   []string `json:"members"`
 		Proposals []string `json:"proposals"`
 
-		Budgets []*ProjectBudgetResp `json:"budgets"`
+		ScrBudget  decimal.Decimal `json:"scr_budget"`
+		UsdcBudget decimal.Decimal `json:"usdc_budget"`
 
 		SIP          string `json:"SIP"`
 		Category     string `json:"Category"`
@@ -90,9 +90,12 @@ type (
 //	@param			request	body		CreateReq	true	"new project request data"
 //	@success		200		{object}	api.Reply
 func Create(ctx *gin.Context) {
+	log.Error().Msgf("TTT: req: %+v", ctx.Request.Body)
 	req := CreateReq{}
 	err := ctx.BindJSON(&req)
 	if err != nil {
+		log.Error().Msgf("Parse request error: %+v", err)
+		sdk.LogUserSideError(ctx, err)
 		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
 		return
 	}
@@ -112,9 +115,6 @@ func Create(ctx *gin.Context) {
 
 	// remove duplicate proposals
 	proposals := lo.Uniq[string](req.Proposals)
-
-	// budgets
-	budgets, _ := json.Marshal(req.Budgets)
 
 	user, enforcer, db, _ := api.ForContext(ctx)
 
@@ -154,7 +154,6 @@ func Create(ctx *gin.Context) {
 		Category:     req.Category,
 		ApprovalLink: req.ApprovalLink,
 		OverLink:     req.OverLink,
-		Budgets:      string(budgets),
 		Deliverable:  req.Deliverable,
 		PlanTime:     req.PlanTime,
 		ContantWay:   req.ContantWay,
@@ -166,6 +165,33 @@ func Create(ctx *gin.Context) {
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create project error")))
 		return
+	}
+
+	var budgets []*model.ProjectBudget
+	if req.ScrBudget != decimal.Zero {
+		budgets = append(budgets, &model.ProjectBudget{
+			ProjectID:    proj.ID,
+			AssetName:    "SCR",
+			TotalAmount:  req.ScrBudget,
+			RemainAmount: req.ScrBudget,
+			CreateTs:     model.GetCurrentUtcEpochSecond(),
+			UpdateTs:     model.GetCurrentUtcEpochSecond(),
+		})
+	}
+
+	if req.UsdcBudget != decimal.Zero {
+		budgets = append(budgets, &model.ProjectBudget{
+			ProjectID:    proj.ID,
+			AssetName:    "USDC",
+			TotalAmount:  req.UsdcBudget,
+			RemainAmount: req.UsdcBudget,
+			CreateTs:     model.GetCurrentUtcEpochSecond(),
+			UpdateTs:     model.GetCurrentUtcEpochSecond(),
+		})
+	}
+
+	if len(budgets) > 0 {
+		err = model.ProjectBudgetModel.Create(tx, budgets)
 	}
 
 	// commit transaction
