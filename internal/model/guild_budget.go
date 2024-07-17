@@ -49,7 +49,7 @@ func (*guildBudgetModel) ListByGuildId(db *gorm.DB, guildID uint) ([]*GuildBudge
 }
 
 func (*guildBudgetModel) QueryByGuildIdAndAssetName(db *gorm.DB, guildID uint, assetName string) (*GuildBudget, error) {
-	querySeg := db.Where("guild_id = ?", guildID).Where("name = ?", assetName)
+	querySeg := db.Where("guild_id = ?", guildID).Where("asset_name = ?", assetName)
 	return gormfind.Row[GuildBudget](querySeg)
 }
 
@@ -58,6 +58,12 @@ func (*guildBudgetModel) WithdrawSingleAsset(db *gorm.DB, guildId uint, assetNam
 		budgetRcd, err := GuildBudgetModel.QueryByGuildIdAndAssetName(tx, guildId, assetName)
 		if err != nil {
 			log.Error().Msgf("query guild %d budget %s error: %+v", guildId, assetName, err)
+			return err
+		}
+
+		if budgetRcd == nil {
+			err = fmt.Errorf("guild %d has no budget record with asset %s", guildId, assetName)
+			log.Error().Msg(err.Error())
 			return err
 		}
 
