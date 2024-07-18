@@ -90,7 +90,6 @@ type (
 //	@param			request	body		CreateReq	true	"new project request data"
 //	@success		200		{object}	api.Reply
 func Create(ctx *gin.Context) {
-	log.Error().Msgf("TTT: req: %+v", ctx.Request.Body)
 	req := CreateReq{}
 	err := ctx.BindJSON(&req)
 	if err != nil {
