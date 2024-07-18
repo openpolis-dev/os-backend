@@ -591,19 +591,19 @@ func SaveProposalVoteOptionRecords(tx *gorm.DB, proposalId uint, voteType int, c
 // Otherwise, copy the proposal to new record with ver+1, update the metaforo data, and save back as a new record,
 // and the metaforo API invoked here is updateProposal.
 // TODO: Refactor this function
-func SaveProposalToMetaforo(db *gorm.DB, origProposalRecordId uint, voteType int, metaforoAccessToken string, EditorType int, metaforoGroupName string) error {
-	if TryAcquireUpdateProposalDbLockOrReturn(origProposalRecordId) == false {
-		err := fmt.Errorf("proposal %d is updating", origProposalRecordId)
+func SaveProposalToMetaforo(db *gorm.DB, dbProposalId uint, voteType int, metaforoAccessToken string, EditorType int, metaforoGroupName string) error {
+	if TryAcquireUpdateProposalDbLockOrReturn(dbProposalId) == false {
+		err := fmt.Errorf("proposal %d is updating", dbProposalId)
 		log.Error().Msg(err.Error())
 		return err
 	}
-	defer ReleaseUpdateProposalDbLock(origProposalRecordId)
+	defer ReleaseUpdateProposalDbLock(dbProposalId)
 
-	log.Debug().Msgf("enter save proposal to metaforo: %d", origProposalRecordId)
+	log.Debug().Msgf("enter save proposal to metaforo: %d", dbProposalId)
 	var err error
 
 	var origProposalRecord model.Proposal
-	if err = db.Find(&origProposalRecord, origProposalRecordId).Error; err != nil {
+	if err = db.Find(&origProposalRecord, dbProposalId).Error; err != nil {
 		log.Error().Msgf("find proposal error: %+v", err)
 		return err
 	}
@@ -617,7 +617,7 @@ func SaveProposalToMetaforo(db *gorm.DB, origProposalRecordId uint, voteType int
 	}
 
 	var contentBlocks []*model.ProposalContentBlock
-	err = db.Where(&model.ProposalContentBlock{ProposalID: origProposalRecordId}).Find(&contentBlocks).Error
+	err = db.Where(&model.ProposalContentBlock{ProposalID: dbProposalId}).Find(&contentBlocks).Error
 	if err != nil {
 		log.Error().Msgf("get proposal content block error: %+v", err)
 		return err
@@ -666,8 +666,27 @@ func SaveProposalToMetaforo(db *gorm.DB, origProposalRecordId uint, voteType int
 			return err
 		}
 
+		firstProposalDbRecord, err := GetFirstProposalWithRecordId(db, origProposalRecord.ProposalRecordId)
+		if err != nil {
+			log.Error().Msgf("get first proposal record error: %+v", err)
+			return err
+		}
+
+		log.Error().Msgf("TTT: First proposal: %+v", firstProposalDbRecord)
+		log.Error().Msgf("TTT: Updated proposal: %+v", updatedProposalRecord)
+
 		// Get vote record from original record and update the timestamp
 		// The updated vote record will be saved by response in GetProposal function
+		voteStartTime := time.Unix(firstProposalDbRecord.CreateTs, 0).UTC().Add(firstProposalDbRecord.PublicityDuration())
+		voteEndTime := time.Unix(firstProposalDbRecord.CreateTs, 0).UTC().Add(firstProposalDbRecord.PublicityDuration() + firstProposalDbRecord.VoteDuration())
+		log.Debug().Msgf("Resubmit withdraw propoesal, vote start time: %s, vote end time: %s", voteStartTime.Format(time.RFC3339), voteEndTime.Format(time.RFC3339))
+
+		if voteStartTime.Before(time.Now().UTC()) {
+			err = fmt.Errorf("proposal vote start time %s is earlier than now", voteStartTime.String())
+			log.Error().Msg(err.Error())
+			return err
+		}
+
 		RefreshMetaforoAdminToken()
 		for _, record := range voteRecords {
 			err = metaforo.UpdateVoteTime(
@@ -704,7 +723,7 @@ func SaveProposalToMetaforo(db *gorm.DB, origProposalRecordId uint, voteType int
 			return err
 		}
 
-		voteFormBytes, err := BuildMetaforoVoteFormDataBytes(db, origProposalRecordId, voteGates, voteStartTime, voteEndTime)
+		voteFormBytes, err := BuildMetaforoVoteFormDataBytes(db, dbProposalId, voteGates, voteStartTime, voteEndTime)
 		if err != nil {
 			log.Error().Msgf("build metaforoProposal vote data error: %+v", err)
 			return err

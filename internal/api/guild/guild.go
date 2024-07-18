@@ -66,6 +66,13 @@ type (
 		AssetName   string          `json:"asset_name"`
 		TotalAmount decimal.Decimal `json:"total_amount"`
 	}
+
+	GuildBudgetResp struct {
+		AssetName    string `json:"asset_name"`
+		TotalAmount  string `json:"total_amount"`
+		UsedAmount   string `json:"used_amount"`
+		RemainAmount string `json:"remain_amount"`
+	}
 )
 
 // Close
@@ -912,6 +919,36 @@ func AddRelatedProposal(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, api.Success(nil))
 }
 
+// ShowBudgets show guild budget records or return empty list
+//
+//	@summary	Show project budgets
+//	@tags		Project
+//	@accept		json
+//	@produce	json
+//	@param		id			path		int				true	"project id"
+//	@success	200			{object}	api.Reply
+//	@router		/projects/{id}/update_budget [post]
+func ShowBudgets(ctx *gin.Context) {
+	idParam := ctx.Param("id")
+	id, err := strconv.Atoi(idParam)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
+		return
+	}
+
+	db := api.ForContextOnlyDB(ctx)
+
+	budgets, err := model.GuildBudgetModel.ListByGuildId(db, uint(id))
+	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get project budgets error")))
+		return
+	}
+
+	budgetResp := GenerateGuildBudgetResp(budgets)
+	ctx.JSON(http.StatusOK, api.Success(budgetResp))
+}
+
 func buildGuildPermObject(guildId int) string {
 	return fmt.Sprintf("%s%d", internal.ObjGuildPrefix, guildId)
 }
@@ -925,4 +962,15 @@ func NormalizeWalletAddrInGuild(guild *model.Guild) *model.Guild {
 	})
 
 	return guild
+}
+
+func GenerateGuildBudgetResp(budgetRcds []*model.GuildBudget) []*GuildBudgetResp {
+	return lo.Map(budgetRcds, func(r *model.GuildBudget, _ int) *GuildBudgetResp {
+		return &GuildBudgetResp{
+			AssetName:    r.AssetName,
+			TotalAmount:  r.TotalAmount.String(),
+			UsedAmount:   r.UsedAmount.String(),
+			RemainAmount: r.RemainAmount.String(),
+		}
+	})
 }
