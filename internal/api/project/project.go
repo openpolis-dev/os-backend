@@ -1,7 +1,6 @@
 package project
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -35,7 +34,8 @@ type (
 		Members   []string `json:"members"`
 		Proposals []string `json:"proposals"`
 
-		Budgets []*BudgetResp `json:"budgets"`
+		ScrBudget  decimal.Decimal `json:"scr_budget"`
+		UsdcBudget decimal.Decimal `json:"usdc_budget"`
 
 		SIP          string `json:"SIP"`
 		Category     string `json:"Category"`
@@ -47,7 +47,7 @@ type (
 		OfficialLink string `json:"OfficialLink"`
 	}
 
-	BudgetResp struct {
+	ProjectBudgetResp struct {
 		AssetName    string `json:"asset_name"`
 		TotalAmount  string `json:"total_amount"`
 		UsedAmount   string `json:"used_amount"`
@@ -72,7 +72,7 @@ type (
 	}
 	DetailReply struct {
 		model.Project
-		Budgets []*BudgetResp `json:"budgets"`
+		Budgets []*ProjectBudgetResp `json:"budgets"`
 	}
 	UpdateBudgetReq struct {
 		Id          uint            `json:"id"`
@@ -93,6 +93,8 @@ func Create(ctx *gin.Context) {
 	req := CreateReq{}
 	err := ctx.BindJSON(&req)
 	if err != nil {
+		log.Error().Msgf("Parse request error: %+v", err)
+		sdk.LogUserSideError(ctx, err)
 		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
 		return
 	}
@@ -112,9 +114,6 @@ func Create(ctx *gin.Context) {
 
 	// remove duplicate proposals
 	proposals := lo.Uniq[string](req.Proposals)
-
-	// budgets
-	budgets, _ := json.Marshal(req.Budgets)
 
 	user, enforcer, db, _ := api.ForContext(ctx)
 
@@ -154,7 +153,6 @@ func Create(ctx *gin.Context) {
 		Category:     req.Category,
 		ApprovalLink: req.ApprovalLink,
 		OverLink:     req.OverLink,
-		Budgets:      string(budgets),
 		Deliverable:  req.Deliverable,
 		PlanTime:     req.PlanTime,
 		ContantWay:   req.ContantWay,
@@ -166,6 +164,33 @@ func Create(ctx *gin.Context) {
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create project error")))
 		return
+	}
+
+	var budgets []*model.ProjectBudget
+	if req.ScrBudget != decimal.Zero {
+		budgets = append(budgets, &model.ProjectBudget{
+			ProjectID:    proj.ID,
+			AssetName:    "SCR",
+			TotalAmount:  req.ScrBudget,
+			RemainAmount: req.ScrBudget,
+			CreateTs:     model.GetCurrentUtcEpochSecond(),
+			UpdateTs:     model.GetCurrentUtcEpochSecond(),
+		})
+	}
+
+	if req.UsdcBudget != decimal.Zero {
+		budgets = append(budgets, &model.ProjectBudget{
+			ProjectID:    proj.ID,
+			AssetName:    "USDC",
+			TotalAmount:  req.UsdcBudget,
+			RemainAmount: req.UsdcBudget,
+			CreateTs:     model.GetCurrentUtcEpochSecond(),
+			UpdateTs:     model.GetCurrentUtcEpochSecond(),
+		})
+	}
+
+	if len(budgets) > 0 {
+		err = model.ProjectBudgetModel.Create(tx, budgets)
 	}
 
 	// commit transaction
@@ -478,7 +503,7 @@ func Detail(ctx *gin.Context) {
 		return
 	}
 
-	budgetResp := GenerateBudgetResp(budgets)
+	budgetResp := GenerateProjectBudgetResp(budgets)
 
 	ctx.JSON(http.StatusOK, api.Success(&DetailReply{
 		Project: *NormalizeWalletAddrInProject(proj),
@@ -944,7 +969,7 @@ func ShowBudgets(ctx *gin.Context) {
 		return
 	}
 
-	budgetResp := GenerateBudgetResp(budgets)
+	budgetResp := GenerateProjectBudgetResp(budgets)
 	ctx.JSON(http.StatusOK, api.Success(budgetResp))
 }
 
@@ -1035,9 +1060,9 @@ func NormalizeWalletAddrInProject(project *model.Project) *model.Project {
 	return project
 }
 
-func GenerateBudgetResp(budgetRcds []*model.ProjectBudget) []*BudgetResp {
-	return lo.Map(budgetRcds, func(r *model.ProjectBudget, _ int) *BudgetResp {
-		return &BudgetResp{
+func GenerateProjectBudgetResp(budgetRcds []*model.ProjectBudget) []*ProjectBudgetResp {
+	return lo.Map(budgetRcds, func(r *model.ProjectBudget, _ int) *ProjectBudgetResp {
+		return &ProjectBudgetResp{
 			AssetName:           r.AssetName,
 			TotalAmount:         r.TotalAmount.String(),
 			UsedAmount:          r.UsedAmount.String(),

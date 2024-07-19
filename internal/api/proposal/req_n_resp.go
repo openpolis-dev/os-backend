@@ -230,7 +230,7 @@ type FrontendProposalDetailRecord struct {
 	// Associated project ID, used for close_project proposal
 	AssociatedProjectId uint `json:"associated_project_id"`
 
-	AssociatedProjectBudgets []*project.BudgetResp `json:"associated_project_budgets"`
+	AssociatedProjectBudgets []*project.ProjectBudgetResp `json:"associated_project_budgets"`
 }
 
 type FrontendProposalCategory struct {
@@ -359,6 +359,12 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposalId uint, startPo
 		return nil, err
 	}
 
+	firstProposalDbRecord, err := GetFirstProposalWithRecordId(db, proposal.ProposalRecordId)
+	if err != nil {
+		log.Error().Msgf("get first proposal record error: %+v", err)
+		return nil, err
+	}
+
 	var editHistoryRecords []*FrontendProposalEditHistoryRecord
 	var frontendCommentsRecords []*FrontendProposalCommentRecord
 	var votes []metaforo.PollRecord
@@ -418,7 +424,7 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposalId uint, startPo
 	// Fetch vote_gate info
 	// TODO: duplicated code in vote check logic, use function to replace it.
 	var proposalCategory *model.ProposalCategory
-	err := db.Model(&model.ProposalCategory{}).
+	err = db.Model(&model.ProposalCategory{}).
 		Joins("ProposalVoteGate").
 		Where(model.ProposalCategory{ID: proposal.ProposalCategoryID}).First(&proposalCategory).Error
 	if err != nil {
@@ -462,10 +468,7 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposalId uint, startPo
 		return nil, err
 	}
 
-	proposalPublicityTs := proposal.CreateTs + proposal.PublicitySecond
-	for _, r := range voteRecords {
-		proposalPublicityTs = r.StartTs
-	}
+	proposalPublicityTs := firstProposalDbRecord.CreateTs + firstProposalDbRecord.PublicitySecond
 
 	for _, job := range proposalCronJobs {
 		if job.NextExecTs > proposalExecTs {
@@ -490,14 +493,14 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposalId uint, startPo
 
 	// Check whether the proposal has associated project
 	var associatedProject *model.Project
-	budgetsResponse := make([]*project.BudgetResp, 0)
+	budgetsResponse := make([]*project.ProjectBudgetResp, 0)
 	err = db.Where(&model.Project{SIP: fmt.Sprintf("%d", proposal.Sip)}).First(&associatedProject).Error
 	if err == nil {
 		budgetRecords, err := model.ProjectBudgetModel.ListByProjectId(db, associatedProject.ID)
 		if err != nil {
 			log.Error().Msgf("fetch project budget error: %+v", err)
 		} else {
-			budgetsResponse = project.GenerateBudgetResp(budgetRecords)
+			budgetsResponse = project.GenerateProjectBudgetResp(budgetRecords)
 		}
 	}
 
