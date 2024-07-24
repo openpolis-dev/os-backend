@@ -359,7 +359,7 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposalId uint, startPo
 		return nil, err
 	}
 
-	firstProposalDbRecord, err := GetFirstProposalWithRecordId(db, proposal.ProposalRecordId)
+	firstProposalDbRecord, err := GetFirstProposalWithRecordId(db, &proposal)
 	if err != nil {
 		log.Error().Msgf("get first proposal record error: %+v", err)
 		return nil, err
