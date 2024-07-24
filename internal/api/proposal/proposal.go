@@ -193,7 +193,7 @@ func Update(ctx *gin.Context) {
 		return
 	}
 
-	firstProposalRcd, err := GetFirstProposalWithRecordId(db, proposalRcd.ProposalRecordId)
+	firstProposalRcd, err := GetFirstProposalWithRecordId(db, proposalRcd)
 	if err != nil {
 		log.Error().Msgf("get first proposal with record id %s error: %+v", proposalRcd.ProposalRecordId, err)
 		sdk.LogUserSideError(ctx, err)
