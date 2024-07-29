@@ -359,7 +359,6 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposalId uint, startPo
 		return nil, err
 	}
 
-	firstProposalDbRecord, err := GetFirstProposalWithRecordId(db, &proposal)
 	if err != nil {
 		log.Error().Msgf("get first proposal record error: %+v", err)
 		return nil, err
@@ -468,8 +467,6 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposalId uint, startPo
 		return nil, err
 	}
 
-	proposalPublicityTs := firstProposalDbRecord.CreateTs + firstProposalDbRecord.PublicitySecond
-
 	for _, job := range proposalCronJobs {
 		if job.NextExecTs > proposalExecTs {
 			proposalExecTs = job.NextExecTs
@@ -539,7 +536,7 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposalId uint, startPo
 		TemplateName:             templateName,
 		IsInstantExecution:       proposal.PendingExecutionSecond == 0,
 		ExecutionTs:              proposalExecTs,
-		PublicityTs:              proposalPublicityTs,
+		PublicityTs:              proposal.VoteStartTsMs,
 		AssociatedProjectBudgets: budgetsResponse,
 	}, nil
 }

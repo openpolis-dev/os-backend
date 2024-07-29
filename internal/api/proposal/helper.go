@@ -323,6 +323,7 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 		proposalRcd.IsBasedOnCustomTemplate = dbProposalRcd.IsBasedOnCustomTemplate
 		proposalRcd.PublicitySecond = dbProposalRcd.PublicitySecond
 		proposalRcd.PendingExecutionSecond = dbProposalRcd.PendingExecutionSecond
+		proposalRcd.VoteStartTsMs = dbProposalRcd.VoteStartTsMs
 		proposalRcd.VoteDurationSecond = dbProposalRcd.VoteDurationSecond
 		proposalRcd.VoteDurationSecond = dbProposalRcd.VoteDurationSecond
 		proposalRcd.AssociateProposalId = reqData.CreateProjectProposalId
@@ -666,19 +667,10 @@ func SaveProposalToMetaforo(db *gorm.DB, dbProposalId uint, voteType int, metafo
 			return err
 		}
 
-		firstProposalDbRecord, err := GetFirstProposalWithRecordId(db, &origProposalRecord)
-		if err != nil {
-			log.Error().Msgf("get first proposal record error: %+v", err)
-			return err
-		}
-
-		log.Error().Msgf("TTT: First proposal: %+v", firstProposalDbRecord)
-		log.Error().Msgf("TTT: Updated proposal: %+v", updatedProposalRecord)
-
 		// Get vote record from original record and update the timestamp
 		// The updated vote record will be saved by response in GetProposal function
-		voteStartTime := time.Unix(firstProposalDbRecord.CreateTs, 0).UTC().Add(firstProposalDbRecord.PublicityDuration())
-		voteEndTime := time.Unix(firstProposalDbRecord.CreateTs, 0).UTC().Add(firstProposalDbRecord.PublicityDuration() + firstProposalDbRecord.VoteDuration())
+		voteStartTime = time.Unix(origProposalRecord.VoteStartTsMs, 0).UTC()
+		voteEndTime = time.Unix(origProposalRecord.VoteStartTsMs, 0).UTC().Add(origProposalRecord.VoteDuration())
 		log.Debug().Msgf("Resubmit withdraw propoesal, vote start time: %s, vote end time: %s", voteStartTime.Format(time.RFC3339), voteEndTime.Format(time.RFC3339))
 
 		if voteStartTime.Before(time.Now().UTC()) {
@@ -763,6 +755,7 @@ func SaveProposalToMetaforo(db *gorm.DB, dbProposalId uint, voteType int, metafo
 		Updates(&model.Proposal{
 			ProposalRecordId: model.BuildProposalRecordIdFromMetaforoThreadId(metaforoProposalResponse.Thread.Id),
 			State:            int(model.ProposalStateDraft),
+			VoteStartTsMs:    voteStartTime.UTC().UnixMilli(),
 		}).Error; err != nil {
 		log.Error().Msgf("update proposal error: %+v", err)
 		return err

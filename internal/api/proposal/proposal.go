@@ -194,16 +194,7 @@ func Update(ctx *gin.Context) {
 	}
 
 	if proposalRcd.ProposalRecordId != "" {
-		// This is a withdrawn proposal, need check the publicity ts
-		firstProposalRcd, err := GetFirstProposalWithRecordId(db, proposalRcd)
-		if err != nil {
-			log.Error().Msgf("get first proposal with record id %s error: %+v", proposalRcd.ProposalRecordId, err)
-			sdk.LogUserSideError(ctx, err)
-			ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("get proposal error")))
-			return
-		}
-
-		if firstProposalRcd.CreateTs+firstProposalRcd.PublicitySecond < time.Now().Unix() {
+		if proposalRcd.VoteStartTsMs < time.Now().Unix() {
 			err = fmt.Errorf("proposal id %s has expired the publicity time, can't be updated by user %+v", proposalIdStr, user.Wallet)
 			log.Error().Msg(err.Error())
 			sdk.LogUserSideError(ctx, err)
