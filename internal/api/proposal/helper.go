@@ -857,7 +857,7 @@ func BuildMetaforoVoteFormDataBytes(db *gorm.DB, proposalId uint, voteGates []*m
 			Options:            mfVoteOpts,
 			Type:               "1",
 			Title:              voteRecords[idx].Title,
-			ShowType:           "1",
+			ShowType:           "3", // 1 - always visible, 2 - show after vote, 3 - show after vote closed
 			ShowResult:         true,
 			Period:             "1",
 			CloseAt:            endTime.Format(time.RFC3339),
