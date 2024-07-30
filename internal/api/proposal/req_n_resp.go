@@ -359,11 +359,6 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposalId uint, startPo
 		return nil, err
 	}
 
-	if err != nil {
-		log.Error().Msgf("get first proposal record error: %+v", err)
-		return nil, err
-	}
-
 	var editHistoryRecords []*FrontendProposalEditHistoryRecord
 	var frontendCommentsRecords []*FrontendProposalCommentRecord
 	var votes []metaforo.PollRecord
@@ -536,7 +531,7 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposalId uint, startPo
 		TemplateName:             templateName,
 		IsInstantExecution:       proposal.PendingExecutionSecond == 0,
 		ExecutionTs:              proposalExecTs,
-		PublicityTs:              proposal.VoteStartTsMs,
+		PublicityTs:              proposal.VoteStartTs,
 		AssociatedProjectBudgets: budgetsResponse,
 	}, nil
 }

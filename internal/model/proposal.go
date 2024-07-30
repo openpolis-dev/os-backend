@@ -136,11 +136,11 @@ type Proposal struct {
 	VoteType    int
 	VoteRecords []*ProposalVoteRecord
 
-	// VoteStartTsMs saves the timestamp that vote will be started
+	// VoteStartTs saves the timestamp that vote will be started
 	// The reason for using this separated variable since the vote time for proposal should not be changed after published
 	// But in current code, the vote will be pushed to one year later after proposal been withdrawn
 	// And some proposals will be saved multiple times before saving to metaforo, so the createTs will cause error
-	VoteStartTsMs int64
+	VoteStartTs int64
 
 	IsHidden bool
 

@@ -194,7 +194,7 @@ func Update(ctx *gin.Context) {
 	}
 
 	if proposalRcd.ProposalRecordId != "" {
-		if proposalRcd.VoteStartTsMs < time.Now().Unix() {
+		if proposalRcd.VoteStartTs < time.Now().Unix() {
 			err = fmt.Errorf("proposal id %s has expired the publicity time, can't be updated by user %+v", proposalIdStr, user.Wallet)
 			log.Error().Msg(err.Error())
 			sdk.LogUserSideError(ctx, err)
