@@ -862,7 +862,7 @@ func BuildMetaforoVoteFormDataBytes(db *gorm.DB, proposalId uint, voteGates []*m
 			Period:             "1",
 			CloseAt:            endTime.Format(time.RFC3339),
 			VoteStartAt:        startTime.Format(time.RFC3339),
-			Max:                1,
+			Max:                1, // How many options all use to select
 			PollCategory:       "0",
 			LastCategroyChange: "0",
 			Quorum:             false,
