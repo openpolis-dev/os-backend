@@ -53,6 +53,7 @@ type CreateOrUpdateProposalData struct {
 	SubmitToMetaforo        bool                          `json:"submit_to_metaforo"`
 	EditorType              int                           `json:"editor_type"`
 	VoteOptions             []string                      `json:"vote_options"`
+	IsMultipleVote          bool                          `json:"is_multiple_vote"`
 	CreateProjectProposalId uint                          `json:"create_project_proposal_id"`
 }
 
@@ -211,6 +212,8 @@ type FrontendProposalDetailRecord struct {
 	VoteGate *FrontendVoteGateResponse `json:"vote_gate"`
 
 	VoteType int `json:"vote_type"`
+
+	IsMultipleVote bool `json:"is_multiple_vote"`
 
 	OsVoteOptions []*FrontendProposalVoteOptionRecord `json:"os_vote_options"`
 
@@ -526,6 +529,7 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposalId uint, startPo
 		Votes:                    votes,
 		OsVoteOptions:            frontendVoteOptions,
 		VoteType:                 proposal.VoteType,
+		IsMultipleVote:           votes[0].Max > 1,
 		CreateTs:                 proposal.CreateTs,
 		IsBasedOnCustomTemplate:  proposal.IsBasedOnCustomTemplate,
 		TemplateName:             templateName,

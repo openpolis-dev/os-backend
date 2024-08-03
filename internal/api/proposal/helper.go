@@ -592,7 +592,7 @@ func SaveProposalVoteOptionRecords(tx *gorm.DB, proposalId uint, voteType int, c
 // Otherwise, copy the proposal to new record with ver+1, update the metaforo data, and save back as a new record,
 // and the metaforo API invoked here is updateProposal.
 // TODO: Refactor this function
-func SaveProposalToMetaforo(db *gorm.DB, dbProposalId uint, voteType int, metaforoAccessToken string, EditorType int, metaforoGroupName string) error {
+func SaveProposalToMetaforo(db *gorm.DB, dbProposalId uint, voteType int, metaforoAccessToken string, EditorType int, isMultipleVote bool, metaforoGroupName string) error {
 	if TryAcquireUpdateProposalDbLockOrReturn(dbProposalId) == false {
 		err := fmt.Errorf("proposal %d is updating", dbProposalId)
 		log.Error().Msg(err.Error())
@@ -715,7 +715,7 @@ func SaveProposalToMetaforo(db *gorm.DB, dbProposalId uint, voteType int, metafo
 			return err
 		}
 
-		voteFormBytes, err := BuildMetaforoVoteFormDataBytes(db, dbProposalId, voteGates, voteStartTime, voteEndTime)
+		voteFormBytes, err := BuildMetaforoVoteFormDataBytes(db, dbProposalId, voteGates, voteStartTime, voteEndTime, isMultipleVote)
 		if err != nil {
 			log.Error().Msgf("build metaforoProposal vote data error: %+v", err)
 			return err
@@ -799,7 +799,7 @@ func prepareOsVoteOptions(voteType int, customVoteOptions []string) []string {
 // Returns:
 // - []byte: The byte representation of the vote form data.
 // - error: An error if there was a problem generating the byte representation.
-func BuildMetaforoVoteFormDataBytes(db *gorm.DB, proposalId uint, voteGates []*model.ProposalVoteGate, startTime time.Time, endTime time.Time) ([]byte, error) {
+func BuildMetaforoVoteFormDataBytes(db *gorm.DB, proposalId uint, voteGates []*model.ProposalVoteGate, startTime time.Time, endTime time.Time, isMultiple bool) ([]byte, error) {
 	voteRecords, err := db_agent.GetProposalVoteRecord(db, proposalId)
 	if err != nil {
 		log.Error().Msgf("fetch proposal vote record error: %+v", err)
@@ -853,6 +853,11 @@ func BuildMetaforoVoteFormDataBytes(db *gorm.DB, proposalId uint, voteGates []*m
 			continue
 		}
 
+		voteMax := 1
+		if isMultiple {
+			voteMax = len(mfVoteOpts)
+		}
+
 		voteData = append(voteData, &metaforo.NewVoteFormRequest{
 			Options:            mfVoteOpts,
 			Type:               "1",
@@ -862,7 +867,7 @@ func BuildMetaforoVoteFormDataBytes(db *gorm.DB, proposalId uint, voteGates []*m
 			Period:             "1",
 			CloseAt:            endTime.Format(time.RFC3339),
 			VoteStartAt:        startTime.Format(time.RFC3339),
-			Max:                1, // How many options all use to select
+			Max:                voteMax, // How many options all use to select
 			PollCategory:       "0",
 			LastCategroyChange: "0",
 			Quorum:             false,
