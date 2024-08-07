@@ -87,7 +87,7 @@ func WidgetData(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, api.Success(rcds))
 		return
 	case WidgetDataTypeCommonProjectList:
-		rcds, err := model.ProjectModel.GetCommonProjectsOwnedByUser(db, user.Wallet)
+		rcds, err := model.ProjectModel.GetCommonProjects(db)
 		if err != nil {
 			log.Error().Err(err).Msg("query project list error")
 			sdk.LogServerErrorToSentry(ctx, err)

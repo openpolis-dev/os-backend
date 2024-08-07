@@ -186,6 +186,8 @@ func (*projectModel) GetCommonProjectsOwnedByUser(db *gorm.DB, sponsor string) (
 	querySeg := db.Table("projects").
 		Where("category IN ?", []string{internal.ManuallyCreatedCommonProjectCategory, internal.AutomationCreatedCommonProjectCategory}).
 		Where("sponsors ILIKE '[\"%s\"%%'", sponsor)
+func (*projectModel) GetCommonProjects(db *gorm.DB) (data []*Project, err error) {
+	querySeg := db.Table("projects").Where("category IN ?", []string{internal.ManuallyCreatedCommonProjectCategory, internal.AutomationCreatedCommonProjectCategory})
 	data, err = QueryRows[Project](querySeg, nil)
 	if err != nil {
 		return
