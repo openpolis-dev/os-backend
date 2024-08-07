@@ -182,6 +182,17 @@ func (*projectModel) ListBySponsor(db *gorm.DB, sponsor string, status string, p
 	return data, total, nil
 }
 
+func (*projectModel) GetCommonProjectsOwnedByUser(db *gorm.DB, sponsor string) (data []*Project, err error) {
+	querySeg := db.Table("projects").
+		Where("category IN ?", []string{internal.ManuallyCreatedCommonProjectCategory, internal.AutomationCreatedCommonProjectCategory}).
+		Where("sponsors ILIKE '[\"%s\"%%'", sponsor)
+	data, err = QueryRows[Project](querySeg, nil)
+	if err != nil {
+		return
+	}
+	return data, nil
+}
+
 // SetBudget set budget record directly. Only totalAmount will be passed in.
 // If the budget is not existing, a new record will be created with total and remain amount all set to passed in value
 // If the budget is already existing, the total will be updated to passed in value, and the remain will also be updated by the delta

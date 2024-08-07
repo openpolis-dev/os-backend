@@ -54,6 +54,9 @@ const (
 	ProposalNumeric120 = "120%"
 
 	CityHallEvaluationTemplateName = "市政厅岗位评估"
+
+	ManuallyCreatedCommonProjectCategory   = "公共项目"
+	AutomationCreatedCommonProjectCategory = "节点共识大会提案"
 )
 
 // ProposalDecisionVoteOptions is used for proposal that requires a decision.
