@@ -182,10 +182,19 @@ func (*projectModel) ListBySponsor(db *gorm.DB, sponsor string, status string, p
 	return data, total, nil
 }
 
-func (*projectModel) GetCommonProjectsOwnedByUser(db *gorm.DB, sponsor string) (data []*Project, err error) {
-	querySeg := db.Table("projects").
-		Where("category IN ?", []string{internal.ManuallyCreatedCommonProjectCategory, internal.AutomationCreatedCommonProjectCategory}).
-		Where("sponsors ILIKE '[\"%s\"%%'", sponsor)
+func (*projectModel) GetClosableProject(db *gorm.DB, sponsor string) (data []*Project, err error) {
+	querySeg := db.Table("projects").Where("status IN ?", []string{string(ProjectStatusOpen), ProjectStatusCloseFailed})
+	if sponsor != "" {
+		// Query projects which first sponsor is given wallet
+		querySeg = querySeg.Where(fmt.Sprintf("sponsors ILIKE '[\"%s\"%%'", sponsor))
+	}
+	data, err = QueryRows[Project](querySeg, nil)
+	if err != nil {
+		return
+	}
+	return data, nil
+}
+
 func (*projectModel) GetCommonProjects(db *gorm.DB) (data []*Project, err error) {
 	querySeg := db.Table("projects").Where("category IN ?", []string{internal.ManuallyCreatedCommonProjectCategory, internal.AutomationCreatedCommonProjectCategory})
 	data, err = QueryRows[Project](querySeg, nil)
