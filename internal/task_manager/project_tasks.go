@@ -6,6 +6,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"github.com/theseed-labs/os-backend/internal"
+	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/storage"
@@ -153,5 +154,5 @@ func CloseProjectTask(db *gorm.DB, job *model.CronJob, jobParams string) {
 
 // UpdateProjectOwner sets the first sponsor of the project to given data
 func UpdateProjectOwner(db *gorm.DB, job *model.CronJob, jobParams string) {
-
+	api.PrintStructAsJson(jobParams, "TTT: update project owner job params")
 }
