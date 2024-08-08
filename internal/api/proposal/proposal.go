@@ -658,7 +658,7 @@ func GetProposalsUsedForCreatingProjects(ctx *gin.Context) {
 		db.Model(&pCategory).Where("id = ?", categoryId).First(&pCategory)
 		if pCategory.CategoryIdForCloseProject != 0 {
 			tmplQueryParams.ProposalCategoryID = pCategory.CategoryIdForCloseProject
-			if pCategory.Name == internal.AutomationCreatedCommonProjectCategory {
+			if pCategory.Name == internal.AutomationCloseCommonProjectCategory {
 				// This is a closing project proposal for common project, change to query by project owner
 				queryingCommonProjectsByOwner = true
 			}
@@ -682,7 +682,7 @@ func GetProposalsUsedForCreatingProjects(ctx *gin.Context) {
 			return
 		}
 
-		proposalIds := []string{}
+		var proposalIds []string
 		for _, project := range closableCommonProjects {
 			proposalIds = append(proposalIds, project.Proposals...)
 		}
@@ -695,11 +695,16 @@ func GetProposalsUsedForCreatingProjects(ctx *gin.Context) {
 			return
 		}
 
-		querySql = fmt.Sprintf("%s WHERE p.id IN (%s) order by sip desc, create_ts desc",
-			ListProposalsSQLForGettingCreatingProjectProposal,
-			lo.Map(proposalIds, func(proposalId string, _ int) string { return fmt.Sprintf("'%s'", proposalId) }),
-		)
+		if len(proposalIds) == 0 {
+			log.Debug().Msgf("no proposals of common project found for user %s", user.Wallet)
+			ctx.JSON(http.StatusOK, api.Success([]*FrontendProposalListRecord{}))
+			return
+		}
 
+		querySql = fmt.Sprintf("%s WHERE p.id IN %s order by sip desc, create_ts desc",
+			ListProposalsSQLForGettingCreatingProjectProposal,
+			fmt.Sprintf("(%s)", strings.Join(proposalIds, ",")),
+		)
 	} else {
 		err := db.Model(&model.ProposalTemplate{}).Where(tmplQueryParams).Pluck("id", &newProjectTemplateIds).Error
 		if err != nil {

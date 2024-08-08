@@ -57,6 +57,7 @@ const (
 
 	ManuallyCreatedCommonProjectCategory   = "公共项目"
 	AutomationCreatedCommonProjectCategory = "节点共识大会提案"
+	AutomationCloseCommonProjectCategory   = "市政厅联席会议提案"
 )
 
 // ProposalDecisionVoteOptions is used for proposal that requires a decision.
