@@ -636,11 +636,14 @@ func GetProposalsUsedForCreatingProjects(ctx *gin.Context) {
 	user, _, db, _ := api.ForContext(ctx)
 	categoryIdStr := ctx.Query("category_id")
 
-	// Get template id which match the
 	var newProjectTemplateIds []uint
 	tmplQueryParams := model.ProposalTemplate{
 		Type: model.ProposalTemplateTypeNewProject,
 	}
+
+	queryingCommonProjectsByOwner := false
+
+	// Some proposal templates uses another category ID for closing project proposal.
 	if categoryIdStr != "" {
 		categoryId, err := strconv.Atoi(categoryIdStr)
 		if err != nil {
@@ -655,36 +658,75 @@ func GetProposalsUsedForCreatingProjects(ctx *gin.Context) {
 		db.Model(&pCategory).Where("id = ?", categoryId).First(&pCategory)
 		if pCategory.CategoryIdForCloseProject != 0 {
 			tmplQueryParams.ProposalCategoryID = pCategory.CategoryIdForCloseProject
+			if pCategory.Name == internal.AutomationCreatedCommonProjectCategory {
+				// This is a closing project proposal for common project, change to query by project owner
+				queryingCommonProjectsByOwner = true
+			}
 		} else {
 			tmplQueryParams.ProposalCategoryID = uint(categoryId)
 		}
 	}
 
-	err := db.Model(&model.ProposalTemplate{}).Where(tmplQueryParams).Pluck("id", &newProjectTemplateIds).Error
-	if err != nil {
-		log.Error().Msgf("get create project template id error: err: %+v", err)
-		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get proposal error")))
-		return
-	}
+	querySql := ""
 
-	if len(newProjectTemplateIds) == 0 {
-		log.Warn().Msgf("no opening project template found for category: %s", categoryIdStr)
-		ctx.JSON(http.StatusOK, api.Success([]*FrontendProposalListRecord{}))
-		return
-	}
+	if queryingCommonProjectsByOwner {
+		closableCommonProjects, err := model.ProjectModel.GetClosableProject(db, user.Wallet, []string{
+			internal.ManuallyCreatedCommonProjectCategory,
+			internal.AutomationCreatedCommonProjectCategory,
+		})
 
-	querySql := fmt.Sprintf("%s WHERE applicant = '%s' AND proposal_template_id IN (%s) AND state = %d AND p.sip != 0 AND projects.status IN (%s) order by sip desc, create_ts desc",
-		ListProposalsSQLForGettingCreatingProjectProposal,
-		common.FormatUserWallet(user.Wallet),
-		strings.Join(lo.Map(newProjectTemplateIds, func(tmpId uint, _ int) string {
-			return fmt.Sprintf("%d", tmpId)
-		}), ","),
-		model.ProposalStateExecuted,
-		strings.Join(lo.Map([]model.ProjectStatus{model.ProjectStatusOpen, model.ProjectStatusCloseFailed}, func(projectStatus model.ProjectStatus, _ int) string {
-			return fmt.Sprintf("'%s'", projectStatus)
-		}), ","),
-	)
+		if err != nil {
+			log.Error().Msgf("get closable common project error: %+v", err)
+			sdk.LogServerErrorToSentry(ctx, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get proposal error")))
+			return
+		}
+
+		proposalIds := []string{}
+		for _, project := range closableCommonProjects {
+			proposalIds = append(proposalIds, project.Proposals...)
+		}
+
+		err = db.Model(&model.Proposal{}).Where("id IN (?)", proposalIds).Error
+		if err != nil {
+			log.Error().Msgf("get create project template id error: err: %+v", err)
+			sdk.LogServerErrorToSentry(ctx, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get proposal error")))
+			return
+		}
+
+		querySql = fmt.Sprintf("%s WHERE p.id IN (%s) order by sip desc, create_ts desc",
+			ListProposalsSQLForGettingCreatingProjectProposal,
+			lo.Map(proposalIds, func(proposalId string, _ int) string { return fmt.Sprintf("'%s'", proposalId) }),
+		)
+
+	} else {
+		err := db.Model(&model.ProposalTemplate{}).Where(tmplQueryParams).Pluck("id", &newProjectTemplateIds).Error
+		if err != nil {
+			log.Error().Msgf("get create project template id error: err: %+v", err)
+			sdk.LogServerErrorToSentry(ctx, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get proposal error")))
+			return
+		}
+
+		if len(newProjectTemplateIds) == 0 {
+			log.Warn().Msgf("no opening project template found for category: %s", categoryIdStr)
+			ctx.JSON(http.StatusOK, api.Success([]*FrontendProposalListRecord{}))
+			return
+		}
+
+		querySql = fmt.Sprintf("%s WHERE applicant = '%s' AND proposal_template_id IN (%s) AND state = %d AND p.sip != 0 AND projects.status IN (%s) order by sip desc, create_ts desc",
+			ListProposalsSQLForGettingCreatingProjectProposal,
+			common.FormatUserWallet(user.Wallet),
+			strings.Join(lo.Map(newProjectTemplateIds, func(tmpId uint, _ int) string {
+				return fmt.Sprintf("%d", tmpId)
+			}), ","),
+			model.ProposalStateExecuted,
+			strings.Join(lo.Map([]model.ProjectStatus{model.ProjectStatusOpen, model.ProjectStatusCloseFailed}, func(projectStatus model.ProjectStatus, _ int) string {
+				return fmt.Sprintf("'%s'", projectStatus)
+			}), ","),
+		)
+	}
 
 	// The passed in query seg has already sorted by sip desc, no need to specify it in listBySip param
 	_, resultRows, err := generateFrontendProposalRecords(db, querySql, nil, false)

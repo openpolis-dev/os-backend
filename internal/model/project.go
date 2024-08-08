@@ -139,10 +139,6 @@ func (*projectModel) ListWithSearch(db *gorm.DB, status string, keywords *string
 
 func (*projectModel) ListBySponsorOrMember(db *gorm.DB, wallet string, page *gormfind.Page) (data []*Project, total int64, err error) {
 	w := fmt.Sprintf("%%\"%s\"%%", wallet) // value is: `%"0x123"%`
-	// MySQL version
-	//querySeg := db.Table("projects").Where("sponsors LIKE ?", w).Or("members LIKE ?", w)
-
-	// PgVersion
 	querySeg := db.Table("projects").Where("is_special = false").Where(
 		db.Table("projects").Where(fmt.Sprintf("sponsors::text ILIKE '%%%s%%'", w)).Or(fmt.Sprintf("members::text ILIKE '%%%s%%'", w)),
 	)
@@ -182,12 +178,19 @@ func (*projectModel) ListBySponsor(db *gorm.DB, sponsor string, status string, p
 	return data, total, nil
 }
 
-func (*projectModel) GetClosableProject(db *gorm.DB, sponsor string) (data []*Project, err error) {
+// GetClosableProject get projects which can be closed, which means the project status should be open or close failed,
+// If passing sponsor wallet, only the projects which first sponsor is given wallet will be returned
+// If passing categories, only the projects with given categories will be returned
+func (*projectModel) GetClosableProject(db *gorm.DB, sponsorWallet string, categories []string) (data []*Project, err error) {
 	querySeg := db.Table("projects").Where("status IN ?", []string{string(ProjectStatusOpen), ProjectStatusCloseFailed})
-	if sponsor != "" {
+	if sponsorWallet != "" {
 		// Query projects which first sponsor is given wallet
-		querySeg = querySeg.Where(fmt.Sprintf("sponsors ILIKE '[\"%s\"%%'", sponsor))
+		querySeg = querySeg.Where(fmt.Sprintf("sponsors ILIKE '[\"%s\"%%'", sponsorWallet))
 	}
+	if len(categories) > 0 {
+		querySeg = querySeg.Where("category IN ?", categories)
+	}
+
 	data, err = QueryRows[Project](querySeg, nil)
 	if err != nil {
 		return
