@@ -99,6 +99,7 @@ const TaskRefreshVotingProposalVoteInfoCronExpr = "0 * * * * * *" // Launch the 
 const (
 	TaskCreateProject        = "project/create"
 	TaskCloseProject         = "project/close"
+	TaskUpdateProjectOwner   = "project/update_owner"
 	TaskCreateGuild          = "guild/create"
 	TaskCloseGuild           = "guild/close"
 	TaskRewardNewApplication = "reward/new_application"

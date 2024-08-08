@@ -150,3 +150,8 @@ func CloseProjectTask(db *gorm.DB, job *model.CronJob, jobParams string) {
 	job.State = model.CronJobStateDone
 	db.Updates(&job)
 }
+
+// UpdateProjectOwner sets the first sponsor of the project to given data
+func UpdateProjectOwner(db *gorm.DB, job *model.CronJob, jobParams string) {
+
+}
