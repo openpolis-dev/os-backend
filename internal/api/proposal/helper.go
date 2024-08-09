@@ -45,7 +45,6 @@ type budgetComponentDataP1 struct {
 	Applicant  string `json:"applicant"`
 	ProposalId string `json:"proposal_id"`
 	AssetInfo  struct {
-		Id   int    `json:"id"`
 		Name string `json:"name"`
 	} `json:"typeTest"`
 }
@@ -80,7 +79,6 @@ type budgetComponentData struct {
 		Description string `json:"description"`
 		Proportion  string `json:"proportion"`
 		AssetInfo   struct {
-			//Id   int    `json:"id"`	// Id field is not using now, comment it out
 			Name string `json:"name"`
 		} `json:"typeTest"`
 	} `json:"budgetList"`

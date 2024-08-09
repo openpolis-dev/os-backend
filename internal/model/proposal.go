@@ -586,7 +586,6 @@ type ComponentMotivationData struct {
 type ComponentMotivationRewardRecord struct {
 	Address   string `json:"address"`
 	AssetInfo struct {
-		Id   int    `json:"id"`
 		Name string `json:"name"`
 	} `json:"assetInfo"`
 	Amount      string `json:"amount"`
