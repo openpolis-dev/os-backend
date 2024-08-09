@@ -3,6 +3,7 @@ package task_manager
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/rs/zerolog/log"
 	"github.com/theseed-labs/os-backend/internal"
@@ -28,6 +29,14 @@ type CloseProjectParam struct {
 		Id   int    `json:"id"`
 		Name string `json:"name"`
 	} `json:"project_info"`
+}
+
+type UpdateProjectOwnerParam struct {
+	NewAdminWallet string `json:"admin_wallet"`
+	ProjectInfo    struct {
+		Id   int    `json:"id"`
+		Name string `json:"name"`
+	} `json:"common_project"`
 }
 
 func CreateProjectTask(db *gorm.DB, job *model.CronJob, jobParams string) {
@@ -154,5 +163,66 @@ func CloseProjectTask(db *gorm.DB, job *model.CronJob, jobParams string) {
 
 // UpdateProjectOwner sets the first sponsor of the project to given data
 func UpdateProjectOwner(db *gorm.DB, job *model.CronJob, jobParams string) {
-	api.PrintStructAsJson(jobParams, "TTT: update project owner job params")
+	log.Debug().Msgf("start update project owner task: %+v", job)
+	err := db.Model(&job).Updates(model.CronJob{State: model.CronJobStateRunning}).Error
+	if err != nil {
+		log.Warn().Msgf("update cron job error: %+v", err)
+		return
+	}
+
+	execResult := ""
+	jobFailed := false
+
+	var params UpdateProjectOwnerParam
+	err = json.Unmarshal([]byte(jobParams), &params)
+
+	api.PrintStructAsJson(jobParams, "TTT: jobParams")
+
+	api.PrintStructAsJson(params, "TTT: params")
+
+	if err != nil {
+		log.Warn().Msgf("close project job params error: %+v", err)
+		execResult = err.Error()
+		jobFailed = true
+	} else {
+		err = db.Transaction(func(tx *gorm.DB) error {
+			var existingSponsors string
+			err := tx.Model(model.Project{}).Where("id = ?", params.ProjectInfo.Id).Pluck("sponsors", &existingSponsors).Error
+			if err != nil {
+				log.Warn().Msgf("get project with id %d error: %+v", params.ProjectInfo.Id, err)
+				return err
+			}
+
+			var sponsorsList []string
+			if existingSponsors != "" {
+				sponsorsList = strings.Split(existingSponsors, ",")
+				if len(sponsorsList) > 0 {
+					sponsorsList[0] = params.NewAdminWallet
+				} else {
+					sponsorsList = append(sponsorsList, params.NewAdminWallet)
+				}
+			} else {
+				log.Warn().Msgf("project with id %d has no sponsor", params.ProjectInfo.Id)
+				sponsorsList = append(sponsorsList, params.NewAdminWallet)
+			}
+
+			err = tx.Model(model.Project{}).Where("id = ?", params.ProjectInfo.Id).Update("sponsors", strings.Join(sponsorsList, ",")).Error
+			if err != nil {
+				return err
+			}
+			return nil
+		})
+
+		if err != nil {
+			log.Warn().Msgf("update project owner error: %+v", err)
+			execResult = err.Error()
+			jobFailed = true
+		}
+	}
+
+	job.LastExecTs = model.GetCurrentUtcEpochSecond()
+	job.LastExecResult = execResult
+	job.LastExecutionFailed = jobFailed
+	job.State = model.CronJobStateDone
+	db.Updates(&job)
 }
