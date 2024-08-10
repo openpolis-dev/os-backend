@@ -177,11 +177,12 @@ func (t *TaskManager) TaskDispatcher() {
 		//case internal.TaskRewardNewApplication:
 		//case internal.TaskCreateGuild:
 		case internal.TaskCloseProject:
-			api.PrintStructAsJson(task, "TTT: Close project")
 			go CloseProjectTask(t.DatabaseClient, task, task.JobParams)
 		case internal.TaskCreateProject:
-			api.PrintStructAsJson(task, "TTT: Create project")
 			go CreateProjectTask(t.DatabaseClient, task, task.JobParams)
+		case internal.TaskUpdateProjectOwner:
+			api.PrintStructAsJson(task, "TTT: Update project owner")
+			go UpdateProjectOwner(t.DatabaseClient, task, task.JobParams)
 		default:
 			// Handle unknown task
 			log.Warn().Msgf("unknown task name: %s task detail: %+v", task.HandlerName, task)
