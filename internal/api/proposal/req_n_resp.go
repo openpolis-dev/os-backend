@@ -529,7 +529,7 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposalId uint, startPo
 		Votes:                    votes,
 		OsVoteOptions:            frontendVoteOptions,
 		VoteType:                 proposal.VoteType,
-		IsMultipleVote:           votes[0].Max > 1,
+		IsMultipleVote:           len(votes) > 1 && votes[0].Max > 1,
 		CreateTs:                 proposal.CreateTs,
 		IsBasedOnCustomTemplate:  proposal.IsBasedOnCustomTemplate,
 		TemplateName:             templateName,
