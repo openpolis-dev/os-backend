@@ -207,7 +207,10 @@ func UpdateProjectOwner(db *gorm.DB, job *model.CronJob, jobParams string) {
 			}
 
 			sponsorsListStr := fmt.Sprintf("[\"%s\"]", strings.Join(sponsorsList, "\",\""))
-			err = tx.Model(model.Project{}).Where("id = ?", params.ProjectInfo.Id).Update("sponsors", sponsorsListStr).Error
+			err = tx.Model(model.Project{}).Where("id = ?", params.ProjectInfo.Id).
+				Update("sponsors", sponsorsListStr).
+				Update("contant_way", params.NewAdminWallet).
+				Error
 			if err != nil {
 				return err
 			}
