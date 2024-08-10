@@ -199,7 +199,10 @@ func (*projectModel) GetClosableProject(db *gorm.DB, sponsorWallet string, categ
 }
 
 func (*projectModel) GetCommonProjects(db *gorm.DB) (data []*Project, err error) {
-	querySeg := db.Table("projects").Where("category IN ?", []string{internal.ManuallyCreatedCommonProjectCategory, internal.AutomationCreatedCommonProjectCategory})
+	querySeg := db.Table("projects").
+		Where("category IN ? AND is_special = false AND status IN ?",
+			[]string{internal.ManuallyCreatedCommonProjectCategory, internal.AutomationCreatedCommonProjectCategory},
+			[]string{string(ProjectStatusOpen), ProjectStatusCloseFailed}).Order("create_ts desc")
 	data, err = QueryRows[Project](querySeg, nil)
 	if err != nil {
 		return
