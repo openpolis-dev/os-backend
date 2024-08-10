@@ -39,6 +39,8 @@ type UpdateProjectOwnerParam struct {
 	} `json:"common_project"`
 }
 
+// CreateProjectTask does not change proposal state since creating project template contains 3 components and does not
+// follow the component - action model like other templates. For other tasks, update the proposal state based on job execution result.
 func CreateProjectTask(db *gorm.DB, job *model.CronJob, jobParams string) {
 	log.Debug().Msgf("start create project task: %+v", job)
 	err := db.Model(&job).Updates(model.CronJob{State: model.CronJobStateRunning}).Error
@@ -195,7 +197,12 @@ func UpdateProjectOwner(db *gorm.DB, job *model.CronJob, jobParams string) {
 
 			var sponsorsList []string
 			if existingSponsors != "" {
-				sponsorsList = strings.Split(existingSponsors, ",")
+				err = json.Unmarshal([]byte(existingSponsors), &sponsorsList)
+				if err != nil {
+					log.Warn().Msgf("unmarshal sponsors error: %+v", err)
+					return err
+				}
+
 				if len(sponsorsList) > 0 {
 					sponsorsList[0] = params.NewAdminWallet
 				} else {
@@ -229,4 +236,10 @@ func UpdateProjectOwner(db *gorm.DB, job *model.CronJob, jobParams string) {
 	job.LastExecutionFailed = jobFailed
 	job.State = model.CronJobStateDone
 	db.Updates(&job)
+
+	if jobFailed {
+		db.Model(&model.Proposal{}).Where("id = ?", job.ProposalId).Update("state", model.ProposalStateExecutionFailed)
+	} else {
+		db.Model(&model.Proposal{}).Where("id = ?", job.ProposalId).Update("state", model.ProposalStateExecuted)
+	}
 }

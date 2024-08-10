@@ -9,7 +9,6 @@ import (
 	"github.com/go-co-op/gocron/v2"
 	"github.com/rs/zerolog/log"
 	"github.com/theseed-labs/os-backend/internal"
-	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/api/proposal"
 	"github.com/theseed-labs/os-backend/internal/config"
 	"github.com/theseed-labs/os-backend/internal/model"
@@ -172,7 +171,7 @@ func (t *TaskManager) TaskDispatcher() {
 			CreateAppBundleTaskFromMotivationComponent(t.DatabaseClient, task, task.JobParams, task.VoteType, task.VoteResult)
 		case internal.TaskUpdateProposalState:
 			log.Debug().Msgf("update proposal state task")
-			go UpdateProposalSateTask(t.DatabaseClient, task, task.JobParams)
+			go UpdateProposalStateTask(t.DatabaseClient, task, task.JobParams)
 		//case internal.TaskCloseGuild:
 		//case internal.TaskRewardNewApplication:
 		//case internal.TaskCreateGuild:
@@ -181,7 +180,6 @@ func (t *TaskManager) TaskDispatcher() {
 		case internal.TaskCreateProject:
 			go CreateProjectTask(t.DatabaseClient, task, task.JobParams)
 		case internal.TaskUpdateProjectOwner:
-			api.PrintStructAsJson(task, "TTT: Update project owner")
 			go UpdateProjectOwner(t.DatabaseClient, task, task.JobParams)
 		default:
 			// Handle unknown task

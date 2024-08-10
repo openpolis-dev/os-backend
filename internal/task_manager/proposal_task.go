@@ -147,7 +147,7 @@ func CreateVetoProposalTask(db *gorm.DB, job *model.CronJob, jobParams string) {
 	}
 }
 
-func UpdateProposalSateTask(db *gorm.DB, job *model.CronJob, jobParams string) {
+func UpdateProposalStateTask(db *gorm.DB, job *model.CronJob, jobParams string) {
 	log.Debug().Msgf("start updating proposal state task: %+v", job)
 	err := db.Model(&job).Updates(model.CronJob{State: model.CronJobStateRunning}).Error
 	if err != nil {
