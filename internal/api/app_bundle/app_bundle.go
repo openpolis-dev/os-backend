@@ -528,7 +528,7 @@ func CreateAppBundle(ctx *gin.Context) {
 
 		if newAppBundleReq.Entity == "project" && !isCityHallProject {
 			for assetName, usedAmount := range assetAmountUsedInThisRequest {
-				err = model.GuildBudgetModel.WithdrawSingleAsset(tx, newAppBundleReq.EntityId, assetName, usedAmount)
+				err = model.ProjectBudgetModel.WithdrawSingleAsset(tx, newAppBundleReq.EntityId, assetName, usedAmount)
 				if err != nil {
 					log.Error().Msgf("withdraw budget asset %s error: %+v", assetName, err)
 					return err

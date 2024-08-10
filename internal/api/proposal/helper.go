@@ -45,7 +45,6 @@ type budgetComponentDataP1 struct {
 	Applicant  string `json:"applicant"`
 	ProposalId string `json:"proposal_id"`
 	AssetInfo  struct {
-		Id   int    `json:"id"`
 		Name string `json:"name"`
 	} `json:"typeTest"`
 }
@@ -80,7 +79,6 @@ type budgetComponentData struct {
 		Description string `json:"description"`
 		Proportion  string `json:"proportion"`
 		AssetInfo   struct {
-			Id   int    `json:"id"`
 			Name string `json:"name"`
 		} `json:"typeTest"`
 	} `json:"budgetList"`
@@ -323,6 +321,7 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 		proposalRcd.IsBasedOnCustomTemplate = dbProposalRcd.IsBasedOnCustomTemplate
 		proposalRcd.PublicitySecond = dbProposalRcd.PublicitySecond
 		proposalRcd.PendingExecutionSecond = dbProposalRcd.PendingExecutionSecond
+		proposalRcd.VoteStartTs = dbProposalRcd.VoteStartTs
 		proposalRcd.VoteDurationSecond = dbProposalRcd.VoteDurationSecond
 		proposalRcd.VoteDurationSecond = dbProposalRcd.VoteDurationSecond
 		proposalRcd.AssociateProposalId = reqData.CreateProjectProposalId
@@ -591,7 +590,7 @@ func SaveProposalVoteOptionRecords(tx *gorm.DB, proposalId uint, voteType int, c
 // Otherwise, copy the proposal to new record with ver+1, update the metaforo data, and save back as a new record,
 // and the metaforo API invoked here is updateProposal.
 // TODO: Refactor this function
-func SaveProposalToMetaforo(db *gorm.DB, dbProposalId uint, voteType int, metaforoAccessToken string, EditorType int, metaforoGroupName string) error {
+func SaveProposalToMetaforo(db *gorm.DB, dbProposalId uint, voteType int, metaforoAccessToken string, EditorType int, isMultipleVote bool, metaforoGroupName string) error {
 	if TryAcquireUpdateProposalDbLockOrReturn(dbProposalId) == false {
 		err := fmt.Errorf("proposal %d is updating", dbProposalId)
 		log.Error().Msg(err.Error())
@@ -666,19 +665,10 @@ func SaveProposalToMetaforo(db *gorm.DB, dbProposalId uint, voteType int, metafo
 			return err
 		}
 
-		firstProposalDbRecord, err := GetFirstProposalWithRecordId(db, &origProposalRecord)
-		if err != nil {
-			log.Error().Msgf("get first proposal record error: %+v", err)
-			return err
-		}
-
-		log.Error().Msgf("TTT: First proposal: %+v", firstProposalDbRecord)
-		log.Error().Msgf("TTT: Updated proposal: %+v", updatedProposalRecord)
-
 		// Get vote record from original record and update the timestamp
 		// The updated vote record will be saved by response in GetProposal function
-		voteStartTime := time.Unix(firstProposalDbRecord.CreateTs, 0).UTC().Add(firstProposalDbRecord.PublicityDuration())
-		voteEndTime := time.Unix(firstProposalDbRecord.CreateTs, 0).UTC().Add(firstProposalDbRecord.PublicityDuration() + firstProposalDbRecord.VoteDuration())
+		voteStartTime = time.Unix(origProposalRecord.VoteStartTs, 0).UTC()
+		voteEndTime = time.Unix(origProposalRecord.VoteStartTs, 0).UTC().Add(origProposalRecord.VoteDuration())
 		log.Debug().Msgf("Resubmit withdraw propoesal, vote start time: %s, vote end time: %s", voteStartTime.Format(time.RFC3339), voteEndTime.Format(time.RFC3339))
 
 		if voteStartTime.Before(time.Now().UTC()) {
@@ -723,7 +713,7 @@ func SaveProposalToMetaforo(db *gorm.DB, dbProposalId uint, voteType int, metafo
 			return err
 		}
 
-		voteFormBytes, err := BuildMetaforoVoteFormDataBytes(db, dbProposalId, voteGates, voteStartTime, voteEndTime)
+		voteFormBytes, err := BuildMetaforoVoteFormDataBytes(db, dbProposalId, voteGates, voteStartTime, voteEndTime, isMultipleVote)
 		if err != nil {
 			log.Error().Msgf("build metaforoProposal vote data error: %+v", err)
 			return err
@@ -763,6 +753,7 @@ func SaveProposalToMetaforo(db *gorm.DB, dbProposalId uint, voteType int, metafo
 		Updates(&model.Proposal{
 			ProposalRecordId: model.BuildProposalRecordIdFromMetaforoThreadId(metaforoProposalResponse.Thread.Id),
 			State:            int(model.ProposalStateDraft),
+			VoteStartTs:      voteStartTime.UTC().Unix(),
 		}).Error; err != nil {
 		log.Error().Msgf("update proposal error: %+v", err)
 		return err
@@ -806,7 +797,7 @@ func prepareOsVoteOptions(voteType int, customVoteOptions []string) []string {
 // Returns:
 // - []byte: The byte representation of the vote form data.
 // - error: An error if there was a problem generating the byte representation.
-func BuildMetaforoVoteFormDataBytes(db *gorm.DB, proposalId uint, voteGates []*model.ProposalVoteGate, startTime time.Time, endTime time.Time) ([]byte, error) {
+func BuildMetaforoVoteFormDataBytes(db *gorm.DB, proposalId uint, voteGates []*model.ProposalVoteGate, startTime time.Time, endTime time.Time, isMultiple bool) ([]byte, error) {
 	voteRecords, err := db_agent.GetProposalVoteRecord(db, proposalId)
 	if err != nil {
 		log.Error().Msgf("fetch proposal vote record error: %+v", err)
@@ -860,16 +851,21 @@ func BuildMetaforoVoteFormDataBytes(db *gorm.DB, proposalId uint, voteGates []*m
 			continue
 		}
 
+		voteMax := 1
+		if isMultiple {
+			voteMax = len(mfVoteOpts)
+		}
+
 		voteData = append(voteData, &metaforo.NewVoteFormRequest{
 			Options:            mfVoteOpts,
 			Type:               "1",
 			Title:              voteRecords[idx].Title,
-			ShowType:           "1",
+			ShowType:           "3", // 1 - always visible, 2 - show after vote, 3 - show after vote closed
 			ShowResult:         true,
 			Period:             "1",
 			CloseAt:            endTime.Format(time.RFC3339),
 			VoteStartAt:        startTime.Format(time.RFC3339),
-			Max:                1,
+			Max:                voteMax, // How many options all use to select
 			PollCategory:       "0",
 			LastCategroyChange: "0",
 			Quorum:             false,

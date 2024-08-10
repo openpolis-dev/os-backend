@@ -21,7 +21,6 @@ type NewRewardDetail struct {
 	DetailedType     string `json:"issue"`
 	Comment          string `json:"memo"`
 	AssetInfo        struct {
-		Id   int    `json:"id"`
 		Name string `json:"name"`
 	} `json:"type"`
 }
@@ -43,7 +42,6 @@ type MotivationDetail struct {
 	Amount           string `json:"amount"`
 	Comment          string `json:"description"`
 	AssetInfo        struct {
-		Id   int    `json:"id"`
 		Name string `json:"name"`
 	} `json:"assetInfo"`
 }
