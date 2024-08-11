@@ -36,6 +36,7 @@ type WidgetDataType string
 
 const (
 	WidgetDataTypeProjectList          WidgetDataType = "project_list"
+	WidgetDataTypeCommonProjectList                   = "common_project_list"
 	WidgetDataTypeGuildList                           = "guild_list"
 	WidgetDataTypeEntityList                          = "entity_list"
 	WidgetDataTypeAssetForProposal                    = "asset_type_proposal"
@@ -76,6 +77,17 @@ func WidgetData(ctx *gin.Context) {
 	case WidgetDataTypeProjectList:
 		rcds, err := getEntityListResponse(db, "project", allEntities, user.Wallet)
 
+		if err != nil {
+			log.Error().Err(err).Msg("query project list error")
+			sdk.LogServerErrorToSentry(ctx, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("query project list error")))
+			return
+		}
+
+		ctx.JSON(http.StatusOK, api.Success(rcds))
+		return
+	case WidgetDataTypeCommonProjectList:
+		rcds, err := model.ProjectModel.GetCommonProjects(db)
 		if err != nil {
 			log.Error().Err(err).Msg("query project list error")
 			sdk.LogServerErrorToSentry(ctx, err)

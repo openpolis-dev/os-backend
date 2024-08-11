@@ -53,6 +53,7 @@ type CreateOrUpdateProposalData struct {
 	SubmitToMetaforo        bool                          `json:"submit_to_metaforo"`
 	EditorType              int                           `json:"editor_type"`
 	VoteOptions             []string                      `json:"vote_options"`
+	IsMultipleVote          bool                          `json:"is_multiple_vote"`
 	CreateProjectProposalId uint                          `json:"create_project_proposal_id"`
 }
 
@@ -212,6 +213,8 @@ type FrontendProposalDetailRecord struct {
 
 	VoteType int `json:"vote_type"`
 
+	IsMultipleVote bool `json:"is_multiple_vote"`
+
 	OsVoteOptions []*FrontendProposalVoteOptionRecord `json:"os_vote_options"`
 
 	// Is current user voted for this proposal
@@ -359,12 +362,6 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposalId uint, startPo
 		return nil, err
 	}
 
-	firstProposalDbRecord, err := GetFirstProposalWithRecordId(db, &proposal)
-	if err != nil {
-		log.Error().Msgf("get first proposal record error: %+v", err)
-		return nil, err
-	}
-
 	var editHistoryRecords []*FrontendProposalEditHistoryRecord
 	var frontendCommentsRecords []*FrontendProposalCommentRecord
 	var votes []metaforo.PollRecord
@@ -468,8 +465,6 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposalId uint, startPo
 		return nil, err
 	}
 
-	proposalPublicityTs := firstProposalDbRecord.CreateTs + firstProposalDbRecord.PublicitySecond
-
 	for _, job := range proposalCronJobs {
 		if job.NextExecTs > proposalExecTs {
 			proposalExecTs = job.NextExecTs
@@ -534,12 +529,13 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposalId uint, startPo
 		Votes:                    votes,
 		OsVoteOptions:            frontendVoteOptions,
 		VoteType:                 proposal.VoteType,
+		IsMultipleVote:           len(votes) > 0 && votes[0].Max > 1,
 		CreateTs:                 proposal.CreateTs,
 		IsBasedOnCustomTemplate:  proposal.IsBasedOnCustomTemplate,
 		TemplateName:             templateName,
 		IsInstantExecution:       proposal.PendingExecutionSecond == 0,
 		ExecutionTs:              proposalExecTs,
-		PublicityTs:              proposalPublicityTs,
+		PublicityTs:              proposal.VoteStartTs,
 		AssociatedProjectBudgets: budgetsResponse,
 	}, nil
 }

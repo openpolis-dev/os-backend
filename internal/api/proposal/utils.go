@@ -203,19 +203,3 @@ func GetProposalCommentsWithOsUserData(db *gorm.DB, metaforoComments []metaforo.
 
 	return frontendCommentsRecords, nil
 }
-
-// GetFirstProposalWithRecordId gets first created proposal with same record id
-func GetFirstProposalWithRecordId(db *gorm.DB, proposalRcd *model.Proposal) (*model.Proposal, error) {
-	recordId := proposalRcd.ProposalRecordId
-	if recordId == "" {
-		return proposalRcd, nil
-	}
-	var proposal model.Proposal
-	err = db.Model(proposal).Where("proposal_record_id = ?", recordId).Order("create_ts asc").First(&proposal).Error
-	if err != nil {
-		log.Error().Msgf("get first proposal record error: %+v", err)
-		return nil, err
-	}
-	return &proposal, nil
-
-}
