@@ -293,10 +293,25 @@ The source code can be found at [https://github.com/Taoist-Labs/spp-profile-back
 
 ## Spp Indexer Service
 
-TBD
+This service indexing smart contract's events and provide api for query data.
+The source code can be found at [https://github.com/Taoist-Labs/spp-indexer](https://github.com/Taoist-Labs/spp-indexer)
+
+### General Update Process
+
+1. Update code
+2. Migrate database if required
+3. Restart the application
 
 ---
 
 ## SNS Safe Check Service
 
-TBD
+This service is for checking if a SNS name is sensitive or reserved. 
+The source code can be found at [https://github.com/Taoist-Labs/sns-safe-backend](https://github.com/Taoist-Labs/sns-safe-backend)
+
+### General Update Process
+
+1. Update code
+2. Migrate database if required
+3. Restart the application
+
