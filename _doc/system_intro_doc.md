@@ -10,7 +10,7 @@ SeeDAO App backend contains those components:
 
 This document will describe deployments for those components.
 
-## Environment
+## Deployment for Various Environments
 
 Currently, there are 3 environments for SeeDAO apps, which are:
 
@@ -20,6 +20,51 @@ Currently, there are 3 environments for SeeDAO apps, which are:
 
 Environment dev and preview are deployed on same node, while prod env are deployed in another node.
 The detail of service will be described in deployment section.
+
+### Dev Deployment
+
+Currently, the dev deployment contains os-backend and spp-indexer.
+
+os-backend in dev environment is deployed via pm2, and the detail can be found in each component
+
+### Preview Deployment
+
+Preview services are launched via docker compose on dev node.
+Remember to migrate DB if there are any database related changes, and also remember to backup all data before migration.
+
+```shell
+# Update images
+docker pull ghcr.io/taoist-labs/os-backend:preview
+docker pull ghcr.io/taoist-labs/os-push-backend:main
+docker pull ghcr.io/taoist-labs/spp-profile-backend:master
+docker pull ghcr.io/taoist-labs/sns-safe-backend:main
+docker pull ghcr.io/taoist-labs/spp-indexer:dev
+docker pull ghcr.io/taoist-labs/spp-indexer:preview
+docker pull ghcr.io/taoist-labs/spp-indexer:main
+docker pull ghcr.io/taoist-labs/spp-chain-data-crawler:master
+
+cd /home/ubuntu/seedao/compose
+docker compose up -d
+```
+
+### Production Deployment
+
+Production is also deployed via docker compose. Notice that the image tag pulled is different with preview environment.
+
+```shell
+ssh <prod host>
+
+docker pull ghcr.io/taoist-labs/os-backend:main
+docker pull ghcr.io/taoist-labs/spp-profile-backend:master
+docker pull ghcr.io/taoist-labs/sns-safe-backend:main
+docker pull ghcr.io/taoist-labs/spp-indexer:main
+docker pull ghcr.io/taoist-labs/spp-chain-data-crawler:master
+
+cd /srv/seedao
+docker compose up -d
+```
+
+---
 
 ## SeeDAO OS Backend
 
@@ -53,7 +98,7 @@ The casbin config file is in the repo that can be used directly, the configurati
 OS backend service has three environments, which are dev, preview and prod.
 dev and preview env are launched on same node, while prod is in separated node.
 
-_Dev_:
+Here only lists the deployment on dev environment since the preview and production are docker compose version and is integrated with other services. 
 
 If there are existing API service running:
 
@@ -82,7 +127,7 @@ popd
 
 This script get latest code from GitHub and build binaries, then restart the service launched by pm2.
 
-**NOTE**: The index number in `pm2 start` command may be changed after restart.
+**NOTE**: The index number in `pm2 start` command may be changed after host restarted or service recreated.
 
 
 If this is the first time to launch the service (no pm2 entry created), then run this command:
@@ -91,28 +136,6 @@ If this is the first time to launch the service (no pm2 entry created), then run
 pm2 start ./apiserver
 ```
 
-_Preview_:
-
-Preview is deployed via docker container, the GitHub ci will build the docker image `ghcr.io/taoist-labs/os-backend:preview` if no errors found.
-
-> Migrating database is same with last step.
-
-```shell
-docker pull ghcr.io/taoist-labs/os-backend
-cd /home/ubuntu/seedao/compose
-docker compose up -d os-backend:dev
-```
-
-_Production_:
-
-Production is also deployed by docker.
-
-```shell
-ssh <prod host>
-cd /srv/seedao
-# Update images
-docker compose up -d
-```
 
 ### Utils
 
@@ -165,7 +188,6 @@ cd /home/ubuntu/seedao/compose
 docker pull ghcr.io/taoist-labs/spp-profile-backend:master
 ```
 
-
 ---
 
 ## Database
@@ -175,18 +197,61 @@ The database service currently used is PostgreSQL 16.
 
 The database used for services are configured by config.yml file.
 
-#### Migrate
+### Schema Name
+
+The database is running as normal service on dev/preview and prod environment.
+Here are schema name of three services using this DB for saving data.
+
+_Dev_
+
+* os-backend: os_backend_dev
+* spp_indexer: spp_indexer_test
+
+_Preview_:
+
+* os-backend: os_backend_preview
+* spp_indexer: spp_indexer_preview
+* spp_api: spp_test
+
+_Prod_:
+
+* os-backend: os_backend_prod
+* spp_indexer: spp_indexer_prod
+* spp_api: spp_prod
+
+
+### Migrate
 
 **NOTE**: DO FULLY BACKUP BEFORE CHANGING ANY DB SCHEMAS
+
+#### SeeDAO OS App
 
 SeeDAO OS app has various models which are mapping to database schemas via gorm framework.
 Creating and migrating schemas requires the *dbutils* tool mentioned above.
 It can handle migration tasks automatically and without any output.
 So if there are any output shown while running the command, please check it carefully.
 
-#### Backup
+Here is the command to migrate SeeDAO OS app schema, there should be a *config.yaml* file in the running directory with correct DSN setup.
 
-Database currently is backup by cronjob every 4 hours. Here is the content of backup scripts:
+```shell
+./bin/dbutils migrate  -migrate-table
+```
+
+#### Spp Indexer and Spp Profile API
+
+Those two services are written in Typescript and using Prisma as DB ORM.
+Before migrating the schemas, the migration file should be commit to repo and downloaded to working copy.
+Then execute the command below to migrate DB
+
+```shell
+yarn prisma migrate dev
+```
+
+The DB is configured via *envfile* under running directory.
+
+### Backup
+
+Database in production environment currently is backup by cronjob every 4 hours. Here is the content of backup scripts:
 
 ```shell
 #!/bin/bash
@@ -212,21 +277,26 @@ done
 The script uses *pg_dump* to dump all data from database table and upload to S3 bucket.
 
 ---
----
----
----
----
----
 
-### SNS Profile Service
+## Spp Profile API
 
 This service provides API of accessing SNS ID, which is developed via Typescript.
-The source code can be found [here](https://github.com/Taoist-Labs/spp-profile-backend).
+The source code can be found at [https://github.com/Taoist-Labs/spp-profile-backend](https://github.com/Taoist-Labs/spp-profile-backend).
 
-## Dev and Preview Deployment
+### General Update Process
 
-Currently only 
+1. Update code
+2. Migrate database if required
+3. Restart the application
 
+---
 
-## Prod Deployment
+## Spp Indexer Service
 
+TBD
+
+---
+
+## SNS Safe Check Service
+
+TBD
