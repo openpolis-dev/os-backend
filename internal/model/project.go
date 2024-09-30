@@ -328,6 +328,19 @@ func (*projectBudgetModel) QueryByProjectIdAndBudgetProps(db *gorm.DB, projID ui
 }
 
 func (*projectBudgetModel) WithdrawSingleAsset(db *gorm.DB, projID uint, assetName string, amount decimal.Decimal) error {
+	var projectRecord Project
+	err = db.First(&projectRecord, projID).Error
+
+	if err != nil {
+		log.Error().Msgf("query project %d error: %+v", projID, err)
+		return err
+	}
+
+	if projectRecord.IsSpecial && projectRecord.SpecialType == SpecialProjectCityHall {
+		log.Printf("project %d is cityhall project, no budget record, skip withdraw asset", projID)
+		return nil
+	}
+
 	return db.Transaction(func(tx *gorm.DB) error {
 		budgetRcd, err := ProjectBudgetModel.QueryByProjectIdAndBudgetProps(tx, projID, assetName)
 		if err != nil {
@@ -364,6 +377,19 @@ func (*projectBudgetModel) WithdrawSingleAsset(db *gorm.DB, projID uint, assetNa
 	})
 }
 func (*projectBudgetModel) DepositSingleAsset(db *gorm.DB, projID uint, assetName string, amount decimal.Decimal) error {
+	var projectRecord Project
+	err = db.First(&projectRecord, projID).Error
+
+	if err != nil {
+		log.Error().Msgf("query project %d error: %+v", projID, err)
+		return err
+	}
+
+	if projectRecord.IsSpecial && projectRecord.SpecialType == SpecialProjectCityHall {
+		log.Printf("project %d is cityhall project, no budget record, skip deposit asset", projID)
+		return nil
+	}
+
 	return db.Transaction(func(tx *gorm.DB) error {
 		budgetRcd, err := ProjectBudgetModel.QueryByProjectIdAndBudgetProps(tx, projID, assetName)
 		if err != nil {
