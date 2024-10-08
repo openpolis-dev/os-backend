@@ -317,6 +317,7 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		userGroup.POST("/join_metaforo_group", user.JoinMetaforoGroup)
 		userGroup.POST("/leave_metaforo_group", user.LeaveMetaforoGroup)
 		userGroup.POST("/prepare_metaforo", user.PrepareMetaforoData)
+		userGroup.GET("/level", user.UserLvl)
 
 		// project routers
 		projGroup := authorizedGroup.Group("/projects")

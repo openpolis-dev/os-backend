@@ -189,8 +189,8 @@ func CloseVote(ctx *gin.Context) {
 //
 //	@summary	show voter detail for specified vote option
 //	@tags		Proposal
-//	@param		vote_option_id	path		number										true	"Vote ID"
-//	@param		page			query		number										false	"page of the vote list"
+//	@param		vote_option_id	path		number									true	"Vote ID"
+//	@param		page			query		number									false	"page of the vote list"
 //	@success	200				{object}	api.Reply{data=[]userVoteDetailInfo}	"Success"
 //	@router		/proposals/vote_detail/:vote_option_id [get]
 func ShowVoteDetail(ctx *gin.Context) {
