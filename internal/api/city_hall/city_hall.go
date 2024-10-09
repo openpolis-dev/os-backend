@@ -88,6 +88,17 @@ func Info(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, api.Success(generateCityHallDetailReply(cityHallProject, budgets)))
 }
 
+
+// CurrentSeasonNodeList returns current season node list
+//
+//	@summary	Return current season node list
+//	@tags		CityHall
+//	@route		/cityhall/cs_node [get]
+//	@success	200	{object}	[]model.SeasonNode
+func CurrentSeasonNodeList(ctx *gin.Context) {
+
+}
+
 // UpdateBudget updates cityhall budget for current season
 //
 //	@summary	updates cityhall budget for current season

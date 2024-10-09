@@ -258,6 +258,7 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 
 		cityHallGroup := v1.Group("/cityhall")
 		cityHallGroup.GET("/info", city_hall.Info)
+		cityHallGroup.GET("/cs_node", city_hall.CurrentSeasonNodeList)
 
 		// public data
 		publicData := v1.Group("/public_data")
