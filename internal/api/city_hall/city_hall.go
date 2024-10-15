@@ -88,6 +88,41 @@ func Info(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, api.Success(generateCityHallDetailReply(cityHallProject, budgets)))
 }
 
+// CurrentSeasonNodeList returns current season node list
+//
+//	@summary	Return current season node list
+//	@tags		CityHall
+//	@route		/cityhall/cs_node [get]
+//	@success	200	{object}	[]model.SeasonNode
+func CurrentSeasonNodeList(ctx *gin.Context) {
+	db := api.ForContextOnlyDB(ctx)
+
+	tokenAddr, tokenId, err := model.GetNodeSbtAddrAndId(db)
+	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get node sbt address and id error")))
+		return
+	}
+
+	// TODO: Fetch node list from indexer
+	log.Debug().Msgf("node sbt address: %s, node sbt id: %s", tokenAddr, tokenId)
+
+	currSeason, err := model.GetCurrentSeason(db)
+	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get current season error")))
+		return
+	}
+	indexerClient := sdk.GetIndexerClient()
+	csNodeData, err := indexerClient.GetCurrentSeasonNodeList(fmt.Sprintf("%d", currSeason.Idx))
+	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get current season node list error")))
+		return
+	}
+	ctx.JSON(http.StatusOK, api.Success(csNodeData))
+}
+
 // UpdateBudget updates cityhall budget for current season
 //
 //	@summary	updates cityhall budget for current season
