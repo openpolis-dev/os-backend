@@ -45,3 +45,6 @@ func MetaforoRewardCacheKey(seasonIdx uint) string {
 func UserSeepassCacheKey(userWallet string) string {
 	return fmt.Sprintf("seepass.user.%s", common.FormatUserWallet(userWallet))
 }
+func CurrentSeasonNodeCacheKey(nodeSbtAddr, tokenId string) string {
+	return fmt.Sprintf("cs_node.%s.%s", common.FormatUserWallet(nodeSbtAddr), tokenId)
+}
