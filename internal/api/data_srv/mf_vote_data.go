@@ -9,10 +9,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
+	"github.com/samber/lo"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk"
+	"github.com/theseed-labs/os-backend/internal/sdk/metaforo"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -121,4 +123,41 @@ func parseMfMintRecord(csvStr string) ([]*MetaforoMintRecord, error) {
 	}
 
 	return rows, nil
+}
+
+func FetchMetaforoMintData(ctx *gin.Context) {
+	db, cfg := api.ForContextDBAndConfig(ctx)
+
+	currSeason := model.MustGetCurrentSeason(db)
+
+	// TODO: List all proposals for current season's mint
+	db.Transaction(func(tx *gorm.DB) error {
+		var proposals []model.Proposal
+		if err = tx.Model(&model.Proposal{}).Where("season_id = ?", currSeason.ID).Find(&proposals).Error; err != nil {
+			sdk.LogServerErrorToSentry(ctx, err)
+			log.Error().Msgf("get proposals error: %+v", err)
+			return err
+		}
+
+		proposalIds := lo.Map(proposals, func(p model.Proposal, _ int) uint {
+			return p.ID
+		})
+
+		var voteOptions []model.ProposalVoteOptionRecord
+		if err = tx.Model(&model.ProposalVoteOptionRecord{}).Where("proposal_id IN (?)", proposalIds).Find(&voteOptions).Error; err != nil {
+			sdk.LogServerErrorToSentry(ctx, err)
+			log.Error().Msgf("get proposal votes error: %+v", err)
+			return err
+		}
+
+		for _, voteOption := range voteOptions {
+			voterList, err := metaforo.GetVoterList(cfg.MetaforoData.GroupName, voteOption.MetaforoID, 1)
+			if err != nil {
+				log.Error().Msgf("get voter list error: %+v", err)
+				sdk.LogServerErrorToSentry(ctx, err)
+				return err
+			}
+		}
+	})
+
 }

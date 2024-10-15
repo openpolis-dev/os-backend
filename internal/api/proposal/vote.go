@@ -194,8 +194,8 @@ func CloseVote(ctx *gin.Context) {
 //	@success	200				{object}	api.Reply{data=[]userVoteDetailInfo}	"Success"
 //	@router		/proposals/vote_detail/:vote_option_id [get]
 func ShowVoteDetail(ctx *gin.Context) {
-	voteIdStr := ctx.Param("vote_option_id")
-	voteId, err := strconv.Atoi(voteIdStr)
+	voteOptionIdStr := ctx.Param("vote_option_id")
+	voteOptionId, err := strconv.Atoi(voteOptionIdStr)
 	if err != nil {
 		err := fmt.Errorf("parse request data error: %+v", err)
 		log.Error().Msgf(err.Error())
@@ -219,7 +219,7 @@ func ShowVoteDetail(ctx *gin.Context) {
 
 	db, cfg := api.ForContextDBAndConfig(ctx)
 
-	voterList, err := metaforo.GetVoterList(cfg.MetaforoData.GroupName, voteId, page)
+	voterList, err := metaforo.GetVoterList(cfg.MetaforoData.GroupName, voteOptionId, page)
 	if err != nil {
 		log.Error().Msgf("get vote list error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
@@ -249,7 +249,7 @@ func ShowVoteDetail(ctx *gin.Context) {
 		}
 	}
 
-	// Create MetaforoUser and User record from API data
+	// Create MetaforoUser and User record from API dat
 	err = db.Transaction(func(tx *gorm.DB) error {
 		for userId, profileData := range missingMfUserIds {
 			metaforoUser := model.MetaforoUser{

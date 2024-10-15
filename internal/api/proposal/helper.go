@@ -1020,6 +1020,8 @@ func UpdateArweaveHashFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcdId 
 	}
 }
 
+// UpdateUserRecordsFromMetaforoProposalResponse creates or updates user records from metaforo proposal response
+// The user record returned from metaforo API contains user wallet, which can be used as uniq key of user
 func UpdateUserRecordsFromMetaforoProposalResponse(db *gorm.DB, metaforoProposal *metaforo.ProposalResponse) error {
 	// Save user id and wallet from comments data
 	if err = db.Transaction(func(tx *gorm.DB) error {

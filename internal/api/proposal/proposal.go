@@ -25,6 +25,8 @@ import (
 	"gorm.io/gorm/clause"
 )
 
+const oneYearDuration = 24 * 365 * time.Hour
+
 var err error
 
 var StateOrder = []model.ProposalState{
@@ -816,7 +818,6 @@ func UpdateProposalStateAndLaunchStateChangeActions(db *gorm.DB, user *middlewar
 		}
 
 		for _, record := range voteRecords {
-			oneYearDuration := 24 * 365 * time.Hour
 			err := metaforo.UpdateVoteTime(cfg.MetaforoData.AccessToken,
 				cfg.MetaforoData.GroupName,
 				record.MetaforoID,
@@ -931,7 +932,6 @@ func UpdateProposalStateAndLaunchStateChangeActions(db *gorm.DB, user *middlewar
 		}
 
 		for _, record := range voteRecords {
-			oneYearDuration := 24 * 365 * time.Hour
 			err := metaforo.UpdateVoteTime(cfg.MetaforoData.AccessToken,
 				cfg.MetaforoData.GroupName,
 				record.MetaforoID,

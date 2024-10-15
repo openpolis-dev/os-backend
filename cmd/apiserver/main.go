@@ -453,6 +453,8 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 
 		// metaforo mint count update
 		adminGroup.POST("/metaforo_mint_data_update", data_srv.UpdateMetaforoVoteData)
+
+		adminGroup.POST("/metaforo_fetch_mint_data", data_srv.FetchMetaforoMintData)
 	}
 
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
