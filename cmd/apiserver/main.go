@@ -454,7 +454,7 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		//metaforoRouter.POST("/sync_perm_group", TBD)
 
 		// metaforo mint count update
-		adminGroup.POST("/metaforo_mint_data_update", data_srv.UpdateMetaforoVoteData)
+		adminGroup.POST("/metaforo_mint_data_update", data_srv.ImportMoetaforoVoteData)
 
 	}
 

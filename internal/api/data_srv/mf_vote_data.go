@@ -49,7 +49,7 @@ const (
 	) and voter_count > 0`
 )
 
-func UpdateMetaforoVoteData(ctx *gin.Context) {
+func ImportMoetaforoVoteData(ctx *gin.Context) {
 	db := api.ForContextOnlyDB(ctx)
 
 	reqData := UpdateMetaforoVoteDataRequest{}
