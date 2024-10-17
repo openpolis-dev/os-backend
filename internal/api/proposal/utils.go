@@ -2,14 +2,17 @@ package proposal
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"strconv"
+	"time"
 
 	"github.com/rs/zerolog/log"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk/metaforo"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 const ListProposalsSQL = `
@@ -202,4 +205,82 @@ func GetProposalCommentsWithOsUserData(db *gorm.DB, metaforoComments []metaforo.
 	}
 
 	return frontendCommentsRecords, nil
+}
+
+// PopulateUserWalletFromMetaforoIds populates user wallet from metaforo user ids
+// The function first check whether the user wallet is empty, if so it will try to get the user detail from metaforo API then save the wallet to db
+// It will also create user record in db if not exist
+func PopulateUserWalletFromMetaforoIds(db *gorm.DB, metaforoUserIds []int) (map[int]string, error) {
+	// Verify the user are new record which haven't been created in our db
+	var missingWalletMetaforoUser []*model.MetaforoUser
+	err = db.Model(&model.MetaforoUser{}).Where("user_wallet = ?", "").Find(&missingWalletMetaforoUser).Error
+	if err != nil {
+		log.Error().Msgf("get missing wallet metaforo user error: %+v", err)
+		return nil, err
+	}
+
+	mfUserIdProfile := make(map[int]*metaforo.UserDetailResponseForProfileAPI)
+	for _, mfUser := range missingWalletMetaforoUser {
+		mfUserData, err := metaforo.UserDetail(mfUser.MetaforoUserId)
+		if err != nil {
+			log.Error().Msgf("get metaforo user detail error: %+v", err)
+			return nil, err
+		}
+
+		mfUserIdProfile[mfUserData.User.Id] = mfUserData
+		time.Sleep(time.Millisecond * 100)
+	}
+
+	err = db.Transaction(func(tx *gorm.DB) error {
+		for userId, profileData := range mfUserIdProfile {
+			metaforoUser := model.MetaforoUser{
+				MetaforoUserId: userId,
+				UserWallet:     common.FormatUserWallet(profileData.User.Web3PublicKey),
+			}
+			mfUserTx := tx.Where(&model.MetaforoUser{MetaforoUserId: userId}).Find(&metaforoUser)
+
+			if mfUserTx.Error != nil {
+				log.Error().Msgf("get metaforo user record error: %+v", mfUserTx.Error)
+				return mfUserTx.Error
+			} else if mfUserTx.RowsAffected == 0 {
+				if err = tx.Create(&metaforoUser).Error; err != nil {
+					log.Error().Msgf("create metaforo user record error: %+v", err)
+					return err
+				}
+			} else if mfUserTx.RowsAffected == 1 {
+				if err = tx.Updates(&metaforoUser).Error; err != nil {
+					log.Error().Msgf("update metaforo user record error: %+v", err)
+					return err
+				}
+			} else {
+				err = fmt.Errorf("unexpected rows affected: %d", mfUserTx.RowsAffected)
+				log.Error().Msgf(err.Error())
+				return err
+			}
+
+			// Create user record if not existing
+			userRecord := model.User{Wallet: metaforoUser.UserWallet}
+			db.Clauses(clause.OnConflict{DoNothing: true}).Model(&model.User{}).Where(&userRecord).Assign(model.User{
+				CreateTs: model.GetCurrentUtcEpochSecond(),
+				UpdateTs: model.GetCurrentUtcEpochSecond(),
+				Avatar:   profileData.User.PhotoUrl,
+				Name:     profileData.User.Username,
+			}).FirstOrCreate(&userRecord)
+		}
+		return nil
+	})
+
+	userIdWalletMap := make(map[int]string)
+	mfUserRecords := make([]*model.MetaforoUser, 0)
+	err = db.Model(&model.MetaforoUser{}).Where("metaforo_user_id in ?", metaforoUserIds).Find(&mfUserRecords).Error
+	if err != nil {
+		log.Error().Msgf("get metaforo user records error: %+v", err)
+		return nil, err
+	}
+
+	for _, mfUser := range mfUserRecords {
+		userIdWalletMap[mfUser.MetaforoUserId] = mfUser.UserWallet
+	}
+
+	return userIdWalletMap, nil
 }

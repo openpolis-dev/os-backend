@@ -456,10 +456,10 @@ func GetPredefinedVoteOptionValue(optLabel string, voteType int) string {
 // ProposalUserVoteRecord saves user vote record
 type ProposalUserVoteRecord struct {
 	ID         uint   `gorm:"primaryKey"`
-	UserWallet string `gorm:"index"`
+	UserWallet string `gorm:"uniqueIndex:user_vote_record_idx"`
 
-	ProposalID                 uint `gorm:"index"`
-	ProposalVoteOptionRecordId uint
+	ProposalID                 uint `gorm:"uniqueIndex:user_vote_record_idx"`
+	ProposalVoteOptionRecordId uint `gorm:"uniqueIndex:user_vote_record_idx"`
 
 	VoteTs int64 `gorm:"index"`
 }
@@ -467,8 +467,13 @@ type ProposalUserVoteRecord struct {
 func UpsertUserVoteRecord(db *gorm.DB, record *ProposalUserVoteRecord) error {
 	return db.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "user_wallet"}, {Name: "proposal_id"}, {Name: "proposal_vote_option_record_id"}},
-		DoUpdates: clause.AssignmentColumns([]string{"vote_ts"}),
-	}).Create(record).Error
+		DoNothing: true,
+	}).Create(&ProposalUserVoteRecord{
+		UserWallet:                 record.UserWallet,
+		ProposalID:                 record.ProposalID,
+		ProposalVoteOptionRecordId: record.ProposalVoteOptionRecordId,
+		VoteTs:                     record.VoteTs,
+	}).Error
 }
 
 // ProposalComponent defines the automation actions should be done and related data structure
