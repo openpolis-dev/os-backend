@@ -46,7 +46,7 @@ var StateOrder = []model.ProposalState{
 //	@Param		category_id	query		int		false	"filter proposal records with specified category"
 //	@success	200			{object}	api.Reply{data=api.ListReplyData{rows=FrontendProposalListRecord}}
 func List(ctx *gin.Context) {
-	db := api.ForContextOnlyDB(ctx)
+	user, db := api.ForContextUserAndDB(ctx)
 	queryParams := ListProposalQueryParams{}
 	if err = ctx.Bind(&queryParams); err != nil {
 		ctx.JSON(http.StatusBadRequest, api.Reply{
@@ -103,6 +103,38 @@ func List(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get proposal error")))
 		return
 	}
+
+	// get result rows is vote by me
+	// <<
+	if len(resultRows) > 0 {
+		voteQuerySql := fmt.Sprintf("select * from proposal_user_vote_record where user_wallet = '%s' ", user.Wallet)
+
+		var proposalIdList []string
+		for i := 0; i < len(resultRows); i++ {
+			proposalIdList = append(proposalIdList, fmt.Sprintf("%d", resultRows[i].ID))
+		}
+
+		voteQuerySql += fmt.Sprintf(" AND proposal_id in(%s)", strings.Join(proposalIdList, ","))
+
+		var userProposalUserVoteRecord []model.ProposalUserVoteRecord
+
+		dbErr := db.Raw(voteQuerySql).Find(&userProposalUserVoteRecord).Error
+		if dbErr != nil {
+			log.Error().Msgf("get proposal list error: query sql: %s, err: %+v", voteQuerySql, dbErr)
+		} else {
+			resultRows = lo.Map(resultRows, func(r *FrontendProposalListRecord, _ int) *FrontendProposalListRecord {
+				for i := 0; i < len(userProposalUserVoteRecord); i++ {
+					if userProposalUserVoteRecord[i].ProposalID == r.ID {
+						r.IsVoted = true
+						break
+					}
+				}
+
+				return r
+			})
+		}
+	}
+	// >>
 
 	ctx.JSON(http.StatusOK, api.Success(api.ListReplyData{
 		Page:  queryParams.Page,

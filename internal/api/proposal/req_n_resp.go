@@ -128,7 +128,7 @@ type FrontendProposalListRecord struct {
 	// Vote related state
 	// TODO: Vote Gate related logic
 	VoteState string `json:"-"`
-	IsVoted   bool   `json:"-"`
+	IsVoted   bool   `json:"is_voted"`
 }
 
 type FrontendContentBlockRecord struct {
