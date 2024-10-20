@@ -281,7 +281,7 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		// TODO: Move to authorized group
 		dataSrv := v1.Group("/data_srv")
 		dataSrv.GET("/aggr_scr", data_srv.AggrScr)
-		dataSrv.POST("/fetch_mf_mint_data", data_srv.FetchMetaforoMintData)
+		dataSrv.POST("/fetch_mf_mint_data", data_srv.FetchCurrentSeasonMetaforoMintData)
 
 		// Proposal component routers
 		componentRouter := v1.Group("/proposal_components")
@@ -456,6 +456,8 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		// metaforo mint count update
 		adminGroup.POST("/metaforo_mint_data_update", data_srv.ImportMoetaforoVoteData)
 
+		// Fetch single proposal user vote record
+		adminGroup.POST("/update_proposal_vote_record/:proposal_id", data_srv.FetchSingleProposalUserVoteRecord)
 	}
 
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))

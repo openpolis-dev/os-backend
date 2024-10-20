@@ -137,9 +137,9 @@ func parseMfMintRecord(csvStr string) ([]*MetaforoMintRecord, error) {
 	return rows, nil
 }
 
-// FetchMetaforoMintData fetches mint data from metaforo for current season
+// FetchCurrentSeasonMetaforoMintData fetches mint data from metaforo for current season
 // Only the proposals requires current season's node will be calculated
-func FetchMetaforoMintData(ctx *gin.Context) {
+func FetchCurrentSeasonMetaforoMintData(ctx *gin.Context) {
 	db, cfg := api.ForContextDBAndConfig(ctx)
 	// userMintCount := make(map[string]int)
 
@@ -279,4 +279,26 @@ func FetchMetaforoMintData(ctx *gin.Context) {
 	})
 
 	ctx.JSON(http.StatusOK, userIdWalletMap)
+}
+
+func FetchSingleProposalUserVoteRecord(ctx *gin.Context) {
+	db, cfg := api.ForContextDBAndConfig(ctx)
+
+	proposalId, err := strconv.ParseUint(ctx.Param("proposal_id"), 10, 64)
+	if err != nil {
+		log.Error().Msgf("parse proposal id error: %+v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("parse proposal id error: %+v", err)))
+		return
+	}
+
+	err = proposal.UpdateUserVoteRecordViaMetaforo(db, cfg, uint(proposalId))
+	if err != nil {
+		log.Error().Msgf("update user vote record via metaforo error: %+v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.BadRequest(fmt.Errorf("update user vote record via metaforo error: %+v", err)))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{"success": true})
 }

@@ -169,6 +169,12 @@ type Proposal struct {
 	ExtraResultCheckRule []*ExtraResultCheckRuleData `gorm:"serializer:json"`
 
 	VoteTimeProperties
+
+	// Season for this proposal
+	SeasonId uint
+
+	// Whether user vote record has been saved for this proposal
+	UserVoteRecordSaved bool `gorm:"default:false"`
 }
 
 func (p *Proposal) StateName() string {
