@@ -6,17 +6,14 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
-	"github.com/samber/lo"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/api/proposal"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk"
-	"github.com/theseed-labs/os-backend/internal/sdk/metaforo"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -135,150 +132,6 @@ func parseMfMintRecord(csvStr string) ([]*MetaforoMintRecord, error) {
 	}
 
 	return rows, nil
-}
-
-// FetchCurrentSeasonMetaforoMintData fetches mint data from metaforo for current season
-// Only the proposals requires current season's node will be calculated
-func FetchCurrentSeasonMetaforoMintData(ctx *gin.Context) {
-	db, cfg := api.ForContextDBAndConfig(ctx)
-	// userMintCount := make(map[string]int)
-
-	// Fetch all vote options w/ vote count > 0 that can be calculated as mint data
-	var voteOptions []model.ProposalVoteOptionRecord
-	err = db.Transaction(func(tx *gorm.DB) error {
-		if err = tx.Raw(getMintableProposalsQuery).Scan(&voteOptions).Error; err != nil {
-			sdk.LogServerErrorToSentry(ctx, err)
-			log.Error().Msgf("get proposals error: %+v", err)
-			return err
-		}
-
-		api.PrintStructAsJson(voteOptions, "TTT: voteOptions")
-		return nil
-	})
-	if err != nil {
-		log.Error().Msgf("get metaforo mint data error: %+v", err)
-		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.BadRequest(fmt.Errorf("get metaforo mint data error: %+v", err)))
-		return
-	}
-
-	// map for saving metaforo option id and internal proposal id
-	voterMfOptionIdRecordMap := lo.Associate(voteOptions, func(voteOption model.ProposalVoteOptionRecord) (int, *model.ProposalVoteOptionRecord) {
-		return voteOption.MetaforoID, &voteOption
-	})
-
-	// Get voter liste from metaforo vote option, the voter list returned from metaforo API only contains user id
-	var voterList []*metaforo.UserPollRecord
-	for _, voteOption := range voteOptions {
-		for i := 1; i <= 10; i++ {
-			pagedVoterList, err := metaforo.GetVoterList(cfg.MetaforoData.GroupName, voteOption.MetaforoID, i)
-			if err != nil {
-				log.Error().Msgf("get voter list error: %+v", err)
-				sdk.LogServerErrorToSentry(ctx, err)
-				ctx.JSON(http.StatusInternalServerError, api.BadRequest(fmt.Errorf("get voter list error: %+v", err)))
-				return
-			}
-			voterList = append(voterList, pagedVoterList...)
-			if len(pagedVoterList) < 10 {
-				break
-			}
-			time.Sleep(time.Millisecond * 100)
-		}
-	}
-
-	api.PrintStructAsJson(voterList, "TTT: voterList")
-
-	// Populate user wallet and other info based on metaforo user id (get response from metaforo)
-	userIdWalletMap, err := proposal.PopulateUserWalletFromMetaforoIds(db, lo.Map(voterList, func(voter *metaforo.UserPollRecord, _ int) int {
-		return voter.User.Id
-	}))
-	if err != nil {
-		log.Error().Msgf("populate user wallet from metaforo ids error: %+v", err)
-		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.BadRequest(fmt.Errorf("populate user wallet from metaforo ids error: %+v", err)))
-		return
-	}
-
-	// Upsert ProposalUserVoteRecord record
-	err = db.Transaction(func(tx *gorm.DB) error {
-		for _, voterInfo := range voterList {
-			userWallet := userIdWalletMap[voterInfo.User.Id]
-			internalVoteOptionRecord := voterMfOptionIdRecordMap[voterInfo.PollOptionId]
-
-			err = model.UpsertUserVoteRecord(tx, &model.ProposalUserVoteRecord{
-				ProposalID:                 internalVoteOptionRecord.ProposalId,
-				UserWallet:                 userWallet,
-				ProposalVoteOptionRecordId: internalVoteOptionRecord.ID,
-				VoteTs:                     model.GetCurrentUtcEpochSecond(),
-			})
-			if err != nil {
-				log.Error().Msgf("create proposal user vote record error: %+v", err)
-				sdk.LogServerErrorToSentry(ctx, err)
-				return err
-			}
-		}
-		return nil
-	})
-
-	if err != nil {
-		log.Error().Msgf("create proposal user vote record error: %+v", err)
-		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.BadRequest(fmt.Errorf("create proposal user vote record error: %+v", err)))
-		return
-	}
-
-	// Build metaforo mint record based on proposal user vote record
-	// The proposals is filtered by voting gate name contains "节点", which only contains current season's proposals
-	currSeasonMintableProposalIds := lo.Map(voteOptions, func(voteOption model.ProposalVoteOptionRecord, _ int) uint {
-		return voteOption.ProposalId
-	})
-
-	var userVoteRecords []model.ProposalUserVoteRecord
-	err = db.Where("proposal_id IN (?)", currSeasonMintableProposalIds).Find(&userVoteRecords).Error
-	if err != nil {
-		log.Error().Msgf("get proposal user vote record error: %+v", err)
-		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.BadRequest(fmt.Errorf("get proposal user vote record error: %+v", err)))
-		return
-	}
-
-	userMintCount := make(map[string]int)
-
-	for _, userVoteRecord := range userVoteRecords {
-		userMintCount[userVoteRecord.UserWallet] += 1
-	}
-
-	// TODO: For now, getting current season as season id, need to change when support multiple season
-	currentSeason, err := model.GetCurrentSeason(db)
-	if err != nil {
-		log.Error().Msgf("get current season error: %+v", err)
-		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.BadRequest(fmt.Errorf("get current season error: %+v", err)))
-		return
-	}
-
-	// create MetaforoVoteCount record
-	err = db.Transaction(func(tx *gorm.DB) error {
-		for userWallet, voteCount := range userMintCount {
-			err = tx.Clauses(clause.OnConflict{
-				Columns:   []clause.Column{{Name: "season_id"}, {Name: "user_wallet"}},
-				DoUpdates: clause.AssignmentColumns([]string{"count"}),
-			}).Create(&model.MetaforoVoteCount{
-				CreateTs:   model.GetCurrentUtcEpochSecond(),
-				SeasonId:   currentSeason.ID,
-				UserWallet: userWallet,
-				Count:      voteCount,
-			}).Error
-			if err != nil {
-				log.Error().Msgf("create metaforo vote count error: %+v", err)
-				sdk.LogServerErrorToSentry(ctx, err)
-				return err
-			}
-		}
-		return nil
-	})
-
-	ctx.JSON(http.StatusOK, userIdWalletMap)
 }
 
 func FetchSingleProposalUserVoteRecord(ctx *gin.Context) {
