@@ -107,7 +107,7 @@ func CastVote(ctx *gin.Context) {
 		tx.Model(model.ProposalVoteOptionRecord{}).Where(&model.ProposalVoteOptionRecord{
 			ProposalId:     uint(proposalId),
 			MetaforoVoteID: reqData.MetaforoVoteId,
-		}).Find(&voteOptions)
+		}).Where("metaforo_id IN (?)", reqData.MetaforoVoteOptions).Find(&voteOptions)
 
 		for _, voteOption := range voteOptions {
 			userVoteRecordSearchCond := model.ProposalUserVoteRecord{
