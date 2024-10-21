@@ -96,8 +96,46 @@ func CastVote(ctx *gin.Context) {
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(fmt.Errorf("cast vote error")))
 		return
-
 	}
+
+	// Get proposal id
+	proposalId, _ := strconv.Atoi(proposalIdString)
+
+	// Create proposal user vote record
+	err = db.Transaction(func(tx *gorm.DB) error {
+		var voteOptions []*model.ProposalVoteOptionRecord
+		tx.Model(model.ProposalVoteOptionRecord{}).Where(&model.ProposalVoteOptionRecord{
+			ProposalId:     uint(proposalId),
+			MetaforoVoteID: reqData.MetaforoVoteId,
+		}).Find(&voteOptions)
+
+		for _, voteOption := range voteOptions {
+			userVoteRecordSearchCond := model.ProposalUserVoteRecord{
+				ProposalID:                 uint(proposalId),
+				ProposalVoteOptionRecordId: voteOption.ID,
+				UserWallet:                 common.FormatUserWallet(user.Wallet),
+			}
+			userVoteRecord := model.ProposalUserVoteRecord{
+				ProposalID:                 uint(proposalId),
+				ProposalVoteOptionRecordId: voteOption.ID,
+				UserWallet:                 common.FormatUserWallet(user.Wallet),
+				VoteTs:                     model.GetCurrentUtcEpochSecond(),
+			}
+			tx.Model(model.ProposalUserVoteRecord{}).
+				Where(userVoteRecordSearchCond).
+				FirstOrCreate(&userVoteRecord)
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		log.Error().Msgf("create proposal user vote record error: %+v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(fmt.Errorf("create proposal user vote record error")))
+		return
+	}
+
 	ctx.JSON(http.StatusOK, api.Success(nil))
 }
 
