@@ -153,3 +153,5 @@ const (
 	SysVarSeeAuthPk            = "seeauth_private_key"
 	SysVarSnsInvitationEnabled = "sns_invitation_enabled"
 )
+
+const MetaforoPollNotExistsPrompt = "Poll not exists"
