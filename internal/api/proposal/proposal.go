@@ -1179,7 +1179,7 @@ func UpdateUserVoteRecordViaMetaforo(db *gorm.DB, cfg *config.Config, proposalId
 			if err != nil {
 				if strings.Contains(err.Error(), internal.MetaforoPollNotExistsPrompt) {
 					// Vote option not found in metaforo, the original proposal may be deleted, break the loop and return
-					db.Model(&model.Proposal{}).Where("proposal_id = ?", proposalId).Update("user_vote_record_saved", true)
+					db.Model(&model.Proposal{}).Where("id = ?", proposalId).Update("user_vote_record_saved", true)
 					log.Warn().Msgf("vote option %d not found in metaforo, mark proposal %d as updated", voteOption.MetaforoID, proposalId)
 					return nil
 				} else {
