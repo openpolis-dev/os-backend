@@ -463,6 +463,5 @@ func MigrateTables(db *gorm.DB) error {
 		&SystemVariable{},
 		&SnsInviteCode{},
 		&SnsInviteRecord{},
-		&MetaforoVoteCount{},
 	)
 }

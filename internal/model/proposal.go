@@ -10,6 +10,7 @@ import (
 	"github.com/theseed-labs/os-backend/internal"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type ProposalState int
@@ -168,6 +169,12 @@ type Proposal struct {
 	ExtraResultCheckRule []*ExtraResultCheckRuleData `gorm:"serializer:json"`
 
 	VoteTimeProperties
+
+	// Season for this proposal
+	SeasonId uint
+
+	// Whether user vote record has been saved for this proposal
+	UserVoteRecordSaved bool `gorm:"default:false"`
 }
 
 func (p *Proposal) StateName() string {
@@ -455,11 +462,24 @@ func GetPredefinedVoteOptionValue(optLabel string, voteType int) string {
 // ProposalUserVoteRecord saves user vote record
 type ProposalUserVoteRecord struct {
 	ID         uint   `gorm:"primaryKey"`
-	UserWallet string `gorm:"index"`
-	ProposalID uint   `gorm:"index"`
-	Option     string // Which option the user selected
+	UserWallet string `gorm:"uniqueIndex:user_vote_record_idx"`
+
+	ProposalID                 uint `gorm:"uniqueIndex:user_vote_record_idx"`
+	ProposalVoteOptionRecordId uint `gorm:"uniqueIndex:user_vote_record_idx"`
 
 	VoteTs int64 `gorm:"index"`
+}
+
+func UpsertUserVoteRecord(db *gorm.DB, record *ProposalUserVoteRecord) error {
+	return db.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "user_wallet"}, {Name: "proposal_id"}, {Name: "proposal_vote_option_record_id"}},
+		DoNothing: true,
+	}).Create(&ProposalUserVoteRecord{
+		UserWallet:                 record.UserWallet,
+		ProposalID:                 record.ProposalID,
+		ProposalVoteOptionRecordId: record.ProposalVoteOptionRecordId,
+		VoteTs:                     record.VoteTs,
+	}).Error
 }
 
 // ProposalComponent defines the automation actions should be done and related data structure
@@ -560,17 +580,6 @@ type ExtraResultCheckRuleData struct {
 	Metric    string `json:"metric"`     // Data used for this rule
 	CheckType string `json:"check_type"` // Check type, ratio or count
 	Value     string `json:"value"`      // Value for the rule
-}
-
-type MetaforoVoteCount struct {
-	ID       uint  `gorm:"primaryKey"`
-	CreateTs int64 `gorm:"index"`
-
-	// Season information of vote records
-	SeasonId uint `json:"season_id" gorm:"uniqueIndex:vote_count_season_index"`
-
-	UserWallet string `json:"user_wallet" gorm:"uniqueIndex:vote_count_season_index"`
-	Count      int    `json:"count"`
 }
 
 // Type defs for component schema

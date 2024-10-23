@@ -96,6 +96,14 @@ func (t *TaskManager) StartRunner() {
 		panic(err)
 	}
 
+	// Refresh proposal user vote record task every 2 mins
+	if _, err = t.Scheduler.NewJob(
+		gocron.DurationJob(time.Minute*2),
+		gocron.NewTask(t.UpdateProposalUserVoteRecordTask),
+	); err != nil {
+		panic(err)
+	}
+
 	go t.TaskDispatcher()
 
 	t.Scheduler.Start()
@@ -153,6 +161,26 @@ func (t *TaskManager) ActivateRefreshVoteStateJobIfRequired() error {
 		}
 	}
 	return nil
+}
+
+// UpdateProposalUserVoteRecordTask function updates proposal user vote record via metaforo
+func (t *TaskManager) UpdateProposalUserVoteRecordTask() {
+	// Find one not updated proposal
+	var proposalRcd model.Proposal
+	err := t.DatabaseClient.Model(&model.Proposal{}).
+		Where("not user_vote_record_saved").
+		Order("id desc").
+		First(&proposalRcd).Error
+	if err != nil {
+		log.Error().Msgf("get one not updated proposalRcd vote option record error: %+v", err)
+		return
+	}
+
+	err = proposal.UpdateUserVoteRecordViaMetaforo(t.DatabaseClient, t.AppConfig, proposalRcd.ID)
+	if err != nil {
+		log.Error().Msgf("update proposalRcd user vote record error: %+v", err)
+		return
+	}
 }
 
 func (t *TaskManager) TaskDispatcher() {

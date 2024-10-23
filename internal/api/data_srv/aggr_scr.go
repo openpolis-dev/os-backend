@@ -16,7 +16,6 @@ import (
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk"
 	"github.com/theseed-labs/os-backend/internal/storage"
-	"gorm.io/gorm"
 )
 
 // Pg version
@@ -120,22 +119,6 @@ func seasonCreditWeight(seasonIdx, currSeasonIdx uint) decimal.Decimal {
 	return decimal.NewFromInt(1).Div(decimal.NewFromInt(2).Pow(decimal.NewFromInt(int64(currSeasonIdx - seasonIdx))))
 }
 
-func getSeasonVoteRecords(db *gorm.DB, currentSeason *model.Season) map[string]int {
-	var voteCounts []model.MetaforoVoteCount
-	if err := db.Model(&voteCounts).Where("season_id = ?", currentSeason.ID).Find(&voteCounts).Error; err != nil {
-		log.Warn().Msgf("query metaforo vote count error: %+v, no vote count returned", err)
-		return nil
-	}
-
-	log.Debug().Msgf("calc metaforo vote count for season %d", currentSeason.Idx)
-	userVoteCounts := make(map[string]int)
-	for _, dbRcd := range voteCounts {
-		userVoteCounts[common.FormatUserWallet(dbRcd.UserWallet)] = dbRcd.Count
-	}
-
-	return userVoteCounts
-}
-
 // AggrScr returns aggregated credit score and node calculation result
 //
 //	@router		/data_srv/aggr_scr [get]
@@ -184,7 +167,12 @@ func AggrScr(ctx *gin.Context) {
 	// Category the records with user wallet, and calculate season total credits
 
 	// Load metaforo vote count
-	metaforoVoteCount := getSeasonVoteRecords(db, currentSeason)
+	metaforoVoteCount, err := getSeasonVoteRecords(db, currentSeason)
+	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get metaforo vote count error")))
+		return
+	}
 	api.PrintStructAsJson(metaforoVoteCount, fmt.Sprintf("metaforo vote count for season: %s", currentSeason.Name))
 
 	activateWalletCount := 0
