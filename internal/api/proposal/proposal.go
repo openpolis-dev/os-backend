@@ -110,7 +110,7 @@ func List(ctx *gin.Context) {
 	// get result rows is vote by me
 	// <<
 	if len(resultRows) > 0 && user != nil {
-		voteQuerySql := fmt.Sprintf("select * from proposal_user_vote_record where user_wallet = '%s' ", user.Wallet)
+		voteQuerySql := fmt.Sprintf("select * from proposal_user_vote_records where user_wallet = '%s' ", user.Wallet)
 
 		var proposalIdList []string
 		for i := 0; i < len(resultRows); i++ {
