@@ -394,6 +394,7 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		rewardsGroup := authorizedGroup.Group("/rewards")
 		rewardsGroup.POST("/approve_mint_reward", rewards.ApproveMintReward)
 		rewardsGroup.POST("/snapshot_seed", rewards.SnapshotSeed)
+		rewardsGroup.POST("/approve_mint_snap_seed", rewards.ApproveMintAndSnapshotSeed)
 
 		// proposal routers
 		proposalGroup := authorizedGroup.Group("/proposals")
