@@ -3,7 +3,6 @@ package rewards
 import (
 	"bytes"
 	"encoding/gob"
-	"errors"
 	"fmt"
 	"net/http"
 	"time"
