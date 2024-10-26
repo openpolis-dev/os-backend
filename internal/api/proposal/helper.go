@@ -772,7 +772,7 @@ func SaveProposalToMetaforo(db *gorm.DB, dbProposalId uint, voteType int, metafo
 	}
 
 	if pollStatusChanged {
-		if err = HandleProposalPollStatusChange(db, updatedProposalRecord.ID); err != nil {
+		if err = HandleProposalPollStatusChange(db, updatedProposalRecord.ID, metaforoGroupName); err != nil {
 			log.Error().Msgf("handle proposal poll status change error: %+v", err)
 			return err
 		}
@@ -1149,7 +1149,7 @@ func UpdateDbVoteOptionRecordsFromMetaforoProposalResponse(db *gorm.DB, dbPropos
 	return pollStatusChanged, nil
 }
 
-func HandleProposalPollStatusChange(db *gorm.DB, proposalId uint) error {
+func HandleProposalPollStatusChange(db *gorm.DB, proposalId uint, mfGroupName string) error {
 	var pVoteRcds []*model.ProposalVoteRecord
 	err := db.Model(&model.ProposalVoteRecord{}).Where("proposal_id = ?", proposalId).Find(&pVoteRcds).Error
 	if err != nil {
@@ -1204,8 +1204,14 @@ func HandleProposalPollStatusChange(db *gorm.DB, proposalId uint) error {
 			log.Warn().Msgf("process proposal state error: %+v", err)
 			return err
 		} else {
-			log.Debug().Msgf("process proposal state success")
-			return nil
+			err = UpdateUserVoteRecordViaMetaforo(db, mfGroupName, proposalId)
+			if err != nil {
+				log.Warn().Msgf("update user vote record error: %+v", err)
+				return err
+			} else {
+				log.Debug().Msgf("process proposal state success")
+				return nil
+			}
 		}
 	} else {
 		log.Warn().Msgf("unknown poll status: %+v", effectVoteRcd.State)

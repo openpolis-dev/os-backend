@@ -237,7 +237,7 @@ func CloseVote(ctx *gin.Context) {
 	}
 
 	if pollStatusChanged {
-		if err = HandleProposalPollStatusChange(db, dbProposal.ID); err != nil {
+		if err = HandleProposalPollStatusChange(db, dbProposal.ID, cfg.MetaforoData.GroupName); err != nil {
 			log.Error().Msgf("handle proposal poll status change error: %+v", err)
 			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(fmt.Errorf("close vote error")))

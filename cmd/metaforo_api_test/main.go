@@ -347,7 +347,7 @@ func SyncUserVote(db *gorm.DB, cfg *config.Config, grpName string, waitSeconds i
 
 	for _, p := range proposalRcd {
 		log.Debug().Msgf("update user vote record for proposal: %d", p.ID)
-		err = proposal.UpdateUserVoteRecordViaMetaforo(db, cfg, p.ID)
+		err = proposal.UpdateUserVoteRecordViaMetaforo(db, cfg.MetaforoData.GroupName, p.ID)
 		if err != nil {
 			log.Error().Msgf("update proposalRcd user vote record error: %+v", err)
 			return
