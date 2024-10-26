@@ -17,7 +17,6 @@ import (
 	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
 	"github.com/theseed-labs/os-backend/internal"
-	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/config"
 	"github.com/theseed-labs/os-backend/internal/db_agent"
@@ -773,7 +772,7 @@ func SaveProposalToMetaforo(db *gorm.DB, dbProposalId uint, voteType int, metafo
 	}
 
 	if pollStatusChanged {
-		if err = HandleProposalPollStatusChange(db, updatedProposalRecord.ID); err != nil {
+		if err = HandleProposalPollStatusChange(db, updatedProposalRecord.ID, metaforoGroupName); err != nil {
 			log.Error().Msgf("handle proposal poll status change error: %+v", err)
 			return err
 		}
@@ -830,7 +829,6 @@ func BuildMetaforoVoteFormDataBytes(db *gorm.DB, proposalId uint, voteGates []*m
 		if len(voteGates) > 1 {
 			log.Warn().Msgf("found %d vote gates for proposal %d, only the first one will be used", len(voteGates), proposalId)
 		}
-		api.PrintStructAsJson(voteGates[0], "TTT: vote gate")
 		voteGateId = voteGates[0].MetaforoId
 		switch voteGates[0].TokenType {
 		case 0: // ERC20
@@ -890,8 +888,6 @@ func BuildMetaforoVoteFormDataBytes(db *gorm.DB, proposalId uint, voteGates []*m
 			MinTokens:    minToken,
 		})
 	}
-
-	api.PrintStructAsJson(voteData, "TTT: mf vote data")
 
 	log.Debug().Msgf("metaforo vote data: %+v", voteData)
 
@@ -1080,8 +1076,6 @@ func UpdateDbVoteOptionRecordsFromMetaforoProposalResponse(db *gorm.DB, dbPropos
 			log.Debug().Msgf("save DB proposal vote record success: %+v", proposalVoteRecord)
 		}
 
-		api.PrintStructAsJson(proposalVoteRecord, "TTT: proposal vote record")
-
 		currState := proposalVoteRecord.State
 		if currState != poll.Status {
 			pollStatusChanged = true
@@ -1116,7 +1110,6 @@ func UpdateDbVoteOptionRecordsFromMetaforoProposalResponse(db *gorm.DB, dbPropos
 					optLabel = voteOpt.Html.(string)
 				}
 
-				api.PrintStructAsJson(voteOpt, "TTT: vote option")
 				voterCount := voteOpt.Weights
 				if voterCount == 0 {
 					voterCount = voteOpt.Voters
@@ -1140,7 +1133,6 @@ func UpdateDbVoteOptionRecordsFromMetaforoProposalResponse(db *gorm.DB, dbPropos
 				} else {
 					log.Debug().Msgf("update DB proposal vote option success: %+v", proposalVoteOptionRecord)
 				}
-				api.PrintStructAsJson(proposalVoteOptionRecord, "TTT: proposal vote option record")
 			}
 			return nil
 		})
@@ -1157,7 +1149,7 @@ func UpdateDbVoteOptionRecordsFromMetaforoProposalResponse(db *gorm.DB, dbPropos
 	return pollStatusChanged, nil
 }
 
-func HandleProposalPollStatusChange(db *gorm.DB, proposalId uint) error {
+func HandleProposalPollStatusChange(db *gorm.DB, proposalId uint, mfGroupName string) error {
 	var pVoteRcds []*model.ProposalVoteRecord
 	err := db.Model(&model.ProposalVoteRecord{}).Where("proposal_id = ?", proposalId).Find(&pVoteRcds).Error
 	if err != nil {
@@ -1212,8 +1204,14 @@ func HandleProposalPollStatusChange(db *gorm.DB, proposalId uint) error {
 			log.Warn().Msgf("process proposal state error: %+v", err)
 			return err
 		} else {
-			log.Debug().Msgf("process proposal state success")
-			return nil
+			err = UpdateUserVoteRecordViaMetaforo(db, mfGroupName, proposalId)
+			if err != nil {
+				log.Warn().Msgf("update user vote record error: %+v", err)
+				return err
+			} else {
+				log.Debug().Msgf("process proposal state success")
+				return nil
+			}
 		}
 	} else {
 		log.Warn().Msgf("unknown poll status: %+v", effectVoteRcd.State)
@@ -1241,7 +1239,6 @@ func UpdateProposalStateAfterVoteClosed(db *gorm.DB, proposalId uint, pVoteRcd *
 		return err
 	}
 
-	api.PrintStructAsJson(dbProposalRcd, "TTT: before update")
 	if dbProposalRcd.IsInFinState() || dbProposalRcd.State == int(model.ProposalStatePendingExecution) {
 		log.Warn().Msgf("proposal %d in state %d, not need to apply post job.", dbProposalRcd.ID, dbProposalRcd.State)
 		return nil
@@ -1385,7 +1382,6 @@ func UpdateProposalStateAfterVoteClosed(db *gorm.DB, proposalId uint, pVoteRcd *
 
 	log.Debug().Msgf("update proposal %d state from %d to %+v", dbProposalRcd.ID, dbProposalRcd.State, proposalFinalState)
 	err = db.Model(&dbProposalRcd).Where(&model.Proposal{ID: dbProposalRcd.ID}).Update("state", proposalFinalState).Error
-	api.PrintStructAsJson(dbProposalRcd, "TTT: proposal record after update")
 	if err != nil {
 		log.Error().Msgf("update proposal state to %d error: %+v. DB proposal: %+v", proposalFinalState, err, dbProposalRcd)
 		return err
@@ -1742,7 +1738,6 @@ func CreateProjectFromAutoTasks(db *gorm.DB, proposalId uint) (*model.Project, e
 	var projectBudgetRcds []*model.ProjectBudget
 
 	for _, pComponentRecord := range pComponents {
-		api.PrintStructAsJson(pComponentRecord, "TTT: component record")
 		if compName, found := getProposalComponentIdNameMapping(db)[pComponentRecord.ComponentID]; found {
 			if compName == internal.ComponentNameBudgetP1 {
 				var budgetParams budgetComponentDataP1

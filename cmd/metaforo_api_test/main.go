@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"github.com/theseed-labs/os-backend/internal/api"
+	proposal "github.com/theseed-labs/os-backend/internal/api/proposal"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/config"
 	"github.com/theseed-labs/os-backend/internal/model"
@@ -35,6 +37,8 @@ func main() {
 	syncQuillToMdService := syncCommand.String("quill-service", "https://delta2html-api-0x2t.hello-what.workers.dev", "service to convert quill to markdown")
 	syncCategoryFlag := syncCommand.Bool("sync-category", false, "sync category flag, default false")
 	syncGateFlag := syncCommand.Bool("sync-vote-gate", false, "sync gate flag, default false")
+	syncUserVoteFlag := syncCommand.Bool("user-vote", false, "sync user vote flag, default false")
+	syncWaitSeconds := syncCommand.Int("wait-seconds", 10, "wait seconds between each proposal")
 
 	// vote related
 	voteAccessToken := voteCommand.String("access-token", "", "Access token")
@@ -63,8 +67,13 @@ func main() {
 		if *syncCategoryFlag {
 			SyncCategories(db, *syncGroup)
 		}
+
 		if *syncGateFlag {
 			SyncNftGate(db, *syncGroup)
+		}
+
+		if *syncUserVoteFlag {
+			SyncUserVote(db, cfg, *syncGroup, *syncWaitSeconds)
 		}
 
 		for i := *syncStartPage; i < *syncEndPage; i++ {
@@ -319,6 +328,33 @@ func SyncNftGate(db *gorm.DB, grpName string) {
 			log.Error().Msgf("upsert nft gate record: %+v, created %d records", nftGateConf, createdCnt)
 		}
 	}
+}
+
+func SyncUserVote(db *gorm.DB, cfg *config.Config, grpName string, waitSeconds int) {
+	var proposalRcd []*model.Proposal
+	var query = db.Model(&model.Proposal{}).Where("not user_vote_record_saved").Order("id desc")
+
+	err := query.Find(&proposalRcd).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			log.Debug().Msgf("no proposal not updated")
+			return
+		} else {
+			log.Error().Msgf("get proposal records error: %+v", err)
+			return
+		}
+	}
+
+	for _, p := range proposalRcd {
+		log.Debug().Msgf("update user vote record for proposal: %d", p.ID)
+		err = proposal.UpdateUserVoteRecordViaMetaforo(db, cfg.MetaforoData.GroupName, p.ID)
+		if err != nil {
+			log.Error().Msgf("update proposalRcd user vote record error: %+v", err)
+			return
+		}
+		time.Sleep(time.Duration(waitSeconds) * time.Second)
+	}
+	// Get proposal list from metaforo
 }
 
 func upsertDbRcd[T any](db *gorm.DB, cond map[string]any, data T) (error, int) {
