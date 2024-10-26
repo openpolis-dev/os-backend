@@ -1226,8 +1226,11 @@ func UpdateUserVoteRecordViaMetaforo(db *gorm.DB, cfg *config.Config, proposalId
 				return err
 			}
 		}
-
-		// Update proposal record to mark user vote record as saved
-		return tx.Model(&model.Proposal{}).Where(&model.Proposal{ID: proposalId}).Update("user_vote_record_saved", true).Error
+		if proposal.IsInFinState() {
+			// Update proposal record to mark user vote record as saved only for finished proposal
+			return tx.Model(&model.Proposal{}).Where(&model.Proposal{ID: proposalId}).Update("user_vote_record_saved", true).Error
+		} else {
+			return tx.Model(&model.Proposal{}).Where(&model.Proposal{ID: proposalId}).Update("user_vote_record_saved", false).Error
+		}
 	})
 }
