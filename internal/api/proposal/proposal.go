@@ -1196,7 +1196,7 @@ func UpdateUserVoteRecordViaMetaforo(db *gorm.DB, cfg *config.Config, proposalId
 		}
 	}
 
-	userIdWalletMap, err := PopulateUserWalletFromMetaforoIds(db, lo.Map(voterList, func(voter *metaforo.UserPollRecord, _ int) int {
+	userIdWalletMap, err := fetchUserWalletFromMetaforoIds(db, lo.Map(voterList, func(voter *metaforo.UserPollRecord, _ int) int {
 		return voter.User.Id
 	}))
 	if err != nil {

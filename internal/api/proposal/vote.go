@@ -265,7 +265,7 @@ func ShowVoteDetail(ctx *gin.Context) {
 		return
 	}
 
-	// TODO: Update this logic to PopulateUserWalletFromMetaforoIds function
+	// TODO: Update this logic to fetchUserWalletFromMetaforoIds function
 	// Update metaforo user record if UID not found in DB
 	missingMfUserIds := map[int]*metaforo.UserDetailResponseForProfileAPI{}
 	for _, mfVoterRecord := range voterList {

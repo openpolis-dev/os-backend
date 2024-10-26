@@ -207,10 +207,10 @@ func GetProposalCommentsWithOsUserData(db *gorm.DB, metaforoComments []metaforo.
 	return frontendCommentsRecords, nil
 }
 
-// PopulateUserWalletFromMetaforoIds populates user wallet from metaforo user ids
+// fetchUserWalletFromMetaforoIds populates user wallet from metaforo user ids
 // The function first check whether the user wallet is empty, if so it will try to get the user detail from metaforo API then save the wallet to db
 // It will also create user record in db if not exist
-func PopulateUserWalletFromMetaforoIds(db *gorm.DB, metaforoUserIds []int) (map[int]string, error) {
+func fetchUserWalletFromMetaforoIds(db *gorm.DB, metaforoUserIds []int) (map[int]string, error) {
 	// Verify the user are new record which haven't been created in our db
 	var missingWalletMetaforoUser []*model.MetaforoUser
 	err = db.Model(&model.MetaforoUser{}).Where("user_wallet = ?", "").Find(&missingWalletMetaforoUser).Error
