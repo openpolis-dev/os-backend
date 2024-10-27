@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"strings"
 
@@ -720,6 +721,40 @@ func verifyEntityCasbinPermission(db *gorm.DB) {
 	}
 }
 
+func updateProposalSeasonId(db *gorm.DB) {
+	var propsoalWithoutSeasonId []*model.Proposal
+	err := db.Model(&model.Proposal{}).Where("season_id = 0 or season_id is null").Find(&propsoalWithoutSeasonId).Error
+	if err != nil {
+		panic(err)
+	}
+
+	log.Printf("Found %d proposals without season id", len(propsoalWithoutSeasonId))
+
+	var seasons []*model.Season
+	err = db.Model(&model.Season{}).Find(&seasons).Order("start_at asc").Error
+	if err != nil {
+		panic(err)
+	}
+
+	err = db.Transaction(func(tx *gorm.DB) error {
+		for _, p := range propsoalWithoutSeasonId {
+			for _, s := range seasons {
+				if p.CreateTs >= s.StartAt && p.CreateTs <= s.EndAt {
+					err = tx.Model(&model.Proposal{}).Where(&model.Proposal{ID: p.ID}).Update("season_id", s.ID).Error
+					if err != nil {
+						return err
+					}
+					break
+				}
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		panic(err)
+	}
+}
+
 func main() {
 	cfg := config.LoadConfig("config.yml")
 	//storage.InitGormDB(cfg.DataSource.Dsn, cfg.Casbin.DriverName)
@@ -744,6 +779,7 @@ func main() {
 		fmt.Println("  seed")
 		fmt.Println("  fixperm")
 		fmt.Println("  verifyperm")
+		fmt.Println("  fillSeason")
 		os.Exit(1)
 	}
 
@@ -770,6 +806,8 @@ func main() {
 		updateEntityCasbinPermission(db)
 	case "verifyperm":
 		verifyEntityCasbinPermission(db)
+	case "fillSeason":
+		updateProposalSeasonId(db)
 	default:
 		fmt.Printf("Unknown command: %s\n", os.Args[1])
 		os.Exit(1)

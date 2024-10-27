@@ -37,6 +37,7 @@ func main() {
 	syncQuillToMdService := syncCommand.String("quill-service", "https://delta2html-api-0x2t.hello-what.workers.dev", "service to convert quill to markdown")
 	syncCategoryFlag := syncCommand.Bool("sync-category", false, "sync category flag, default false")
 	syncGateFlag := syncCommand.Bool("sync-vote-gate", false, "sync gate flag, default false")
+
 	syncUserVoteFlag := syncCommand.Bool("user-vote", false, "sync user vote flag, default false")
 	syncWaitSeconds := syncCommand.Int("wait-seconds", 10, "wait seconds between each proposal")
 
