@@ -276,6 +276,11 @@ func processingApplication(tx *gorm.DB, application *Application) error {
 		//if err := UserAssetRecordModel.CreateOrUpdate(tx, application.TargetUserWallet, application.AssetName, application.AssetAmount, decimal.Zero); err != nil {
 		//	return err
 		//}
+
+		if application.AssetName == "SCR" {
+			// Create auto transfer SCR task
+			// TODO: Confirm whether the task is single application or multiple application
+		}
 	}
 	return nil
 }
