@@ -361,6 +361,11 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		authorizedGroup.POST("/apps_process", application.BatchProcess)
 		authorizedGroup.POST("/apps_complete", application.BatchComplete)
 
+		// Auto transfer SCR application routers
+		authorizedGroup.GET("/scr_tasks/", application.AutoXferTaskList)
+		authorizedGroup.GET("/scr_tasks/:id", application.AutoXferTaskDetail)
+		authorizedGroup.POST("/scr_tasks/:id/cancel", application.CancelAutoXferTask)
+
 		// SeeDAO assets routers
 		treasuryGroup := authorizedGroup.Group("/treasury")
 		treasuryGroup.POST("/update_assets", treasury.UpdateAssets)

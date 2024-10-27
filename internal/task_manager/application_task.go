@@ -52,6 +52,19 @@ type MotivationTaskParam struct {
 	Records    []*MotivationDetail `json:"budgetList"`
 }
 
+type AutoTransferScrParam struct {
+	ApplicationId uint   `json:"application_id"`
+	TargetWallet  string `json:"target_wallet"`
+	ScrAmount     string `json:"scr_amount"`
+}
+
+type AutoTransferScrTaskResult struct {
+	TxHash      string `json:"tx_hash"`
+	TxStatus    string `json:"tx_status"`
+	TxError     string `json:"tx_error"`
+	TxTimestamp string `json:"tx_timestamp"`
+}
+
 // TODO: This for old new_reward component, which is similar with motivation component. It is not using for now.
 
 func CreateAppBundleTaskFromNewRewardComponent(db *gorm.DB, job *model.CronJob, jobParams string, voteType int, voteResult string) {
@@ -278,4 +291,23 @@ func CreateAppBundleTaskFromMotivationComponent(db *gorm.DB, job *model.CronJob,
 	}
 
 	log.Error().Msgf("TTT: exit create app bundle from motivation component task: %+v", job)
+}
+
+func AutoTransferSCR(db *gorm.DB, job *model.CronJob, jobParams string) {
+	log.Debug().Msgf("enter auto transfer SCR task: %+v", job)
+	err := db.Model(&job).Updates(model.CronJob{State: model.CronJobStateRunning}).Error
+	if err != nil {
+		log.Warn().Msgf("update cron job error: %+v", err)
+		return
+	}
+
+	var params []*AutoTransferScrParam
+	err = json.Unmarshal([]byte(jobParams), &params)
+	if err != nil {
+		log.Warn().Msgf("parse auto transfer SCR params error: %+v", err)
+		return
+	}
+
+	// TODO: Invoke SCR transfer service to transfer SCR
+	// Get transaction hash and update application record to completed
 }
