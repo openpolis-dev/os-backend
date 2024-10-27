@@ -167,7 +167,7 @@ func AggrScr(ctx *gin.Context) {
 	// Category the records with user wallet, and calculate season total credits
 
 	// Load metaforo vote count
-	metaforoVoteCount, err := getSeasonVoteRecords(db, currentSeason)
+	metaforoVoteCount, err := GetSeasonVoteRecords(db, currentSeason)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get metaforo vote count error")))

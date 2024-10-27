@@ -12,13 +12,14 @@ const (
 		select proposals.id from proposals where proposals.proposal_template_id in (
 			select DISTINCT (m2mpvg.proposal_template_id) from m2m_proposal_voting_gates m2mpvg
 			left join proposal_templates pt on m2mpvg.proposal_template_id = pt.id
-			left join proposal_vote_gates pvg on m2mpvg.proposal_vote_gate_id = pvg.id where pvg.name like '节点%') and season_id = ?
+			left join proposal_vote_gates pvg on m2mpvg.proposal_vote_gate_id = pvg.id where pvg.name like '节点%') 
+			and state in (6, 9) and season_id = ?
 	)`
 )
 
-// getSeasonVoteRecords returns a map of user wallet to their vote count of current season
+// GetSeasonVoteRecords returns a map of user wallet to their vote count of current season
 // The source data is gathered from proposal_user_vote_records table
-func getSeasonVoteRecords(db *gorm.DB, currentSeason *model.Season) (map[string]int, error) {
+func GetSeasonVoteRecords(db *gorm.DB, currentSeason *model.Season) (map[string]int, error) {
 	var currentSeasonMintUserVoteRecords []*model.ProposalUserVoteRecord
 	err := db.Raw(getCurrentSeasonMintableUserVoteRecordsQuery, currentSeason.ID).Find(&currentSeasonMintUserVoteRecords).Error
 	if err != nil {
@@ -26,7 +27,7 @@ func getSeasonVoteRecords(db *gorm.DB, currentSeason *model.Season) (map[string]
 		return nil, err
 	}
 
-	var metaforoUserVoteCount map[string]int
+	metaforoUserVoteCount := make(map[string]int)
 	for _, record := range currentSeasonMintUserVoteRecords {
 		metaforoUserVoteCount[common.FormatUserWallet(record.UserWallet)] += 1
 	}
