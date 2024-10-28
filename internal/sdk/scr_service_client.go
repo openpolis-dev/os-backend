@@ -30,7 +30,7 @@ type autoTransferScrItem struct {
 	ScrAmount     string `json:"scr_amount"`
 }
 
-func SendScr(apiBase string, taskParamStr string, applicant string) ([]byte, error) {
+func SendScr(apiEndpoint string, taskParamStr string, applicant string) ([]byte, error) {
 	reqData := sendScrRequest{
 		Applicant: applicant,
 		Accounts:  []string{},
@@ -55,7 +55,7 @@ func SendScr(apiBase string, taskParamStr string, applicant string) ([]byte, err
 		return nil, err
 	}
 
-	resp, err := http.Post(apiBase, "application/json", bytes.NewBuffer(reqBytes))
+	resp, err := http.Post(apiEndpoint, "application/json", bytes.NewBuffer(reqBytes))
 	if err != nil {
 		log.Error().Msgf("send SCR request error: %+v", err)
 		return nil, err

@@ -314,14 +314,14 @@ func AutoTransferSCR(db *gorm.DB, job *model.CronJob, jobParams string) {
 		return
 	}
 
-	apiBase, err := model.GetXferScrApi(db)
+	apiEndpoint, err := model.GetXferScrApi(db)
 	if err != nil {
 		log.Warn().Msgf("get xfer SCR service api base error: %+v", err)
 		return
 	}
 
 	// TODO: Invoke SCR transfer service to transfer SCR
-	resp, err := sdk.SendScr(apiBase, jobParams, common.FormatUserWallet(params.Applicant))
+	resp, err := sdk.SendScr(apiEndpoint, jobParams, common.FormatUserWallet(params.Applicant))
 	if err != nil {
 		log.Error().Msgf("send SCR request error: %+v", err)
 		return

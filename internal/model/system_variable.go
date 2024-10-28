@@ -16,7 +16,7 @@ const (
 	MetaforoInfoVariableName = "metaforo_access_info"
 	NodeSbtAddrVariableName  = "node_token_addr"
 	NodeSbtIdVariableName    = "node_token_id"
-	XferScrServiceName       = "xfer_scr_service"
+	XferScrServiceName       = "xfer_scr_api"
 )
 
 type SystemVariable struct {
