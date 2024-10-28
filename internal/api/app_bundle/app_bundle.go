@@ -683,6 +683,13 @@ func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState
 					return err
 				}
 
+				err = api.CreateAutoTransferScrTask(db, appBundleRcd.AppRecords)
+				if err != nil {
+					log.Error().Msgf("create auto xfer task error: %+v, app bundle: %+v", err, appBundleRcd)
+					tx.Rollback()
+					return err
+				}
+
 				// send to QuickAccounting
 				if newState == model.ApplicationStateApproved {
 					// only send support token to QuickAccounting

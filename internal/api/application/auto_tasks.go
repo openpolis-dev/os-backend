@@ -25,6 +25,8 @@ type autoXferTaskResponse struct {
 	UpdateTs  int64 `json:"update_ts"`
 	ExecuteTs int64 `json:"execute_ts"`
 
+	State string `json:"state"`
+
 	TransactionItems []*task_manager.AutoTransferScrItem `json:"transaction_items"`
 
 	IsFinished bool `json:"is_finished"`
@@ -113,6 +115,8 @@ func generateAutoXferTaskResponse(task model.CronJob) *autoXferTaskResponse {
 		ID:       task.ID,
 		CreateTs: task.CreateTs,
 		UpdateTs: task.UpdateTs,
+
+		State: task.StateName(),
 
 		TransactionItems: taskParams.Items,
 
