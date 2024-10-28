@@ -12,6 +12,7 @@ import (
 	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
+	"github.com/theseed-labs/os-backend/internal/sdk"
 	"gorm.io/gorm"
 )
 
@@ -52,10 +53,15 @@ type MotivationTaskParam struct {
 	Records    []*MotivationDetail `json:"budgetList"`
 }
 
-type AutoTransferScrParam struct {
+type AutoTransferScrItem struct {
 	ApplicationId uint   `json:"application_id"`
 	TargetWallet  string `json:"target_wallet"`
 	ScrAmount     string `json:"scr_amount"`
+}
+
+type AutoTransferScrParam struct {
+	Applicant string                 `json:"applicant"`
+	Items     []*AutoTransferScrItem `json:"items"`
 }
 
 type AutoTransferScrTaskResult struct {
@@ -301,13 +307,28 @@ func AutoTransferSCR(db *gorm.DB, job *model.CronJob, jobParams string) {
 		return
 	}
 
-	var params []*AutoTransferScrParam
+	var params *AutoTransferScrParam
 	err = json.Unmarshal([]byte(jobParams), &params)
 	if err != nil {
 		log.Warn().Msgf("parse auto transfer SCR params error: %+v", err)
 		return
 	}
 
+	apiBase, err := model.GetXferScrApi(db)
+	if err != nil {
+		log.Warn().Msgf("get xfer SCR service api base error: %+v", err)
+		return
+	}
+
 	// TODO: Invoke SCR transfer service to transfer SCR
-	// Get transaction hash and update application record to completed
+	resp, err := sdk.SendScr(apiBase, jobParams, common.FormatUserWallet(params.Applicant))
+	if err != nil {
+		log.Error().Msgf("send SCR request error: %+v", err)
+		return
+	}
+
+	log.Debug().Msgf("send SCR response: %s", string(resp))
+	db.Model(&job).Update("last_exec_result", string(resp)).Update("state", model.CronJobStateDone)
+
+	log.Debug().Msgf("exit auto transfer SCR task: %+v", job)
 }

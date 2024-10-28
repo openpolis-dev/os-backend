@@ -16,6 +16,7 @@ const (
 	MetaforoInfoVariableName = "metaforo_access_info"
 	NodeSbtAddrVariableName  = "node_token_addr"
 	NodeSbtIdVariableName    = "node_token_id"
+	XferScrServiceName       = "xfer_scr_service"
 )
 
 type SystemVariable struct {
@@ -209,4 +210,8 @@ func GetNodeSbtAddrAndId(db *gorm.DB) (tokenAddr string, tokenId string, err err
 	}
 
 	return
+}
+
+func GetXferScrApi(db *gorm.DB) (string, error) {
+	return getStrVal(db, XferScrServiceName)
 }

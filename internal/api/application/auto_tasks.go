@@ -20,11 +20,12 @@ import (
 var err error
 
 type autoXferTaskResponse struct {
-	ID       int   `json:"id"`
-	CreateTs int64 `json:"create_ts"`
-	UpdateTs int64 `json:"update_ts"`
+	ID        int   `json:"id"`
+	CreateTs  int64 `json:"create_ts"`
+	UpdateTs  int64 `json:"update_ts"`
+	ExecuteTs int64 `json:"execute_ts"`
 
-	TransactionItems []*task_manager.AutoTransferScrParam `json:"transaction_items"`
+	TransactionItems []*task_manager.AutoTransferScrItem `json:"transaction_items"`
 
 	IsFinished bool `json:"is_finished"`
 
@@ -101,8 +102,8 @@ func CancelAutoXferTask(ctx *gin.Context) {
 }
 
 func generateAutoXferTaskResponse(task model.CronJob) *autoXferTaskResponse {
-	var taskItems []*task_manager.AutoTransferScrParam
-	err = json.Unmarshal([]byte(task.JobParams), &taskItems)
+	var taskParams *task_manager.AutoTransferScrParam
+	err = json.Unmarshal([]byte(task.JobParams), &taskParams)
 	if err != nil {
 		log.Error().Msgf("parse auto transfer SCR params error: %+v", err)
 		return nil
@@ -113,7 +114,7 @@ func generateAutoXferTaskResponse(task model.CronJob) *autoXferTaskResponse {
 		CreateTs: task.CreateTs,
 		UpdateTs: task.UpdateTs,
 
-		TransactionItems: taskItems,
+		TransactionItems: taskParams.Items,
 
 		IsFinished: task.State == model.CronJobStateDone,
 	}
