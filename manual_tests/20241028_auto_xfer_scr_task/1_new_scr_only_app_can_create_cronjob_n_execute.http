@@ -47,6 +47,7 @@ Authorization: Bearer {{auth_token}}
     });
 %}
 
+
 ### Show last app bundle
 GET {{host}}/v1/app_bundles/?size=1&sort_field=create_ts&sort_order=desc
 Content-Type: application/json
@@ -59,13 +60,12 @@ GET {{host}}/v1/scr_tasks/
 Content-Type: application/json
 Authorization: Bearer {{auth_token}}
 
-
 ### Approve app bundle
 POST {{host}}/v1/app_bundle_approve
 Content-Type: application/json
 Authorization: Bearer {{auth_token}}
 
-[176]
+[181]
 
 
 
