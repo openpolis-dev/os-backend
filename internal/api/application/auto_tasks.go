@@ -129,7 +129,7 @@ func generateAutoXferTaskResponse(task model.CronJob) *autoXferTaskResponse {
 		if err != nil {
 			log.Error().Msgf("parse auto transfer SCR task result error: %+v", err)
 		}
-		resp.TransactionHash = execResult.TxHash
+		resp.TransactionHash = execResult.Data.TxHash
 	}
 
 	return &resp

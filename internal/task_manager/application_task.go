@@ -65,10 +65,11 @@ type AutoTransferScrParam struct {
 }
 
 type AutoTransferScrTaskResult struct {
-	TxHash      string `json:"tx_hash"`
-	TxStatus    string `json:"tx_status"`
-	TxError     string `json:"tx_error"`
-	TxTimestamp string `json:"tx_timestamp"`
+	Code int    `json:"code"`
+	Msg  string `json:"msg"`
+	Data struct {
+		TxHash string `json:"tx_hash"`
+	} `json:"data"`
 }
 
 // TODO: This for old new_reward component, which is similar with motivation component. It is not using for now.
@@ -324,6 +325,7 @@ func AutoTransferSCR(db *gorm.DB, job *model.CronJob, jobParams string) {
 	resp, err := sdk.SendScr(apiEndpoint, jobParams, common.FormatUserWallet(params.Applicant))
 	if err != nil {
 		log.Error().Msgf("send SCR request error: %+v", err)
+		db.Model(&job).Updates(model.CronJob{State: model.CronJobStateTerminated, LastExecResult: err.Error()})
 		return
 	}
 
@@ -372,7 +374,7 @@ func AutoTransferSCR(db *gorm.DB, job *model.CronJob, jobParams string) {
 				Operator:      common.FormatUserWallet(params.Applicant),
 				PreState:      model.ApplicationStateProcessing,
 				PostState:     model.ApplicationStateCompleted,
-				ExtraData:     scrServiceResp.TxHash,
+				ExtraData:     scrServiceResp.Data.TxHash,
 			})
 		}
 
