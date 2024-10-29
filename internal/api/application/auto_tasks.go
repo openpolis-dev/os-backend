@@ -3,6 +3,7 @@ package application
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -34,10 +35,44 @@ type autoXferTaskResponse struct {
 	TransactionHash string `json:"transaction_hash"`
 }
 
+type AutoXferTaskListQueryParams struct {
+	Page      int    `form:"page"`
+	Size      int    `form:"size"`
+	SortField string `form:"sort_field"`
+	SortOrder string `form:"sort_order"`
+
+	State string `form:"state"`
+}
+
 func AutoXferTaskList(ctx *gin.Context) {
+	queryParams := AutoXferTaskListQueryParams{}
+	if err = ctx.Bind(&queryParams); err != nil {
+		ctx.JSON(http.StatusBadRequest, api.Reply{
+			Code: -1,
+			Msg:  fmt.Sprintf("query params error: %+v", err),
+		})
+		return
+	}
+
+	pageParams := api.ParseAndConvertPageParam(ctx)
+
 	db := api.ForContextOnlyDB(ctx)
 	var tasks []model.CronJob
-	err := db.Model(&model.CronJob{}).Where("handler_name = ?", internal.TaskAutoTransferSCR).Find(&tasks).Error
+	query := db.Model(&model.CronJob{}).Where("handler_name = ?", internal.TaskAutoTransferSCR)
+
+	if pageParams.Page > 0 && pageParams.Size > 0 {
+		query = query.Offset((pageParams.Page - 1) * pageParams.Size).Limit(pageParams.Size)
+	}
+
+	if pageParams.SortField != nil && pageParams.Order != nil {
+		query = query.Order(fmt.Sprintf("%s %s", *pageParams.SortField, *pageParams.Order))
+	}
+
+	if queryParams.State != "" {
+		query = query.Where("state = ?", queryParams.State)
+	}
+
+	err := query.Find(&tasks).Error
 	if err != nil {
 		log.Error().Msgf("get auto transfer SCR tasks error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
