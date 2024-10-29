@@ -328,7 +328,127 @@ func AutoTransferSCR(db *gorm.DB, job *model.CronJob, jobParams string) {
 	}
 
 	log.Debug().Msgf("send SCR response: %s", string(resp))
-	db.Model(&job).Update("last_exec_result", string(resp)).Update("state", model.CronJobStateDone)
+
+	var scrServiceResp AutoTransferScrTaskResult
+	err = json.Unmarshal(resp, &scrServiceResp)
+	if err != nil {
+		log.Error().Msgf("parse SCR service response error: %+v", err)
+		return
+	}
+
+	// Transaction to update cronjob, application and app bundle state
+	// For application and app bundle, the audit log should also be created
+	err = db.Transaction(func(tx *gorm.DB) error {
+		// Update cronjob's exec result and state
+		err = tx.Model(&job).Updates(model.CronJob{LastExecResult: string(resp), State: model.CronJobStateDone}).Error
+		if err != nil {
+			log.Error().Msgf("update cron job error: %+v", err)
+		}
+
+		// Update application's exec result and state
+
+		// If all applications in the app bundle are executed, update the app bundle's state to executed
+		// Get applications effected by this task
+		appIds := lo.Map(params.Items, func(item *AutoTransferScrItem, index int) uint {
+			return item.ApplicationId
+		})
+
+		// Create application audit logs
+		var appAuditLogs []*model.ApplicationAuditLog
+		for _, appId := range appIds {
+			appAuditLogs = append(appAuditLogs, &model.ApplicationAuditLog{
+				ApplicationID: appId,
+				LogTs:         model.GetCurrentUtcEpochSecond(),
+				Operation:     model.AuditActionProcess,
+				Operator:      common.FormatUserWallet(params.Applicant),
+				PreState:      model.ApplicationStateApproved,
+				PostState:     model.ApplicationStateProcessing,
+				ExtraData:     "",
+			})
+			appAuditLogs = append(appAuditLogs, &model.ApplicationAuditLog{
+				ApplicationID: appId,
+				LogTs:         model.GetCurrentUtcEpochSecond(),
+				Operation:     model.AuditActionComplete,
+				Operator:      common.FormatUserWallet(params.Applicant),
+				PreState:      model.ApplicationStateProcessing,
+				PostState:     model.ApplicationStateCompleted,
+				ExtraData:     scrServiceResp.TxHash,
+			})
+		}
+
+		if err := tx.Create(&appAuditLogs).Error; err != nil {
+			log.Error().Msgf("Create application audit log error: %+v", err)
+			return err
+		}
+
+		// Update application's exec result and state
+		err = tx.Model(&model.Application{}).Where("id IN (?)", appIds).Update("state", model.ApplicationStateCompleted).Error
+		if err != nil {
+			log.Error().Msgf("update application state error: %+v", err)
+			return err
+		}
+
+		// Start to process app bundle
+		// Group applications processed in this task by app bundle id
+		var applications []*model.Application
+		err = tx.Model(&model.Application{}).Where("id IN (?)", appIds).Find(&applications).Error
+		if err != nil {
+			log.Error().Msgf("get applications error: %+v", err)
+			return err
+		}
+
+		processedAppIdsGroupedByBundleId := make(map[uint][]uint)
+		for _, app := range applications {
+			processedAppIdsGroupedByBundleId[app.BundleId] = append(processedAppIdsGroupedByBundleId[app.BundleId], app.ID)
+		}
+
+		// Query database to get app bundle records mentioned in the processed application ids
+		var allApplicationsForBundles []*model.Application
+		err = tx.Model(&model.Application{}).Where("bundle_id IN (?)", lo.Keys(processedAppIdsGroupedByBundleId)).Find(&allApplicationsForBundles).Error
+		if err != nil {
+			log.Error().Msgf("get applications error: %+v", err)
+			return err
+		}
+
+		// Group db query result by bundle id
+		dbAppIdsGroupedByBundleId := lo.GroupBy(allApplicationsForBundles, func(app *model.Application) uint {
+			return app.BundleId
+		})
+
+		var appBundleIdsShouldBeMarkedAsCompleted []uint
+		for bundleId, appList := range processedAppIdsGroupedByBundleId {
+			if len(appList) == len(dbAppIdsGroupedByBundleId[bundleId]) {
+				appBundleIdsShouldBeMarkedAsCompleted = append(appBundleIdsShouldBeMarkedAsCompleted, bundleId)
+			}
+		}
+
+		// Create app bundle audit logs
+		var bundleAuditLogs []*model.AppBundleAuditLog
+		for _, bundleId := range appBundleIdsShouldBeMarkedAsCompleted {
+			bundleAuditLogs = append(bundleAuditLogs, &model.AppBundleAuditLog{
+				AppBundleId: bundleId,
+				LogTs:       model.GetCurrentUtcEpochSecond(),
+				Operation:   model.AuditActionComplete,
+			})
+		}
+		err = tx.Model(&model.AppBundleAuditLog{}).Create(&bundleAuditLogs).Error
+		if err != nil {
+			log.Error().Msgf("Create app bundle audit log error: %+v", err)
+			return err
+		}
+
+		err = tx.Model(&model.AppBundle{}).Where("id IN (?)", appBundleIdsShouldBeMarkedAsCompleted).Update("state", model.ApplicationStateCompleted).Error
+		if err != nil {
+			log.Error().Msgf("get app bundles error: %+v", err)
+			return err
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		log.Error().Msgf("update app bundle state error: %+v", err)
+	}
 
 	log.Debug().Msgf("exit auto transfer SCR task: %+v", job)
 }
