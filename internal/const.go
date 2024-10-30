@@ -104,6 +104,7 @@ const (
 	TaskCloseGuild           = "guild/close"
 	TaskRewardNewApplication = "reward/new_application"
 	TaskNewMotivationReward  = "reward/motivation"
+	TaskAutoTransferSCR      = "reward/auto_transfer_scr"
 	TaskVetoedProposal       = "proposal/veto"
 	TaskUpdateProposalState  = "proposal/update_state"
 )

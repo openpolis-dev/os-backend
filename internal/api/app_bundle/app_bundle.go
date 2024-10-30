@@ -683,6 +683,12 @@ func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState
 					return err
 				}
 
+				if err != nil {
+					log.Error().Msgf("create auto xfer task error: %+v, app bundle: %+v", err, appBundleRcd)
+					tx.Rollback()
+					return err
+				}
+
 				// send to QuickAccounting
 				if newState == model.ApplicationStateApproved {
 					// only send support token to QuickAccounting
@@ -724,6 +730,13 @@ func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState
 						})
 					}
 				}
+			}
+
+			err = api.CreateAutoTransferScrTask(tx, appBundleRcd.AppRecords)
+			if err != nil {
+				log.Error().Msgf("create auto xfer task error: %+v, app bundle: %+v", err, appBundleRcd)
+				tx.Rollback()
+				return err
 			}
 		}
 		return nil

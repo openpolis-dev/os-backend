@@ -181,6 +181,8 @@ func (t *TaskManager) TaskDispatcher() {
 			go CreateProjectTask(t.DatabaseClient, task, task.JobParams)
 		case internal.TaskUpdateProjectOwner:
 			go UpdateProjectOwner(t.DatabaseClient, task, task.JobParams)
+		case internal.TaskAutoTransferSCR:
+			go AutoTransferSCR(t.DatabaseClient, task, task.JobParams)
 		default:
 			// Handle unknown task
 			log.Warn().Msgf("unknown task name: %s task detail: %+v", task.HandlerName, task)

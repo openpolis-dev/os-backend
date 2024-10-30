@@ -7,7 +7,6 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"github.com/theseed-labs/os-backend/internal"
-	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/storage"
@@ -177,10 +176,6 @@ func UpdateProjectOwner(db *gorm.DB, job *model.CronJob, jobParams string) {
 
 	var params UpdateProjectOwnerParam
 	err = json.Unmarshal([]byte(jobParams), &params)
-
-	api.PrintStructAsJson(jobParams, "TTT: jobParams")
-
-	api.PrintStructAsJson(params, "TTT: params")
 
 	if err != nil {
 		log.Warn().Msgf("close project job params error: %+v", err)
