@@ -398,7 +398,10 @@ func AutoTransferSCR(db *gorm.DB, job *model.CronJob, jobParams string) {
 			}
 
 			// Update application's exec result and state
-			err = tx.Model(&model.Application{}).Where("id IN (?)", appIds).Update("state", model.ApplicationStateCompleted).Error
+			err = tx.Model(&model.Application{}).Where("id IN (?)", appIds).Updates(model.Application{
+				State:           model.ApplicationStateCompleted,
+				CompleteMessage: scrServiceResp.Data.TxHash,
+			}).Error
 			if err != nil {
 				log.Error().Msgf("update application state error: %+v", err)
 				return err

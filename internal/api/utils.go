@@ -21,7 +21,8 @@ import (
 	"gorm.io/gorm"
 )
 
-const ScrTaskPendingTime = 24 * time.Hour
+// const ScrTaskPendingTime = 24 * time.Hour
+const ScrTaskPendingTime = 2 * time.Minute
 
 // Copy struct from task_manager/application_task.go to avoid import cycle
 type autoTransferScrItem struct {
