@@ -10,8 +10,6 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-var err error
-
 type sendScrRequest struct {
 	Applicant string   `json:"applicant"`
 	Accounts  []string `json:"accounts"`
@@ -30,7 +28,7 @@ type autoTransferScrItem struct {
 	ScrAmount     string `json:"scr_amount"`
 }
 
-func SendScr(apiEndpoint string, taskParamStr string, applicant string) ([]byte, error) {
+func SendScr(apiEndpoint, apiKey, apiSecret, taskParamStr, applicant string) ([]byte, error) {
 	reqData := sendScrRequest{
 		Applicant: applicant,
 		Accounts:  []string{},
@@ -55,7 +53,16 @@ func SendScr(apiEndpoint string, taskParamStr string, applicant string) ([]byte,
 		return nil, err
 	}
 
-	resp, err := http.Post(apiEndpoint, "application/json", bytes.NewBuffer(reqBytes))
+	// http.Post with headers
+	req, err := http.NewRequest("POST", apiEndpoint, bytes.NewBuffer(reqBytes))
+	if err != nil {
+		log.Error().Msgf("create send SCR request error: %+v", err)
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Api-Key", apiKey)
+	req.Header.Set("Api-Secret", apiSecret)
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		log.Error().Msgf("send SCR request error: %+v", err)
 		return nil, err

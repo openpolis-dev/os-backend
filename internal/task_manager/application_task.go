@@ -322,9 +322,9 @@ func AutoTransferSCR(db *gorm.DB, job *model.CronJob, jobParams string) {
 		}
 	}
 
-	var apiEndpoint string
+	var apiEndpoint, apiKey, apiSecret string
 	if !jobFailed {
-		apiEndpoint, err = model.GetXferScrApi(db)
+		apiEndpoint, apiKey, apiSecret, err = model.GetXferScrApi(db)
 		if err != nil {
 			log.Warn().Msgf("get xfer SCR service api base error: %+v", err)
 			return
@@ -335,7 +335,7 @@ func AutoTransferSCR(db *gorm.DB, job *model.CronJob, jobParams string) {
 	var respBytes []byte
 	var scrServiceResp AutoTransferScrTaskResult
 	if !jobFailed {
-		respBytes, err = sdk.SendScr(apiEndpoint, jobParams, common.FormatUserWallet(params.Applicant))
+		respBytes, err = sdk.SendScr(apiEndpoint, apiKey, apiSecret, jobParams, common.FormatUserWallet(params.Applicant))
 		if err != nil {
 			log.Error().Msgf("send SCR request error: %+v", err)
 			db.Model(&job).Updates(model.CronJob{State: model.CronJobStateTerminated, LastExecResult: err.Error()})

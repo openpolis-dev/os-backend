@@ -17,6 +17,8 @@ const (
 	NodeSbtAddrVariableName  = "node_token_addr"
 	NodeSbtIdVariableName    = "node_token_id"
 	XferScrServiceName       = "xfer_scr_api"
+	XferScrServiceKey        = "xfer_scr_key"
+	XferScrServiceSecret     = "xfer_scr_secret"
 )
 
 type SystemVariable struct {
@@ -212,6 +214,23 @@ func GetNodeSbtAddrAndId(db *gorm.DB) (tokenAddr string, tokenId string, err err
 	return
 }
 
-func GetXferScrApi(db *gorm.DB) (string, error) {
-	return getStrVal(db, XferScrServiceName)
+func GetXferScrApi(db *gorm.DB) (string, string, string, error) {
+	endpoint, err := getStrVal(db, XferScrServiceName)
+	if err != nil {
+		log.Error().Msgf("get xfer scr service endpoint error: %+v", err)
+		return "", "", "", err
+	}
+
+	apiKey, err := getStrVal(db, XferScrServiceKey)
+	if err != nil {
+		log.Error().Msgf("get xfer scr service key error: %+v", err)
+		return "", "", "", err
+	}
+
+	secret, err := getStrVal(db, XferScrServiceSecret)
+	if err != nil {
+		log.Error().Msgf("get xfer scr service secret error: %+v", err)
+		return "", "", "", err
+	}
+	return endpoint, apiKey, secret, nil
 }
