@@ -228,6 +228,16 @@ func CreateAppBundle(ctx *gin.Context) {
 		return
 	}
 
+	// Validate target user wallet
+	for _, appRcd := range newAppBundleReq.Records {
+		if targetUserWalletValidFlag := common.ValidateUserWallet(appRcd.TargetUserWallet); !targetUserWalletValidFlag {
+			err := fmt.Errorf("invalid target user wallet: %s", appRcd.TargetUserWallet)
+			sdk.LogUserSideError(ctx, err)
+			ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
+			return
+		}
+	}
+
 	// TODO: If the associated project has budget, guarantee the total amount does not exceed the (budget - advanced_amount)
 
 	user, enforcer, db, _ := api.ForContext(ctx)
@@ -467,6 +477,8 @@ func CreateAppBundle(ctx *gin.Context) {
 		}
 
 		appBundle.AppRecords = lo.Map(newAppBundleReq.Records, func(appRcdRequest *model.NewApplicationRequest, index int) *model.Application {
+			formattedTargetWallet := common.FormatUserWallet(appRcdRequest.TargetUserWallet)
+
 			return &model.Application{
 				Type:             model.ApplicationNewReward,
 				Applicant:        common.FormatUserWallet(user.Wallet),
@@ -477,7 +489,7 @@ func CreateAppBundle(ctx *gin.Context) {
 				UpdateTs:         model.GetCurrentUtcEpochSecond(),
 				DetailedType:     appRcdRequest.DetailedType,
 				Comment:          appRcdRequest.Comment,
-				TargetUserWallet: appRcdRequest.TargetUserWallet,
+				TargetUserWallet: formattedTargetWallet,
 				AssetName:        appRcdRequest.AssetName,
 				AssetAmount:      appRcdRequest.Amount,
 				EntityType:       newAppBundleReq.Entity,
