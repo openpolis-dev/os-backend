@@ -205,6 +205,16 @@ func ValidateProposalComponentParams(db *gorm.DB, reqData *CreateOrUpdateProposa
 				return err
 			}
 
+			// Validate user address
+			for _, r := range motivationComponentData.RewardList {
+				if !common.ValidateUserWallet(r.Address) {
+					err = fmt.Errorf("invalid address %s for motivation component %s", r.Address, r.AssetInfo.Name)
+					log.Error().Msgf(err.Error())
+					return err
+				}
+			}
+
+			// Validate entity has enough budget
 			componentRewardAmountData := lo.SliceToMap(motivationComponentData.RewardList, func(reward *model.ComponentMotivationRewardRecord) (string, decimal.Decimal) {
 				return reward.AssetInfo.Name, decimal.RequireFromString(reward.Amount)
 			})
