@@ -283,6 +283,18 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 		return nil, err
 	}
 
+	var voteGates []*model.ProposalVoteGate
+	voteGates, err = service.ProposalTemplateService.GetUsageVoteGates(db, pTemplate.ID)
+	if err != nil {
+		log.Error().Msgf("get vote gates error: %+v", err)
+		return nil, err
+	}
+
+	if len(voteGates) > 1 {
+		err = fmt.Errorf("more than one vote gate found for template %d, only the frist one will be used", pTemplate.ID)
+		log.Warn().Msg(err.Error())
+	}
+
 	voteTimeProps.PublicitySecond = pTemplate.PublicitySecond
 	voteTimeProps.VoteDurationSecond = pTemplate.VoteDurationSecond
 	voteTimeProps.PendingExecutionSecond = pTemplate.PendingExecutionSecond
@@ -379,12 +391,6 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 
 		return &proposalRcd, nil
 	} else {
-		currSeason, err := model.GetCurrentSeason(db)
-		if err != nil {
-			log.Error().Msgf("get current season error: %+v", err)
-			return nil, err
-		}
-
 		// Init proposal record to get ID
 		proposalRecord := model.Proposal{
 			CreateTs:                time.Now().UTC().Unix(),
@@ -392,7 +398,7 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 			Applicant:               common.FormatUserWallet(userWallet),
 			ProposalCategoryID:      pTemplate.ProposalCategoryID,
 			Version:                 1,
-			SeasonId:                currSeason.ID,
+			VoteGateId:              voteGates[0].ID,
 			VoteType:                pTemplate.VoteType,
 			CanBeVetoed:             pCategory.CanBeVetoed,
 			IsBasedOnCustomTemplate: pTemplate.IsCustomTemplate,
@@ -722,8 +728,7 @@ func SaveProposalToMetaforo(db *gorm.DB, dbProposalId uint, voteType int, metafo
 			return err
 		}
 
-		var voteGates []*model.ProposalVoteGate
-		err = db.Model(&pTmpl).Association("VoteGates").Find(&voteGates)
+		voteGates, err := service.ProposalTemplateService.GetUsageVoteGates(db, pTmpl.ID)
 		if err != nil {
 			log.Error().Msgf("get vote gates error: %+v", err)
 			return err
