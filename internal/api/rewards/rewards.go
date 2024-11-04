@@ -3,7 +3,6 @@ package rewards
 import (
 	"bytes"
 	"encoding/gob"
-	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -23,6 +22,15 @@ import (
 const MintRewardDetailTemplate = "SeeDAO %s 治理挖矿收益"
 
 func ApproveMintReward(ctx *gin.Context) {
+	err := doApproveMintReward(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(fmt.Errorf("approve mint reward error: %+v", err)))
+		return
+	}
+	ctx.JSON(http.StatusOK, api.Success(nil))
+}
+
+func doApproveMintReward(ctx *gin.Context) error {
 	// Get current reward records
 	//user, enforcer, db, _ := api.ForContext(ctx)
 	user, _, db, _ := api.ForContext(ctx)
@@ -32,26 +40,22 @@ func ApproveMintReward(ctx *gin.Context) {
 	currentSeason, err := model.GetCurrentSeason(db)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get current season error")))
-		return
+		return err
 	}
 
 	metaforoRewardsBytes, err := storage.GetCachedData(storage.MetaforoRewardCacheKey(currentSeason.Idx))
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get metaforo rewards error")))
-		return
+		return err
 	}
 
 	buf := bytes.NewBuffer(metaforoRewardsBytes)
 	bufDecoder := gob.NewDecoder(buf)
-	log.Error().Msgf("TTT: Read buf size: %d", buf.Len())
 	var metaforoRewards map[string]string
 	err = bufDecoder.Decode(&metaforoRewards)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("decode metaforo rewards error")))
-		return
+		return err
 	}
 	cityHallProject, err := model.GetCityHallProject(db)
 
@@ -123,14 +127,22 @@ func ApproveMintReward(ctx *gin.Context) {
 
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("mint rewards error")))
-		return
+		return err
 	}
 
-	ctx.JSON(http.StatusOK, api.Success(nil))
+	return nil
 }
 
 func SnapshotSeed(ctx *gin.Context) {
+	seedSnapshotAt, err := doSnapshotSeed(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(fmt.Errorf("snapshot seed error: %+v", err)))
+		return
+	}
+	ctx.JSON(http.StatusOK, api.Success(fmt.Sprintf("SEED snapshoted at %d", seedSnapshotAt)))
+}
+
+func doSnapshotSeed(ctx *gin.Context) (int64, error) {
 	// Get current reward records
 	//user, enforcer, db, _ := api.ForContext(ctx)
 	user, _, db, _ := api.ForContext(ctx)
@@ -140,8 +152,7 @@ func SnapshotSeed(ctx *gin.Context) {
 	currentSeason, err := model.GetCurrentSeason(db)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get current season error")))
-		return
+		return 0, err
 	}
 	currentSeason.SeedSnapshotSaved = true
 	currentSeason.SeedSnapshotAt = time.Now().Unix()
@@ -150,8 +161,21 @@ func SnapshotSeed(ctx *gin.Context) {
 
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("snapshot seed error")))
-	} else {
-		ctx.JSON(http.StatusOK, api.Success(fmt.Sprintf("SEED snapshoted at %d", currentSeason.SeedSnapshotAt)))
+		return 0, err
 	}
+	return currentSeason.SeedSnapshotAt, nil
+}
+
+func ApproveMintAndSnapshotSeed(ctx *gin.Context) {
+	err := doApproveMintReward(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(fmt.Errorf("approve mint and snapshot seed error: %+v", err)))
+		return
+	}
+	seedSnapshotAt, err := doSnapshotSeed(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(fmt.Errorf("approve mint and snapshot seed error: %+v", err)))
+		return
+	}
+	ctx.JSON(http.StatusOK, api.Success(fmt.Sprintf("SEED snapshoted at %d", seedSnapshotAt)))
 }

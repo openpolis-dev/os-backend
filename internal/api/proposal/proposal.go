@@ -1149,7 +1149,7 @@ func findProjectCreatedByProposal(db *gorm.DB, proposalId uint) (*model.Project,
 	return &createdProject, nil
 }
 
-func UpdateUserVoteRecordViaMetaforo(db *gorm.DB, cfg *config.Config, proposalId uint) error {
+func UpdateUserVoteRecordViaMetaforo(db *gorm.DB, mfGroupName string, proposalId uint) error {
 	proposal, err := service.ProposalService.GetProposalById(db, proposalId)
 	if proposal == nil {
 		err = fmt.Errorf("proposal %d not found", proposalId)
@@ -1175,10 +1175,17 @@ func UpdateUserVoteRecordViaMetaforo(db *gorm.DB, cfg *config.Config, proposalId
 	for _, voteOption := range voteOptions {
 		// A magic number 100 is used here to get all voters for this vote option, which SHOULD NOT be reached
 		for i := 1; i <= 100; i++ {
-			pagedVoterList, err := metaforo.GetVoterList(cfg.MetaforoData.GroupName, voteOption.MetaforoID, i)
+			pagedVoterList, err := metaforo.GetVoterList(mfGroupName, voteOption.MetaforoID, i)
 			if err != nil {
-				log.Error().Msgf("get voter list error: %+v", err)
-				return err
+				if strings.Contains(err.Error(), internal.MetaforoPollNotExistsPrompt) {
+					// Vote option not found in metaforo, the original proposal may be deleted, break the loop and return
+					db.Model(&model.Proposal{}).Where("id = ?", proposalId).Update("user_vote_record_saved", true)
+					log.Warn().Msgf("vote option %d not found in metaforo, mark proposal %d as updated", voteOption.MetaforoID, proposalId)
+					return nil
+				} else {
+					log.Error().Msgf("get voter list error: %+v", err)
+					return err
+				}
 			}
 			voterList = append(voterList, pagedVoterList...)
 			if len(pagedVoterList) < 10 {
@@ -1189,7 +1196,7 @@ func UpdateUserVoteRecordViaMetaforo(db *gorm.DB, cfg *config.Config, proposalId
 		}
 	}
 
-	userIdWalletMap, err := PopulateUserWalletFromMetaforoIds(db, lo.Map(voterList, func(voter *metaforo.UserPollRecord, _ int) int {
+	userIdWalletMap, err := fetchUserWalletFromMetaforoIds(db, lo.Map(voterList, func(voter *metaforo.UserPollRecord, _ int) int {
 		return voter.User.Id
 	}))
 	if err != nil {
@@ -1219,8 +1226,11 @@ func UpdateUserVoteRecordViaMetaforo(db *gorm.DB, cfg *config.Config, proposalId
 				return err
 			}
 		}
-
-		// Update proposal record to mark user vote record as saved
-		return tx.Model(&model.Proposal{}).Where(&model.Proposal{ID: proposalId}).Update("user_vote_record_saved", true).Error
+		if proposal.IsInFinState() {
+			// Update proposal record to mark user vote record as saved only for finished proposal
+			return tx.Model(&model.Proposal{}).Where(&model.Proposal{ID: proposalId}).Update("user_vote_record_saved", true).Error
+		} else {
+			return tx.Model(&model.Proposal{}).Where(&model.Proposal{ID: proposalId}).Update("user_vote_record_saved", false).Error
+		}
 	})
 }

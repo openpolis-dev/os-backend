@@ -148,7 +148,7 @@ func CastVote(ctx *gin.Context) {
 //	@success	200		{object}	api.Reply{data=nil}	"Success"
 //	@router		/proposals/revoke_vote/:id [post]
 func RevokeVote(ctx *gin.Context) {
-	_, cfg := api.ForContextDBAndConfig(ctx)
+	db, cfg := api.ForContextDBAndConfig(ctx)
 	reqData := RevokeVoteData{}
 	if err := ctx.BindJSON(&reqData); err != nil {
 		log.Error().Msgf("parse request data error: %+v", err)
@@ -168,6 +168,31 @@ func RevokeVote(ctx *gin.Context) {
 		return
 
 	}
+	// Remove proposal user vote record
+	err = db.Transaction(func(tx *gorm.DB) error {
+		// Get proposal user vote record from passed in metaforo vote id
+		var proposalVoteOptionRecord *model.ProposalVoteOptionRecord
+		err = tx.Model(&model.ProposalVoteOptionRecord{}).Where(&model.ProposalVoteOptionRecord{
+			MetaforoVoteID: reqData.MetaforoVoteId,
+		}).First(&proposalVoteOptionRecord).Error
+
+		if err != nil {
+			log.Error().Msgf("get proposal vote option record error: %+v", err)
+			return err
+		}
+
+		return tx.Model(&model.ProposalUserVoteRecord{}).Where(&model.ProposalUserVoteRecord{
+			ProposalVoteOptionRecordId: proposalVoteOptionRecord.ID,
+		}).Delete(&model.ProposalUserVoteRecord{}).Error
+	})
+
+	if err != nil {
+		log.Error().Msgf("delete proposal user vote record error: %+v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(fmt.Errorf("delete proposal user vote record error")))
+		return
+	}
+
 	ctx.JSON(http.StatusOK, api.Success(nil))
 }
 
@@ -212,7 +237,7 @@ func CloseVote(ctx *gin.Context) {
 	}
 
 	if pollStatusChanged {
-		if err = HandleProposalPollStatusChange(db, dbProposal.ID); err != nil {
+		if err = HandleProposalPollStatusChange(db, dbProposal.ID, cfg.MetaforoData.GroupName); err != nil {
 			log.Error().Msgf("handle proposal poll status change error: %+v", err)
 			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(fmt.Errorf("close vote error")))
@@ -265,7 +290,7 @@ func ShowVoteDetail(ctx *gin.Context) {
 		return
 	}
 
-	// TODO: Update this logic to PopulateUserWalletFromMetaforoIds function
+	// TODO: Update this logic to fetchUserWalletFromMetaforoIds function
 	// Update metaforo user record if UID not found in DB
 	missingMfUserIds := map[int]*metaforo.UserDetailResponseForProfileAPI{}
 	for _, mfVoterRecord := range voterList {
