@@ -1209,6 +1209,24 @@ func UpdateUserVoteRecordViaMetaforo(db *gorm.DB, mfGroupName string, proposalId
 		return voteOption.MetaforoID, &voteOption
 	})
 
+	dbProposal, mfProposal, err := GetMetaforoProposalByInternalId(db, fmt.Sprintf("%d", proposalId), mfGroupName, "")
+	if err != nil {
+		log.Error().Msgf("get metaforo proposal by internal id error: %+v", err)
+		return err
+	}
+	if dbProposal == nil {
+		log.Error().Msgf("get metaforo proposal by internal id error: %+v", err)
+		return err
+	}
+
+	pollEnded := true
+	for _, poll := range mfProposal.Thread.Polls {
+		if poll.CloseAt.After(time.Now()) {
+			pollEnded = false
+			break
+		}
+	}
+
 	// Upsert ProposalUserVoteRecord record
 	return db.Transaction(func(tx *gorm.DB) error {
 		for _, voterInfo := range voterList {
@@ -1226,7 +1244,7 @@ func UpdateUserVoteRecordViaMetaforo(db *gorm.DB, mfGroupName string, proposalId
 				return err
 			}
 		}
-		if proposal.IsInFinState() {
+		if pollEnded {
 			// Update proposal record to mark user vote record as saved only for finished proposal
 			return tx.Model(&model.Proposal{}).Where(&model.Proposal{ID: proposalId}).Update("user_vote_record_saved", true).Error
 		} else {

@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -38,6 +39,7 @@ func main() {
 	syncCategoryFlag := syncCommand.Bool("sync-category", false, "sync category flag, default false")
 	syncGateFlag := syncCommand.Bool("sync-vote-gate", false, "sync gate flag, default false")
 
+	syncProposalVoteGate := syncCommand.Bool("proposal-vote-gate", false, "sync proposal voting gate, default false")
 	syncUserVoteFlag := syncCommand.Bool("user-vote", false, "sync user vote flag, default false")
 	syncWaitSeconds := syncCommand.Int("wait-seconds", 10, "wait seconds between each proposal")
 
@@ -61,7 +63,7 @@ func main() {
 	case "sync":
 		syncCommand.Parse(os.Args[2:])
 		cfg := config.LoadConfig("config.yml")
-		storage.InitGormDBWithLoggerLevel(cfg.DataSource.Dsn, cfg.Casbin.DriverName, logger.Error)
+		storage.InitGormDBWithLoggerLevel(cfg.DataSource.Dsn, cfg.Casbin.DriverName, logger.Warn)
 		storage.SeedDbRecords()
 		db := storage.GetGormDB()
 
@@ -74,7 +76,11 @@ func main() {
 		}
 
 		if *syncUserVoteFlag {
-			SyncUserVote(db, cfg, *syncGroup, *syncWaitSeconds)
+			SyncUserVote(db, *syncGroup, *syncWaitSeconds)
+		}
+
+		if *syncProposalVoteGate {
+			SyncProposalVoteGate(db, cfg, *syncGroup, *syncWaitSeconds)
 		}
 
 		for i := *syncStartPage; i < *syncEndPage; i++ {
@@ -331,9 +337,9 @@ func SyncNftGate(db *gorm.DB, grpName string) {
 	}
 }
 
-func SyncUserVote(db *gorm.DB, cfg *config.Config, grpName string, waitSeconds int) {
+func SyncUserVote(db *gorm.DB, grpName string, waitSeconds int) {
 	var proposalRcd []*model.Proposal
-	var query = db.Model(&model.Proposal{}).Where("not user_vote_record_saved").Order("id desc")
+	var query = db.Model(&model.Proposal{}).Where("not user_vote_record_saved AND proposal_record_id is not null AND proposal_record_id != ''").Order("id desc")
 
 	err := query.Find(&proposalRcd).Error
 	if err != nil {
@@ -347,15 +353,88 @@ func SyncUserVote(db *gorm.DB, cfg *config.Config, grpName string, waitSeconds i
 	}
 
 	for _, p := range proposalRcd {
-		log.Debug().Msgf("update user vote record for proposal: %d", p.ID)
-		err = proposal.UpdateUserVoteRecordViaMetaforo(db, cfg.MetaforoData.GroupName, p.ID)
+		log.Debug().Msgf("update user vote record for proposal: %d, group: %s", p.ID, grpName)
+		err = proposal.UpdateUserVoteRecordViaMetaforo(db, grpName, p.ID)
 		if err != nil {
-			log.Error().Msgf("update proposalRcd user vote record error: %+v", err)
-			return
+			if strings.Contains(err.Error(), "thread not found") {
+				log.Warn().Msgf("proposal record %d is not found in metaforo", p.ID)
+				continue
+			} else {
+				log.Error().Msgf("update proposalRcd user vote record error: %+v", err)
+				return
+			}
 		}
 		time.Sleep(time.Duration(waitSeconds) * time.Second)
 	}
 	// Get proposal list from metaforo
+}
+
+func SyncProposalVoteGate(db *gorm.DB, cfg *config.Config, grpName string, waitSeconds int) {
+	var proposalRcd []*model.Proposal
+
+	err := db.Model(&model.Proposal{}).Where("proposal_record_id is not null AND proposal_record_id != '' AND vote_gate_id is null").Order("id desc").Find(&proposalRcd).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			log.Debug().Msgf("no proposal not updated")
+			return
+		} else {
+			log.Error().Msgf("get proposal records error: %+v", err)
+			return
+		}
+	}
+
+	var voteGateRcds []*model.ProposalVoteGate
+	err = db.Model(&model.ProposalVoteGate{}).Find(&voteGateRcds).Error
+	if err != nil {
+		log.Error().Msgf("get vote gate records error: %+v", err)
+		return
+	}
+
+	vgMfDbIdMapping := make(map[string]uint)
+	for _, v := range voteGateRcds {
+		vgMfDbIdMapping[fmt.Sprintf("%s:%s", v.TokenAddress, v.TokenId)] = v.ID
+	}
+
+	for _, p := range proposalRcd {
+		log.Debug().Msgf("update vote gate for proposal: %d", p.ID)
+		resp, err := metaforo.GetProposal(p.GetMetaforoThreadId(), grpName, cfg.MetaforoData.AccessToken, 0)
+		if err != nil {
+			if strings.Contains(err.Error(), "thread not found") {
+				log.Warn().Msgf("proposal record %d is not found in metaforo", p.ID)
+			} else {
+				log.Error().Msgf("update proposalRcd vote gate error: %+v", err)
+			}
+			continue
+		}
+		if len(resp.Thread.Polls) == 0 {
+			log.Error().Msgf("no poll found for proposal: %d, title: %s, mf id: %d", p.ID, p.Title, p.GetMetaforoThreadId())
+			continue
+		}
+
+		mfVoteGateTokenAddr := resp.Thread.Polls[0].TokenAddress
+		mfVoteGateTokenId := resp.Thread.Polls[0].TokenId
+
+		if mfVoteGateTokenAddr == "" {
+			log.Error().Msgf("no vote gate found for proposal: %d", p.ID)
+			continue
+		}
+
+		mfVgTokenKey := fmt.Sprintf("%s:%d", mfVoteGateTokenAddr, mfVoteGateTokenId)
+
+		if vgDbId, found := vgMfDbIdMapping[mfVgTokenKey]; !found {
+			log.Error().Msgf("vote gate not found in db: %d", mfVgTokenKey)
+			continue
+		} else {
+			log.Debug().Msgf("update vote gate for proposal: %d, mf vote gate id: %s, db vote gate id: %d", p.ID, mfVgTokenKey, vgDbId)
+			err = db.Model(&p).Update("vote_gate_id", vgDbId).Error
+			if err != nil {
+				log.Error().Msgf("update proposalRcd vote gate error: %+v", err)
+				continue
+			}
+		}
+
+		time.Sleep(time.Duration(waitSeconds) * time.Second)
+	}
 }
 
 func upsertDbRcd[T any](db *gorm.DB, cond map[string]any, data T) (error, int) {
