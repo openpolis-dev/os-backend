@@ -391,13 +391,12 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 	} else {
 		// Init proposal record to get ID
 
-		// [soulcai]fix: vote gate id is not find
-		// <<
+		// If no vote gate found, using 0 for db record vote_gate_id field
 		voteGateId := uint(0)
 		if len(voteGates) > 0 {
 			voteGateId = voteGates[0].ID
 		}
-		// >>
+
 		proposalRecord := model.Proposal{
 			CreateTs:                time.Now().UTC().Unix(),
 			Title:                   reqData.Title,
