@@ -392,13 +392,21 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 		return &proposalRcd, nil
 	} else {
 		// Init proposal record to get ID
+
+		// [soulcai]fix: vote gate id is not find
+		// <<
+		voteGateId := uint(0)
+		if len(voteGates) > 0 {
+			voteGateId = voteGates[0].ID
+		}
+		// >>
 		proposalRecord := model.Proposal{
 			CreateTs:                time.Now().UTC().Unix(),
 			Title:                   reqData.Title,
 			Applicant:               common.FormatUserWallet(userWallet),
 			ProposalCategoryID:      pTemplate.ProposalCategoryID,
 			Version:                 1,
-			VoteGateId:              voteGates[0].ID,
+			VoteGateId:              voteGateId,
 			VoteType:                pTemplate.VoteType,
 			CanBeVetoed:             pCategory.CanBeVetoed,
 			IsBasedOnCustomTemplate: pTemplate.IsCustomTemplate,
