@@ -292,7 +292,7 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 
 		// Proposal routers
 		proposalGroup := v1.Group("/proposals")
-		proposalGroup.GET("/list", proposal.List)
+		proposalGroup.GET("/list", proposal.List, middleware.AuthRequired)
 		proposalGroup.GET("/show/:id", proposal.Detail)
 		proposalGroup.GET("/vote_detail/:vote_option_id", proposal.ShowVoteDetail)
 
