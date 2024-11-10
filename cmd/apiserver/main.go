@@ -291,7 +291,7 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		proposalPollGateRouter.GET("/", proposal.ListVoteGates)
 
 		// Proposal routers
-		proposalGroup := v1.Group("/proposals", middleware.AuthRequired)
+		proposalGroup := v1.Group("/proposals", middleware.AuthOption)
 		proposalGroup.GET("/list", proposal.List)
 		proposalGroup.GET("/show/:id", proposal.Detail)
 		proposalGroup.GET("/vote_detail/:vote_option_id", proposal.ShowVoteDetail)
