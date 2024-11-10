@@ -109,6 +109,7 @@ func List(ctx *gin.Context) {
 
 	// get result rows is vote by me
 	// <<
+	log.Debug().Msgf("vote query sql check: user: %+v", user)
 	if len(resultRows) > 0 && user != nil {
 		voteQuerySql := fmt.Sprintf("select * from proposal_user_vote_records where user_wallet = '%s' ", user.Wallet)
 
@@ -119,7 +120,7 @@ func List(ctx *gin.Context) {
 
 		voteQuerySql += fmt.Sprintf(" AND proposal_id in(%s)", strings.Join(proposalIdList, ","))
 
-		log.Error().Msgf("vote query sql check: query sql: %s", voteQuerySql)
+		log.Debug().Msgf("vote query sql check: query sql: %s", voteQuerySql)
 
 		var userProposalUserVoteRecord []*model.ProposalUserVoteRecord
 
@@ -129,7 +130,7 @@ func List(ctx *gin.Context) {
 		} else {
 			resultRows = lo.Map(resultRows, func(r *FrontendProposalListRecord, _ int) *FrontendProposalListRecord {
 				for i := 0; i < len(userProposalUserVoteRecord); i++ {
-					log.Error().Msgf("vote query sql check find vote data: ProposalID: %d, ID: %d", userProposalUserVoteRecord[i].ProposalID, r.ID)
+					log.Debug().Msgf("vote query sql check find vote data: ProposalID: %d, ID: %d", userProposalUserVoteRecord[i].ProposalID, r.ID)
 					if userProposalUserVoteRecord[i].ProposalID == r.ID {
 						r.IsVoted = true
 						break
