@@ -113,9 +113,12 @@ func doApproveMintReward(ctx *gin.Context) error {
 			})
 		}
 
-		err = tx.Save(&appRcds).Error
-		if err != nil {
-			return err
+		if len(appRcds) > 0 {
+			err = tx.Save(&appRcds).Error
+			if err != nil {
+				log.Error().Msgf("create application error: %+v", err)
+				return err
+			}
 		}
 
 		// Mark season metaforo credit confirmed
