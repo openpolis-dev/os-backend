@@ -119,7 +119,7 @@ func List(ctx *gin.Context) {
 
 		voteQuerySql += fmt.Sprintf(" AND proposal_id in(%s)", strings.Join(proposalIdList, ","))
 
-		var userProposalUserVoteRecord []model.ProposalUserVoteRecord
+		var userProposalUserVoteRecord []*model.ProposalUserVoteRecord
 
 		dbErr := db.Raw(voteQuerySql).Find(&userProposalUserVoteRecord).Error
 		if dbErr != nil {
