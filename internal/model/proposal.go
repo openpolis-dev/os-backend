@@ -170,8 +170,8 @@ type Proposal struct {
 
 	VoteTimeProperties
 
-	// Season for this proposal
-	SeasonId uint
+	// Vote gating id, used to calculate mint credits for each season
+	VoteGateId uint
 
 	// Whether user vote record has been saved for this proposal
 	UserVoteRecordSaved bool `gorm:"default:false"`
@@ -341,6 +341,11 @@ type ProposalVoteGate struct {
 	TokenId      string
 	Amount       string // Amount for specified gate
 	MetaforoId   int
+
+	// The season ID for the vote gate, which will be used for calc the mint credit
+	// This field will be ignored if this vote gate is not season related
+	// This field should be set manually after synced from metaforo
+	SeasonId uint
 
 	Name string // Name of the vote gate
 }

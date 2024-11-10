@@ -39,7 +39,7 @@ func FetchSingleProposalUserVoteRecord(ctx *gin.Context) {
 		return
 	}
 
-	err = proposal.UpdateUserVoteRecordViaMetaforo(db, cfg, uint(proposalId))
+	err = proposal.UpdateUserVoteRecordViaMetaforo(db, cfg.MetaforoData.GroupName, uint(proposalId))
 	if err != nil {
 		log.Error().Msgf("update user vote record via metaforo error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)

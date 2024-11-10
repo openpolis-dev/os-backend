@@ -171,7 +171,7 @@ func AuditApplication(db *gorm.DB, operatorWallet string, application *Applicati
 // BatchAuditApplication audits multiple applications in same transaction.
 // Note: if any error occurred during the transaction the whole transaction will not be performed.
 // This function gets applications object reference in params, which should be changed to pass by id, but the update for invoker may bring other changes, so the solution is adding some refresh of object in the code.
-func BatchAuditApplication(db *gorm.DB, operatorWallet string, applications *[]Application, action AuditActionType, extraMsg string, enforcer *casbin.SyncedEnforcer, push []sdk.Pusher) error {
+func BatchAuditApplication(db *gorm.DB, operatorWallet string, applications *[]*Application, action AuditActionType, extraMsg string, enforcer *casbin.SyncedEnforcer, push []sdk.Pusher) error {
 	err := userWalletRecordExisting(db, operatorWallet)
 	if err != nil {
 		log.Error().Msgf("Check user wallet error: %+v", err)
@@ -187,7 +187,7 @@ func BatchAuditApplication(db *gorm.DB, operatorWallet string, applications *[]A
 
 	return db.Transaction(func(tx *gorm.DB) error {
 		for _, application := range *applications {
-			err = doAuditApplicationInTransaction(tx, operatorWallet, &application, action, extraMsg, enforcer, push)
+			err = doAuditApplicationInTransaction(tx, operatorWallet, application, action, extraMsg, enforcer, push)
 			if err != nil {
 				return err
 			}

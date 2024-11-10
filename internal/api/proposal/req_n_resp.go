@@ -392,7 +392,7 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposalId uint, startPo
 		}
 
 		if pollStatusChanged {
-			if err = HandleProposalPollStatusChange(db, proposalId); err != nil {
+			if err = HandleProposalPollStatusChange(db, proposalId, metaforoGroupName); err != nil {
 				log.Error().Msgf("handle proposal poll status change error: %+v", err)
 				return nil, err
 			}
