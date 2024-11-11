@@ -274,7 +274,7 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 
 	var voteTimeProps model.VoteTimeProperties
 
-	var pTemplate model.ProposalTemplate
+	var pTemplate *model.ProposalTemplate
 	err = db.Find(&pTemplate, reqData.TemplateId).Error
 	if err != nil {
 		log.Error().Msgf("get proposal template error: %+v", err)
@@ -282,7 +282,7 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 	}
 
 	var voteGates []*model.ProposalVoteGate
-	voteGates, err = service.ProposalTemplateService.GetUsageVoteGates(db, pTemplate.ID)
+	voteGates, err = service.ProposalTemplateService.GetUsageVoteGates(db, pTemplate)
 	if err != nil {
 		log.Error().Msgf("get vote gates error: %+v", err)
 		return nil, err
@@ -726,14 +726,14 @@ func SaveProposalToMetaforo(db *gorm.DB, dbProposalId uint, voteType int, metafo
 
 		// Regards vote record, the data is generated here, and uploaded to metaforo in CreateProposal API.
 		// And the db records will be updated by data returned from Metaforo
-		var pTmpl model.ProposalTemplate
+		var pTmpl *model.ProposalTemplate
 		err = db.Find(&pTmpl, origProposalRecord.ProposalTemplateID).Error
 		if err != nil {
 			log.Error().Msgf("get proposal template error: %+v", err)
 			return err
 		}
 
-		voteGates, err := service.ProposalTemplateService.GetUsageVoteGates(db, pTmpl.ID)
+		voteGates, err := service.ProposalTemplateService.GetUsageVoteGates(db, pTmpl)
 		if err != nil {
 			log.Error().Msgf("get vote gates error: %+v", err)
 			return err
