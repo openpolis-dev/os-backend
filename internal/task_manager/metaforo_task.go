@@ -87,7 +87,7 @@ func RefreshVotingProposalInfoJob(db *gorm.DB, job *model.CronJob, jobParams str
 					}
 
 					if pollStatusChanged {
-						if err = proposal.HandleProposalPollStatusChange(tx, dbRcd.ID); err != nil {
+						if err = proposal.HandleProposalPollStatusChange(tx, dbRcd.ID, cfg.MetaforoData.GroupName); err != nil {
 							log.Warn().Msgf("handle proposal poll status change error: %+v", err)
 							return err
 						}

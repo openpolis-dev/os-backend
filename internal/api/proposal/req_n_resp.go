@@ -128,7 +128,7 @@ type FrontendProposalListRecord struct {
 	// Vote related state
 	// TODO: Vote Gate related logic
 	VoteState string `json:"-"`
-	IsVoted   bool   `json:"-"`
+	IsVoted   bool   `json:"is_voted"`
 }
 
 type FrontendContentBlockRecord struct {
@@ -392,7 +392,7 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposalId uint, startPo
 		}
 
 		if pollStatusChanged {
-			if err = HandleProposalPollStatusChange(db, proposalId); err != nil {
+			if err = HandleProposalPollStatusChange(db, proposalId, metaforoGroupName); err != nil {
 				log.Error().Msgf("handle proposal poll status change error: %+v", err)
 				return nil, err
 			}

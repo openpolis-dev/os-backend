@@ -1,23 +1,16 @@
 package data_srv
 
 import (
-	"encoding/csv"
 	"fmt"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
 	"github.com/theseed-labs/os-backend/internal/api"
-	"github.com/theseed-labs/os-backend/internal/common"
-	"github.com/theseed-labs/os-backend/internal/model"
+	"github.com/theseed-labs/os-backend/internal/api/proposal"
 	"github.com/theseed-labs/os-backend/internal/sdk"
-	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 )
-
-var err error
 
 type UpdateMetaforoVoteDataRequest struct {
 	SeasonIdx int `json:"season_idx"`
@@ -35,90 +28,24 @@ type MetaforoMintRecord struct {
 	Name      string `json:"name"`
 }
 
-func UpdateMetaforoVoteData(ctx *gin.Context) {
-	db := api.ForContextOnlyDB(ctx)
+func FetchSingleProposalUserVoteRecord(ctx *gin.Context) {
+	db, cfg := api.ForContextDBAndConfig(ctx)
 
-	reqData := UpdateMetaforoVoteDataRequest{}
-	if err = ctx.BindJSON(&reqData); err != nil {
-		log.Error().Msgf("parse request data error: %+v", err)
-		sdk.LogUserSideError(ctx, err)
-		ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("parse request data error: %+v", err)))
-		return
-	}
-
-	mintRecords, err := parseMfMintRecord(reqData.RawCsvData)
+	proposalId, err := strconv.ParseUint(ctx.Param("proposal_id"), 10, 64)
 	if err != nil {
-		log.Error().Msgf("parse mint record error: %+v", err)
-		sdk.LogUserSideError(ctx, err)
-		ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("parse mint record error: %+v", err)))
-		return
-	}
-
-	var seasonRcd model.Season
-	if err = db.Model(&seasonRcd).Where("idx = ?", reqData.SeasonIdx).First(&seasonRcd).Error; err != nil {
-		log.Error().Msgf("get season record error: %+v", err)
+		log.Error().Msgf("parse proposal id error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.BadRequest(fmt.Errorf("get season record error: %+v", err)))
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("parse proposal id error: %+v", err)))
 		return
 	}
 
-	if err = db.Transaction(func(tx *gorm.DB) error {
-		for _, mintRcd := range mintRecords {
-			if err = tx.Clauses(clause.OnConflict{
-				Columns:   []clause.Column{{Name: "season_id"}, {Name: "user_wallet"}},
-				DoUpdates: clause.AssignmentColumns([]string{"count"}),
-			}).Create(&model.MetaforoVoteCount{
-				CreateTs:   model.GetCurrentUtcEpochSecond(),
-				SeasonId:   seasonRcd.ID,
-				UserWallet: mintRcd.Wallet,
-				Count:      mintRcd.VoteCount,
-			}).Error; err != nil {
-				log.Error().Msgf("create metaforo vote count error: %+v", err)
-				sdk.LogServerErrorToSentry(ctx, err)
-				return fmt.Errorf("create metaforo vote count error: %+v", err)
-			}
-		}
-		return nil
-	}); err != nil {
-		log.Error().Msgf("create metaforo vote count error: %+v", err)
-		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.BadRequest(fmt.Errorf("create metaforo vote count error: %+v", err)))
-		return
-	}
-
-	ctx.JSON(http.StatusOK, mintRecords)
-}
-
-func parseMfMintRecord(csvStr string) ([]*MetaforoMintRecord, error) {
-	var rows []*MetaforoMintRecord
-
-	// Create a CSV reader from the CSV string
-	reader := csv.NewReader(strings.NewReader(csvStr))
-
-	// Read the CSV records
-	records, err := reader.ReadAll()
+	err = proposal.UpdateUserVoteRecordViaMetaforo(db, cfg.MetaforoData.GroupName, uint(proposalId))
 	if err != nil {
-		return nil, err
+		log.Error().Msgf("update user vote record via metaforo error: %+v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.BadRequest(fmt.Errorf("update user vote record via metaforo error: %+v", err)))
+		return
 	}
 
-	// Iterate over the records (excluding the header)
-	for _, record := range records[1:] {
-		// Parse the vote field as an integer
-		vote, err := strconv.Atoi(record[1])
-		if err != nil {
-			return nil, err
-		}
-
-		// Create a new row and populate the fields
-		row := MetaforoMintRecord{
-			Wallet:    common.FormatUserWallet(record[0]),
-			VoteCount: vote,
-			Name:      record[2],
-		}
-
-		// Append the row to the list
-		rows = append(rows, &row)
-	}
-
-	return rows, nil
+	ctx.JSON(http.StatusOK, gin.H{"success": true})
 }

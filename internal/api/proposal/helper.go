@@ -17,7 +17,6 @@ import (
 	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
 	"github.com/theseed-labs/os-backend/internal"
-	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/config"
 	"github.com/theseed-labs/os-backend/internal/db_agent"
@@ -149,9 +148,7 @@ func GetProposalFromStringId(db *gorm.DB, idStr string) (*model.Proposal, error)
 // ValidateProposalComponentParams validate proposal component params, currently it contains
 // * For motivation components, if the proposal has associated project, verify the total amount is not greater than the (project budget - advance amount)
 func ValidateProposalComponentParams(db *gorm.DB, reqData *CreateOrUpdateProposalData, userWallet string, proposalId uint, cfg *config.Config) error {
-	log.Error().Msgf("TTT: validate proposal component params: %+v", reqData)
 	for _, componentData := range reqData.Components {
-		log.Error().Msgf("TTT: validate proposal component params: %+v", componentData)
 		switch componentData.Name {
 		case internal.ComponentNameMotivation:
 			if reqData.CreateProjectProposalId == 0 {
@@ -174,7 +171,7 @@ func ValidateProposalComponentParams(db *gorm.DB, reqData *CreateOrUpdateProposa
 
 			// Get project_budget records to get total amount of the budgets
 			projectBudgets, err := model.ProjectBudgetModel.ListByProjectId(db, associatedProject.ID)
-			log.Error().Msgf("TTT: project budgts: %+v", projectBudgets)
+			//log.Error().Msgf("TTT: project budgts: %+v", projectBudgets)
 			if err != nil {
 				log.Error().Msgf("get create project proposal %d error: %+v", reqData.CreateProjectProposalId, err)
 				return err
@@ -190,9 +187,9 @@ func ValidateProposalComponentParams(db *gorm.DB, reqData *CreateOrUpdateProposa
 				return budget.AssetName, budget.RemainAmount
 			})
 
-			log.Error().Msgf("TTT: remain budget amount: %+v", remainBudgetAmount)
-
-			log.Error().Msgf("TTT: Component data: %+v", componentData)
+			//log.Error().Msgf("TTT: remain budget amount: %+v", remainBudgetAmount)
+			//
+			//log.Error().Msgf("TTT: Component data: %+v", componentData)
 
 			var motivationComponentData *model.ComponentMotivationData
 			componentDataBytes, err := json.Marshal(componentData.Data)
@@ -206,6 +203,16 @@ func ValidateProposalComponentParams(db *gorm.DB, reqData *CreateOrUpdateProposa
 				return err
 			}
 
+			// Validate user address
+			for _, r := range motivationComponentData.RewardList {
+				if !common.ValidateUserWallet(r.Address) {
+					err = fmt.Errorf("invalid address %s for motivation component %s", r.Address, r.AssetInfo.Name)
+					log.Error().Msgf(err.Error())
+					return err
+				}
+			}
+
+			// Validate entity has enough budget
 			componentRewardAmountData := lo.SliceToMap(motivationComponentData.RewardList, func(reward *model.ComponentMotivationRewardRecord) (string, decimal.Decimal) {
 				return reward.AssetInfo.Name, decimal.RequireFromString(reward.Amount)
 			})
@@ -272,6 +279,18 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 	if err != nil {
 		log.Error().Msgf("get proposal template error: %+v", err)
 		return nil, err
+	}
+
+	var voteGates []*model.ProposalVoteGate
+	voteGates, err = service.ProposalTemplateService.GetUsageVoteGates(db, pTemplate.ID)
+	if err != nil {
+		log.Error().Msgf("get vote gates error: %+v", err)
+		return nil, err
+	}
+
+	if len(voteGates) > 1 {
+		err = fmt.Errorf("more than one vote gate found for template %d, only the frist one will be used", pTemplate.ID)
+		log.Warn().Msg(err.Error())
 	}
 
 	voteTimeProps.PublicitySecond = pTemplate.PublicitySecond
@@ -371,12 +390,20 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 		return &proposalRcd, nil
 	} else {
 		// Init proposal record to get ID
+
+		// If no vote gate found, using 0 for db record vote_gate_id field
+		voteGateId := uint(0)
+		if len(voteGates) > 0 {
+			voteGateId = voteGates[0].ID
+		}
+
 		proposalRecord := model.Proposal{
 			CreateTs:                time.Now().UTC().Unix(),
 			Title:                   reqData.Title,
 			Applicant:               common.FormatUserWallet(userWallet),
 			ProposalCategoryID:      pTemplate.ProposalCategoryID,
 			Version:                 1,
+			VoteGateId:              voteGateId,
 			VoteType:                pTemplate.VoteType,
 			CanBeVetoed:             pCategory.CanBeVetoed,
 			IsBasedOnCustomTemplate: pTemplate.IsCustomTemplate,
@@ -706,8 +733,7 @@ func SaveProposalToMetaforo(db *gorm.DB, dbProposalId uint, voteType int, metafo
 			return err
 		}
 
-		var voteGates []*model.ProposalVoteGate
-		err = db.Model(&pTmpl).Association("VoteGates").Find(&voteGates)
+		voteGates, err := service.ProposalTemplateService.GetUsageVoteGates(db, pTmpl.ID)
 		if err != nil {
 			log.Error().Msgf("get vote gates error: %+v", err)
 			return err
@@ -766,7 +792,7 @@ func SaveProposalToMetaforo(db *gorm.DB, dbProposalId uint, voteType int, metafo
 	}
 
 	if pollStatusChanged {
-		if err = HandleProposalPollStatusChange(db, updatedProposalRecord.ID); err != nil {
+		if err = HandleProposalPollStatusChange(db, updatedProposalRecord.ID, metaforoGroupName); err != nil {
 			log.Error().Msgf("handle proposal poll status change error: %+v", err)
 			return err
 		}
@@ -823,7 +849,6 @@ func BuildMetaforoVoteFormDataBytes(db *gorm.DB, proposalId uint, voteGates []*m
 		if len(voteGates) > 1 {
 			log.Warn().Msgf("found %d vote gates for proposal %d, only the first one will be used", len(voteGates), proposalId)
 		}
-		api.PrintStructAsJson(voteGates[0], "TTT: vote gate")
 		voteGateId = voteGates[0].MetaforoId
 		switch voteGates[0].TokenType {
 		case 0: // ERC20
@@ -883,8 +908,6 @@ func BuildMetaforoVoteFormDataBytes(db *gorm.DB, proposalId uint, voteGates []*m
 			MinTokens:    minToken,
 		})
 	}
-
-	api.PrintStructAsJson(voteData, "TTT: mf vote data")
 
 	log.Debug().Msgf("metaforo vote data: %+v", voteData)
 
@@ -1020,6 +1043,8 @@ func UpdateArweaveHashFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcdId 
 	}
 }
 
+// UpdateUserRecordsFromMetaforoProposalResponse creates or updates user records from metaforo proposal response
+// The user record returned from metaforo API contains user wallet, which can be used as uniq key of user
 func UpdateUserRecordsFromMetaforoProposalResponse(db *gorm.DB, metaforoProposal *metaforo.ProposalResponse) error {
 	// Save user id and wallet from comments data
 	if err = db.Transaction(func(tx *gorm.DB) error {
@@ -1071,8 +1096,6 @@ func UpdateDbVoteOptionRecordsFromMetaforoProposalResponse(db *gorm.DB, dbPropos
 			log.Debug().Msgf("save DB proposal vote record success: %+v", proposalVoteRecord)
 		}
 
-		api.PrintStructAsJson(proposalVoteRecord, "TTT: proposal vote record")
-
 		currState := proposalVoteRecord.State
 		if currState != poll.Status {
 			pollStatusChanged = true
@@ -1107,7 +1130,6 @@ func UpdateDbVoteOptionRecordsFromMetaforoProposalResponse(db *gorm.DB, dbPropos
 					optLabel = voteOpt.Html.(string)
 				}
 
-				api.PrintStructAsJson(voteOpt, "TTT: vote option")
 				voterCount := voteOpt.Weights
 				if voterCount == 0 {
 					voterCount = voteOpt.Voters
@@ -1131,7 +1153,6 @@ func UpdateDbVoteOptionRecordsFromMetaforoProposalResponse(db *gorm.DB, dbPropos
 				} else {
 					log.Debug().Msgf("update DB proposal vote option success: %+v", proposalVoteOptionRecord)
 				}
-				api.PrintStructAsJson(proposalVoteOptionRecord, "TTT: proposal vote option record")
 			}
 			return nil
 		})
@@ -1148,7 +1169,7 @@ func UpdateDbVoteOptionRecordsFromMetaforoProposalResponse(db *gorm.DB, dbPropos
 	return pollStatusChanged, nil
 }
 
-func HandleProposalPollStatusChange(db *gorm.DB, proposalId uint) error {
+func HandleProposalPollStatusChange(db *gorm.DB, proposalId uint, mfGroupName string) error {
 	var pVoteRcds []*model.ProposalVoteRecord
 	err := db.Model(&model.ProposalVoteRecord{}).Where("proposal_id = ?", proposalId).Find(&pVoteRcds).Error
 	if err != nil {
@@ -1203,8 +1224,14 @@ func HandleProposalPollStatusChange(db *gorm.DB, proposalId uint) error {
 			log.Warn().Msgf("process proposal state error: %+v", err)
 			return err
 		} else {
-			log.Debug().Msgf("process proposal state success")
-			return nil
+			err = UpdateUserVoteRecordViaMetaforo(db, mfGroupName, proposalId)
+			if err != nil {
+				log.Warn().Msgf("update user vote record error: %+v", err)
+				return err
+			} else {
+				log.Debug().Msgf("process proposal state success")
+				return nil
+			}
 		}
 	} else {
 		log.Warn().Msgf("unknown poll status: %+v", effectVoteRcd.State)
@@ -1232,7 +1259,6 @@ func UpdateProposalStateAfterVoteClosed(db *gorm.DB, proposalId uint, pVoteRcd *
 		return err
 	}
 
-	api.PrintStructAsJson(dbProposalRcd, "TTT: before update")
 	if dbProposalRcd.IsInFinState() || dbProposalRcd.State == int(model.ProposalStatePendingExecution) {
 		log.Warn().Msgf("proposal %d in state %d, not need to apply post job.", dbProposalRcd.ID, dbProposalRcd.State)
 		return nil
@@ -1376,7 +1402,6 @@ func UpdateProposalStateAfterVoteClosed(db *gorm.DB, proposalId uint, pVoteRcd *
 
 	log.Debug().Msgf("update proposal %d state from %d to %+v", dbProposalRcd.ID, dbProposalRcd.State, proposalFinalState)
 	err = db.Model(&dbProposalRcd).Where(&model.Proposal{ID: dbProposalRcd.ID}).Update("state", proposalFinalState).Error
-	api.PrintStructAsJson(dbProposalRcd, "TTT: proposal record after update")
 	if err != nil {
 		log.Error().Msgf("update proposal state to %d error: %+v. DB proposal: %+v", proposalFinalState, err, dbProposalRcd)
 		return err
@@ -1733,7 +1758,6 @@ func CreateProjectFromAutoTasks(db *gorm.DB, proposalId uint) (*model.Project, e
 	var projectBudgetRcds []*model.ProjectBudget
 
 	for _, pComponentRecord := range pComponents {
-		api.PrintStructAsJson(pComponentRecord, "TTT: component record")
 		if compName, found := getProposalComponentIdNameMapping(db)[pComponentRecord.ComponentID]; found {
 			if compName == internal.ComponentNameBudgetP1 {
 				var budgetParams budgetComponentDataP1

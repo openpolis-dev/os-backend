@@ -925,8 +925,8 @@ func AddRelatedProposal(ctx *gin.Context) {
 //	@tags		Project
 //	@accept		json
 //	@produce	json
-//	@param		id			path		int				true	"project id"
-//	@success	200			{object}	api.Reply
+//	@param		id	path		int	true	"project id"
+//	@success	200	{object}	api.Reply
 //	@router		/projects/{id}/update_budget [post]
 func ShowBudgets(ctx *gin.Context) {
 	idParam := ctx.Param("id")

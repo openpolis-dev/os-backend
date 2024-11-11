@@ -41,3 +41,21 @@ type CronJob struct {
 
 	LastExecutionFailed bool // Whether last execution failed
 }
+
+// Function to convert cronjob state to string
+func (c *CronJob) StateName() string {
+	switch c.State {
+	case CronJobStateActive:
+		return "Active"
+	case CronJobStatePaused:
+		return "Paused"
+	case CronJobStateTerminated:
+		return "Terminated"
+	case CronJobStateRunning:
+		return "Running"
+	case CronJobStateDone:
+		return "Done"
+	default:
+		return "Unknown"
+	}
+}

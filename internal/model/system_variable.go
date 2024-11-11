@@ -12,6 +12,15 @@ import (
 	"gorm.io/gorm"
 )
 
+const (
+	MetaforoInfoVariableName = "metaforo_access_info"
+	NodeSbtAddrVariableName  = "node_token_addr"
+	NodeSbtIdVariableName    = "node_token_id"
+	XferScrServiceName       = "xfer_scr_api"
+	XferScrServiceKey        = "xfer_scr_key"
+	XferScrServiceSecret     = "xfer_scr_secret"
+)
+
 type SystemVariable struct {
 	Name     string `gorm:"uniqueIndex"`
 	NumValue int
@@ -97,8 +106,6 @@ func RollbackSipValueByOne(db *gorm.DB) (int, error) {
 	log.Debug().Msgf("rollbacked sip value return %d", sipValue[0])
 	return sipValue[0], nil
 }
-
-const MetaforoInfoVariableName = "metaforo_access_info"
 
 // GetMetaforoData returns metaforo group name, group ID and admin token as map[string]string from DB
 func GetMetaforoData(db *gorm.DB) (map[string]string, error) {
@@ -190,4 +197,40 @@ func IsSnsInvitationEnabled(db *gorm.DB) bool {
 	} else {
 		return flagVal == "true"
 	}
+}
+
+func GetNodeSbtAddrAndId(db *gorm.DB) (tokenAddr string, tokenId string, err error) {
+	tokenAddr, err = getStrVal(db, NodeSbtAddrVariableName)
+	if err != nil {
+		log.Error().Msgf("get node token address error: %+v", err)
+		return "", "", err
+	}
+	tokenId, err = getStrVal(db, NodeSbtIdVariableName)
+	if err != nil {
+		log.Error().Msgf("get node token id error: %+v", err)
+		return "", "", err
+	}
+
+	return
+}
+
+func GetXferScrApi(db *gorm.DB) (string, string, string, error) {
+	endpoint, err := getStrVal(db, XferScrServiceName)
+	if err != nil {
+		log.Error().Msgf("get xfer scr service endpoint error: %+v", err)
+		return "", "", "", err
+	}
+
+	apiKey, err := getStrVal(db, XferScrServiceKey)
+	if err != nil {
+		log.Error().Msgf("get xfer scr service key error: %+v", err)
+		return "", "", "", err
+	}
+
+	secret, err := getStrVal(db, XferScrServiceSecret)
+	if err != nil {
+		log.Error().Msgf("get xfer scr service secret error: %+v", err)
+		return "", "", "", err
+	}
+	return endpoint, apiKey, secret, nil
 }

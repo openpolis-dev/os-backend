@@ -58,6 +58,10 @@ func FormatUserWallet(wallet string) string {
 	return common.HexToAddress(strings.TrimSpace(strings.ToLower(wallet))).Hex()
 }
 
+func ValidateUserWallet(wallet string) bool {
+	return common.IsHexAddress(wallet)
+}
+
 // ToFrontendWallet convert wallet address to frontend required format, currently the requirement is lowercased
 func ToFrontendWallet(wallet string) string {
 	return strings.ToLower(wallet)

@@ -5,7 +5,9 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"log"
 	"os"
+	"slices"
 	"strings"
 
 	"github.com/casbin/casbin/v2"
@@ -13,6 +15,7 @@ import (
 	"github.com/samber/lo"
 	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api"
+	"github.com/theseed-labs/os-backend/internal/api/data_srv"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/config"
 	"github.com/theseed-labs/os-backend/internal/model"
@@ -720,6 +723,66 @@ func verifyEntityCasbinPermission(db *gorm.DB) {
 	}
 }
 
+func updateProposalSeasonId(db *gorm.DB) {
+	var propsoalWithoutSeasonId []*model.Proposal
+	err := db.Model(&model.Proposal{}).Where("season_id = 0 or season_id is null").Find(&propsoalWithoutSeasonId).Error
+	if err != nil {
+		panic(err)
+	}
+
+	log.Printf("Found %d proposals without season id", len(propsoalWithoutSeasonId))
+
+	var seasons []*model.Season
+	err = db.Model(&model.Season{}).Find(&seasons).Order("start_at asc").Error
+	if err != nil {
+		panic(err)
+	}
+
+	err = db.Transaction(func(tx *gorm.DB) error {
+		for _, p := range propsoalWithoutSeasonId {
+			for _, s := range seasons {
+				if p.CreateTs >= s.StartAt && p.CreateTs <= s.EndAt {
+					err = tx.Model(&model.Proposal{}).Where(&model.Proposal{ID: p.ID}).Update("season_id", s.ID).Error
+					if err != nil {
+						return err
+					}
+					break
+				}
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		panic(err)
+	}
+}
+
+func displaySeasonVoteCount(db *gorm.DB) {
+	var seasons []*model.Season
+	err := db.Model(&model.Season{}).Order("idx").Find(&seasons).Error
+	if err != nil {
+		panic(err)
+	}
+
+	// Loop over seasons and print vote data based on season idx
+	for _, season := range seasons {
+		rslt, err := data_srv.GetSeasonVoteRecords(db, season)
+		if err != nil {
+			panic(err)
+		}
+
+		// Sort map by user wallet
+		sortedRslt := make(map[string]int)
+		wallets := lo.Keys(rslt)
+		slices.Sort(wallets)
+		for _, wallet := range wallets {
+			sortedRslt[wallet] = rslt[wallet]
+		}
+
+		api.PrintStructAsJson(sortedRslt, fmt.Sprintf("Season vote count: %s (id: %d)", season.Name, season.ID))
+	}
+}
+
 func main() {
 	cfg := config.LoadConfig("config.yml")
 	//storage.InitGormDB(cfg.DataSource.Dsn, cfg.Casbin.DriverName)
@@ -744,6 +807,7 @@ func main() {
 		fmt.Println("  seed")
 		fmt.Println("  fixperm")
 		fmt.Println("  verifyperm")
+		fmt.Println("  fillSeason")
 		os.Exit(1)
 	}
 
@@ -770,6 +834,10 @@ func main() {
 		updateEntityCasbinPermission(db)
 	case "verifyperm":
 		verifyEntityCasbinPermission(db)
+	case "fillSeason":
+		updateProposalSeasonId(db)
+	case "showVoteCount":
+		displaySeasonVoteCount(db)
 	default:
 		fmt.Printf("Unknown command: %s\n", os.Args[1])
 		os.Exit(1)

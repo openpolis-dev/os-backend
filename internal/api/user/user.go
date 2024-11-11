@@ -622,6 +622,46 @@ func Users(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, api.Success(rslt))
 }
 
+type UserLvlRes struct {
+	CurrentLv string `json:"current_lv"`
+}
+
+// UserLvl get user current level
+//
+//	@summary	Get user current level
+//	@tags		User
+//	@accept		json
+//	@produce	json
+//	@success	200	{object}	api.Reply{data=UserLvlRes}
+//	@router		/user/level [get]
+func UserLvl(ctx *gin.Context) {
+	user, db := api.ForContextUserAndDB(ctx)
+
+	sppClient := sdk.GetSppClient()
+
+	seepassResp, err := api.GetCachedSeepassData(sppClient, user.Wallet, false)
+	if err == nil {
+		rslt := UserLvlRes{}
+		rslt.CurrentLv = seepassResp.Level.CurrentLv
+		ctx.JSON(http.StatusOK, api.Success(rslt))
+		return
+	}
+
+	log.Warn().Msgf("query seepass data error, wallet: %s, error: %+v", user.Wallet, err)
+
+	_, err = model.UserModel.Detail(db, user.Wallet)
+	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("user not found")))
+		return
+	}
+
+	rslt := UserLvlRes{}
+	rslt.CurrentLv = "0"
+
+	ctx.JSON(http.StatusOK, api.Success(rslt))
+}
+
 // ------ ------ ------ ------ ------ ------ ------ ------ ------
 // ------ Permission ------ ------
 
