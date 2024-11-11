@@ -19,6 +19,7 @@ import (
 )
 
 // Pg version
+// 20241111: Change filter state to completed only
 const dbQueryForSeasonTotalRewards = `select season_id,
        target_user_wallet,
        sum(asset_amount::Decimal(20, 8)) as season_total,
@@ -28,7 +29,7 @@ from applications
          join seasons on season_id = seasons.id
 where applications.type = 'NEW_REWARD'
   and applications.asset_name = 'SCR'
-  and applications.state in ('approved', 'completed')
+  and applications.state in ('completed')
   and applications.sub_type IN (NULL ,'')
 GROUP by season_id, target_user_wallet, seasons.name, season_idx`
 
