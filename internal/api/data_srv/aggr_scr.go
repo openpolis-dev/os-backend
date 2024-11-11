@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/gob"
 	"errors"
-	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -190,7 +189,6 @@ func CalcMintRewards(ctx *gin.Context, db *gorm.DB, currentSeason *model.Season)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get metaforo vote count error")))
 		return
 	}
-	api.PrintStructAsJson(metaforoVoteCount, fmt.Sprintf("metaforo vote count for season: %s", currentSeason.Name))
 
 	mintResult.ActivateWalletCount = 0
 

@@ -84,79 +84,83 @@ func doApproveMintReward(ctx *gin.Context) error {
 
 	cityHallProject, err := model.GetCityHallProject(db)
 
-	// Create app bundle and applications for each records
-	err = db.Transaction(func(tx *gorm.DB) error {
-		appBundle := model.AppBundle{
-			AppRecords:   nil,
-			Comment:      fmt.Sprintf(MintRewardDetailTemplate, currentSeason.Name),
-			Applicant:    common.FormatUserWallet(user.Wallet),
-			EntityType:   "project",
-			EntityId:     cityHallProject.ID,
-			SeasonId:     currentSeason.ID,
-			Season:       *currentSeason,
-			State:        model.ApplicationStateOpen,
-			Type:         model.ApplicationNewReward,
-			ShadowRecord: false,
-			CreatedAt:    time.Now().In(internal.ProjectTimezone),
-			UpdatedAt:    time.Now().In(internal.ProjectTimezone),
-			CreateTs:     model.GetCurrentUtcEpochSecond(),
-			UpdateTs:     model.GetCurrentUtcEpochSecond(),
-		}
-		log.Error().Msgf("TTT: app bundle: %+v", appBundle)
-		err = tx.Save(&appBundle).Error
+	if len(metaforoRewards) > 0 {
+		// Create app bundle and applications for each records if there are rewards
+		err = db.Transaction(func(tx *gorm.DB) error {
+			appBundle := model.AppBundle{
+				AppRecords:   nil,
+				Comment:      fmt.Sprintf(MintRewardDetailTemplate, currentSeason.Name),
+				Applicant:    common.FormatUserWallet(user.Wallet),
+				EntityType:   "project",
+				EntityId:     cityHallProject.ID,
+				SeasonId:     currentSeason.ID,
+				Season:       *currentSeason,
+				State:        model.ApplicationStateOpen,
+				Type:         model.ApplicationNewReward,
+				ShadowRecord: false,
+				CreatedAt:    time.Now().In(internal.ProjectTimezone),
+				UpdatedAt:    time.Now().In(internal.ProjectTimezone),
+				CreateTs:     model.GetCurrentUtcEpochSecond(),
+				UpdateTs:     model.GetCurrentUtcEpochSecond(),
+			}
+			log.Error().Msgf("TTT: app bundle: %+v", appBundle)
+			err = tx.Save(&appBundle).Error
+			if err != nil {
+				log.Error().Msgf("create app bundle error: %+v", err)
+				return err
+			}
+
+			var appRcds []*model.Application
+			for wallet, rewardAmountStr := range metaforoRewards {
+				rewardAmount, err := decimal.NewFromString(rewardAmountStr)
+				if err != nil {
+					log.Error().Msgf("parse reward amount error, amount str: %s, err: %+v", rewardAmountStr, err)
+					return err
+				}
+
+				appRcds = append(appRcds, &model.Application{
+					Type:             model.ApplicationNewReward,
+					SubType:          "MintRewards",
+					Applicant:        common.FormatUserWallet(user.Wallet),
+					State:            model.ApplicationStateOpen,
+					CreatedAt:        time.Now(),
+					UpdatedAt:        time.Now(),
+					CreateTs:         model.GetCurrentUtcEpochSecond(),
+					UpdateTs:         model.GetCurrentUtcEpochSecond(),
+					DetailedType:     fmt.Sprintf(MintRewardDetailTemplate, currentSeason.Name),
+					Comment:          "",
+					AssetName:        "SCR",
+					AssetAmount:      rewardAmount,
+					TargetUserWallet: common.FormatUserWallet(wallet),
+					EntityType:       "project",
+					EntityId:         cityHallProject.ID,
+					SeasonId:         currentSeason.ID,
+					BundleId:         appBundle.ID,
+				})
+			}
+
+			if len(appRcds) > 0 {
+				err = tx.Save(&appRcds).Error
+				if err != nil {
+					log.Error().Msgf("create application error: %+v", err)
+					return err
+				}
+			}
+
+			// Mark season metaforo credit confirmed
+			currentSeason.MintRewardConfirmed = true
+			currentSeason.MintRewardConfirmedAt = time.Now().UnixMilli()
+			currentSeason.MintRewardAppBundleId = appBundle.ID
+			return tx.Save(currentSeason).Error
+		})
+
 		if err != nil {
-			log.Error().Msgf("create app bundle error: %+v", err)
+			log.Error().Msgf("approve mint reward error: %+v", err)
+			sdk.LogServerErrorToSentry(ctx, err)
 			return err
 		}
-
-		var appRcds []*model.Application
-		for wallet, rewardAmountStr := range metaforoRewards {
-			rewardAmount, err := decimal.NewFromString(rewardAmountStr)
-			if err != nil {
-				log.Error().Msgf("parse reward amount error, amount str: %s, err: %+v", rewardAmountStr, err)
-				return err
-			}
-
-			appRcds = append(appRcds, &model.Application{
-				Type:             model.ApplicationNewReward,
-				SubType:          "MintRewards",
-				Applicant:        common.FormatUserWallet(user.Wallet),
-				State:            model.ApplicationStateOpen,
-				CreatedAt:        time.Now(),
-				UpdatedAt:        time.Now(),
-				CreateTs:         model.GetCurrentUtcEpochSecond(),
-				UpdateTs:         model.GetCurrentUtcEpochSecond(),
-				DetailedType:     fmt.Sprintf(MintRewardDetailTemplate, currentSeason.Name),
-				Comment:          "",
-				AssetName:        "SCR",
-				AssetAmount:      rewardAmount,
-				TargetUserWallet: common.FormatUserWallet(wallet),
-				EntityType:       "project",
-				EntityId:         cityHallProject.ID,
-				SeasonId:         currentSeason.ID,
-				BundleId:         appBundle.ID,
-			})
-		}
-
-		if len(appRcds) > 0 {
-			err = tx.Save(&appRcds).Error
-			if err != nil {
-				log.Error().Msgf("create application error: %+v", err)
-				return err
-			}
-		}
-
-		// Mark season metaforo credit confirmed
-		currentSeason.MintRewardConfirmed = true
-		currentSeason.MintRewardConfirmedAt = time.Now().UnixMilli()
-		currentSeason.MintRewardAppBundleId = appBundle.ID
-		return tx.Save(currentSeason).Error
-	})
-
-	if err != nil {
-		log.Error().Msgf("approve mint reward error: %+v", err)
-		sdk.LogServerErrorToSentry(ctx, err)
-		return err
+	} else {
+		log.Warn().Msgf("no metaforo rewards found for season %d, no application and bundle will be created", currentSeason.Idx)
 	}
 
 	return nil
