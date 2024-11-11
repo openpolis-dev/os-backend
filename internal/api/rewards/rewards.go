@@ -3,15 +3,18 @@ package rewards
 import (
 	"bytes"
 	"encoding/gob"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
 
+	"github.com/allegro/bigcache/v3"
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
 	"github.com/shopspring/decimal"
 	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api"
+	"github.com/theseed-labs/os-backend/internal/api/data_srv"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk"
@@ -39,24 +42,46 @@ func doApproveMintReward(ctx *gin.Context) error {
 
 	currentSeason, err := model.GetCurrentSeason(db)
 	if err != nil {
+		log.Error().Msgf("fetch current season error: %v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
 		return err
 	}
 
+	if currentSeason.MintRewardConfirmed {
+		errMsg := fmt.Errorf("mint reward for season %d has already confirmed at %d", currentSeason.Idx, currentSeason.MintRewardConfirmedAt)
+		log.Error().Msgf(errMsg.Error())
+		return errMsg
+	}
+
+	var metaforoRewards map[string]string
 	metaforoRewardsBytes, err := storage.GetCachedData(storage.MetaforoRewardCacheKey(currentSeason.Idx))
 	if err != nil {
-		sdk.LogServerErrorToSentry(ctx, err)
-		return err
+		if errors.Is(err, bigcache.ErrEntryNotFound) {
+			// The error is cache not found, calculate the reward directly
+			log.Debug().Msgf("mint reward cache not found, calculate it for season: %d", currentSeason.Idx)
+			mintResult, err := data_srv.CalcMintRewards(ctx, db, currentSeason)
+			if err != nil {
+				log.Error().Msgf("calc mint rewards error: %+v", err)
+				sdk.LogServerErrorToSentry(ctx, err)
+				return err
+			}
+			metaforoRewards = mintResult.MintRewardData
+		} else {
+			log.Error().Msgf("fetch metaforo rewards error: %+v", err)
+			sdk.LogServerErrorToSentry(ctx, err)
+			return err
+		}
+	} else {
+		buf := bytes.NewBuffer(metaforoRewardsBytes)
+		bufDecoder := gob.NewDecoder(buf)
+		err = bufDecoder.Decode(&metaforoRewards)
+		if err != nil {
+			log.Error().Msgf("decode metaforo rewards error: %+v", err)
+			sdk.LogServerErrorToSentry(ctx, err)
+			return err
+		}
 	}
 
-	buf := bytes.NewBuffer(metaforoRewardsBytes)
-	bufDecoder := gob.NewDecoder(buf)
-	var metaforoRewards map[string]string
-	err = bufDecoder.Decode(&metaforoRewards)
-	if err != nil {
-		sdk.LogServerErrorToSentry(ctx, err)
-		return err
-	}
 	cityHallProject, err := model.GetCityHallProject(db)
 
 	// Create app bundle and applications for each records
@@ -129,6 +154,7 @@ func doApproveMintReward(ctx *gin.Context) error {
 	})
 
 	if err != nil {
+		log.Error().Msgf("approve mint reward error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
 		return err
 	}
@@ -150,19 +176,28 @@ func doSnapshotSeed(ctx *gin.Context) (int64, error) {
 	//user, enforcer, db, _ := api.ForContext(ctx)
 	user, _, db, _ := api.ForContext(ctx)
 
-	// TODO: check permission of user
-
 	currentSeason, err := model.GetCurrentSeason(db)
 	if err != nil {
+		log.Error().Msgf("fetch current season error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
 		return 0, err
 	}
+
+	if currentSeason.SeedSnapshotSaved {
+		errMsg := fmt.Errorf("seed snapshot for season %d has already saved at %d", currentSeason.Idx, currentSeason.SeedSnapshotAt)
+		log.Error().Msgf(errMsg.Error())
+		return 0, errMsg
+	}
+
+	// TODO: check permission of user
+
 	currentSeason.SeedSnapshotSaved = true
 	currentSeason.SeedSnapshotAt = time.Now().Unix()
 	currentSeason.SeedSnapshotSubmitter = common.FormatUserWallet(user.Wallet)
 	err = db.Save(currentSeason).Error
 
 	if err != nil {
+		log.Error().Msgf("save current season error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
 		return 0, err
 	}
