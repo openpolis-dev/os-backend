@@ -422,7 +422,7 @@ func SyncProposalVoteGate(db *gorm.DB, cfg *config.Config, grpName string, waitS
 		mfVgTokenKey := fmt.Sprintf("%s:%d", mfVoteGateTokenAddr, mfVoteGateTokenId)
 
 		if vgDbId, found := vgMfDbIdMapping[mfVgTokenKey]; !found {
-			log.Error().Msgf("vote gate not found in db: %d", mfVgTokenKey)
+			log.Error().Msgf("vote gate not found in db: %s", mfVgTokenKey)
 			continue
 		} else {
 			log.Debug().Msgf("update vote gate for proposal: %d, mf vote gate id: %s, db vote gate id: %d", p.ID, mfVgTokenKey, vgDbId)
