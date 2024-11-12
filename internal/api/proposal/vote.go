@@ -96,8 +96,46 @@ func CastVote(ctx *gin.Context) {
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(fmt.Errorf("cast vote error")))
 		return
-
 	}
+
+	// Get proposal id
+	proposalId, _ := strconv.Atoi(proposalIdString)
+
+	// Create proposal user vote record
+	err = db.Transaction(func(tx *gorm.DB) error {
+		var voteOptions []*model.ProposalVoteOptionRecord
+		tx.Model(model.ProposalVoteOptionRecord{}).Where(&model.ProposalVoteOptionRecord{
+			ProposalId:     uint(proposalId),
+			MetaforoVoteID: reqData.MetaforoVoteId,
+		}).Where("metaforo_id IN (?)", reqData.MetaforoVoteOptions).Find(&voteOptions)
+
+		for _, voteOption := range voteOptions {
+			userVoteRecordSearchCond := model.ProposalUserVoteRecord{
+				ProposalID:                 uint(proposalId),
+				ProposalVoteOptionRecordId: voteOption.ID,
+				UserWallet:                 common.FormatUserWallet(user.Wallet),
+			}
+			userVoteRecord := model.ProposalUserVoteRecord{
+				ProposalID:                 uint(proposalId),
+				ProposalVoteOptionRecordId: voteOption.ID,
+				UserWallet:                 common.FormatUserWallet(user.Wallet),
+				VoteTs:                     model.GetCurrentUtcEpochSecond(),
+			}
+			tx.Model(model.ProposalUserVoteRecord{}).
+				Where(userVoteRecordSearchCond).
+				FirstOrCreate(&userVoteRecord)
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		log.Error().Msgf("create proposal user vote record error: %+v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(fmt.Errorf("create proposal user vote record error")))
+		return
+	}
+
 	ctx.JSON(http.StatusOK, api.Success(nil))
 }
 
@@ -110,7 +148,7 @@ func CastVote(ctx *gin.Context) {
 //	@success	200		{object}	api.Reply{data=nil}	"Success"
 //	@router		/proposals/revoke_vote/:id [post]
 func RevokeVote(ctx *gin.Context) {
-	_, cfg := api.ForContextDBAndConfig(ctx)
+	db, cfg := api.ForContextDBAndConfig(ctx)
 	reqData := RevokeVoteData{}
 	if err := ctx.BindJSON(&reqData); err != nil {
 		log.Error().Msgf("parse request data error: %+v", err)
@@ -130,6 +168,31 @@ func RevokeVote(ctx *gin.Context) {
 		return
 
 	}
+	// Remove proposal user vote record
+	err = db.Transaction(func(tx *gorm.DB) error {
+		// Get proposal user vote record from passed in metaforo vote id
+		var proposalVoteOptionRecord *model.ProposalVoteOptionRecord
+		err = tx.Model(&model.ProposalVoteOptionRecord{}).Where(&model.ProposalVoteOptionRecord{
+			MetaforoVoteID: reqData.MetaforoVoteId,
+		}).First(&proposalVoteOptionRecord).Error
+
+		if err != nil {
+			log.Error().Msgf("get proposal vote option record error: %+v", err)
+			return err
+		}
+
+		return tx.Model(&model.ProposalUserVoteRecord{}).Where(&model.ProposalUserVoteRecord{
+			ProposalVoteOptionRecordId: proposalVoteOptionRecord.ID,
+		}).Delete(&model.ProposalUserVoteRecord{}).Error
+	})
+
+	if err != nil {
+		log.Error().Msgf("delete proposal user vote record error: %+v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(fmt.Errorf("delete proposal user vote record error")))
+		return
+	}
+
 	ctx.JSON(http.StatusOK, api.Success(nil))
 }
 
@@ -174,7 +237,7 @@ func CloseVote(ctx *gin.Context) {
 	}
 
 	if pollStatusChanged {
-		if err = HandleProposalPollStatusChange(db, dbProposal.ID); err != nil {
+		if err = HandleProposalPollStatusChange(db, dbProposal.ID, cfg.MetaforoData.GroupName); err != nil {
 			log.Error().Msgf("handle proposal poll status change error: %+v", err)
 			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(fmt.Errorf("close vote error")))
@@ -189,13 +252,13 @@ func CloseVote(ctx *gin.Context) {
 //
 //	@summary	show voter detail for specified vote option
 //	@tags		Proposal
-//	@param		vote_option_id	path		number										true	"Vote ID"
-//	@param		page			query		number										false	"page of the vote list"
+//	@param		vote_option_id	path		number									true	"Vote ID"
+//	@param		page			query		number									false	"page of the vote list"
 //	@success	200				{object}	api.Reply{data=[]userVoteDetailInfo}	"Success"
 //	@router		/proposals/vote_detail/:vote_option_id [get]
 func ShowVoteDetail(ctx *gin.Context) {
-	voteIdStr := ctx.Param("vote_option_id")
-	voteId, err := strconv.Atoi(voteIdStr)
+	voteOptionIdStr := ctx.Param("vote_option_id")
+	voteOptionId, err := strconv.Atoi(voteOptionIdStr)
 	if err != nil {
 		err := fmt.Errorf("parse request data error: %+v", err)
 		log.Error().Msgf(err.Error())
@@ -219,7 +282,7 @@ func ShowVoteDetail(ctx *gin.Context) {
 
 	db, cfg := api.ForContextDBAndConfig(ctx)
 
-	voterList, err := metaforo.GetVoterList(cfg.MetaforoData.GroupName, voteId, page)
+	voterList, err := metaforo.GetVoterList(cfg.MetaforoData.GroupName, voteOptionId, page)
 	if err != nil {
 		log.Error().Msgf("get vote list error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
@@ -227,6 +290,7 @@ func ShowVoteDetail(ctx *gin.Context) {
 		return
 	}
 
+	// TODO: Update this logic to fetchUserWalletFromMetaforoIds function
 	// Update metaforo user record if UID not found in DB
 	missingMfUserIds := map[int]*metaforo.UserDetailResponseForProfileAPI{}
 	for _, mfVoterRecord := range voterList {
@@ -249,7 +313,7 @@ func ShowVoteDetail(ctx *gin.Context) {
 		}
 	}
 
-	// Create MetaforoUser and User record from API data
+	// Create MetaforoUser and User record from API dat
 	err = db.Transaction(func(tx *gorm.DB) error {
 		for userId, profileData := range missingMfUserIds {
 			metaforoUser := model.MetaforoUser{

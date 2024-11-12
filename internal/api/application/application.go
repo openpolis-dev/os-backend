@@ -402,7 +402,7 @@ func BatchProcess(ctx *gin.Context) {
 		return
 	}
 
-	var applications []model.Application
+	var applications []*model.Application
 	err = db.Model(&model.Application{}).Where("state = ?", model.ApplicationStateApproved).Find(&applications).Error
 	if err != nil {
 		log.Error().Msgf("query approved applications error: %+v", err)
@@ -438,7 +438,7 @@ func BatchProcess(ctx *gin.Context) {
 }
 
 func BatchApprove(ctx *gin.Context) {
-	var applications []model.Application
+	var applications []*model.Application
 	err := getBatchApplicationsOrReturnError(ctx, &applications)
 	if err != nil {
 		sdk.LogUserSideError(ctx, err)
@@ -472,12 +472,20 @@ func BatchApprove(ctx *gin.Context) {
 		return
 	}
 
+	err = api.CreateAutoTransferScrTask(db, applications)
+	if err != nil {
+		log.Error().Msgf("create auto transfer SCR task error: %+v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create auto transfer SCR task error")))
+		return
+	}
+
 	ctx.JSON(http.StatusOK, "")
 }
 
 // BatchReject rejects multiple applications in one API call
 func BatchReject(ctx *gin.Context) {
-	var applications []model.Application
+	var applications []*model.Application
 	err := getBatchApplicationsOrReturnError(ctx, &applications)
 	if err != nil {
 		sdk.LogUserSideError(ctx, err)
@@ -533,7 +541,7 @@ func BatchComplete(ctx *gin.Context) {
 		return
 	}
 
-	var applications []model.Application
+	var applications []*model.Application
 	db.Model(&model.Application{}).Where("state = ?", model.ApplicationStateProcessing).Find(&applications)
 
 	reqBody := AuditRequestBody{}
@@ -569,7 +577,7 @@ func BatchComplete(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, "")
 }
 
-func getBatchApplicationsOrReturnError(ctx *gin.Context, applications *[]model.Application) error {
+func getBatchApplicationsOrReturnError(ctx *gin.Context, applications *[]*model.Application) error {
 	var idList []int
 	err := ctx.Bind(&idList)
 	if err != nil {

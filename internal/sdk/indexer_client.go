@@ -114,6 +114,22 @@ func (c *IndexerClient) GetCurrentSeasonNodeCount(seasonNumberStr string) int {
 	}
 }
 
+func (c *IndexerClient) GetCurrentSeasonNodeList(seasonNumberStr string) ([]string, error) {
+	nodeSbtHolderRecords, err := c.GetEnsoulSBTHolderInfo(time.Now().UTC().Unix())
+	if err != nil {
+		log.Error().Msgf("get node SBT holder info error: %+v", err)
+		return []string{}, err
+	} else {
+		var csNodeWallet []string
+		for _, record := range nodeSbtHolderRecords {
+			if lo.Contains(record.Ids, seasonNumberStr) {
+				csNodeWallet = append(csNodeWallet, record.Wallet)
+			}
+		}
+		return csNodeWallet, nil
+	}
+}
+
 func (c *IndexerClient) GetCurrentCityHallCount() int {
 	nodeSbtHolderRecords, err := c.GetEnsoulSBTHolderInfo(time.Now().UTC().Unix())
 

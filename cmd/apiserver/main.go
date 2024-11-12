@@ -258,6 +258,7 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 
 		cityHallGroup := v1.Group("/cityhall")
 		cityHallGroup.GET("/info", city_hall.Info)
+		cityHallGroup.GET("/cs_node", city_hall.CurrentSeasonNodeList)
 
 		// public data
 		publicData := v1.Group("/public_data")
@@ -290,7 +291,7 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		proposalPollGateRouter.GET("/", proposal.ListVoteGates)
 
 		// Proposal routers
-		proposalGroup := v1.Group("/proposals")
+		proposalGroup := v1.Group("/proposals", middleware.AuthOption)
 		proposalGroup.GET("/list", proposal.List)
 		proposalGroup.GET("/show/:id", proposal.Detail)
 		proposalGroup.GET("/vote_detail/:vote_option_id", proposal.ShowVoteDetail)
@@ -317,6 +318,7 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		userGroup.POST("/join_metaforo_group", user.JoinMetaforoGroup)
 		userGroup.POST("/leave_metaforo_group", user.LeaveMetaforoGroup)
 		userGroup.POST("/prepare_metaforo", user.PrepareMetaforoData)
+		userGroup.GET("/level", user.UserLvl)
 
 		// project routers
 		projGroup := authorizedGroup.Group("/projects")
@@ -359,6 +361,11 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		authorizedGroup.POST("/apps_process", application.BatchProcess)
 		authorizedGroup.POST("/apps_complete", application.BatchComplete)
 
+		// Auto transfer SCR application routers
+		authorizedGroup.GET("/scr_tasks/", application.AutoXferTaskList)
+		authorizedGroup.GET("/scr_tasks/:id", application.AutoXferTaskDetail)
+		authorizedGroup.POST("/scr_tasks/:id/cancel", application.CancelAutoXferTask)
+
 		// SeeDAO assets routers
 		treasuryGroup := authorizedGroup.Group("/treasury")
 		treasuryGroup.POST("/update_assets", treasury.UpdateAssets)
@@ -392,6 +399,7 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		rewardsGroup := authorizedGroup.Group("/rewards")
 		rewardsGroup.POST("/approve_mint_reward", rewards.ApproveMintReward)
 		rewardsGroup.POST("/snapshot_seed", rewards.SnapshotSeed)
+		rewardsGroup.POST("/approve_mint_snap_seed", rewards.ApproveMintAndSnapshotSeed)
 
 		// proposal routers
 		proposalGroup := authorizedGroup.Group("/proposals")
@@ -450,8 +458,8 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		//metaforoRouter.POST("/update_mf_admin_token", TBD)
 		//metaforoRouter.POST("/sync_perm_group", TBD)
 
-		// metaforo mint count update
-		adminGroup.POST("/metaforo_mint_data_update", data_srv.UpdateMetaforoVoteData)
+		// Fetch single proposal user vote record
+		adminGroup.POST("/update_proposal_vote_record/:proposal_id", data_srv.FetchSingleProposalUserVoteRecord)
 	}
 
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))

@@ -1,6 +1,7 @@
 package city_hall
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -17,6 +18,7 @@ import (
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk"
+	"github.com/theseed-labs/os-backend/internal/storage"
 	"gorm.io/gorm"
 )
 
@@ -86,6 +88,63 @@ func Info(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, api.Success(generateCityHallDetailReply(cityHallProject, budgets)))
+}
+
+// CurrentSeasonNodeList returns current season node list
+//
+//	@summary	Return current season node list
+//	@tags		CityHall
+//	@route		/cityhall/cs_node [get]
+//	@success	200	{object}	[]model.SeasonNode
+func CurrentSeasonNodeList(ctx *gin.Context) {
+	db := api.ForContextOnlyDB(ctx)
+
+	tokenAddr, tokenId, err := model.GetNodeSbtAddrAndId(db)
+	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get node sbt address and id error")))
+		return
+	}
+
+	cachedData, err := storage.GetCachedData(storage.CurrentSeasonNodeCacheKey(tokenAddr, tokenId))
+	var csNodeWallets []string
+	if err != nil {
+		log.Warn().Msgf("get cached data error: %+v, try to fetch from indexer", err)
+		// TODO: Fetch node list from indexer
+		log.Debug().Msgf("node sbt address: %s, node sbt id: %s", tokenAddr, tokenId)
+
+		currSeason, err := model.GetCurrentSeason(db)
+		if err != nil {
+			sdk.LogServerErrorToSentry(ctx, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get current season error")))
+			return
+		}
+		indexerClient := sdk.GetIndexerClient()
+		csNodeWallets, err = indexerClient.GetCurrentSeasonNodeList(fmt.Sprintf("%d", currSeason.Idx))
+
+		if err != nil {
+			sdk.LogServerErrorToSentry(ctx, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get current season node list error")))
+			return
+		}
+
+		csNodeBytes, err := json.Marshal(csNodeWallets)
+		if err != nil {
+			sdk.LogServerErrorToSentry(ctx, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("marshal current season node list error")))
+			return
+		}
+		err = storage.StoreCachedData(storage.CurrentSeasonNodeCacheKey(tokenAddr, tokenId), csNodeBytes)
+	} else {
+		err = json.Unmarshal(cachedData, &csNodeWallets)
+		if err != nil {
+			sdk.LogServerErrorToSentry(ctx, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("unmarshal current season node list error")))
+			return
+		}
+	}
+
+	ctx.JSON(http.StatusOK, api.Success(csNodeWallets))
 }
 
 // UpdateBudget updates cityhall budget for current season

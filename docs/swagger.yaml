@@ -594,6 +594,8 @@ definitions:
     type: object
   model.GuildBudget:
     properties:
+      asset_name:
+        type: string
       create_ts:
         type: integer
       guild_id:
@@ -601,13 +603,11 @@ definitions:
         type: integer
       id:
         type: integer
-      name:
-        type: string
       remain_amount:
         description: remain_amount
         type: number
       total_amount:
-        description: total_amount
+        description: total_amount = used_amount + remain_amount
         type: number
       update_ts:
         type: integer
@@ -714,23 +714,35 @@ definitions:
     type: object
   model.ProjectBudget:
     properties:
+      advance_ratio:
+        description: How many assets can be paid in advanced, value range 0.0-1.0
+        type: number
+      asset_name:
+        type: string
       create_ts:
         type: integer
       id:
         type: integer
-      name:
-        type: string
       project_id:
         description: project_id
         type: integer
+      proposal_id:
+        description: Proposal ID that creating this project
+        type: integer
+      remain_advance_amount:
+        type: number
       remain_amount:
         description: remain_amount
+        type: number
+      total_advance_amount:
         type: number
       total_amount:
         description: total_amount = used_amount + remain_amount
         type: number
       update_ts:
         type: integer
+      used_advance_amount:
+        type: number
       used_amount:
         description: used_amount
         type: number
@@ -847,13 +859,6 @@ definitions:
       wallet:
         type: string
     type: object
-  project.BudgetParam:
-    properties:
-      name:
-        type: string
-      total_amount:
-        type: number
-    type: object
   project.CreateReq:
     properties:
       ApprovalLink:
@@ -872,10 +877,6 @@ definitions:
         type: string
       SIP:
         type: string
-      budgets:
-        items:
-          $ref: '#/definitions/project.BudgetParam'
-        type: array
       desc:
         type: string
       intro:
@@ -893,10 +894,14 @@ definitions:
         items:
           type: string
         type: array
+      scr_budget:
+        type: number
       sponsors:
         items:
           type: string
         type: array
+      usdc_budget:
+        type: number
     type: object
   project.DetailReply:
     properties:
@@ -920,7 +925,7 @@ definitions:
         type: string
       budgets:
         items:
-          $ref: '#/definitions/model.ProjectBudget'
+          $ref: '#/definitions/project.ProjectBudgetResp'
         type: array
       create_ts:
         type: integer
@@ -966,6 +971,25 @@ definitions:
         description: 'Status may have those values: open/pending_close/closed'
       update_ts:
         type: integer
+    type: object
+  project.ProjectBudgetResp:
+    properties:
+      advance_ratio:
+        type: string
+      asset_name:
+        type: string
+      remain_advance_amount:
+        type: string
+      remain_amount:
+        type: string
+      total_advance_amount:
+        type: string
+      total_amount:
+        type: string
+      used_advance_amount:
+        type: string
+      used_amount:
+        type: string
     type: object
   project.UpdateBudgetReq:
     properties:
@@ -1093,6 +1117,8 @@ definitions:
         type: integer
       editor_type:
         type: integer
+      is_multiple_vote:
+        type: boolean
       metaforo_access_token:
         type: string
       submit_to_metaforo:
@@ -1196,6 +1222,13 @@ definitions:
       arweave:
         description: Arweave Hash
         type: string
+      associated_project_budgets:
+        items:
+          $ref: '#/definitions/project.ProjectBudgetResp'
+        type: array
+      associated_project_id:
+        description: Associated project ID, used for close_project proposal
+        type: integer
       comment_count:
         description: Comments
         type: integer
@@ -1223,6 +1256,8 @@ definitions:
       is_based_on_custom_template:
         type: boolean
       is_instant_execution:
+        type: boolean
+      is_multiple_vote:
         type: boolean
       is_rejected:
         description: Reject related data
@@ -1330,19 +1365,6 @@ definitions:
       token_type:
         type: string
     type: object
-  proposal.JointMetaforoAndOsUser:
-    properties:
-      metaforo_user_id:
-        type: integer
-      os_avatar:
-        type: string
-      os_user_id:
-        type: integer
-      os_user_name:
-        type: string
-      wallet:
-        type: string
-    type: object
   proposal.RevokeVoteData:
     properties:
       metaforo_access_token:
@@ -1373,6 +1395,21 @@ definitions:
       screenshot_uri:
         type: string
       vote_type:
+        type: integer
+    type: object
+  proposal.userVoteDetailInfo:
+    properties:
+      metaforo_user_id:
+        type: integer
+      os_avatar:
+        type: string
+      os_user_id:
+        type: integer
+      os_user_name:
+        type: string
+      wallet:
+        type: string
+      weight:
         type: integer
     type: object
   publicdata.Vault:
@@ -1654,6 +1691,11 @@ definitions:
       twitter_profile:
         type: string
       wechat:
+        type: string
+    type: object
+  user.UserLvlRes:
+    properties:
+      current_lv:
         type: string
     type: object
   user.UserModelWithSomeSeepassData:
@@ -2423,12 +2465,6 @@ paths:
         name: id
         required: true
         type: integer
-      - description: request json body
-        in: body
-        name: JsonBody
-        required: true
-        schema:
-          $ref: '#/definitions/project.UpdateBudgetReq'
       produces:
       - application/json
       responses:
@@ -2436,7 +2472,7 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/api.Reply'
-      summary: Update project budget
+      summary: Show project budgets
       tags:
       - Project
   /projects/{id}/update_staffs:
@@ -3022,7 +3058,7 @@ paths:
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/proposal.JointMetaforoAndOsUser'
+                    $ref: '#/definitions/proposal.userVoteDetailInfo'
                   type: array
               type: object
       summary: show voter detail for specified vote option
@@ -3452,6 +3488,25 @@ paths:
       summary: Leave a Metaforo group
       tags:
       - Metaforo
+  /user/level:
+    get:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.Reply'
+            - properties:
+                data:
+                  $ref: '#/definitions/user.UserLvlRes'
+              type: object
+      summary: Get user current level
+      tags:
+      - User
   /user/login:
     post:
       consumes:

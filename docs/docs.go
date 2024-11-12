@@ -1251,7 +1251,7 @@ const docTemplate = `{
                 "tags": [
                     "Project"
                 ],
-                "summary": "Update project budget",
+                "summary": "Show project budgets",
                 "parameters": [
                     {
                         "type": "integer",
@@ -1259,15 +1259,6 @@ const docTemplate = `{
                         "name": "id",
                         "in": "path",
                         "required": true
-                    },
-                    {
-                        "description": "request json body",
-                        "name": "JsonBody",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/project.UpdateBudgetReq"
-                        }
                     }
                 ],
                 "responses": {
@@ -2193,7 +2184,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/proposal.JointMetaforoAndOsUser"
+                                                "$ref": "#/definitions/proposal.userVoteDetailInfo"
                                             }
                                         }
                                     }
@@ -2912,6 +2903,40 @@ const docTemplate = `{
                                     "properties": {
                                         "data": {
                                             "type": "object"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/user/level": {
+            "get": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "Get user current level",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.Reply"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/user.UserLvlRes"
                                         }
                                     }
                                 }
@@ -4154,6 +4179,9 @@ const docTemplate = `{
         "model.GuildBudget": {
             "type": "object",
             "properties": {
+                "asset_name": {
+                    "type": "string"
+                },
                 "create_ts": {
                     "type": "integer"
                 },
@@ -4164,15 +4192,12 @@ const docTemplate = `{
                 "id": {
                     "type": "integer"
                 },
-                "name": {
-                    "type": "string"
-                },
                 "remain_amount": {
                     "description": "remain_amount",
                     "type": "number"
                 },
                 "total_amount": {
-                    "description": "total_amount",
+                    "description": "total_amount = used_amount + remain_amount",
                     "type": "number"
                 },
                 "update_ts": {
@@ -4336,21 +4361,35 @@ const docTemplate = `{
         "model.ProjectBudget": {
             "type": "object",
             "properties": {
+                "advance_ratio": {
+                    "description": "How many assets can be paid in advanced, value range 0.0-1.0",
+                    "type": "number"
+                },
+                "asset_name": {
+                    "type": "string"
+                },
                 "create_ts": {
                     "type": "integer"
                 },
                 "id": {
                     "type": "integer"
                 },
-                "name": {
-                    "type": "string"
-                },
                 "project_id": {
                     "description": "project_id",
                     "type": "integer"
                 },
+                "proposal_id": {
+                    "description": "Proposal ID that creating this project",
+                    "type": "integer"
+                },
+                "remain_advance_amount": {
+                    "type": "number"
+                },
                 "remain_amount": {
                     "description": "remain_amount",
+                    "type": "number"
+                },
+                "total_advance_amount": {
                     "type": "number"
                 },
                 "total_amount": {
@@ -4359,6 +4398,9 @@ const docTemplate = `{
                 },
                 "update_ts": {
                     "type": "integer"
+                },
+                "used_advance_amount": {
+                    "type": "number"
                 },
                 "used_amount": {
                     "description": "used_amount",
@@ -4534,17 +4576,6 @@ const docTemplate = `{
                 }
             }
         },
-        "project.BudgetParam": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string"
-                },
-                "total_amount": {
-                    "type": "number"
-                }
-            }
-        },
         "project.CreateReq": {
             "type": "object",
             "properties": {
@@ -4572,12 +4603,6 @@ const docTemplate = `{
                 "SIP": {
                     "type": "string"
                 },
-                "budgets": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/project.BudgetParam"
-                    }
-                },
                 "desc": {
                     "type": "string"
                 },
@@ -4603,11 +4628,17 @@ const docTemplate = `{
                         "type": "string"
                     }
                 },
+                "scr_budget": {
+                    "type": "number"
+                },
                 "sponsors": {
                     "type": "array",
                     "items": {
                         "type": "string"
                     }
+                },
+                "usdc_budget": {
+                    "type": "number"
                 }
             }
         },
@@ -4644,7 +4675,7 @@ const docTemplate = `{
                 "budgets": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.ProjectBudget"
+                        "$ref": "#/definitions/project.ProjectBudgetResp"
                     }
                 },
                 "create_ts": {
@@ -4714,6 +4745,35 @@ const docTemplate = `{
                 },
                 "update_ts": {
                     "type": "integer"
+                }
+            }
+        },
+        "project.ProjectBudgetResp": {
+            "type": "object",
+            "properties": {
+                "advance_ratio": {
+                    "type": "string"
+                },
+                "asset_name": {
+                    "type": "string"
+                },
+                "remain_advance_amount": {
+                    "type": "string"
+                },
+                "remain_amount": {
+                    "type": "string"
+                },
+                "total_advance_amount": {
+                    "type": "string"
+                },
+                "total_amount": {
+                    "type": "string"
+                },
+                "used_advance_amount": {
+                    "type": "string"
+                },
+                "used_amount": {
+                    "type": "string"
                 }
             }
         },
@@ -4906,6 +4966,9 @@ const docTemplate = `{
                 "editor_type": {
                     "type": "integer"
                 },
+                "is_multiple_vote": {
+                    "type": "boolean"
+                },
                 "metaforo_access_token": {
                     "type": "string"
                 },
@@ -5058,6 +5121,16 @@ const docTemplate = `{
                     "description": "Arweave Hash",
                     "type": "string"
                 },
+                "associated_project_budgets": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/project.ProjectBudgetResp"
+                    }
+                },
+                "associated_project_id": {
+                    "description": "Associated project ID, used for close_project proposal",
+                    "type": "integer"
+                },
                 "comment_count": {
                     "description": "Comments",
                     "type": "integer"
@@ -5097,6 +5170,9 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "is_instant_execution": {
+                    "type": "boolean"
+                },
+                "is_multiple_vote": {
                     "type": "boolean"
                 },
                 "is_rejected": {
@@ -5260,26 +5336,6 @@ const docTemplate = `{
                 }
             }
         },
-        "proposal.JointMetaforoAndOsUser": {
-            "type": "object",
-            "properties": {
-                "metaforo_user_id": {
-                    "type": "integer"
-                },
-                "os_avatar": {
-                    "type": "string"
-                },
-                "os_user_id": {
-                    "type": "integer"
-                },
-                "os_user_name": {
-                    "type": "string"
-                },
-                "wallet": {
-                    "type": "string"
-                }
-            }
-        },
         "proposal.RevokeVoteData": {
             "type": "object",
             "properties": {
@@ -5325,6 +5381,29 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "vote_type": {
+                    "type": "integer"
+                }
+            }
+        },
+        "proposal.userVoteDetailInfo": {
+            "type": "object",
+            "properties": {
+                "metaforo_user_id": {
+                    "type": "integer"
+                },
+                "os_avatar": {
+                    "type": "string"
+                },
+                "os_user_id": {
+                    "type": "integer"
+                },
+                "os_user_name": {
+                    "type": "string"
+                },
+                "wallet": {
+                    "type": "string"
+                },
+                "weight": {
                     "type": "integer"
                 }
             }
@@ -5744,6 +5823,14 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "wechat": {
+                    "type": "string"
+                }
+            }
+        },
+        "user.UserLvlRes": {
+            "type": "object",
+            "properties": {
+                "current_lv": {
                     "type": "string"
                 }
             }

@@ -20,10 +20,13 @@ import (
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk"
 	"github.com/theseed-labs/os-backend/internal/sdk/metaforo"
+	"github.com/theseed-labs/os-backend/internal/service"
 	"github.com/xiaosongfu/gormfind"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
+
+const oneYearDuration = 24 * 365 * time.Hour
 
 var err error
 
@@ -46,7 +49,7 @@ var StateOrder = []model.ProposalState{
 //	@Param		category_id	query		int		false	"filter proposal records with specified category"
 //	@success	200			{object}	api.Reply{data=api.ListReplyData{rows=FrontendProposalListRecord}}
 func List(ctx *gin.Context) {
-	db := api.ForContextOnlyDB(ctx)
+	user, db := api.ForContextUserAndDB(ctx)
 	queryParams := ListProposalQueryParams{}
 	if err = ctx.Bind(&queryParams); err != nil {
 		ctx.JSON(http.StatusBadRequest, api.Reply{
@@ -103,6 +106,42 @@ func List(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get proposal error")))
 		return
 	}
+
+	// get result rows is vote by me
+	// <<
+	log.Debug().Msgf("vote query sql check: user: %+v", user)
+	if len(resultRows) > 0 && user != nil {
+		voteQuerySql := fmt.Sprintf("select * from proposal_user_vote_records where user_wallet = '%s' ", user.Wallet)
+
+		var proposalIdList []string
+		for i := 0; i < len(resultRows); i++ {
+			proposalIdList = append(proposalIdList, fmt.Sprintf("%d", resultRows[i].ID))
+		}
+
+		voteQuerySql += fmt.Sprintf(" AND proposal_id in(%s)", strings.Join(proposalIdList, ","))
+
+		log.Debug().Msgf("vote query sql check: query sql: %s", voteQuerySql)
+
+		var userProposalUserVoteRecord []*model.ProposalUserVoteRecord
+
+		dbErr := db.Raw(voteQuerySql).Find(&userProposalUserVoteRecord).Error
+		if dbErr != nil {
+			log.Error().Msgf("get proposal list error: query sql: %s, err: %+v", voteQuerySql, dbErr)
+		} else {
+			resultRows = lo.Map(resultRows, func(r *FrontendProposalListRecord, _ int) *FrontendProposalListRecord {
+				for i := 0; i < len(userProposalUserVoteRecord); i++ {
+					log.Debug().Msgf("vote query sql check find vote data: ProposalID: %d, ID: %d", userProposalUserVoteRecord[i].ProposalID, r.ID)
+					if userProposalUserVoteRecord[i].ProposalID == r.ID {
+						r.IsVoted = true
+						break
+					}
+				}
+
+				return r
+			})
+		}
+	}
+	// >>
 
 	ctx.JSON(http.StatusOK, api.Success(api.ListReplyData{
 		Page:  queryParams.Page,
@@ -816,7 +855,6 @@ func UpdateProposalStateAndLaunchStateChangeActions(db *gorm.DB, user *middlewar
 		}
 
 		for _, record := range voteRecords {
-			oneYearDuration := 24 * 365 * time.Hour
 			err := metaforo.UpdateVoteTime(cfg.MetaforoData.AccessToken,
 				cfg.MetaforoData.GroupName,
 				record.MetaforoID,
@@ -931,7 +969,6 @@ func UpdateProposalStateAndLaunchStateChangeActions(db *gorm.DB, user *middlewar
 		}
 
 		for _, record := range voteRecords {
-			oneYearDuration := 24 * 365 * time.Hour
 			err := metaforo.UpdateVoteTime(cfg.MetaforoData.AccessToken,
 				cfg.MetaforoData.GroupName,
 				record.MetaforoID,
@@ -1114,4 +1151,108 @@ func findProjectCreatedByProposal(db *gorm.DB, proposalId uint) (*model.Project,
 	}
 
 	return &createdProject, nil
+}
+
+func UpdateUserVoteRecordViaMetaforo(db *gorm.DB, mfGroupName string, proposalId uint) error {
+	proposal, err := service.ProposalService.GetProposalById(db, proposalId)
+	if proposal == nil {
+		err = fmt.Errorf("proposal %d not found", proposalId)
+		log.Error().Msgf(err.Error())
+		return err
+	}
+
+	if proposal.UserVoteRecordSaved {
+		log.Debug().Msgf("user vote record already saved for proposal %d", proposalId)
+		return nil
+	}
+
+	// User vote record not saved, need to get all vote options for this proposal
+	var voteOptions []model.ProposalVoteOptionRecord
+	err = db.Where(&model.ProposalVoteOptionRecord{ProposalId: proposalId}).Find(&voteOptions).Error
+	if err != nil {
+		log.Error().Msgf("get proposal vote option record error: %+v", err)
+		return err
+	}
+
+	// Get voter lister from metaforo vote option, the voter list returned from metaforo API only contains user id
+	var voterList []*metaforo.UserPollRecord
+	for _, voteOption := range voteOptions {
+		// A magic number 100 is used here to get all voters for this vote option, which SHOULD NOT be reached
+		for i := 1; i <= 100; i++ {
+			pagedVoterList, err := metaforo.GetVoterList(mfGroupName, voteOption.MetaforoID, i)
+			if err != nil {
+				if strings.Contains(err.Error(), internal.MetaforoPollNotExistsPrompt) {
+					// Vote option not found in metaforo, the original proposal may be deleted, break the loop and return
+					db.Model(&model.Proposal{}).Where("id = ?", proposalId).Update("user_vote_record_saved", true)
+					log.Warn().Msgf("vote option %d not found in metaforo, mark proposal %d as updated", voteOption.MetaforoID, proposalId)
+					return nil
+				} else {
+					log.Error().Msgf("get voter list error: %+v", err)
+					return err
+				}
+			}
+			voterList = append(voterList, pagedVoterList...)
+			if len(pagedVoterList) < 10 {
+				// No more voters for this vote option, break the loop
+				break
+			}
+			time.Sleep(time.Millisecond * 100)
+		}
+	}
+
+	userIdWalletMap, err := fetchUserWalletFromMetaforoIds(db, lo.Map(voterList, func(voter *metaforo.UserPollRecord, _ int) int {
+		return voter.User.Id
+	}))
+	if err != nil {
+		log.Error().Msgf("populate user wallet from metaforo ids error: %+v", err)
+		return err
+	}
+
+	// map for saving relationship between metaforo option id and internal proposal vote option record
+	voterMfOptionIdRecordMap := lo.Associate(voteOptions, func(voteOption model.ProposalVoteOptionRecord) (int, *model.ProposalVoteOptionRecord) {
+		return voteOption.MetaforoID, &voteOption
+	})
+
+	dbProposal, mfProposal, err := GetMetaforoProposalByInternalId(db, fmt.Sprintf("%d", proposalId), mfGroupName, "")
+	if err != nil {
+		log.Error().Msgf("get metaforo proposal by internal id error: %+v", err)
+		return err
+	}
+	if dbProposal == nil {
+		log.Error().Msgf("get metaforo proposal by internal id error: %+v", err)
+		return err
+	}
+
+	pollEnded := true
+	for _, poll := range mfProposal.Thread.Polls {
+		if poll.CloseAt.After(time.Now()) {
+			pollEnded = false
+			break
+		}
+	}
+
+	// Upsert ProposalUserVoteRecord record
+	return db.Transaction(func(tx *gorm.DB) error {
+		for _, voterInfo := range voterList {
+			userWallet := userIdWalletMap[voterInfo.User.Id]
+			internalVoteOptionRecord := voterMfOptionIdRecordMap[voterInfo.PollOptionId]
+
+			err = model.UpsertUserVoteRecord(tx, &model.ProposalUserVoteRecord{
+				ProposalID:                 proposalId,
+				UserWallet:                 userWallet,
+				ProposalVoteOptionRecordId: internalVoteOptionRecord.ID,
+				VoteTs:                     model.GetCurrentUtcEpochSecond(),
+			})
+			if err != nil {
+				log.Error().Msgf("create proposal user vote record error: %+v", err)
+				return err
+			}
+		}
+		if pollEnded {
+			// Update proposal record to mark user vote record as saved only for finished proposal
+			return tx.Model(&model.Proposal{}).Where(&model.Proposal{ID: proposalId}).Update("user_vote_record_saved", true).Error
+		} else {
+			return tx.Model(&model.Proposal{}).Where(&model.Proposal{ID: proposalId}).Update("user_vote_record_saved", false).Error
+		}
+	})
 }

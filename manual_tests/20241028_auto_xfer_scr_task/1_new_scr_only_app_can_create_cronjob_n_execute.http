@@ -1,0 +1,83 @@
+### Login to service with hall
+POST {{host}}/v1/user/login
+Content-Type: application/json
+
+{
+  "wallet": "0xEe3d9DeFdD97560c56402b3467869f293bfa35dC",
+  "wallet_type": "aaaaa",
+  "is_eip191_prefix": false,
+  "domain": "testfoobar",
+  "message": "test msg",
+  "timestamp": 1,
+  "signature": "1"
+}
+
+> {%
+    client.test("Request executed successfully", function() {
+        client.assert(response.status === 200, "Response status is not 200");
+        client.global.set("auth_token", response.body.data.token);
+    });
+%}
+
+### Create app bundle with SCR applications
+# Make sure the project ID has enough budget
+POST {{host}}/v1/app_bundles/
+Content-Type: application/json
+Authorization: Bearer {{auth_token}}
+
+{
+  "entity": "project",
+  "entity_id": 268,
+  "comment": "Test app bundles",
+  "records": [{
+    "type": "new_reward",
+    "entity": "project",
+    "entity_id": 268,
+    "target_user_wallet": "0xEe3d9DeFdD97560c56402b3467869f293bfa35dC",
+    "asset_name": "SCR",
+    "amount": "15",
+    "detailed_type": "test_rwd",
+    "comment": "test single asset type"
+  }]
+}
+
+> {%
+    client.test("Request executed successfully", function() {
+        client.assert(response.status === 201, "Response status should be 201");
+    });
+%}
+
+
+### Show last app bundle
+GET {{host}}/v1/app_bundles/?size=1&sort_field=create_ts&sort_order=desc
+Content-Type: application/json
+Authorization: Bearer {{auth_token}}
+
+
+
+### Show auto xfer task before approve
+GET {{host}}/v1/scr_tasks/
+Content-Type: application/json
+Authorization: Bearer {{auth_token}}
+
+### Approve app bundle
+POST {{host}}/v1/app_bundle_approve
+Content-Type: application/json
+Authorization: Bearer {{auth_token}}
+
+[181]
+
+
+
+
+### Show auto xfer task
+GET {{host}}/v1/scr_tasks/
+Content-Type: application/json
+Authorization: Bearer {{auth_token}}
+
+
+
+### Cancel auto xfer task
+POST {{host}}/v1/scr_tasks/651/cancel
+Content-Type: application/json
+Authorization: Bearer {{auth_token}}
