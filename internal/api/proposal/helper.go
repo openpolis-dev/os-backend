@@ -1881,14 +1881,22 @@ func setProposalSip(db *gorm.DB, pTemplate *model.ProposalTemplate, dbProposalRc
 
 	if err = updateTx.Error; err != nil {
 		log.Error().Msgf("update proposal state error: %+v", err)
-		rollbackedSip, _ := model.RollbackSipValueByOne(db)
-		log.Debug().Msgf("rollbacked sip value return %d", rollbackedSip)
+		if pTemplate != nil && pTemplate.Type == model.ProposalTemplateTypeCloseProject {
+			log.Debug().Msgf("no need rollbacked sip value proposalSip is %d", proposalSip)
+		} else {
+			rollbackedSip, _ := model.RollbackSipValueByOne(db)
+			log.Debug().Msgf("rollbacked sip value return %d", rollbackedSip)
+		}
 		return err
 	} else if updateTx.RowsAffected == 0 {
 		err = fmt.Errorf("proposal %d already has a sip value, no update will be performed", dbProposalRcd.ID)
 		log.Error().Msgf(err.Error())
-		rollbackedSip, _ := model.RollbackSipValueByOne(db)
-		log.Debug().Msgf("rollbacked sip value return %d", rollbackedSip)
+		if pTemplate != nil && pTemplate.Type == model.ProposalTemplateTypeCloseProject {
+			log.Debug().Msgf("no need rollbacked sip value proposalSip is %d", proposalSip)
+		} else {
+			rollbackedSip, _ := model.RollbackSipValueByOne(db)
+			log.Debug().Msgf("rollbacked sip value return %d", rollbackedSip)
+		}
 		return err
 	} else {
 		log.Debug().Msgf("complete update proposal status")
