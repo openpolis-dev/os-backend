@@ -10,6 +10,7 @@ import (
 	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
 	"github.com/theseed-labs/os-backend/internal"
+	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk"
@@ -191,6 +192,12 @@ func CreateAppBundleTaskFromMotivationComponent(db *gorm.DB, job *model.CronJob,
 							err = tx.Save(&appBundle).Error
 							if err != nil {
 								log.Error().Msgf("update app_bundle record error: %+v", err)
+								return err
+							}
+
+							err = api.CreateAutoTransferScrTask(tx, appBundle.AppRecords)
+							if err != nil {
+								log.Error().Msgf("create auto transfer script task error: %+v", err)
 								return err
 							}
 
