@@ -331,14 +331,17 @@ func AutoTransferSCR(db *gorm.DB, job *model.CronJob, jobParams string) {
 		}
 	}
 
-	// TODO: Invoke SCR transfer service to transfer SCR
 	var respBytes []byte
 	var scrServiceResp AutoTransferScrTaskResult
 	if !jobFailed {
 		respBytes, err = sdk.SendScr(apiEndpoint, apiKey, apiSecret, jobParams, common.FormatUserWallet(params.Applicant))
 		if err != nil {
 			log.Error().Msgf("send SCR request error: %+v", err)
-			db.Model(&job).Updates(model.CronJob{State: model.CronJobStateTerminated, LastExecResult: err.Error()})
+			db.Model(&job).Updates(model.CronJob{
+				State:          model.CronJobStateTerminated,
+				LastExecTs:     model.GetCurrentUtcEpochSecond(),
+				LastExecResult: err.Error(),
+			})
 			return
 		}
 		log.Debug().Msgf("send SCR response: %s", string(respBytes))
@@ -356,7 +359,11 @@ func AutoTransferSCR(db *gorm.DB, job *model.CronJob, jobParams string) {
 		// For application and app bundle, the audit log should also be created
 		err = db.Transaction(func(tx *gorm.DB) error {
 			// Update cronjob's exec result and state
-			err = tx.Model(&job).Updates(model.CronJob{LastExecResult: string(respBytes), State: model.CronJobStateDone}).Error
+			err = tx.Model(&job).Updates(model.CronJob{
+				LastExecResult: string(respBytes),
+				LastExecTs:     model.GetCurrentUtcEpochSecond(),
+				State:          model.CronJobStateDone},
+			).Error
 			if err != nil {
 				log.Error().Msgf("update cron job error: %+v", err)
 			}
