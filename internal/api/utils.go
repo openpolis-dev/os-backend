@@ -131,7 +131,7 @@ func RefreshSeepassDataCache(sppClient *sdk.SppClient, wallet string) (*sdk.Seep
 	return seepassData, nil
 }
 
-func CreateAutoTransferScrTask(db *gorm.DB, applications []*model.Application) error {
+func CreateAutoTransferScrTask(db *gorm.DB, applications []*model.Application, proposalId uint) error {
 	// Issue send SCR tasks
 	scrApplications := lo.Filter(applications, func(app *model.Application, _ int) bool {
 		return app.Type == model.ApplicationNewReward && app.AssetName == "SCR"
@@ -174,6 +174,10 @@ func CreateAutoTransferScrTask(db *gorm.DB, applications []*model.Application) e
 					JobParams:      string(jobParamsBytes),
 					State:          model.CronJobStateActive,
 					LastExecResult: "",
+				}
+
+				if proposalId != 0 {
+					sendScrTask.ProposalId = proposalId
 				}
 
 				log.Debug().Msgf("create auto transfer SCR task: %+v", sendScrTask)

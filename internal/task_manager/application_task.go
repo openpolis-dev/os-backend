@@ -195,7 +195,7 @@ func CreateAppBundleTaskFromMotivationComponent(db *gorm.DB, job *model.CronJob,
 								return err
 							}
 
-							err = api.CreateAutoTransferScrTask(tx, appBundle.AppRecords)
+							err = api.CreateAutoTransferScrTask(tx, appBundle.AppRecords, proposalDbRcd.ID)
 							if err != nil {
 								log.Error().Msgf("create auto transfer script task error: %+v", err)
 								return err
