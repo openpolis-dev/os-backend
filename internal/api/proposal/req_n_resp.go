@@ -487,16 +487,37 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposalId uint, startPo
 	})
 
 	// Check whether the proposal has associated project
-	var associatedProject *model.Project
 	budgetsResponse := make([]*project.ProjectBudgetResp, 0)
-	err = db.Where(&model.Project{SIP: fmt.Sprintf("%d", proposal.Sip)}).First(&associatedProject).Error
-	if err == nil {
-		budgetRecords, err := model.ProjectBudgetModel.ListByProjectId(db, associatedProject.ID)
-		if err != nil {
-			log.Error().Msgf("fetch project budget error: %+v", err)
-		} else {
-			budgetsResponse = project.GenerateProjectBudgetResp(budgetRecords)
+	if proposal.Sip != 0 {
+		var associatedProject *model.Project
+		err = db.Where(&model.Project{SIP: fmt.Sprintf("%d", proposal.Sip)}).First(&associatedProject).Error
+		if err == nil {
+			budgetRecords, err := model.ProjectBudgetModel.ListByProjectId(db, associatedProject.ID)
+			if err != nil {
+				log.Error().Msgf("fetch project budget error: %+v", err)
+			} else {
+				budgetsResponse = project.GenerateProjectBudgetResp(budgetRecords)
+			}
 		}
+	} else {
+		// Proposal has sip = 0 means it is a saved but not submitted proposal, verify whether it is close project proposal
+		proposalIsForClosingProject, closingProject, err := IsProposalIsForClosingProject(db, proposal.ID)
+		if err != nil {
+			log.Error().Msgf("checking proposal is for closing project failed, err: %+v", err)
+			return nil, err
+		}
+
+		if proposalIsForClosingProject {
+			budgetRecords, err := model.ProjectBudgetModel.ListByProjectId(db, closingProject.ID)
+			if err != nil {
+				log.Error().Msgf("fetch project budget error: %+v", err)
+			} else {
+				budgetsResponse = project.GenerateProjectBudgetResp(budgetRecords)
+			}
+		} else {
+			// This is not a close project proposal, no budget records
+		}
+
 	}
 
 	// Refresh proposal record
