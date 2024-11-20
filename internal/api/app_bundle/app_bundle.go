@@ -744,7 +744,7 @@ func updateAppBundleToNewState(ctx *gin.Context, newState model.ApplicationState
 				}
 			}
 
-			err = api.CreateAutoTransferScrTask(tx, appBundleRcd.AppRecords)
+			err = api.CreateAutoTransferScrTask(tx, appBundleRcd.AppRecords, 0)
 			if err != nil {
 				log.Error().Msgf("create auto xfer task error: %+v, app bundle: %+v", err, appBundleRcd)
 				tx.Rollback()

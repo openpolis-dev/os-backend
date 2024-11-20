@@ -69,6 +69,8 @@ func CreateVetoProposalTask(db *gorm.DB, job *model.CronJob, jobParams string) {
 		// Veto proposal
 		// 1. Mark cronjob related to the specified proposal to terminated
 		// 2. Mark the proposal to vetoed state
+		// 3. If proposal has related applications and app_bundles, mark them as rejected
+		//   - The auto transfer scr tasks will be cancelled while processing cron job table so no need extra logic
 		var proposalTasks []*model.CronJob
 		if err := db.Transaction(func(tx *gorm.DB) error {
 			err = tx.Raw(queryCronJobRecordFromProposalIdSQL, params.BeVetoedProposalInfo.Id).Find(&proposalTasks).Error
@@ -122,6 +124,22 @@ func CreateVetoProposalTask(db *gorm.DB, job *model.CronJob, jobParams string) {
 				log.Debug().Msgf("proposal %d is for closing project %v", dbProposalRcd.ID, project)
 				if err = tx.Model(&project).Update("status", model.ProjectStatusCloseFailed).Error; err != nil {
 					log.Warn().Msgf("update project status to close_failed error: %+v", err)
+					execResult = err.Error()
+					jobFailed = true
+					return err
+				}
+
+				// Reject app_bundle and applications associated to this project
+				var appBundle *model.AppBundle
+				if err = tx.Model(&appBundle).Where(&model.AppBundle{EntityType: "project", EntityId: project.ID}).Update("state = ", model.ApplicationStateRejected).Error; err != nil {
+					log.Warn().Msgf("reject app_bundle for project %d error: %+v", project.ID, err)
+					execResult = err.Error()
+					jobFailed = true
+					return err
+				}
+
+				if err = tx.Model(&appBundle).Where(&model.Application{EntityType: "project", EntityId: project.ID}).Update("state = ", model.ApplicationStateRejected).Error; err != nil {
+					log.Warn().Msgf("reject applications for project %d error: %+v", project.ID, err)
 					execResult = err.Error()
 					jobFailed = true
 					return err

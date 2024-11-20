@@ -8,6 +8,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/shopspring/decimal"
 	"github.com/theseed-labs/os-backend/internal"
+	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/config"
 	"github.com/theseed-labs/os-backend/internal/model"
@@ -181,6 +182,12 @@ func CheckAndUpdateUnverifiedSnsInvite(cfg *config.Config, db *gorm.DB) error {
 					PostState:   model.ApplicationStateApproved,
 					ExtraData:   "",
 				}).Error; err != nil {
+					return err
+				}
+
+				// Create auto transfer scr task
+				if err = api.CreateAutoTransferScrTask(tx, appBundle.AppRecords, 0); err != nil {
+					log.Error().Msgf("create auto transfer scr task error: %+v", err)
 					return err
 				}
 
