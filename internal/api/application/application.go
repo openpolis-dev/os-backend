@@ -472,7 +472,7 @@ func BatchApprove(ctx *gin.Context) {
 		return
 	}
 
-	err = api.CreateAutoTransferScrTask(db, applications)
+	err = api.CreateAutoTransferScrTask(db, applications, 0)
 	if err != nil {
 		log.Error().Msgf("create auto transfer SCR task error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
