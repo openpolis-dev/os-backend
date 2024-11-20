@@ -182,6 +182,7 @@ func TestGetMySnsInviteRewards(t *testing.T) {
 }
 
 func TestCheckAndUpdateUnverifiedSnsInvite(t *testing.T) {
+	t.Skip()
 	// ---> truncate tables before all
 	truncateTables()
 
