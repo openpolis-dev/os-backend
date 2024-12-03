@@ -8,6 +8,8 @@ import (
 	"github.com/robfig/cron/v3"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/pkgerrors"
+	"github.com/theseed-labs/os-backend/global_object"
+	"github.com/theseed-labs/os-backend/inject_register"
 	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api/common_budget_sources"
 	"github.com/theseed-labs/os-backend/internal/api/cron_jobs"
@@ -55,12 +57,11 @@ import (
 	"github.com/theseed-labs/os-backend/internal/storage"
 )
 
-//	@title			OS Backend API service
-//	@version		1.0
-//	@license.name	MIT
-//	@host			https://test-api.seedao.tech
-//	@basePath		/v1
-
+// @title			OS Backend API service
+// @version		1.0
+// @license.name	MIT
+// @host			https://test-api.seedao.tech
+// @basePath		/v1
 func main() {
 	// read config data
 	cfgPath := flag.String("config", "config.yml", "Configuration file path, should be yaml or json format")
@@ -169,6 +170,10 @@ func main() {
 	setupCronJob(cfg, db)
 
 	r := setupRouter(cfg, db, enforcer, pushSDK)
+
+	global_object.NewGlobalObject(r, db)
+	inject_register.RegisterAll()
+
 	_ = r.Run()
 }
 
