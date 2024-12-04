@@ -1854,54 +1854,63 @@ func IsProposalIsForClosingProject(db *gorm.DB, proposalId uint) (bool, *model.P
 }
 
 func setProposalSip(db *gorm.DB, pTemplate *model.ProposalTemplate, dbProposalRcd *model.Proposal) error {
-	var proposalSip = 0
-	db.Find(&dbProposalRcd, dbProposalRcd.ID)
+	txErr := db.Transaction(func(tx *gorm.DB) error {
+		var proposalSip = 0
+		db.Find(&dbProposalRcd, dbProposalRcd.ID)
 
-	if pTemplate != nil && pTemplate.Type == model.ProposalTemplateTypeCloseProject {
-		createProjectProposal := model.Proposal{ID: dbProposalRcd.AssociateProposalId}
-		if err = db.Find(&createProjectProposal).Error; err != nil {
-			log.Error().Msgf("get creating project proposal error: %+v", err)
-			return err
-		}
-		proposalSip = createProjectProposal.Sip
-	} else {
-		proposalSip, err = model.GetNextSipValue(db)
-		log.Error().Msgf("TTT: get next sip value: %d", proposalSip)
-		if err != nil {
-			log.Error().Msgf("get next sip value error: %+v", err)
-			return err
-		}
-	}
-
-	// Only update proposal has same state with passed in object
-	updateTx := db.Clauses(clause.Locking{Strength: "UPDATE", Options: "NOWAIT"}).
-		Model(&dbProposalRcd).
-		Where("id = ? AND state = ? AND sip = 0", dbProposalRcd.ID, dbProposalRcd.State).
-		Updates(&model.Proposal{Sip: proposalSip, State: int(model.ProposalStateVoting)})
-
-	if err = updateTx.Error; err != nil {
-		log.Error().Msgf("update proposal state error: %+v", err)
 		if pTemplate != nil && pTemplate.Type == model.ProposalTemplateTypeCloseProject {
-			log.Debug().Msgf("no need rollbacked sip value proposalSip is %d", proposalSip)
+			createProjectProposal := model.Proposal{ID: dbProposalRcd.AssociateProposalId}
+			if err = tx.Find(&createProjectProposal).Error; err != nil {
+				log.Error().Msgf("get creating project proposal error: %+v", err)
+				return err
+			}
+			proposalSip = createProjectProposal.Sip
 		} else {
-			rollbackedSip, _ := model.RollbackSipValueByOne(db)
-			log.Debug().Msgf("rollbacked sip value return %d", rollbackedSip)
+			// proposalSip, err = model.GetNextSipValue(db)
+			maxSipRow := tx.Table("proposals").Select("max(sip) + 1 as next_sip").Row()
+			err = maxSipRow.Scan(&proposalSip)
+			if err != nil {
+				log.Error().Msgf("get max sip value error: %+v", err)
+				return err
+			}
+			log.Error().Msgf("TTT: get next sip value: %d", proposalSip)
+			if err != nil {
+				log.Error().Msgf("get next sip value error: %+v", err)
+				return err
+			}
 		}
-		return err
-	} else if updateTx.RowsAffected == 0 {
-		err = fmt.Errorf("proposal %d already has a sip value, no update will be performed", dbProposalRcd.ID)
-		log.Error().Msgf(err.Error())
-		if pTemplate != nil && pTemplate.Type == model.ProposalTemplateTypeCloseProject {
-			log.Debug().Msgf("no need rollbacked sip value proposalSip is %d", proposalSip)
+
+		// Only update proposal has same state with passed in object
+		updateTx := tx.Clauses(clause.Locking{Strength: "UPDATE", Options: "NOWAIT"}).
+			Model(&dbProposalRcd).
+			Where("id = ? AND state = ? AND sip = 0", dbProposalRcd.ID, dbProposalRcd.State).
+			Updates(&model.Proposal{Sip: proposalSip, State: int(model.ProposalStateVoting)})
+
+		if err = updateTx.Error; err != nil {
+			log.Error().Msgf("update proposal state error: %+v", err)
+			// if pTemplate != nil && pTemplate.Type == model.ProposalTemplateTypeCloseProject {
+			// 	log.Debug().Msgf("no need rollbacked sip value proposalSip is %d", proposalSip)
+			// } else {
+			// 	rollbackedSip, _ := model.RollbackSipValueByOne(db)
+			// 	log.Debug().Msgf("rollbacked sip value return %d", rollbackedSip)
+			// }
+			return err
+		} else if updateTx.RowsAffected == 0 {
+			err = fmt.Errorf("proposal %d already has a sip value, no update will be performed", dbProposalRcd.ID)
+			log.Error().Msgf(err.Error())
+			// if pTemplate != nil && pTemplate.Type == model.ProposalTemplateTypeCloseProject {
+			// 	log.Debug().Msgf("no need rollbacked sip value proposalSip is %d", proposalSip)
+			// } else {
+			// 	rollbackedSip, _ := model.RollbackSipValueByOne(db)
+			// 	log.Debug().Msgf("rollbacked sip value return %d", rollbackedSip)
+			// }
+			return err
 		} else {
-			rollbackedSip, _ := model.RollbackSipValueByOne(db)
-			log.Debug().Msgf("rollbacked sip value return %d", rollbackedSip)
+			log.Debug().Msgf("complete update proposal status")
+			return nil
 		}
-		return err
-	} else {
-		log.Debug().Msgf("complete update proposal status")
-		return nil
-	}
+	})
+	return txErr
 }
 
 // verifyProjectCanBeClosed verifies whether project related to proposal is in open or close_failed status
