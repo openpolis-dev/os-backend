@@ -23,9 +23,9 @@ type LoginReq struct {
 }
 
 type LoginReply struct {
-	Token    string      `json:"token"`
-	TokenExp int64       `json:"token_exp"` // time unit: seconds
-	User     *model.User `json:"user"`
+	Token    string `json:"token"`
+	TokenExp int64  `json:"token_exp"` // time unit: seconds
+	User     *User  `json:"user"`
 
 	UserVerified bool `json:"user_verified"` // for unipass user,if wallet signature not verified, will be false
 }
