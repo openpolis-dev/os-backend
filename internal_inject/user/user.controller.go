@@ -17,6 +17,7 @@ import (
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/api/proposal"
 	"github.com/theseed-labs/os-backend/internal/common"
+	"github.com/theseed-labs/os-backend/internal/config"
 	"github.com/theseed-labs/os-backend/internal/middleware"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk"
@@ -29,12 +30,14 @@ import (
 type UserController struct {
 	// inject
 
-	Gin *gin.Engine
+	Gin *gin.Engine `inject:""`
 
-	Db *gorm.DB
+	Db *gorm.DB `inject:""`
+
+	Cfg *config.Config `inject:""`
 
 	// user service
-	UserSrv *UserService
+	UserSrv *UserService `inject:""`
 }
 
 func Register(fatherGroup *gin.RouterGroup) {
@@ -42,7 +45,7 @@ func Register(fatherGroup *gin.RouterGroup) {
 
 	var user UserController
 
-	err := inject.Populate(&user, &UserService{}, g.Gin, g.Db)
+	err := inject.Populate(&user, &UserService{}, g.Gin, g.Db, g.Cfg)
 
 	if err != nil {
 		panic(err)

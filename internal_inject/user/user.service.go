@@ -26,9 +26,9 @@ import (
 )
 
 type UserService struct {
-	Db *gorm.DB
+	Db *gorm.DB `inject:""`
 
-	Cfg *config.Config
+	Cfg *config.Config `inject:""`
 }
 
 func (u *UserService) RefreshNonce(ctx *gin.Context, wallet string, userNonce *model.UserNonce) error {
