@@ -209,6 +209,11 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 
 	// v1
 	v1 := r.Group("/v1")
+	// just use package manager group by self
+	{
+		// user
+		user_inject.Register(v1)
+	}
 	// --> no auth required
 	{
 		// user routers
@@ -218,7 +223,6 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		// userGroup.GET("/users", user.Users)
 		// userGroup.GET("/casbin", user.GetFrontendPermission)
 		// userGroup.GET("/metaforo_activities", user.MetaforoActivities)
-		user_inject.Register(v1)
 
 		// SeeAuth apis
 		seeAuth := v1.Group("/seeauth")
