@@ -83,12 +83,12 @@ func RollbackSipValueByOne(db *gorm.DB) (int, error) {
 	log.Debug().Msgf("rollback sip value by 1")
 	var sipValue []int
 	err := db.Transaction(func(tx *gorm.DB) error {
-		err := tx.Model(&SystemVariable{}).Where("name='sip'").Update("num_value", gorm.Expr("num_value - ?", 1)).Error
+		err := tx.Model(&SystemVariable{}).Where("name='sip'").Update("num_value", gorm.Expr("\"num_value\" - ?", 1)).Error
 		if err != nil {
 			log.Error().Msgf("rollback sip value error: %+v", err)
 			return err
 		}
-		if err = tx.Model(&SystemVariable{}).Limit(1).Pluck("num_value", &sipValue).Error; err != nil {
+		if err = tx.Model(&SystemVariable{}).Where("name='sip'").Pluck("num_value", &sipValue).Error; err != nil {
 			log.Error().Msgf("rollback sip value error: %+v", err)
 			return err
 		}
