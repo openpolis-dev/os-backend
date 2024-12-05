@@ -9,7 +9,6 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/pkgerrors"
 	"github.com/theseed-labs/os-backend/global_object"
-	"github.com/theseed-labs/os-backend/inject_register"
 	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api/common_budget_sources"
 	"github.com/theseed-labs/os-backend/internal/api/cron_jobs"
@@ -21,6 +20,7 @@ import (
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/service"
 	"github.com/theseed-labs/os-backend/internal/task_manager"
+	user_inject "github.com/theseed-labs/os-backend/internal_inject/user"
 	"gorm.io/gorm"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -170,15 +170,14 @@ func main() {
 	setupCronJob(cfg, db)
 
 	r := setupRouter(cfg, db, enforcer, pushSDK)
-
-	global_object.NewGlobalObject(r, db)
-	inject_register.RegisterAll()
-
 	_ = r.Run()
 }
 
 func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforcer, pushSDK []sdk.Pusher) *gin.Engine {
 	r := gin.Default()
+
+	global_object.NewGlobalObject(r, db, cfg)
+
 	r.Use(middleware.RequestMetricsRecord())
 	r.Use(middleware.ResponseMetricsRecord())
 
@@ -213,12 +212,13 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 	// --> no auth required
 	{
 		// user routers
-		userGroup := v1.Group("/user")
-		userGroup.POST("/refresh_nonce", user.RefreshNonce)
-		userGroup.POST("/login", user.Login)
-		userGroup.GET("/users", user.Users)
-		userGroup.GET("/casbin", user.GetFrontendPermission)
-		userGroup.GET("/metaforo_activities", user.MetaforoActivities)
+		// userGroup := v1.Group("/user")
+		// userGroup.POST("/refresh_nonce", user.RefreshNonce)
+		// userGroup.POST("/login", user.Login)
+		// userGroup.GET("/users", user.Users)
+		// userGroup.GET("/casbin", user.GetFrontendPermission)
+		// userGroup.GET("/metaforo_activities", user.MetaforoActivities)
+		user_inject.Register(v1)
 
 		// SeeAuth apis
 		seeAuth := v1.Group("/seeauth")
@@ -316,14 +316,14 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		authorizedGroup := v1.Group("/", middleware.AuthRequired)
 
 		// user routers
-		userGroup := authorizedGroup.Group("/user")
-		userGroup.GET("/me", user.Detail)
-		userGroup.PUT("/me", user.Update)
-		userGroup.POST("/logout", user.Logout)
-		userGroup.POST("/join_metaforo_group", user.JoinMetaforoGroup)
-		userGroup.POST("/leave_metaforo_group", user.LeaveMetaforoGroup)
-		userGroup.POST("/prepare_metaforo", user.PrepareMetaforoData)
-		userGroup.GET("/level", user.UserLvl)
+		// userGroup := authorizedGroup.Group("/user")
+		// userGroup.GET("/me", user.Detail)
+		// userGroup.PUT("/me", user.Update)
+		// userGroup.POST("/logout", user.Logout)
+		// userGroup.POST("/join_metaforo_group", user.JoinMetaforoGroup)
+		// userGroup.POST("/leave_metaforo_group", user.LeaveMetaforoGroup)
+		// userGroup.POST("/prepare_metaforo", user.PrepareMetaforoData)
+		// userGroup.GET("/level", user.UserLvl)
 
 		// project routers
 		projGroup := authorizedGroup.Group("/projects")
