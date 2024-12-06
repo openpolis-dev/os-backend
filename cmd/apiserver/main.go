@@ -20,6 +20,7 @@ import (
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/service"
 	"github.com/theseed-labs/os-backend/internal/task_manager"
+	seeauth_inject "github.com/theseed-labs/os-backend/internal_inject/see_auth"
 	user_inject "github.com/theseed-labs/os-backend/internal_inject/user"
 	"gorm.io/gorm"
 
@@ -213,6 +214,8 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 	{
 		// user
 		user_inject.Register(v1)
+		// see auth
+		seeauth_inject.Register(v1)
 	}
 	// --> no auth required
 	{
@@ -225,10 +228,10 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		// userGroup.GET("/metaforo_activities", user.MetaforoActivities)
 
 		// SeeAuth apis
-		seeAuth := v1.Group("/seeauth")
-		seeAuth.GET("/nonce/:wallet", user.SeeAuthNonce)
-		seeAuth.POST("/login", user.LoginWithSeeAuth)
-		seeAuth.POST("/seeauth_3rd_test", user.SeeAuthTestApi)
+		// seeAuth := v1.Group("/seeauth")
+		// seeAuth.GET("/nonce/:wallet", user.SeeAuthNonce)
+		// seeAuth.POST("/login", user.LoginWithSeeAuth)
+		// seeAuth.POST("/seeauth_3rd_test", user.SeeAuthTestApi)
 
 		// project routers
 		projGroup := v1.Group("/projects")
