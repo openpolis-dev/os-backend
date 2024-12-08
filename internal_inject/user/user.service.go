@@ -17,6 +17,7 @@ import (
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/config"
 	"github.com/theseed-labs/os-backend/internal/middleware"
+	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk"
 	"gorm.io/gorm"
 
@@ -30,18 +31,18 @@ type UserService struct {
 	Cfg *config.Config `inject:""`
 }
 
-func (u *UserService) RefreshNonce(ctx *gin.Context, wallet string, userNonce *UserNonce) error {
+func (u *UserService) RefreshNonce(ctx *gin.Context, wallet string, userNonce *model.UserNonce) error {
 	txErr := u.Db.Transaction(func(tx *gorm.DB) error {
 		// new nonce and refreshAt
 		nonce := siwe.GenerateNonce()
 		refreshAt := time.Now().UnixMilli()
 		// update with new value
 		if userNonce == nil {
-			userNonce = &UserNonce{Wallet: common.FormatUserWallet(wallet)}
+			userNonce = &model.UserNonce{Wallet: common.FormatUserWallet(wallet)}
 		}
 		userNonce.Nonce = nonce
 		userNonce.RefreshAt = refreshAt
-		err := UserNonceModel.CreateOrUpdate(tx, userNonce)
+		err := model.UserNonceModel.CreateOrUpdate(tx, userNonce)
 		if err != nil {
 			sdk.LogServerErrorToSentry(ctx, err)
 			return err
@@ -56,7 +57,7 @@ func (u *UserService) RefreshNonce(ctx *gin.Context, wallet string, userNonce *U
 func (u *UserService) Login(ctx *gin.Context, req *LoginReq) (int, *api.Reply) {
 	var token string
 	var tokenExp int64
-	var user *User
+	var user *model.User
 	var httpCode int
 	var reply *api.Reply
 
@@ -66,7 +67,7 @@ func (u *UserService) Login(ctx *gin.Context, req *LoginReq) (int, *api.Reply) {
 
 		// verify sign
 		// --> query nonce
-		userNonce, err := UserNonceModel.RecentNonce(tx, common.FormatUserWallet(req.Wallet), u.Cfg.Auth.NonceLifespan)
+		userNonce, err := model.UserNonceModel.RecentNonce(tx, common.FormatUserWallet(req.Wallet), u.Cfg.Auth.NonceLifespan)
 		if err != nil {
 			sdk.LogServerErrorToSentry(ctx, err)
 			// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("nonce not found")))
@@ -158,7 +159,7 @@ func (u *UserService) Login(ctx *gin.Context, req *LoginReq) (int, *api.Reply) {
 		}
 
 		// query user
-		user, err = UserModel.Detail(tx, common.FormatUserWallet(req.Wallet))
+		user, err = model.UserModel.Detail(tx, common.FormatUserWallet(req.Wallet))
 		if err != nil {
 			sdk.LogServerErrorToSentry(ctx, err)
 			// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("user not found")))
@@ -168,10 +169,10 @@ func (u *UserService) Login(ctx *gin.Context, req *LoginReq) (int, *api.Reply) {
 			return errors.New("user not found")
 		}
 		if user == nil {
-			user = &User{
+			user = &model.User{
 				Wallet: common.FormatUserWallet(req.Wallet),
 			}
-			err = UserModel.CreateOrUpdate(tx, user)
+			err = model.UserModel.CreateOrUpdate(tx, user)
 			if err != nil {
 				sdk.LogServerErrorToSentry(ctx, err)
 				// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("failed to create user")))
@@ -214,7 +215,7 @@ func (u *UserService) Login(ctx *gin.Context, req *LoginReq) (int, *api.Reply) {
 }
 
 func (u *UserService) Update(ctx *gin.Context, user *middleware.CurUser, req *UpdateReq) (int, *api.Reply) {
-	userM, err := UserModel.Detail(u.Db, user.Wallet)
+	userM, err := model.UserModel.Detail(u.Db, user.Wallet)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("user not found")))
@@ -245,7 +246,7 @@ func (u *UserService) Update(ctx *gin.Context, user *middleware.CurUser, req *Up
 	}
 	userM.Avatar = avatarUrl
 
-	err = UserModel.CreateOrUpdate(u.Db, userM)
+	err = model.UserModel.CreateOrUpdate(u.Db, userM)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("update user error")))

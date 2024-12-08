@@ -13,7 +13,6 @@ import (
 	"github.com/theseed-labs/os-backend/internal/middleware"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk"
-	user_inject "github.com/theseed-labs/os-backend/internal_inject/user"
 	"gorm.io/gorm"
 
 	seeauth "github.com/Taoist-Labs/see-auth-go"
@@ -27,7 +26,7 @@ type SeeAuthService struct {
 }
 
 func (s *SeeAuthService) SeeAuthNonce(ctx *gin.Context, wallet string) (int, *api.Reply) {
-	userNonce, err := UserNonceModel.Detail(s.Db, common.FormatUserWallet(wallet))
+	userNonce, err := model.UserNonceModel.Detail(s.Db, common.FormatUserWallet(wallet))
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("nonce not found")))
@@ -39,11 +38,11 @@ func (s *SeeAuthService) SeeAuthNonce(ctx *gin.Context, wallet string) (int, *ap
 	refreshAt := time.Now().UnixMilli()
 	// update with new value
 	if userNonce == nil {
-		userNonce = &UserNonce{Wallet: common.FormatUserWallet(wallet)}
+		userNonce = &model.UserNonce{Wallet: common.FormatUserWallet(wallet)}
 	}
 	userNonce.Nonce = nonce
 	userNonce.RefreshAt = refreshAt
-	err = UserNonceModel.CreateOrUpdate(s.Db, userNonce)
+	err = model.UserNonceModel.CreateOrUpdate(s.Db, userNonce)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("update nonce error")))
@@ -54,7 +53,7 @@ func (s *SeeAuthService) SeeAuthNonce(ctx *gin.Context, wallet string) (int, *ap
 }
 
 func (s *SeeAuthService) LoginWithSeeAuth(ctx *gin.Context, req *seeauth.SeeLogin) (int, *api.Reply) {
-	userNonce, err := UserNonceModel.RecentNonce(s.Db, common.FormatUserWallet(req.Wallet), s.Cfg.Auth.NonceLifespan)
+	userNonce, err := model.UserNonceModel.RecentNonce(s.Db, common.FormatUserWallet(req.Wallet), s.Cfg.Auth.NonceLifespan)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("nonce not found")))
@@ -95,17 +94,17 @@ func (s *SeeAuthService) LoginWithSeeAuth(ctx *gin.Context, req *seeauth.SeeLogi
 	}
 
 	// query user
-	user, err := user_inject.UserModel.Detail(s.Db, common.FormatUserWallet(req.Wallet))
+	user, err := model.UserModel.Detail(s.Db, common.FormatUserWallet(req.Wallet))
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("user not found")))
 		return http.StatusInternalServerError, api.ServerError(errors.New("user not found"))
 	}
 	if user == nil {
-		user = &user_inject.User{
+		user = &model.User{
 			Wallet: common.FormatUserWallet(req.Wallet),
 		}
-		err = user_inject.UserModel.CreateOrUpdate(s.Db, user)
+		err = model.UserModel.CreateOrUpdate(s.Db, user)
 		if err != nil {
 			sdk.LogServerErrorToSentry(ctx, err)
 			// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("failed to create user")))

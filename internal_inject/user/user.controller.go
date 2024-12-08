@@ -87,7 +87,7 @@ func (ctrl *UserController) RefreshNonce(ctx *gin.Context) {
 		return
 	}
 
-	userNonce, err := UserNonceModel.Detail(ctrl.Db, common.FormatUserWallet(req.Wallet))
+	userNonce, err := model.UserNonceModel.Detail(ctrl.Db, common.FormatUserWallet(req.Wallet))
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("nonce not found")))

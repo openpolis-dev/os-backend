@@ -20,6 +20,7 @@ import (
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/service"
 	"github.com/theseed-labs/os-backend/internal/task_manager"
+	projects_inject "github.com/theseed-labs/os-backend/internal_inject/projects"
 	seeauth_inject "github.com/theseed-labs/os-backend/internal_inject/see_auth"
 	user_inject "github.com/theseed-labs/os-backend/internal_inject/user"
 	"gorm.io/gorm"
@@ -45,7 +46,6 @@ import (
 	"github.com/theseed-labs/os-backend/internal/api/event"
 	"github.com/theseed-labs/os-backend/internal/api/guild"
 	"github.com/theseed-labs/os-backend/internal/api/permission"
-	"github.com/theseed-labs/os-backend/internal/api/project"
 	"github.com/theseed-labs/os-backend/internal/api/publicdata"
 	"github.com/theseed-labs/os-backend/internal/api/push"
 	"github.com/theseed-labs/os-backend/internal/api/season"
@@ -216,6 +216,8 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		user_inject.Register(v1)
 		// see auth
 		seeauth_inject.Register(v1)
+		// projects
+		projects_inject.Register(v1)
 	}
 	// --> no auth required
 	{
@@ -234,10 +236,10 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		// seeAuth.POST("/seeauth_3rd_test", user.SeeAuthTestApi)
 
 		// project routers
-		projGroup := v1.Group("/projects")
-		projGroup.GET("/", project.List)
-		projGroup.GET("/:id", project.Detail)
-		projGroup.GET("/:id/budgets", project.ShowBudgets)
+		// projGroup := v1.Group("/projects")
+		// projGroup.GET("/", project.List)
+		// projGroup.GET("/:id", project.Detail)
+		// projGroup.GET("/:id/budgets", project.ShowBudgets)
 
 		// guild routers
 		guildGroup := v1.Group("/guilds")
@@ -333,15 +335,15 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		// userGroup.GET("/level", user.UserLvl)
 
 		// project routers
-		projGroup := authorizedGroup.Group("/projects")
-		projGroup.POST("/", project.Create)
-		projGroup.PUT("/:id", project.Update)
-		projGroup.POST("/:id/close", project.Close)
-		projGroup.POST("/:id/update_staffs", project.UpdateStaffs)
-		projGroup.POST("/:id/update_budget", project.UpdateBudget)
-		projGroup.POST("/:id/add_related_proposal", project.AddRelatedProposal)
-		// my projects
-		authorizedGroup.GET("/my_projects", project.MyProjects)
+		// projGroup := authorizedGroup.Group("/projects")
+		// projGroup.POST("/", project.Create)
+		// projGroup.PUT("/:id", project.Update)
+		// projGroup.POST("/:id/close", project.Close)
+		// projGroup.POST("/:id/update_staffs", project.UpdateStaffs)
+		// projGroup.POST("/:id/update_budget", project.UpdateBudget)
+		// projGroup.POST("/:id/add_related_proposal", project.AddRelatedProposal)
+		// // my projects
+		// authorizedGroup.GET("/my_projects", project.MyProjects)
 
 		// guild routers
 		guildGroup := authorizedGroup.Group("/guilds")
