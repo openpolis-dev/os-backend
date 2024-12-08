@@ -655,6 +655,42 @@ func MyList(ctx *gin.Context) {
 		return
 	}
 
+	// get result rows is vote by me
+	// <<
+	log.Debug().Msgf("vote query sql check: user: %+v", user)
+	if len(resultRows) > 0 && user != nil {
+		voteQuerySql := fmt.Sprintf("select * from proposal_user_vote_records where user_wallet = '%s' ", user.Wallet)
+
+		var proposalIdList []string
+		for i := 0; i < len(resultRows); i++ {
+			proposalIdList = append(proposalIdList, fmt.Sprintf("%d", resultRows[i].ID))
+		}
+
+		voteQuerySql += fmt.Sprintf(" AND proposal_id in(%s)", strings.Join(proposalIdList, ","))
+
+		log.Debug().Msgf("vote query sql check: query sql: %s", voteQuerySql)
+
+		var userProposalUserVoteRecord []*model.ProposalUserVoteRecord
+
+		dbErr := db.Raw(voteQuerySql).Find(&userProposalUserVoteRecord).Error
+		if dbErr != nil {
+			log.Error().Msgf("get proposal list error: query sql: %s, err: %+v", voteQuerySql, dbErr)
+		} else {
+			resultRows = lo.Map(resultRows, func(r *FrontendProposalListRecord, _ int) *FrontendProposalListRecord {
+				for i := 0; i < len(userProposalUserVoteRecord); i++ {
+					log.Debug().Msgf("vote query sql check find vote data: ProposalID: %d, ID: %d", userProposalUserVoteRecord[i].ProposalID, r.ID)
+					if userProposalUserVoteRecord[i].ProposalID == r.ID {
+						r.IsVoted = true
+						break
+					}
+				}
+
+				return r
+			})
+		}
+	}
+	// >>
+
 	ctx.JSON(http.StatusOK, api.Success(api.ListReplyData{
 		Page:  queryParams.Page,
 		Size:  queryParams.Size,
