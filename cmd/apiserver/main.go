@@ -20,6 +20,7 @@ import (
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/service"
 	"github.com/theseed-labs/os-backend/internal/task_manager"
+	guilds_inject "github.com/theseed-labs/os-backend/internal_inject/guilds"
 	projects_inject "github.com/theseed-labs/os-backend/internal_inject/projects"
 	seeauth_inject "github.com/theseed-labs/os-backend/internal_inject/see_auth"
 	user_inject "github.com/theseed-labs/os-backend/internal_inject/user"
@@ -44,7 +45,6 @@ import (
 	"github.com/theseed-labs/os-backend/internal/api/application"
 	"github.com/theseed-labs/os-backend/internal/api/city_hall"
 	"github.com/theseed-labs/os-backend/internal/api/event"
-	"github.com/theseed-labs/os-backend/internal/api/guild"
 	"github.com/theseed-labs/os-backend/internal/api/permission"
 	"github.com/theseed-labs/os-backend/internal/api/publicdata"
 	"github.com/theseed-labs/os-backend/internal/api/push"
@@ -218,6 +218,8 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		seeauth_inject.Register(v1)
 		// projects
 		projects_inject.Register(v1)
+		// guilds
+		guilds_inject.Register(v1)
 	}
 	// --> no auth required
 	{
@@ -242,10 +244,10 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		// projGroup.GET("/:id/budgets", project.ShowBudgets)
 
 		// guild routers
-		guildGroup := v1.Group("/guilds")
-		guildGroup.GET("/", guild.List)
-		guildGroup.GET("/:id", guild.Detail)
-		guildGroup.GET("/:id/budgets", guild.ShowBudgets)
+		// guildGroup := v1.Group("/guilds")
+		// guildGroup.GET("/", guild.List)
+		// guildGroup.GET("/:id", guild.Detail)
+		// guildGroup.GET("/:id/budgets", guild.ShowBudgets)
 
 		commonBudgetSourceGroup := v1.Group("/common_budget_sources")
 		commonBudgetSourceGroup.GET("/", common_budget_sources.List)
@@ -346,15 +348,15 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		// authorizedGroup.GET("/my_projects", project.MyProjects)
 
 		// guild routers
-		guildGroup := authorizedGroup.Group("/guilds")
-		guildGroup.POST("/", guild.Create)
-		guildGroup.PUT("/:id", guild.Update)
-		guildGroup.POST("/:id/update_staffs", guild.UpdateStaffs)
-		guildGroup.POST("/:id/update_budget", guild.UpdateBudget)
-		guildGroup.POST("/:id/add_related_proposal", guild.AddRelatedProposal)
-		guildGroup.POST("/:id/close", guild.Close)
-		// my guilds
-		authorizedGroup.GET("/my_guilds", guild.MyGuilds)
+		// guildGroup := authorizedGroup.Group("/guilds")
+		// guildGroup.POST("/", guild.Create)
+		// guildGroup.PUT("/:id", guild.Update)
+		// guildGroup.POST("/:id/update_staffs", guild.UpdateStaffs)
+		// guildGroup.POST("/:id/update_budget", guild.UpdateBudget)
+		// guildGroup.POST("/:id/add_related_proposal", guild.AddRelatedProposal)
+		// guildGroup.POST("/:id/close", guild.Close)
+		// // my guilds
+		// authorizedGroup.GET("/my_guilds", guild.MyGuilds)
 
 		// application endpoints
 		// Note: Most NEW_REWARD applications has been moved to app_bundle part

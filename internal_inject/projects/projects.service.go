@@ -322,15 +322,11 @@ func (s *ProjectsService) Close(ctx *gin.Context, id int) (int, *api.Reply) {
 		return http.StatusBadRequest, api.BadRequest(fmt.Errorf("project %d not exist", id))
 	}
 
-	var httpCode int
-	var reply *api.Reply
 	if project.Status != model.ProjectStatusOpen {
 		err := fmt.Errorf("project %d current status %s is not suit for closing", id, project.Status)
 		sdk.LogUserSideError(ctx, err)
 		// ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
-		httpCode, reply = http.StatusBadRequest, api.BadRequest(err)
-
-		log.Debug().Msgf("[project_status_open]close project %d %d", httpCode, reply.Code)
+		return http.StatusBadRequest, api.BadRequest(err)
 	}
 
 	err = s.Db.Transaction(func(tx *gorm.DB) error {
@@ -358,14 +354,11 @@ func (s *ProjectsService) Close(ctx *gin.Context, id int) (int, *api.Reply) {
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("close project failed")))
-		httpCode, reply = http.StatusInternalServerError, api.ServerError(errors.New("close project failed"))
-
-		log.Debug().Msgf("[update_application]close project %d %d", httpCode, reply.Code)
+		return http.StatusInternalServerError, api.ServerError(errors.New("close project failed"))
 	}
 
 	// ctx.JSON(http.StatusOK, api.Success(nil))
-	httpCode, reply = http.StatusOK, api.Success(nil)
-	return httpCode, reply
+	return http.StatusOK, api.Success(nil)
 }
 
 func (s *ProjectsService) UpdateStaffs(ctx *gin.Context, id int, req *UpdateStaffsReq) (int, *api.Reply) {
