@@ -329,6 +329,8 @@ func (s *ProjectsService) Close(ctx *gin.Context, id int) (int, *api.Reply) {
 		sdk.LogUserSideError(ctx, err)
 		// ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
 		httpCode, reply = http.StatusBadRequest, api.BadRequest(err)
+
+		log.Debug().Msgf("[project_status_open]close project %d %d", httpCode, reply.Code)
 	}
 
 	err = s.Db.Transaction(func(tx *gorm.DB) error {
@@ -357,6 +359,8 @@ func (s *ProjectsService) Close(ctx *gin.Context, id int) (int, *api.Reply) {
 		sdk.LogServerErrorToSentry(ctx, err)
 		// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("close project failed")))
 		httpCode, reply = http.StatusInternalServerError, api.ServerError(errors.New("close project failed"))
+
+		log.Debug().Msgf("[update_application]close project %d %d", httpCode, reply.Code)
 	}
 
 	// ctx.JSON(http.StatusOK, api.Success(nil))
@@ -367,7 +371,7 @@ func (s *ProjectsService) Close(ctx *gin.Context, id int) (int, *api.Reply) {
 func (s *ProjectsService) UpdateStaffs(ctx *gin.Context, id int, req *UpdateStaffsReq) (int, *api.Reply) {
 	user, enforcer, _, _ := api.ForContext(ctx)
 	//  check permission
-	if req.Sponsors != nil && len(req.Sponsors) != 0 {
+	if len(req.Sponsors) != 0 {
 		permObject := buildProjectPermObject(id)
 		ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), permObject, internal.ActUpdateSponsor)
 		if err != nil {
@@ -381,7 +385,7 @@ func (s *ProjectsService) UpdateStaffs(ctx *gin.Context, id int, req *UpdateStaf
 			return http.StatusForbidden, api.Forbidden()
 		}
 	}
-	if req.Members != nil && len(req.Members) != 0 {
+	if len(req.Members) != 0 {
 		permObject := buildProjectPermObject(id)
 		ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), permObject, internal.ActUpdateMember)
 		if err != nil {
@@ -426,7 +430,7 @@ func (s *ProjectsService) UpdateStaffs(ctx *gin.Context, id int, req *UpdateStaf
 	if req.Action == "add" {
 		tx := s.Db.Begin()
 
-		if req.Sponsors != nil && len(req.Sponsors) != 0 {
+		if len(req.Sponsors) != 0 {
 			// add project sponsors
 			proj.Sponsors = append(proj.Sponsors, sponsors...)
 			// remove duplicate sponsors
@@ -467,7 +471,7 @@ func (s *ProjectsService) UpdateStaffs(ctx *gin.Context, id int, req *UpdateStaf
 			}
 		}
 
-		if req.Members != nil && len(req.Members) != 0 {
+		if len(req.Members) != 0 {
 			// add project members
 			proj.Members = append(proj.Members, members...)
 			// remove duplicate members
@@ -514,7 +518,7 @@ func (s *ProjectsService) UpdateStaffs(ctx *gin.Context, id int, req *UpdateStaf
 	} else if req.Action == "remove" {
 		tx := s.Db.Begin()
 
-		if req.Sponsors != nil && len(req.Sponsors) != 0 {
+		if len(req.Sponsors) != 0 {
 			// remove project sponsors
 			proj.Sponsors = lo.Without[string](proj.Sponsors, sponsors...)
 			err = model.ProjectModel.CreateOrUpdate(tx, proj)
@@ -549,7 +553,7 @@ func (s *ProjectsService) UpdateStaffs(ctx *gin.Context, id int, req *UpdateStaf
 			}
 		}
 
-		if req.Members != nil && len(req.Members) != 0 {
+		if len(req.Members) != 0 {
 			// remove project members
 			proj.Members = lo.Without[string](proj.Members, members...)
 			proj.UpdateTs = model.GetCurrentUtcEpochSecond()
