@@ -10,7 +10,6 @@ import (
 	"github.com/rs/zerolog/pkgerrors"
 	"github.com/theseed-labs/os-backend/global_object"
 	"github.com/theseed-labs/os-backend/internal"
-	"github.com/theseed-labs/os-backend/internal/api/common_budget_sources"
 	"github.com/theseed-labs/os-backend/internal/api/cron_jobs"
 	"github.com/theseed-labs/os-backend/internal/api/proposal"
 	"github.com/theseed-labs/os-backend/internal/api/sns_invite"
@@ -20,6 +19,7 @@ import (
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/service"
 	"github.com/theseed-labs/os-backend/internal/task_manager"
+	common_budget_sources_inject "github.com/theseed-labs/os-backend/internal_inject/common_budget_sources"
 	guilds_inject "github.com/theseed-labs/os-backend/internal_inject/guilds"
 	projects_inject "github.com/theseed-labs/os-backend/internal_inject/projects"
 	seeauth_inject "github.com/theseed-labs/os-backend/internal_inject/see_auth"
@@ -220,6 +220,8 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		projects_inject.Register(v1)
 		// guilds
 		guilds_inject.Register(v1)
+		// common budget source
+		common_budget_sources_inject.Register(v1)
 	}
 	// --> no auth required
 	{
@@ -249,8 +251,8 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		// guildGroup.GET("/:id", guild.Detail)
 		// guildGroup.GET("/:id/budgets", guild.ShowBudgets)
 
-		commonBudgetSourceGroup := v1.Group("/common_budget_sources")
-		commonBudgetSourceGroup.GET("/", common_budget_sources.List)
+		// commonBudgetSourceGroup := v1.Group("/common_budget_sources")
+		// commonBudgetSourceGroup.GET("/", common_budget_sources.List)
 
 		// application routers
 		applicationGroup := v1.Group("/applications")
