@@ -29,12 +29,10 @@ type ApplicationsService struct {
 func (s *ApplicationsService) Create(ctx *gin.Context) (httpCode int, reply *api.Reply) {
 	var newApplicationReqs []model.NewApplicationRequest
 	if err := ctx.BindJSON(&newApplicationReqs); err != nil {
-		if err != nil {
-			sdk.LogUserSideError(ctx, err)
-			// ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("passed in data error: %+v", err)))
+		sdk.LogUserSideError(ctx, err)
+		// ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("passed in data error: %+v", err)))
 
-			return http.StatusBadRequest, api.BadRequest(fmt.Errorf("passed in data error: %+v", err))
-		}
+		return http.StatusBadRequest, api.BadRequest(fmt.Errorf("passed in data error: %+v", err))
 	}
 
 	user, enforcer, _, _ := api.ForContext(ctx)
