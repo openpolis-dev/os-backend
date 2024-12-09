@@ -19,6 +19,7 @@ import (
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/service"
 	"github.com/theseed-labs/os-backend/internal/task_manager"
+	applications_inject "github.com/theseed-labs/os-backend/internal_inject/applications"
 	common_budget_sources_inject "github.com/theseed-labs/os-backend/internal_inject/common_budget_sources"
 	guilds_inject "github.com/theseed-labs/os-backend/internal_inject/guilds"
 	projects_inject "github.com/theseed-labs/os-backend/internal_inject/projects"
@@ -42,7 +43,6 @@ import (
 	_ "github.com/theseed-labs/os-backend/docs"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/api/app_bundle"
-	"github.com/theseed-labs/os-backend/internal/api/application"
 	"github.com/theseed-labs/os-backend/internal/api/city_hall"
 	"github.com/theseed-labs/os-backend/internal/api/event"
 	"github.com/theseed-labs/os-backend/internal/api/permission"
@@ -222,6 +222,8 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		guilds_inject.Register(v1)
 		// common budget source
 		common_budget_sources_inject.Register(v1)
+		// applications
+		applications_inject.Register(v1)
 	}
 	// --> no auth required
 	{
@@ -255,12 +257,12 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		// commonBudgetSourceGroup.GET("/", common_budget_sources.List)
 
 		// application routers
-		applicationGroup := v1.Group("/applications")
-		applicationGroup.GET("/:id", application.Detail)
-		applicationGroup.GET("/", application.List)
+		// applicationGroup := v1.Group("/applications")
+		// applicationGroup.GET("/:id", application.Detail)
+		// applicationGroup.GET("/", application.List)
 
-		v1.GET("/apps_applicants", application.ListApplicants)
-		v1.GET("/download_applications", application.Download)
+		// v1.GET("/apps_applicants", application.ListApplicants)
+		// v1.GET("/download_applications", application.Download)
 
 		// SeeDAO assets routers
 		treasuryGroup := v1.Group("/treasury")
@@ -362,8 +364,8 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 
 		// application endpoints
 		// Note: Most NEW_REWARD applications has been moved to app_bundle part
-		applicationGroup := authorizedGroup.Group("/applications")
-		applicationGroup.POST("/", application.Create)
+		// applicationGroup := authorizedGroup.Group("/applications")
+		// applicationGroup.POST("/", application.Create)
 
 		appBundleGroup := authorizedGroup.Group("/app_bundles")
 		appBundleGroup.GET("/available_projects_guilds", app_bundle.ListAvailableProjectsAndGuilds)
@@ -373,16 +375,16 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		authorizedGroup.POST("/app_bundle_approve", app_bundle.ApproveAppBundles)
 		authorizedGroup.POST("/app_bundle_reject", app_bundle.RejectAppBundles)
 
-		// batch application routers
-		authorizedGroup.POST("/apps_approve", application.BatchApprove)
-		authorizedGroup.POST("/apps_reject", application.BatchReject)
-		authorizedGroup.POST("/apps_process", application.BatchProcess)
-		authorizedGroup.POST("/apps_complete", application.BatchComplete)
+		// // batch application routers
+		// authorizedGroup.POST("/apps_approve", application.BatchApprove)
+		// authorizedGroup.POST("/apps_reject", application.BatchReject)
+		// authorizedGroup.POST("/apps_process", application.BatchProcess)
+		// authorizedGroup.POST("/apps_complete", application.BatchComplete)
 
-		// Auto transfer SCR application routers
-		authorizedGroup.GET("/scr_tasks/", application.AutoXferTaskList)
-		authorizedGroup.GET("/scr_tasks/:id", application.AutoXferTaskDetail)
-		authorizedGroup.POST("/scr_tasks/:id/cancel", application.CancelAutoXferTask)
+		// // Auto transfer SCR application routers
+		// authorizedGroup.GET("/scr_tasks/", application.AutoXferTaskList)
+		// authorizedGroup.GET("/scr_tasks/:id", application.AutoXferTaskDetail)
+		// authorizedGroup.POST("/scr_tasks/:id/cancel", application.CancelAutoXferTask)
 
 		// SeeDAO assets routers
 		treasuryGroup := authorizedGroup.Group("/treasury")
