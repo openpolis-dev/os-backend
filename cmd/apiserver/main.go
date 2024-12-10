@@ -25,6 +25,7 @@ import (
 	guilds_inject "github.com/theseed-labs/os-backend/internal_inject/guilds"
 	projects_inject "github.com/theseed-labs/os-backend/internal_inject/projects"
 	seeauth_inject "github.com/theseed-labs/os-backend/internal_inject/see_auth"
+	treasury_inject "github.com/theseed-labs/os-backend/internal_inject/treasury"
 	user_inject "github.com/theseed-labs/os-backend/internal_inject/user"
 	"gorm.io/gorm"
 
@@ -49,7 +50,6 @@ import (
 	"github.com/theseed-labs/os-backend/internal/api/publicdata"
 	"github.com/theseed-labs/os-backend/internal/api/push"
 	"github.com/theseed-labs/os-backend/internal/api/season"
-	"github.com/theseed-labs/os-backend/internal/api/treasury"
 	"github.com/theseed-labs/os-backend/internal/api/user"
 	"github.com/theseed-labs/os-backend/internal/api/webhook"
 	"github.com/theseed-labs/os-backend/internal/config"
@@ -226,6 +226,8 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		applications_inject.Register(v1)
 		// app bundles
 		appbundles_inject.Register(v1)
+		// treasury
+		treasury_inject.Register(v1)
 	}
 	// --> no auth required
 	{
@@ -267,8 +269,8 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		// v1.GET("/download_applications", application.Download)
 
 		// SeeDAO assets routers
-		treasuryGroup := v1.Group("/treasury")
-		treasuryGroup.GET("/current", treasury.GetOrCreateCurrentAssetRecords)
+		// treasuryGroup := v1.Group("/treasury")
+		// treasuryGroup.GET("/current", treasury.GetOrCreateCurrentAssetRecords)
 
 		// SeeDAO events routers
 		eventsGroup := v1.Group("/events")
@@ -389,8 +391,8 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		// authorizedGroup.POST("/scr_tasks/:id/cancel", application.CancelAutoXferTask)
 
 		// SeeDAO assets routers
-		treasuryGroup := authorizedGroup.Group("/treasury")
-		treasuryGroup.POST("/update_assets", treasury.UpdateAssets)
+		// treasuryGroup := authorizedGroup.Group("/treasury")
+		// treasuryGroup.POST("/update_assets", treasury.UpdateAssets)
 
 		// SeeDAO events routers
 		eventsGroup := authorizedGroup.Group("/events")
