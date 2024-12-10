@@ -21,13 +21,13 @@ import (
 type EventsController struct {
 	// inject
 
-	Gin *gin.Engine
+	Gin *gin.Engine `inject:""`
 
-	Db *gorm.DB
+	Db *gorm.DB `inject:""`
 
-	Cfg *config.Config
+	Cfg *config.Config `inject:""`
 
-	EventsService *EventsService
+	EventsService *EventsService `inject:""`
 }
 
 func Register(fatherGroup *gin.RouterGroup) {

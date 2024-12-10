@@ -16,9 +16,9 @@ import (
 type EventsService struct {
 	// inject
 
-	Db *gorm.DB
+	Db *gorm.DB `inject:""`
 
-	Cfg *config.Config
+	Cfg *config.Config `inject:""`
 }
 
 func (s *EventsService) GetRecord(db *gorm.DB, idStr string) (*model.Event, error) {
