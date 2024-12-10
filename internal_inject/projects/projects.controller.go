@@ -38,7 +38,7 @@ func Register(fatherGroup *gin.RouterGroup) {
 
 	var projects ProjectsController
 
-	err := inject.Populate(&projects, &ProjectsService{}, g.Gin, g.Db, g.Cfg)
+	err := inject.Populate(&projects, g.Gin, g.Db, g.Cfg)
 
 	if err != nil {
 		panic(err)

@@ -44,7 +44,7 @@ func Register(fatherGroup *gin.RouterGroup) {
 
 	var applications ApplicationsController
 
-	err := inject.Populate(&applications, &ApplicationsService{}, g.Gin, g.Db, g.Cfg)
+	err := inject.Populate(&applications, g.Gin, g.Db, g.Cfg)
 
 	if err != nil {
 		panic(err)

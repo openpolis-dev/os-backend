@@ -36,7 +36,7 @@ func Register(fatherGroup *gin.RouterGroup) {
 
 	var guilds GuildsController
 
-	err := inject.Populate(&guilds, &GuildsService{}, g.Gin, g.Db, g.Cfg)
+	err := inject.Populate(&guilds, g.Gin, g.Db, g.Cfg)
 
 	if err != nil {
 		panic(err)

@@ -31,7 +31,7 @@ func Register(fatherGroup *gin.RouterGroup) {
 
 	var seeAuth SeeAuthController
 
-	err := inject.Populate(&seeAuth, &SeeAuthService{}, g.Gin, g.Db, g.Cfg)
+	err := inject.Populate(&seeAuth, g.Gin, g.Db, g.Cfg)
 
 	if err != nil {
 		panic(err)
