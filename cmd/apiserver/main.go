@@ -24,6 +24,7 @@ import (
 	common_budget_sources_inject "github.com/theseed-labs/os-backend/internal_inject/common_budget_sources"
 	events_inject "github.com/theseed-labs/os-backend/internal_inject/events"
 	guilds_inject "github.com/theseed-labs/os-backend/internal_inject/guilds"
+	permissions_inject "github.com/theseed-labs/os-backend/internal_inject/permissions"
 	projects_inject "github.com/theseed-labs/os-backend/internal_inject/projects"
 	seeauth_inject "github.com/theseed-labs/os-backend/internal_inject/see_auth"
 	treasury_inject "github.com/theseed-labs/os-backend/internal_inject/treasury"
@@ -46,7 +47,6 @@ import (
 	_ "github.com/theseed-labs/os-backend/docs"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/api/city_hall"
-	"github.com/theseed-labs/os-backend/internal/api/permission"
 	"github.com/theseed-labs/os-backend/internal/api/publicdata"
 	"github.com/theseed-labs/os-backend/internal/api/push"
 	"github.com/theseed-labs/os-backend/internal/api/season"
@@ -230,6 +230,8 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		treasury_inject.Register(v1)
 		// events
 		events_inject.Register(v1)
+		// permisssion
+		permissions_inject.Register(v1)
 	}
 	// --> no auth required
 	{
@@ -406,9 +408,9 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		// authorizedGroup.GET("/my_events", event.MyList)
 
 		// permission routers
-		permissionGroup := authorizedGroup.Group("/permission")
-		permissionGroup.POST("/grant_role", permission.GrantRole)
-		permissionGroup.POST("/revoke_role", permission.RevokeRole)
+		// permissionGroup := authorizedGroup.Group("/permission")
+		// permissionGroup.POST("/grant_role", permission.GrantRole)
+		// permissionGroup.POST("/revoke_role", permission.RevokeRole)
 
 		// city hall
 		cityHallGroup := authorizedGroup.Group("/cityhall")
