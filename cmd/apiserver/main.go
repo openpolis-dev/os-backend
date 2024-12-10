@@ -22,6 +22,7 @@ import (
 	appbundles_inject "github.com/theseed-labs/os-backend/internal_inject/app_bundles"
 	applications_inject "github.com/theseed-labs/os-backend/internal_inject/applications"
 	common_budget_sources_inject "github.com/theseed-labs/os-backend/internal_inject/common_budget_sources"
+	events_inject "github.com/theseed-labs/os-backend/internal_inject/events"
 	guilds_inject "github.com/theseed-labs/os-backend/internal_inject/guilds"
 	projects_inject "github.com/theseed-labs/os-backend/internal_inject/projects"
 	seeauth_inject "github.com/theseed-labs/os-backend/internal_inject/see_auth"
@@ -45,7 +46,6 @@ import (
 	_ "github.com/theseed-labs/os-backend/docs"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/api/city_hall"
-	"github.com/theseed-labs/os-backend/internal/api/event"
 	"github.com/theseed-labs/os-backend/internal/api/permission"
 	"github.com/theseed-labs/os-backend/internal/api/publicdata"
 	"github.com/theseed-labs/os-backend/internal/api/push"
@@ -228,6 +228,8 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		appbundles_inject.Register(v1)
 		// treasury
 		treasury_inject.Register(v1)
+		// events
+		events_inject.Register(v1)
 	}
 	// --> no auth required
 	{
@@ -273,9 +275,9 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		// treasuryGroup.GET("/current", treasury.GetOrCreateCurrentAssetRecords)
 
 		// SeeDAO events routers
-		eventsGroup := v1.Group("/events")
-		eventsGroup.GET("/", event.List)
-		eventsGroup.GET("/:id", event.Detail)
+		// eventsGroup := v1.Group("/events")
+		// eventsGroup.GET("/", event.List)
+		// eventsGroup.GET("/:id", event.Detail)
 
 		// pre-signed s3 upload url
 		v1.GET("/url_for_uploading_s3", api.PreSignedUrlForS3)
@@ -395,13 +397,13 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		// treasuryGroup.POST("/update_assets", treasury.UpdateAssets)
 
 		// SeeDAO events routers
-		eventsGroup := authorizedGroup.Group("/events")
-		eventsGroup.POST("/", event.Create)
-		eventsGroup.PUT("/:id", event.Update)
-		eventsGroup.DELETE("/:id", event.Delete)
+		// eventsGroup := authorizedGroup.Group("/events")
+		// eventsGroup.POST("/", event.Create)
+		// eventsGroup.PUT("/:id", event.Update)
+		// eventsGroup.DELETE("/:id", event.Delete)
 
-		// my events
-		authorizedGroup.GET("/my_events", event.MyList)
+		// // my events
+		// authorizedGroup.GET("/my_events", event.MyList)
 
 		// permission routers
 		permissionGroup := authorizedGroup.Group("/permission")
