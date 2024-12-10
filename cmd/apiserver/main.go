@@ -19,6 +19,7 @@ import (
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/service"
 	"github.com/theseed-labs/os-backend/internal/task_manager"
+	appbundles_inject "github.com/theseed-labs/os-backend/internal_inject/app_bundles"
 	applications_inject "github.com/theseed-labs/os-backend/internal_inject/applications"
 	common_budget_sources_inject "github.com/theseed-labs/os-backend/internal_inject/common_budget_sources"
 	guilds_inject "github.com/theseed-labs/os-backend/internal_inject/guilds"
@@ -42,7 +43,6 @@ import (
 	"github.com/samber/lo"
 	_ "github.com/theseed-labs/os-backend/docs"
 	"github.com/theseed-labs/os-backend/internal/api"
-	"github.com/theseed-labs/os-backend/internal/api/app_bundle"
 	"github.com/theseed-labs/os-backend/internal/api/city_hall"
 	"github.com/theseed-labs/os-backend/internal/api/event"
 	"github.com/theseed-labs/os-backend/internal/api/permission"
@@ -224,6 +224,8 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		common_budget_sources_inject.Register(v1)
 		// applications
 		applications_inject.Register(v1)
+		// app bundles
+		appbundles_inject.Register(v1)
 	}
 	// --> no auth required
 	{
@@ -367,13 +369,13 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		// applicationGroup := authorizedGroup.Group("/applications")
 		// applicationGroup.POST("/", application.Create)
 
-		appBundleGroup := authorizedGroup.Group("/app_bundles")
-		appBundleGroup.GET("/available_projects_guilds", app_bundle.ListAvailableProjectsAndGuilds)
-		appBundleGroup.GET("/", app_bundle.ListAppBundle)
-		appBundleGroup.POST("/", app_bundle.CreateAppBundle)
+		// appBundleGroup := authorizedGroup.Group("/app_bundles")
+		// appBundleGroup.GET("/available_projects_guilds", app_bundle.ListAvailableProjectsAndGuilds)
+		// appBundleGroup.GET("/", app_bundle.ListAppBundle)
+		// appBundleGroup.POST("/", app_bundle.CreateAppBundle)
 
-		authorizedGroup.POST("/app_bundle_approve", app_bundle.ApproveAppBundles)
-		authorizedGroup.POST("/app_bundle_reject", app_bundle.RejectAppBundles)
+		// authorizedGroup.POST("/app_bundle_approve", app_bundle.ApproveAppBundles)
+		// authorizedGroup.POST("/app_bundle_reject", app_bundle.RejectAppBundles)
 
 		// // batch application routers
 		// authorizedGroup.POST("/apps_approve", application.BatchApprove)

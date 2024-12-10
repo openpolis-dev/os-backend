@@ -57,7 +57,7 @@ func Register(fatherGroup *gin.RouterGroup) {
 		applicationsGroup = fatherGroup.Group("/applications")
 		applicationsAuthGroup = fatherGroup.Group("/", middleware.AuthRequired).Group("/applications")
 	} else {
-		applicationsGroup = applications.Gin.Group("/guilds")
+		applicationsGroup = applications.Gin.Group("/applications")
 		applicationsAuthGroup = applications.Gin.Group("/", middleware.AuthRequired).Group("/applications")
 	}
 
