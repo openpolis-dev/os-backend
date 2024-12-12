@@ -23,6 +23,7 @@ import (
 	applications_inject "github.com/theseed-labs/os-backend/internal_inject/applications"
 	cityhall_inject "github.com/theseed-labs/os-backend/internal_inject/city_hall"
 	common_budget_sources_inject "github.com/theseed-labs/os-backend/internal_inject/common_budget_sources"
+	datasrv_inject "github.com/theseed-labs/os-backend/internal_inject/data_srv"
 	events_inject "github.com/theseed-labs/os-backend/internal_inject/events"
 	guilds_inject "github.com/theseed-labs/os-backend/internal_inject/guilds"
 	permissions_inject "github.com/theseed-labs/os-backend/internal_inject/permissions"
@@ -239,6 +240,8 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		webhook_inject.Register(v1)
 		// seasons
 		seeauth_inject.Register(v1)
+		// data_srv
+		datasrv_inject.Register(v1)
 	}
 	// --> no auth required
 	{
@@ -314,8 +317,8 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 
 		// some data service
 		// TODO: Move to authorized group
-		dataSrv := v1.Group("/data_srv")
-		dataSrv.GET("/aggr_scr", data_srv.AggrScr)
+		// dataSrv := v1.Group("/data_srv")
+		// dataSrv.GET("/aggr_scr", data_srv.AggrScr)
 
 		// Proposal component routers
 		componentRouter := v1.Group("/proposal_components")

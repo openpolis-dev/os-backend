@@ -42,9 +42,9 @@ func Register(fatherGroup *gin.RouterGroup) {
 	var seasonsGroup *gin.RouterGroup
 
 	if fatherGroup != nil {
-		seasonsGroup = fatherGroup.Group("/public_data")
+		seasonsGroup = fatherGroup.Group("/seasons")
 	} else {
-		seasonsGroup = seasons.Gin.Group("/public_data")
+		seasonsGroup = seasons.Gin.Group("/seasons")
 	}
 
 	seasonsGroup.GET("/", seasons.List)
