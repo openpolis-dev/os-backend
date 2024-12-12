@@ -30,6 +30,7 @@ import (
 	projects_inject "github.com/theseed-labs/os-backend/internal_inject/projects"
 	publicdata_inject "github.com/theseed-labs/os-backend/internal_inject/public_data"
 	push_inject "github.com/theseed-labs/os-backend/internal_inject/push"
+	rewards_inject "github.com/theseed-labs/os-backend/internal_inject/rewards"
 	seeauth_inject "github.com/theseed-labs/os-backend/internal_inject/see_auth"
 	treasury_inject "github.com/theseed-labs/os-backend/internal_inject/treasury"
 	user_inject "github.com/theseed-labs/os-backend/internal_inject/user"
@@ -40,7 +41,6 @@ import (
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 	"github.com/theseed-labs/os-backend/internal/api/data_srv"
-	"github.com/theseed-labs/os-backend/internal/api/rewards"
 
 	"github.com/casbin/casbin/v2"
 	gormadapter "github.com/casbin/gorm-adapter/v3"
@@ -244,6 +244,8 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		datasrv_inject.Register(v1)
 		// push
 		push_inject.Register(v1)
+		// rewards
+		rewards_inject.Register(v1)
 	}
 	// --> no auth required
 	{
@@ -436,10 +438,10 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		// pushGroup.GET("/", push.List)
 
 		// reward routers
-		rewardsGroup := authorizedGroup.Group("/rewards")
-		rewardsGroup.POST("/approve_mint_reward", rewards.ApproveMintReward)
-		rewardsGroup.POST("/snapshot_seed", rewards.SnapshotSeed)
-		rewardsGroup.POST("/approve_mint_snap_seed", rewards.ApproveMintAndSnapshotSeed)
+		// rewardsGroup := authorizedGroup.Group("/rewards")
+		// rewardsGroup.POST("/approve_mint_reward", rewards.ApproveMintReward)
+		// rewardsGroup.POST("/snapshot_seed", rewards.SnapshotSeed)
+		// rewardsGroup.POST("/approve_mint_snap_seed", rewards.ApproveMintAndSnapshotSeed)
 
 		// proposal routers
 		proposalGroup := authorizedGroup.Group("/proposals")
