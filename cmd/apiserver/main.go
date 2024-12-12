@@ -29,6 +29,7 @@ import (
 	permissions_inject "github.com/theseed-labs/os-backend/internal_inject/permissions"
 	projects_inject "github.com/theseed-labs/os-backend/internal_inject/projects"
 	publicdata_inject "github.com/theseed-labs/os-backend/internal_inject/public_data"
+	push_inject "github.com/theseed-labs/os-backend/internal_inject/push"
 	seeauth_inject "github.com/theseed-labs/os-backend/internal_inject/see_auth"
 	treasury_inject "github.com/theseed-labs/os-backend/internal_inject/treasury"
 	user_inject "github.com/theseed-labs/os-backend/internal_inject/user"
@@ -50,7 +51,6 @@ import (
 	"github.com/samber/lo"
 	_ "github.com/theseed-labs/os-backend/docs"
 	"github.com/theseed-labs/os-backend/internal/api"
-	"github.com/theseed-labs/os-backend/internal/api/push"
 	"github.com/theseed-labs/os-backend/internal/api/user"
 	"github.com/theseed-labs/os-backend/internal/config"
 	"github.com/theseed-labs/os-backend/internal/middleware"
@@ -242,6 +242,8 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		seeauth_inject.Register(v1)
 		// data_srv
 		datasrv_inject.Register(v1)
+		// push
+		push_inject.Register(v1)
 	}
 	// --> no auth required
 	{
@@ -429,9 +431,9 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		// cityHallGroup.POST("/batch_update_members", city_hall.BatchUpdateMembers)
 
 		// push routers
-		pushGroup := authorizedGroup.Group("/push")
-		pushGroup.POST("/", push.Create)
-		pushGroup.GET("/", push.List)
+		// pushGroup := authorizedGroup.Group("/push")
+		// pushGroup.POST("/", push.Create)
+		// pushGroup.GET("/", push.List)
 
 		// reward routers
 		rewardsGroup := authorizedGroup.Group("/rewards")
