@@ -27,6 +27,7 @@ import (
 	guilds_inject "github.com/theseed-labs/os-backend/internal_inject/guilds"
 	permissions_inject "github.com/theseed-labs/os-backend/internal_inject/permissions"
 	projects_inject "github.com/theseed-labs/os-backend/internal_inject/projects"
+	publicdata_inject "github.com/theseed-labs/os-backend/internal_inject/public_data"
 	seeauth_inject "github.com/theseed-labs/os-backend/internal_inject/see_auth"
 	treasury_inject "github.com/theseed-labs/os-backend/internal_inject/treasury"
 	user_inject "github.com/theseed-labs/os-backend/internal_inject/user"
@@ -47,7 +48,6 @@ import (
 	"github.com/samber/lo"
 	_ "github.com/theseed-labs/os-backend/docs"
 	"github.com/theseed-labs/os-backend/internal/api"
-	"github.com/theseed-labs/os-backend/internal/api/publicdata"
 	"github.com/theseed-labs/os-backend/internal/api/push"
 	"github.com/theseed-labs/os-backend/internal/api/season"
 	"github.com/theseed-labs/os-backend/internal/api/user"
@@ -234,6 +234,8 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		permissions_inject.Register(v1)
 		// city hall
 		cityhall_inject.Register(v1)
+		// public data
+		publicdata_inject.Register(v1)
 	}
 	// --> no auth required
 	{
@@ -291,12 +293,12 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		// cityHallGroup.GET("/cs_node", city_hall.CurrentSeasonNodeList)
 
 		// public data
-		publicData := v1.Group("/public_data")
-		publicData.GET("/discord_member_count", publicdata.DiscordData)
-		publicData.GET("/notion/database/:id", publicdata.NotionDatabase)
-		publicData.GET("/notion/page/:id", publicdata.NotionPage)
-		publicData.GET("/notion/user/:id", publicdata.NotionUser)
-		publicData.GET("/safe_vault", publicdata.SafeVault)
+		// publicData := v1.Group("/public_data")
+		// publicData.GET("/discord_member_count", publicdata.DiscordData)
+		// publicData.GET("/notion/database/:id", publicdata.NotionDatabase)
+		// publicData.GET("/notion/page/:id", publicdata.NotionPage)
+		// publicData.GET("/notion/user/:id", publicdata.NotionUser)
+		// publicData.GET("/safe_vault", publicdata.SafeVault)
 
 		// webhook routers
 		webhookGroup := v1.Group("/webhook")
