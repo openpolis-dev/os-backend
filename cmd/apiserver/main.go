@@ -12,7 +12,6 @@ import (
 	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api/cron_jobs"
 	"github.com/theseed-labs/os-backend/internal/api/proposal"
-	"github.com/theseed-labs/os-backend/internal/api/sns_invite"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/graph/generated"
 	"github.com/theseed-labs/os-backend/internal/graph/resolver"
@@ -32,6 +31,7 @@ import (
 	push_inject "github.com/theseed-labs/os-backend/internal_inject/push"
 	rewards_inject "github.com/theseed-labs/os-backend/internal_inject/rewards"
 	seeauth_inject "github.com/theseed-labs/os-backend/internal_inject/see_auth"
+	snsinvite_inject "github.com/theseed-labs/os-backend/internal_inject/sns_invite"
 	treasury_inject "github.com/theseed-labs/os-backend/internal_inject/treasury"
 	user_inject "github.com/theseed-labs/os-backend/internal_inject/user"
 	webhook_inject "github.com/theseed-labs/os-backend/internal_inject/webhook"
@@ -246,6 +246,8 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		push_inject.Register(v1)
 		// rewards
 		rewards_inject.Register(v1)
+		// sns invite
+		snsinvite_inject.Register(v1)
 	}
 	// --> no auth required
 	{
@@ -478,10 +480,10 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		// dataSrv.GET("/widget_data", data_srv.WidgetData)
 
 		// SNS invite
-		snsInvite := authorizedGroup.Group("/sns_invite")
-		snsInvite.GET("/my_sns_invite_code", sns_invite.GetMySnsInviteCode)
-		snsInvite.GET("/my_sns_invite_rewards", sns_invite.GetMySnsInviteRewards)
-		snsInvite.POST("/invited_by/:invite_code", sns_invite.SnsInvitedBy)
+		// snsInvite := authorizedGroup.Group("/sns_invite")
+		// snsInvite.GET("/my_sns_invite_code", sns_invite.GetMySnsInviteCode)
+		// snsInvite.GET("/my_sns_invite_rewards", sns_invite.GetMySnsInviteRewards)
+		// snsInvite.POST("/invited_by/:invite_code", sns_invite.SnsInvitedBy)
 	}
 	{
 		adminGroup := r.Group("/admin", middleware.AdminPermissionRequired)
