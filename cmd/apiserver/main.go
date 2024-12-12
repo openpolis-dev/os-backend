@@ -469,9 +469,9 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		proposalCategoryRouter := authorizedGroup.Group("/proposal_categories")
 		proposalCategoryRouter.GET("/list_with_perm", proposal.ListCategoriesWithPerm)
 
-		// Data services API
-		dataSrv := authorizedGroup.Group("/data_srv")
-		dataSrv.GET("/widget_data", data_srv.WidgetData)
+		// // Data services API
+		// dataSrv := authorizedGroup.Group("/data_srv")
+		// dataSrv.GET("/widget_data", data_srv.WidgetData)
 
 		// SNS invite
 		snsInvite := authorizedGroup.Group("/sns_invite")
