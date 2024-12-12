@@ -116,3 +116,31 @@ const (
 			(SELECT id FROM proposal_vote_gates WHERE season_id = ? AND name like '节点%')
 			AND state in (6, 7, 9) AND p.version = (select max(version) from proposals p2 where p.proposal_record_id=p2.proposal_record_id));`
 )
+
+type WidgetDataResponse struct {
+	ID   uint   `json:"id"`
+	Name string `json:"name"`
+
+	// This field is used for entity_list widget
+	Type string `json:"type,omitempty"`
+
+	// Those two fields are used for associating proposal widget
+	CreateTs             int64  `json:"create_ts,omitempty"`
+	ProposalCategoryName string `json:"proposal_category_name,omitempty"`
+	ProposalState        string `json:"proposal_state,omitempty"`
+	Applicant            string `json:"applicant,omitempty"`
+	ApplicantAvatar      string `json:"applicant_avatar,omitempty"`
+}
+
+type WidgetDataType string
+
+const (
+	WidgetDataTypeProjectList          WidgetDataType = "project_list"
+	WidgetDataTypeCommonProjectList                   = "common_project_list"
+	WidgetDataTypeGuildList                           = "guild_list"
+	WidgetDataTypeEntityList                          = "entity_list"
+	WidgetDataTypeAssetForProposal                    = "asset_type_proposal"
+	WidgetDataTypeAssetForApplication                 = "asset_type_app"
+	WidgetDataTypePassedProposals                     = "passed_proposals"
+	WidgetDataTypeCanBeVetoedProposals                = "can_be_vetoed_proposals"
+)

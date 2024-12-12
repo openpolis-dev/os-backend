@@ -238,3 +238,102 @@ func (s *DataSrvService) CalcMintRewards(ctx *gin.Context, currentSeason *model.
 
 	return mintResult, nil
 }
+
+func getEntityListResponse(db *gorm.DB, entityType string, allRecords bool, userWallet string) ([]*WidgetDataResponse, error) {
+	var projects []*model.Project
+	var guilds []*model.Guild
+	var err error
+
+	switch entityType {
+	case "project":
+		if allRecords {
+			projects, _, err = model.ProjectModel.List(db, "open", nil, false)
+		} else {
+			projects, _, err = model.ProjectModel.ListBySponsor(db, common.FormatUserWallet(userWallet), "open", nil, false)
+		}
+		if err != nil {
+			return nil, err
+		}
+		return lo.Map(projects, func(g *model.Project, _ int) *WidgetDataResponse {
+			return &WidgetDataResponse{
+				ID:   g.ID,
+				Name: g.Name,
+			}
+		}), nil
+	case "guild":
+		if allRecords {
+			guilds, _, err = model.GuildModel.List(db, nil)
+		} else {
+			guilds, _, err = model.GuildModel.ListBySponsor(db, common.FormatUserWallet(userWallet), nil)
+		}
+		return lo.Map(guilds, func(g *model.Guild, _ int) *WidgetDataResponse {
+			return &WidgetDataResponse{
+				ID:   g.ID,
+				Name: g.Name,
+			}
+		}), nil
+	default:
+		return nil, errors.New("invalid entity type")
+	}
+}
+
+func (s *DataSrvService) GetPassedProposals(userWallet string, allRecords bool) ([]*WidgetDataResponse, error) {
+	var rcds []*proposal.FrontendProposalListRecord
+	querySql := fmt.Sprintf("%s WHERE state = %d", proposal.ListProposalsSQL, model.ProposalStateVotePassed)
+	if !allRecords {
+		querySql += fmt.Sprintf(" AND applicant = '%s'", common.FormatUserWallet(userWallet))
+	}
+	querySql += fmt.Sprintf(" ORDER BY id ASC")
+
+	err := s.Db.Raw(querySql).Find(&rcds).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			log.Warn().Err(err).Msgf("no proposal found for user %s", userWallet)
+			return []*WidgetDataResponse{}, nil
+		} else {
+			log.Error().Err(err).Msg("query proposal list error")
+			return nil, err
+		}
+	}
+
+	return s.ConvertFrontendEndProposalListRecordToWidgetDataResponse(rcds), nil
+}
+
+func (s *DataSrvService) GetProposalsCanBeVetoed() ([]*WidgetDataResponse, error) {
+	var rcds []*proposal.FrontendProposalListRecord
+	querySql := fmt.Sprintf("%s WHERE state IN (%d, %d) and p.can_be_vetoed = true",
+		proposal.ListProposalsSQL,
+		model.ProposalStateVoting,
+		model.ProposalStatePendingExecution,
+	)
+	querySql += fmt.Sprintf(" ORDER BY create_ts DESC")
+
+	err := s.Db.Raw(querySql).Find(&rcds).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			log.Warn().Err(err).Msgf("no proposal can be vetoed")
+			return []*WidgetDataResponse{}, nil
+		} else {
+			log.Error().Err(err).Msg("query proposal list error")
+			return nil, err
+		}
+	}
+	return s.ConvertFrontendEndProposalListRecordToWidgetDataResponse(rcds), nil
+}
+
+func (s *DataSrvService) ConvertFrontendEndProposalListRecordToWidgetDataResponse(proposalRcds []*proposal.FrontendProposalListRecord) []*WidgetDataResponse {
+	return lo.Map(proposalRcds, func(r *proposal.FrontendProposalListRecord, _ int) *WidgetDataResponse {
+		if r.Sip != 0 {
+			r.Title = fmt.Sprintf("SIP-%d: %s", r.Sip, r.Title)
+		}
+		return &WidgetDataResponse{
+			ID:                   r.ID,
+			Name:                 r.Title,
+			ProposalCategoryName: r.CategoryName,
+			ProposalState:        model.ProposalStateName[r.StateId],
+			Applicant:            r.Applicant,
+			ApplicantAvatar:      r.ApplicantAvatar,
+			CreateTs:             r.CreateTs,
+		}
+	})
+}
