@@ -128,7 +128,7 @@ func (c *CityHallController) CurrentSeasonNodeList(ctx *gin.Context) {
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("marshal current season node list error")))
 			return
 		}
-		err = storage.StoreCachedData(storage.CurrentSeasonNodeCacheKey(tokenAddr, tokenId), csNodeBytes)
+		_ = storage.StoreCachedData(storage.CurrentSeasonNodeCacheKey(tokenAddr, tokenId), csNodeBytes)
 	} else {
 		err = json.Unmarshal(cachedData, &csNodeWallets)
 		if err != nil {
