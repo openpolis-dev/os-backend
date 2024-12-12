@@ -50,7 +50,6 @@ import (
 	_ "github.com/theseed-labs/os-backend/docs"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/api/push"
-	"github.com/theseed-labs/os-backend/internal/api/season"
 	"github.com/theseed-labs/os-backend/internal/api/user"
 	"github.com/theseed-labs/os-backend/internal/config"
 	"github.com/theseed-labs/os-backend/internal/middleware"
@@ -238,6 +237,8 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		publicdata_inject.Register(v1)
 		// webhook
 		webhook_inject.Register(v1)
+		// seasons
+		seeauth_inject.Register(v1)
 	}
 	// --> no auth required
 	{
@@ -307,9 +308,9 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		// webhookGroup.POST("/tally", webhook.Tally)
 
 		// season data
-		seasonsData := v1.Group("/seasons")
-		seasonsData.GET("/", season.List)
-		seasonsData.GET("/current", season.Current)
+		// seasonsData := v1.Group("/seasons")
+		// seasonsData.GET("/", season.List)
+		// seasonsData.GET("/current", season.Current)
 
 		// some data service
 		// TODO: Move to authorized group
