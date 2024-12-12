@@ -31,6 +31,7 @@ import (
 	seeauth_inject "github.com/theseed-labs/os-backend/internal_inject/see_auth"
 	treasury_inject "github.com/theseed-labs/os-backend/internal_inject/treasury"
 	user_inject "github.com/theseed-labs/os-backend/internal_inject/user"
+	webhook_inject "github.com/theseed-labs/os-backend/internal_inject/webhook"
 	"gorm.io/gorm"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -51,7 +52,6 @@ import (
 	"github.com/theseed-labs/os-backend/internal/api/push"
 	"github.com/theseed-labs/os-backend/internal/api/season"
 	"github.com/theseed-labs/os-backend/internal/api/user"
-	"github.com/theseed-labs/os-backend/internal/api/webhook"
 	"github.com/theseed-labs/os-backend/internal/config"
 	"github.com/theseed-labs/os-backend/internal/middleware"
 	"github.com/theseed-labs/os-backend/internal/sdk"
@@ -236,6 +236,8 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		cityhall_inject.Register(v1)
 		// public data
 		publicdata_inject.Register(v1)
+		// webhook
+		webhook_inject.Register(v1)
 	}
 	// --> no auth required
 	{
@@ -301,8 +303,8 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		// publicData.GET("/safe_vault", publicdata.SafeVault)
 
 		// webhook routers
-		webhookGroup := v1.Group("/webhook")
-		webhookGroup.POST("/tally", webhook.Tally)
+		// webhookGroup := v1.Group("/webhook")
+		// webhookGroup.POST("/tally", webhook.Tally)
 
 		// season data
 		seasonsData := v1.Group("/seasons")
