@@ -27,6 +27,7 @@ import (
 	guilds_inject "github.com/theseed-labs/os-backend/internal_inject/guilds"
 	permissions_inject "github.com/theseed-labs/os-backend/internal_inject/permissions"
 	projects_inject "github.com/theseed-labs/os-backend/internal_inject/projects"
+	proposal_inject "github.com/theseed-labs/os-backend/internal_inject/proposal"
 	publicdata_inject "github.com/theseed-labs/os-backend/internal_inject/public_data"
 	push_inject "github.com/theseed-labs/os-backend/internal_inject/push"
 	rewards_inject "github.com/theseed-labs/os-backend/internal_inject/rewards"
@@ -248,6 +249,8 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		rewards_inject.Register(v1)
 		// sns invite
 		snsinvite_inject.Register(v1)
+		// proposals
+		proposal_inject.Register(v1)
 	}
 	// --> no auth required
 	{
@@ -327,32 +330,32 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		// dataSrv.GET("/aggr_scr", data_srv.AggrScr)
 
 		// Proposal component routers
-		componentRouter := v1.Group("/proposal_components")
-		componentRouter.GET("/", proposal.ListComponents)
-		componentRouter.GET("/:id", proposal.GetComponent)
+		// componentRouter := v1.Group("/proposal_components")
+		// componentRouter.GET("/", proposal.ListComponents)
+		// componentRouter.GET("/:id", proposal.GetComponent)
 
-		proposalPollGateRouter := v1.Group("/proposal_vote_gates")
-		proposalPollGateRouter.GET("/", proposal.ListVoteGates)
+		// proposalPollGateRouter := v1.Group("/proposal_vote_gates")
+		// proposalPollGateRouter.GET("/", proposal.ListVoteGates)
 
-		// Proposal routers
-		proposalGroup := v1.Group("/proposals", middleware.AuthOption)
-		proposalGroup.GET("/list", proposal.List)
-		proposalGroup.GET("/show/:id", proposal.Detail)
-		proposalGroup.GET("/vote_detail/:vote_option_id", proposal.ShowVoteDetail)
+		// // Proposal routers
+		// proposalGroup := v1.Group("/proposals", middleware.AuthOption)
+		// proposalGroup.GET("/list", proposal.List)
+		// proposalGroup.GET("/show/:id", proposal.Detail)
+		// proposalGroup.GET("/vote_detail/:vote_option_id", proposal.ShowVoteDetail)
 
-		// All proposal categories for non login users
-		proposalCategoryRouter := v1.Group("/proposal_categories")
-		proposalCategoryRouter.GET("/list", proposal.ListAllCategories)
+		// // All proposal categories for non login users
+		// proposalCategoryRouter := v1.Group("/proposal_categories")
+		// proposalCategoryRouter.GET("/list", proposal.ListAllCategories)
 
-		// Proposal templates router
-		proposalTmplRouter := v1.Group("/proposal_tmpl")
-		proposalTmplRouter.GET("/list", proposal.ListTemplates)
+		// // Proposal templates router
+		// proposalTmplRouter := v1.Group("/proposal_tmpl")
+		// proposalTmplRouter.GET("/list", proposal.ListTemplates)
 
 		// foo routers
 	}
 	// --> auth required
 	{
-		authorizedGroup := v1.Group("/", middleware.AuthRequired)
+		// authorizedGroup := v1.Group("/", middleware.AuthRequired)
 
 		// user routers
 		// userGroup := authorizedGroup.Group("/user")
@@ -445,35 +448,35 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		// rewardsGroup.POST("/snapshot_seed", rewards.SnapshotSeed)
 		// rewardsGroup.POST("/approve_mint_snap_seed", rewards.ApproveMintAndSnapshotSeed)
 
-		// proposal routers
-		proposalGroup := authorizedGroup.Group("/proposals")
-		// Save or update proposal to Local DB. If submit flag in post data is true,
-		// the proposal will also be published to Metaforo and convert to Draft state
-		proposalGroup.POST("/create", proposal.Create)
-		proposalGroup.POST("/update/:id", proposal.Update)
-		proposalGroup.POST("/add_comment/:id", proposal.AddComment)
-		proposalGroup.POST("/edit_comment/:id", proposal.EditComment)
-		proposalGroup.POST("/delete_comment/:id", proposal.DeleteComment)
-		proposalGroup.GET("/my", proposal.MyList)
-		proposalGroup.GET("/creating_project_proposals", proposal.GetProposalsUsedForCreatingProjects)
+		// // proposal routers
+		// proposalGroup := authorizedGroup.Group("/proposals")
+		// // Save or update proposal to Local DB. If submit flag in post data is true,
+		// // the proposal will also be published to Metaforo and convert to Draft state
+		// proposalGroup.POST("/create", proposal.Create)
+		// proposalGroup.POST("/update/:id", proposal.Update)
+		// proposalGroup.POST("/add_comment/:id", proposal.AddComment)
+		// proposalGroup.POST("/edit_comment/:id", proposal.EditComment)
+		// proposalGroup.POST("/delete_comment/:id", proposal.DeleteComment)
+		// proposalGroup.GET("/my", proposal.MyList)
+		// proposalGroup.GET("/creating_project_proposals", proposal.GetProposalsUsedForCreatingProjects)
 
-		// State change actions for proposals
-		proposalGroup.POST("/withdraw/:id", proposal.Withdraw)
-		proposalGroup.POST("/approve/:id", proposal.Approve)
-		proposalGroup.POST("/reject/:id", proposal.Reject)
+		// // State change actions for proposals
+		// proposalGroup.POST("/withdraw/:id", proposal.Withdraw)
+		// proposalGroup.POST("/approve/:id", proposal.Approve)
+		// proposalGroup.POST("/reject/:id", proposal.Reject)
 
-		proposalGroup.POST("/can_vote/:id", proposal.CheckVotePermission)
-		proposalGroup.POST("/vote/:id", proposal.CastVote)
-		proposalGroup.POST("/revoke_vote/:id", proposal.RevokeVote)
-		proposalGroup.POST("/close_vote/:id", proposal.CloseVote)
+		// proposalGroup.POST("/can_vote/:id", proposal.CheckVotePermission)
+		// proposalGroup.POST("/vote/:id", proposal.CastVote)
+		// proposalGroup.POST("/revoke_vote/:id", proposal.RevokeVote)
+		// proposalGroup.POST("/close_vote/:id", proposal.CloseVote)
 
-		// Proposal templates router
-		proposalTmplRouter := authorizedGroup.Group("/proposal_tmpl")
-		proposalTmplRouter.GET("/list_with_perm", proposal.ListTemplatesWithPerm)
+		// // Proposal templates router
+		// proposalTmplRouter := authorizedGroup.Group("/proposal_tmpl")
+		// proposalTmplRouter.GET("/list_with_perm", proposal.ListTemplatesWithPerm)
 
-		// List proposal categories
-		proposalCategoryRouter := authorizedGroup.Group("/proposal_categories")
-		proposalCategoryRouter.GET("/list_with_perm", proposal.ListCategoriesWithPerm)
+		// // List proposal categories
+		// proposalCategoryRouter := authorizedGroup.Group("/proposal_categories")
+		// proposalCategoryRouter.GET("/list_with_perm", proposal.ListCategoriesWithPerm)
 
 		// // Data services API
 		// dataSrv := authorizedGroup.Group("/data_srv")

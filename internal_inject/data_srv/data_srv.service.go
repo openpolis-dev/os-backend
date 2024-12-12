@@ -13,12 +13,12 @@ import (
 	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
 	"github.com/theseed-labs/os-backend/internal/api"
-	"github.com/theseed-labs/os-backend/internal/api/proposal"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/config"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk"
 	"github.com/theseed-labs/os-backend/internal/storage"
+	proposal_inject "github.com/theseed-labs/os-backend/internal_inject/proposal"
 	"gorm.io/gorm"
 )
 
@@ -27,6 +27,8 @@ type DataSrvService struct {
 	Db *gorm.DB `inject:""`
 
 	Cfg *config.Config `inject:""`
+
+	ProposalService *proposal_inject.ProposalService `inject:""`
 }
 
 // GetSeasonVoteRecords returns a map of user wallet to their vote count of current season
@@ -55,7 +57,7 @@ func (s *DataSrvService) FetchSingleProposalUserVoteRecord(ctx *gin.Context) {
 		return
 	}
 
-	err = proposal.UpdateUserVoteRecordViaMetaforo(s.Db, s.Cfg.MetaforoData.GroupName, uint(proposalId))
+	err = s.ProposalService.UpdateUserVoteRecordViaMetaforo(s.Db, s.Cfg.MetaforoData.GroupName, uint(proposalId))
 	if err != nil {
 		log.Error().Msgf("update user vote record via metaforo error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
@@ -278,8 +280,8 @@ func getEntityListResponse(db *gorm.DB, entityType string, allRecords bool, user
 }
 
 func (s *DataSrvService) GetPassedProposals(userWallet string, allRecords bool) ([]*WidgetDataResponse, error) {
-	var rcds []*proposal.FrontendProposalListRecord
-	querySql := fmt.Sprintf("%s WHERE state = %d", proposal.ListProposalsSQL, model.ProposalStateVotePassed)
+	var rcds []*proposal_inject.FrontendProposalListRecord
+	querySql := fmt.Sprintf("%s WHERE state = %d", proposal_inject.ListProposalsSQL, model.ProposalStateVotePassed)
 	if !allRecords {
 		querySql += fmt.Sprintf(" AND applicant = '%s'", common.FormatUserWallet(userWallet))
 	}
@@ -300,9 +302,9 @@ func (s *DataSrvService) GetPassedProposals(userWallet string, allRecords bool) 
 }
 
 func (s *DataSrvService) GetProposalsCanBeVetoed() ([]*WidgetDataResponse, error) {
-	var rcds []*proposal.FrontendProposalListRecord
+	var rcds []*proposal_inject.FrontendProposalListRecord
 	querySql := fmt.Sprintf("%s WHERE state IN (%d, %d) and p.can_be_vetoed = true",
-		proposal.ListProposalsSQL,
+		proposal_inject.ListProposalsSQL,
 		model.ProposalStateVoting,
 		model.ProposalStatePendingExecution,
 	)
@@ -321,8 +323,8 @@ func (s *DataSrvService) GetProposalsCanBeVetoed() ([]*WidgetDataResponse, error
 	return s.ConvertFrontendEndProposalListRecordToWidgetDataResponse(rcds), nil
 }
 
-func (s *DataSrvService) ConvertFrontendEndProposalListRecordToWidgetDataResponse(proposalRcds []*proposal.FrontendProposalListRecord) []*WidgetDataResponse {
-	return lo.Map(proposalRcds, func(r *proposal.FrontendProposalListRecord, _ int) *WidgetDataResponse {
+func (s *DataSrvService) ConvertFrontendEndProposalListRecordToWidgetDataResponse(proposalRcds []*proposal_inject.FrontendProposalListRecord) []*WidgetDataResponse {
+	return lo.Map(proposalRcds, func(r *proposal_inject.FrontendProposalListRecord, _ int) *WidgetDataResponse {
 		if r.Sip != 0 {
 			r.Title = fmt.Sprintf("SIP-%d: %s", r.Sip, r.Title)
 		}
