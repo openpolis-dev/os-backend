@@ -21,6 +21,7 @@ import (
 	"github.com/theseed-labs/os-backend/internal/task_manager"
 	appbundles_inject "github.com/theseed-labs/os-backend/internal_inject/app_bundles"
 	applications_inject "github.com/theseed-labs/os-backend/internal_inject/applications"
+	cityhall_inject "github.com/theseed-labs/os-backend/internal_inject/city_hall"
 	common_budget_sources_inject "github.com/theseed-labs/os-backend/internal_inject/common_budget_sources"
 	events_inject "github.com/theseed-labs/os-backend/internal_inject/events"
 	guilds_inject "github.com/theseed-labs/os-backend/internal_inject/guilds"
@@ -46,7 +47,6 @@ import (
 	"github.com/samber/lo"
 	_ "github.com/theseed-labs/os-backend/docs"
 	"github.com/theseed-labs/os-backend/internal/api"
-	"github.com/theseed-labs/os-backend/internal/api/city_hall"
 	"github.com/theseed-labs/os-backend/internal/api/publicdata"
 	"github.com/theseed-labs/os-backend/internal/api/push"
 	"github.com/theseed-labs/os-backend/internal/api/season"
@@ -232,6 +232,8 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		events_inject.Register(v1)
 		// permisssion
 		permissions_inject.Register(v1)
+		// city hall
+		cityhall_inject.Register(v1)
 	}
 	// --> no auth required
 	{
@@ -284,9 +286,9 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		// pre-signed s3 upload url
 		v1.GET("/url_for_uploading_s3", api.PreSignedUrlForS3)
 
-		cityHallGroup := v1.Group("/cityhall")
-		cityHallGroup.GET("/info", city_hall.Info)
-		cityHallGroup.GET("/cs_node", city_hall.CurrentSeasonNodeList)
+		// cityHallGroup := v1.Group("/cityhall")
+		// cityHallGroup.GET("/info", city_hall.Info)
+		// cityHallGroup.GET("/cs_node", city_hall.CurrentSeasonNodeList)
 
 		// public data
 		publicData := v1.Group("/public_data")
@@ -413,10 +415,10 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		// permissionGroup.POST("/revoke_role", permission.RevokeRole)
 
 		// city hall
-		cityHallGroup := authorizedGroup.Group("/cityhall")
-		cityHallGroup.POST("/update_budget", city_hall.UpdateBudget)
-		cityHallGroup.POST("/update_members", city_hall.UpdateMember)
-		cityHallGroup.POST("/batch_update_members", city_hall.BatchUpdateMembers)
+		// cityHallGroup := authorizedGroup.Group("/cityhall")
+		// cityHallGroup.POST("/update_budget", city_hall.UpdateBudget)
+		// cityHallGroup.POST("/update_members", city_hall.UpdateMember)
+		// cityHallGroup.POST("/batch_update_members", city_hall.BatchUpdateMembers)
 
 		// push routers
 		pushGroup := authorizedGroup.Group("/push")
