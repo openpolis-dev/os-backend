@@ -31,6 +31,7 @@ import (
 	publicdata_inject "github.com/theseed-labs/os-backend/internal_inject/public_data"
 	push_inject "github.com/theseed-labs/os-backend/internal_inject/push"
 	rewards_inject "github.com/theseed-labs/os-backend/internal_inject/rewards"
+	seasons_inject "github.com/theseed-labs/os-backend/internal_inject/seasons"
 	seeauth_inject "github.com/theseed-labs/os-backend/internal_inject/see_auth"
 	snsinvite_inject "github.com/theseed-labs/os-backend/internal_inject/sns_invite"
 	treasury_inject "github.com/theseed-labs/os-backend/internal_inject/treasury"
@@ -240,7 +241,7 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		// webhook
 		webhook_inject.Register(v1)
 		// seasons
-		seeauth_inject.Register(v1)
+		seasons_inject.Register(v1)
 		// data_srv
 		datasrv_inject.Register(v1)
 		// push
