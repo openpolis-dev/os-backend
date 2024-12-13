@@ -18,6 +18,7 @@ import (
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/service"
 	"github.com/theseed-labs/os-backend/internal/task_manager"
+	admin_inject "github.com/theseed-labs/os-backend/internal_inject/admin"
 	appbundles_inject "github.com/theseed-labs/os-backend/internal_inject/app_bundles"
 	applications_inject "github.com/theseed-labs/os-backend/internal_inject/applications"
 	cityhall_inject "github.com/theseed-labs/os-backend/internal_inject/city_hall"
@@ -252,6 +253,8 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		snsinvite_inject.Register(v1)
 		// proposals
 		proposal_inject.Register(v1)
+		// admin
+		admin_inject.Register(r.Group("/"))
 	}
 	// --> no auth required
 	{
@@ -490,24 +493,24 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		// snsInvite.POST("/invited_by/:invite_code", sns_invite.SnsInvitedBy)
 	}
 	{
-		adminGroup := r.Group("/admin", middleware.AdminPermissionRequired)
-		proposalTmplAdminRouter := adminGroup.Group("/proposal_tmpl")
-		proposalTmplAdminRouter.POST("/update", proposal.UpdateTemplate)
+		// 	adminGroup := r.Group("/admin", middleware.AdminPermissionRequired)
+		// 	proposalTmplAdminRouter := adminGroup.Group("/proposal_tmpl")
+		// 	proposalTmplAdminRouter.POST("/update", proposal.UpdateTemplate)
 
-		userAdminRouter := adminGroup.Group("/user")
-		userAdminRouter.POST("/check_vote_permission", user.CheckVotePermission)
+		// 	userAdminRouter := adminGroup.Group("/user")
+		// 	userAdminRouter.POST("/check_vote_permission", user.CheckVotePermission)
 
-		// Schedule jobs routers
-		jobsRouter := adminGroup.Group("/jobs")
-		jobsRouter.GET("/list", cron_jobs.List)
+		// 	// Schedule jobs routers
+		// 	jobsRouter := adminGroup.Group("/jobs")
+		// 	jobsRouter.GET("/list", cron_jobs.List)
 
-		// TODO: New tasks required
-		//metaforoRouter := adminGroup.Group("/mf")
-		//metaforoRouter.POST("/update_mf_admin_token", TBD)
-		//metaforoRouter.POST("/sync_perm_group", TBD)
+		// 	// TODO: New tasks required
+		// 	//metaforoRouter := adminGroup.Group("/mf")
+		// 	//metaforoRouter.POST("/update_mf_admin_token", TBD)
+		// 	//metaforoRouter.POST("/sync_perm_group", TBD)
 
-		// Fetch single proposal user vote record
-		adminGroup.POST("/update_proposal_vote_record/:proposal_id", data_srv.FetchSingleProposalUserVoteRecord)
+		// 	// Fetch single proposal user vote record
+		// 	adminGroup.POST("/update_proposal_vote_record/:proposal_id", data_srv.FetchSingleProposalUserVoteRecord)
 	}
 
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
