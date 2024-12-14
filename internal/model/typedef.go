@@ -59,7 +59,7 @@ const (
 )
 
 // This variable saves state transit map for all application states
-var applicationStateMap = map[ApplicationState]map[AuditActionType]ApplicationState{
+var ApplicationStateMap = map[ApplicationState]map[AuditActionType]ApplicationState{
 	ApplicationStateOpen:       {AuditActionApprove: ApplicationStateApproved, AuditActionReject: ApplicationStateRejected},
 	ApplicationStateApproved:   {AuditActionProcess: ApplicationStateProcessing},
 	ApplicationStateRejected:   {AuditActionApprove: ApplicationStateApproved},
