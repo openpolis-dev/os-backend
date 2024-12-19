@@ -56,9 +56,6 @@ func Register(fatherGroup *gin.RouterGroup) {
 	appBundlesAuthGroup.GET("/", appBundles.ListAppBundle)
 	appBundlesAuthGroup.POST("/", appBundles.CreateAppBundle)
 
-	// appBundlesAuthGroup.POST("/app_bundle_approve", appBundles.ApproveAppBundles)
-	// appBundlesAuthGroup.POST("/app_bundle_reject", appBundles.RejectAppBundles)
-
 	if fatherGroup != nil {
 		fatherGroup.Group("/", middleware.AuthRequired).POST("/app_bundle_approve", appBundles.ApproveAppBundles)
 		fatherGroup.Group("/", middleware.AuthRequired).POST("/app_bundle_reject", appBundles.RejectAppBundles)
@@ -234,6 +231,8 @@ func (c *AppBundlesController) CreateAppBundle(ctx *gin.Context) {
 }
 
 func (c *AppBundlesController) ApproveAppBundles(ctx *gin.Context) {
+	log.Debug().Msg("has path ApproveAppBundles")
+
 	httpCode, reply := c.AppBundlesService.UpdateAppBundleToNewState(ctx, model.ApplicationStateApproved)
 
 	ctx.JSON(httpCode, reply)
