@@ -63,7 +63,7 @@ func Register(fatherGroup *gin.RouterGroup) {
 	var proposalTmplAuthGroup *gin.RouterGroup
 
 	if fatherGroup != nil {
-		proposalGroup = fatherGroup.Group("/proposals")
+		proposalGroup = fatherGroup.Group("/proposals", middleware.AuthOption)
 		proposalComponentsGroup = fatherGroup.Group("/proposal_components")
 		proposalVoteGatesGroup = fatherGroup.Group("/proposal_vote_gates")
 		proposalCategoriesGroup = fatherGroup.Group("/proposal_categories")
@@ -75,7 +75,7 @@ func Register(fatherGroup *gin.RouterGroup) {
 		proposalCategoriesAuthGroup = fatherGroup.Group("/", middleware.AuthRequired).Group("/proposal_categories")
 		proposalTmplAuthGroup = fatherGroup.Group("/", middleware.AuthRequired).Group("/proposal_tmpl")
 	} else {
-		proposalGroup = proposal.Gin.Group("/proposals")
+		proposalGroup = proposal.Gin.Group("/proposals", middleware.AuthOption)
 		proposalComponentsGroup = proposal.Gin.Group("/proposal_components")
 		proposalVoteGatesGroup = proposal.Gin.Group("/proposal_vote_gates")
 		proposalCategoriesGroup = proposal.Gin.Group("/proposal_categories")
