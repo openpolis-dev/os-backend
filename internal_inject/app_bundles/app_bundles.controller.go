@@ -44,6 +44,14 @@ func Register(fatherGroup *gin.RouterGroup) {
 		panic(err)
 	}
 
+	if fatherGroup != nil {
+		fatherGroup.Group("/", middleware.AuthRequired).POST("/app_bundle_approve", appBundles.ApproveAppBundles)
+		fatherGroup.Group("/", middleware.AuthRequired).POST("/app_bundle_reject", appBundles.RejectAppBundles)
+	} else {
+		appBundles.Gin.Group("/", middleware.AuthRequired).POST("/app_bundle_approve", appBundles.ApproveAppBundles)
+		appBundles.Gin.Group("/", middleware.AuthRequired).POST("/app_bundle_reject", appBundles.RejectAppBundles)
+	}
+
 	var appBundlesAuthGroup *gin.RouterGroup
 
 	if fatherGroup != nil {
@@ -56,13 +64,6 @@ func Register(fatherGroup *gin.RouterGroup) {
 	appBundlesAuthGroup.GET("/", appBundles.ListAppBundle)
 	appBundlesAuthGroup.POST("/", appBundles.CreateAppBundle)
 
-	if fatherGroup != nil {
-		fatherGroup.Group("/", middleware.AuthRequired).POST("/app_bundle_approve", appBundles.ApproveAppBundles)
-		fatherGroup.Group("/", middleware.AuthRequired).POST("/app_bundle_reject", appBundles.RejectAppBundles)
-	} else {
-		appBundles.Gin.Group("/", middleware.AuthRequired).POST("/app_bundle_approve", appBundles.ApproveAppBundles)
-		appBundles.Gin.Group("/", middleware.AuthRequired).POST("/app_bundle_reject", appBundles.RejectAppBundles)
-	}
 }
 
 func (c *AppBundlesController) ListAvailableProjectsAndGuilds(ctx *gin.Context) {
