@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/rs/zerolog/log"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/config"
 )
@@ -19,6 +20,7 @@ type CurUser struct {
 func AuthOption(ctx *gin.Context) {
 	// `Authorization: Bearer <token>`
 	authHeader := ctx.GetHeader("Authorization")
+	log.Debug().Msgf("auth option: header: %+v", authHeader)
 	if !(authHeader == "" || len(authHeader) < len(BearerSchema)) {
 		token := authHeader[len(BearerSchema)+1:]
 

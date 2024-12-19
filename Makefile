@@ -2,7 +2,7 @@ all: docs build
 
 .PHONY: docs clean test docker
 
-GO_INTERNAL_SRC = $(wildcard internal/*.go internal/*/*.go internal/*/*/*.go)
+GO_INTERNAL_SRC = $(wildcard internal/*.go internal/*/*.go internal/*/*/*.go internal_inject/**/*.go)
 GO_CMD_SRC = $(wildcard cmd/*/*.go)
 OUTPUT_BINS = $(patsubst cmd/%, bin/%, $(wildcard cmd/*))
 

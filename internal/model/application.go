@@ -114,7 +114,7 @@ func (app *Application) ValidateAuditAction(db *gorm.DB, action AuditActionType)
 		log.Error().Msgf("Get application %d state error: %+v", app.ID, err)
 		return false
 	}
-	if actions, stateFoundFlag := applicationStateMap[app.State]; stateFoundFlag {
+	if actions, stateFoundFlag := ApplicationStateMap[app.State]; stateFoundFlag {
 		_, actionFoundFlag := actions[action]
 		return actionFoundFlag
 	} else {
@@ -124,7 +124,7 @@ func (app *Application) ValidateAuditAction(db *gorm.DB, action AuditActionType)
 
 // nextStaterAfterAction returns next state if applying action to current application
 func (app *Application) nextStateAfterAction(action AuditActionType) ApplicationState {
-	actions, _ := applicationStateMap[app.State]
+	actions, _ := ApplicationStateMap[app.State]
 	nextState, _ := actions[action]
 
 	// For close project request, approved means project can be closed, and the project will be closed automatically,

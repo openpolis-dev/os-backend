@@ -8,24 +8,39 @@ import (
 	"github.com/robfig/cron/v3"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/pkgerrors"
+	"github.com/theseed-labs/os-backend/global_object"
 	"github.com/theseed-labs/os-backend/internal"
-	"github.com/theseed-labs/os-backend/internal/api/common_budget_sources"
-	"github.com/theseed-labs/os-backend/internal/api/cron_jobs"
-	"github.com/theseed-labs/os-backend/internal/api/proposal"
-	"github.com/theseed-labs/os-backend/internal/api/sns_invite"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/graph/generated"
 	"github.com/theseed-labs/os-backend/internal/graph/resolver"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/service"
 	"github.com/theseed-labs/os-backend/internal/task_manager"
+	admin_inject "github.com/theseed-labs/os-backend/internal_inject/admin"
+	appbundles_inject "github.com/theseed-labs/os-backend/internal_inject/app_bundles"
+	applications_inject "github.com/theseed-labs/os-backend/internal_inject/applications"
+	cityhall_inject "github.com/theseed-labs/os-backend/internal_inject/city_hall"
+	common_budget_sources_inject "github.com/theseed-labs/os-backend/internal_inject/common_budget_sources"
+	datasrv_inject "github.com/theseed-labs/os-backend/internal_inject/data_srv"
+	events_inject "github.com/theseed-labs/os-backend/internal_inject/events"
+	guilds_inject "github.com/theseed-labs/os-backend/internal_inject/guilds"
+	permissions_inject "github.com/theseed-labs/os-backend/internal_inject/permissions"
+	projects_inject "github.com/theseed-labs/os-backend/internal_inject/projects"
+	proposal_inject "github.com/theseed-labs/os-backend/internal_inject/proposal"
+	publicdata_inject "github.com/theseed-labs/os-backend/internal_inject/public_data"
+	push_inject "github.com/theseed-labs/os-backend/internal_inject/push"
+	rewards_inject "github.com/theseed-labs/os-backend/internal_inject/rewards"
+	seasons_inject "github.com/theseed-labs/os-backend/internal_inject/seasons"
+	seeauth_inject "github.com/theseed-labs/os-backend/internal_inject/see_auth"
+	snsinvite_inject "github.com/theseed-labs/os-backend/internal_inject/sns_invite"
+	treasury_inject "github.com/theseed-labs/os-backend/internal_inject/treasury"
+	user_inject "github.com/theseed-labs/os-backend/internal_inject/user"
+	webhook_inject "github.com/theseed-labs/os-backend/internal_inject/webhook"
 	"gorm.io/gorm"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
-	"github.com/theseed-labs/os-backend/internal/api/data_srv"
-	"github.com/theseed-labs/os-backend/internal/api/rewards"
 
 	"github.com/casbin/casbin/v2"
 	gormadapter "github.com/casbin/gorm-adapter/v3"
@@ -36,31 +51,17 @@ import (
 	"github.com/samber/lo"
 	_ "github.com/theseed-labs/os-backend/docs"
 	"github.com/theseed-labs/os-backend/internal/api"
-	"github.com/theseed-labs/os-backend/internal/api/app_bundle"
-	"github.com/theseed-labs/os-backend/internal/api/application"
-	"github.com/theseed-labs/os-backend/internal/api/city_hall"
-	"github.com/theseed-labs/os-backend/internal/api/event"
-	"github.com/theseed-labs/os-backend/internal/api/guild"
-	"github.com/theseed-labs/os-backend/internal/api/permission"
-	"github.com/theseed-labs/os-backend/internal/api/project"
-	"github.com/theseed-labs/os-backend/internal/api/publicdata"
-	"github.com/theseed-labs/os-backend/internal/api/push"
-	"github.com/theseed-labs/os-backend/internal/api/season"
-	"github.com/theseed-labs/os-backend/internal/api/treasury"
-	"github.com/theseed-labs/os-backend/internal/api/user"
-	"github.com/theseed-labs/os-backend/internal/api/webhook"
 	"github.com/theseed-labs/os-backend/internal/config"
 	"github.com/theseed-labs/os-backend/internal/middleware"
 	"github.com/theseed-labs/os-backend/internal/sdk"
 	"github.com/theseed-labs/os-backend/internal/storage"
 )
 
-//	@title			OS Backend API service
-//	@version		1.0
-//	@license.name	MIT
-//	@host			https://test-api.seedao.tech
-//	@basePath		/v1
-
+// @title			OS Backend API service
+// @version		1.0
+// @license.name	MIT
+// @host			https://test-api.seedao.tech
+// @basePath		/v1
 func main() {
 	// read config data
 	cfgPath := flag.String("config", "config.yml", "Configuration file path, should be yaml or json format")
@@ -174,6 +175,9 @@ func main() {
 
 func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforcer, pushSDK []sdk.Pusher) *gin.Engine {
 	r := gin.Default()
+
+	global_object.NewGlobalObject(r, db, cfg)
+
 	r.Use(middleware.RequestMetricsRecord())
 	r.Use(middleware.ResponseMetricsRecord())
 
@@ -205,261 +209,304 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 
 	// v1
 	v1 := r.Group("/v1")
+	// just use package manager group by self
+	{
+		// user
+		user_inject.Register(v1)
+		// see auth
+		seeauth_inject.Register(v1)
+		// projects
+		projects_inject.Register(v1)
+		// guilds
+		guilds_inject.Register(v1)
+		// common budget source
+		common_budget_sources_inject.Register(v1)
+		// applications
+		applications_inject.Register(v1)
+		// app bundles
+		appbundles_inject.Register(v1)
+		// treasury
+		treasury_inject.Register(v1)
+		// events
+		events_inject.Register(v1)
+		// permisssion
+		permissions_inject.Register(v1)
+		// city hall
+		cityhall_inject.Register(v1)
+		// public data
+		publicdata_inject.Register(v1)
+		// webhook
+		webhook_inject.Register(v1)
+		// seasons
+		seasons_inject.Register(v1)
+		// data_srv
+		datasrv_inject.Register(v1)
+		// push
+		push_inject.Register(v1)
+		// rewards
+		rewards_inject.Register(v1)
+		// sns invite
+		snsinvite_inject.Register(v1)
+		// proposals
+		proposal_inject.Register(v1)
+		// admin
+		admin_inject.Register(r.Group("/"))
+	}
 	// --> no auth required
 	{
 		// user routers
-		userGroup := v1.Group("/user")
-		userGroup.POST("/refresh_nonce", user.RefreshNonce)
-		userGroup.POST("/login", user.Login)
-		userGroup.GET("/users", user.Users)
-		userGroup.GET("/casbin", user.GetFrontendPermission)
-		userGroup.GET("/metaforo_activities", user.MetaforoActivities)
+		// userGroup := v1.Group("/user")
+		// userGroup.POST("/refresh_nonce", user.RefreshNonce)
+		// userGroup.POST("/login", user.Login)
+		// userGroup.GET("/users", user.Users)
+		// userGroup.GET("/casbin", user.GetFrontendPermission)
+		// userGroup.GET("/metaforo_activities", user.MetaforoActivities)
 
 		// SeeAuth apis
-		seeAuth := v1.Group("/seeauth")
-		seeAuth.GET("/nonce/:wallet", user.SeeAuthNonce)
-		seeAuth.POST("/login", user.LoginWithSeeAuth)
-		seeAuth.POST("/seeauth_3rd_test", user.SeeAuthTestApi)
+		// seeAuth := v1.Group("/seeauth")
+		// seeAuth.GET("/nonce/:wallet", user.SeeAuthNonce)
+		// seeAuth.POST("/login", user.LoginWithSeeAuth)
+		// seeAuth.POST("/seeauth_3rd_test", user.SeeAuthTestApi)
 
 		// project routers
-		projGroup := v1.Group("/projects")
-		projGroup.GET("/", project.List)
-		projGroup.GET("/:id", project.Detail)
-		projGroup.GET("/:id/budgets", project.ShowBudgets)
+		// projGroup := v1.Group("/projects")
+		// projGroup.GET("/", project.List)
+		// projGroup.GET("/:id", project.Detail)
+		// projGroup.GET("/:id/budgets", project.ShowBudgets)
 
 		// guild routers
-		guildGroup := v1.Group("/guilds")
-		guildGroup.GET("/", guild.List)
-		guildGroup.GET("/:id", guild.Detail)
-		guildGroup.GET("/:id/budgets", guild.ShowBudgets)
+		// guildGroup := v1.Group("/guilds")
+		// guildGroup.GET("/", guild.List)
+		// guildGroup.GET("/:id", guild.Detail)
+		// guildGroup.GET("/:id/budgets", guild.ShowBudgets)
 
-		commonBudgetSourceGroup := v1.Group("/common_budget_sources")
-		commonBudgetSourceGroup.GET("/", common_budget_sources.List)
+		// commonBudgetSourceGroup := v1.Group("/common_budget_sources")
+		// commonBudgetSourceGroup.GET("/", common_budget_sources.List)
 
 		// application routers
-		applicationGroup := v1.Group("/applications")
-		applicationGroup.GET("/:id", application.Detail)
-		applicationGroup.GET("/", application.List)
+		// applicationGroup := v1.Group("/applications")
+		// applicationGroup.GET("/:id", application.Detail)
+		// applicationGroup.GET("/", application.List)
 
-		v1.GET("/apps_applicants", application.ListApplicants)
-		v1.GET("/download_applications", application.Download)
+		// v1.GET("/apps_applicants", application.ListApplicants)
+		// v1.GET("/download_applications", application.Download)
 
 		// SeeDAO assets routers
-		treasuryGroup := v1.Group("/treasury")
-		treasuryGroup.GET("/current", treasury.GetOrCreateCurrentAssetRecords)
+		// treasuryGroup := v1.Group("/treasury")
+		// treasuryGroup.GET("/current", treasury.GetOrCreateCurrentAssetRecords)
 
 		// SeeDAO events routers
-		eventsGroup := v1.Group("/events")
-		eventsGroup.GET("/", event.List)
-		eventsGroup.GET("/:id", event.Detail)
+		// eventsGroup := v1.Group("/events")
+		// eventsGroup.GET("/", event.List)
+		// eventsGroup.GET("/:id", event.Detail)
 
 		// pre-signed s3 upload url
 		v1.GET("/url_for_uploading_s3", api.PreSignedUrlForS3)
 
-		cityHallGroup := v1.Group("/cityhall")
-		cityHallGroup.GET("/info", city_hall.Info)
-		cityHallGroup.GET("/cs_node", city_hall.CurrentSeasonNodeList)
+		// cityHallGroup := v1.Group("/cityhall")
+		// cityHallGroup.GET("/info", city_hall.Info)
+		// cityHallGroup.GET("/cs_node", city_hall.CurrentSeasonNodeList)
 
 		// public data
-		publicData := v1.Group("/public_data")
-		publicData.GET("/discord_member_count", publicdata.DiscordData)
-		publicData.GET("/notion/database/:id", publicdata.NotionDatabase)
-		publicData.GET("/notion/page/:id", publicdata.NotionPage)
-		publicData.GET("/notion/user/:id", publicdata.NotionUser)
-		publicData.GET("/safe_vault", publicdata.SafeVault)
+		// publicData := v1.Group("/public_data")
+		// publicData.GET("/discord_member_count", publicdata.DiscordData)
+		// publicData.GET("/notion/database/:id", publicdata.NotionDatabase)
+		// publicData.GET("/notion/page/:id", publicdata.NotionPage)
+		// publicData.GET("/notion/user/:id", publicdata.NotionUser)
+		// publicData.GET("/safe_vault", publicdata.SafeVault)
 
 		// webhook routers
-		webhookGroup := v1.Group("/webhook")
-		webhookGroup.POST("/tally", webhook.Tally)
+		// webhookGroup := v1.Group("/webhook")
+		// webhookGroup.POST("/tally", webhook.Tally)
 
 		// season data
-		seasonsData := v1.Group("/seasons")
-		seasonsData.GET("/", season.List)
-		seasonsData.GET("/current", season.Current)
+		// seasonsData := v1.Group("/seasons")
+		// seasonsData.GET("/", season.List)
+		// seasonsData.GET("/current", season.Current)
 
 		// some data service
 		// TODO: Move to authorized group
-		dataSrv := v1.Group("/data_srv")
-		dataSrv.GET("/aggr_scr", data_srv.AggrScr)
+		// dataSrv := v1.Group("/data_srv")
+		// dataSrv.GET("/aggr_scr", data_srv.AggrScr)
 
 		// Proposal component routers
-		componentRouter := v1.Group("/proposal_components")
-		componentRouter.GET("/", proposal.ListComponents)
-		componentRouter.GET("/:id", proposal.GetComponent)
+		// componentRouter := v1.Group("/proposal_components")
+		// componentRouter.GET("/", proposal.ListComponents)
+		// componentRouter.GET("/:id", proposal.GetComponent)
 
-		proposalPollGateRouter := v1.Group("/proposal_vote_gates")
-		proposalPollGateRouter.GET("/", proposal.ListVoteGates)
+		// proposalPollGateRouter := v1.Group("/proposal_vote_gates")
+		// proposalPollGateRouter.GET("/", proposal.ListVoteGates)
 
-		// Proposal routers
-		proposalGroup := v1.Group("/proposals", middleware.AuthOption)
-		proposalGroup.GET("/list", proposal.List)
-		proposalGroup.GET("/show/:id", proposal.Detail)
-		proposalGroup.GET("/vote_detail/:vote_option_id", proposal.ShowVoteDetail)
+		// // Proposal routers
+		// proposalGroup := v1.Group("/proposals", middleware.AuthOption)
+		// proposalGroup.GET("/list", proposal.List)
+		// proposalGroup.GET("/show/:id", proposal.Detail)
+		// proposalGroup.GET("/vote_detail/:vote_option_id", proposal.ShowVoteDetail)
 
-		// All proposal categories for non login users
-		proposalCategoryRouter := v1.Group("/proposal_categories")
-		proposalCategoryRouter.GET("/list", proposal.ListAllCategories)
+		// // All proposal categories for non login users
+		// proposalCategoryRouter := v1.Group("/proposal_categories")
+		// proposalCategoryRouter.GET("/list", proposal.ListAllCategories)
 
-		// Proposal templates router
-		proposalTmplRouter := v1.Group("/proposal_tmpl")
-		proposalTmplRouter.GET("/list", proposal.ListTemplates)
+		// // Proposal templates router
+		// proposalTmplRouter := v1.Group("/proposal_tmpl")
+		// proposalTmplRouter.GET("/list", proposal.ListTemplates)
 
 		// foo routers
 	}
 	// --> auth required
 	{
-		authorizedGroup := v1.Group("/", middleware.AuthRequired)
+		// authorizedGroup := v1.Group("/", middleware.AuthRequired)
 
 		// user routers
-		userGroup := authorizedGroup.Group("/user")
-		userGroup.GET("/me", user.Detail)
-		userGroup.PUT("/me", user.Update)
-		userGroup.POST("/logout", user.Logout)
-		userGroup.POST("/join_metaforo_group", user.JoinMetaforoGroup)
-		userGroup.POST("/leave_metaforo_group", user.LeaveMetaforoGroup)
-		userGroup.POST("/prepare_metaforo", user.PrepareMetaforoData)
-		userGroup.GET("/level", user.UserLvl)
+		// userGroup := authorizedGroup.Group("/user")
+		// userGroup.GET("/me", user.Detail)
+		// userGroup.PUT("/me", user.Update)
+		// userGroup.POST("/logout", user.Logout)
+		// userGroup.POST("/join_metaforo_group", user.JoinMetaforoGroup)
+		// userGroup.POST("/leave_metaforo_group", user.LeaveMetaforoGroup)
+		// userGroup.POST("/prepare_metaforo", user.PrepareMetaforoData)
+		// userGroup.GET("/level", user.UserLvl)
 
 		// project routers
-		projGroup := authorizedGroup.Group("/projects")
-		projGroup.POST("/", project.Create)
-		projGroup.PUT("/:id", project.Update)
-		projGroup.POST("/:id/close", project.Close)
-		projGroup.POST("/:id/update_staffs", project.UpdateStaffs)
-		projGroup.POST("/:id/update_budget", project.UpdateBudget)
-		projGroup.POST("/:id/add_related_proposal", project.AddRelatedProposal)
-		// my projects
-		authorizedGroup.GET("/my_projects", project.MyProjects)
+		// projGroup := authorizedGroup.Group("/projects")
+		// projGroup.POST("/", project.Create)
+		// projGroup.PUT("/:id", project.Update)
+		// projGroup.POST("/:id/close", project.Close)
+		// projGroup.POST("/:id/update_staffs", project.UpdateStaffs)
+		// projGroup.POST("/:id/update_budget", project.UpdateBudget)
+		// projGroup.POST("/:id/add_related_proposal", project.AddRelatedProposal)
+		// // my projects
+		// authorizedGroup.GET("/my_projects", project.MyProjects)
 
 		// guild routers
-		guildGroup := authorizedGroup.Group("/guilds")
-		guildGroup.POST("/", guild.Create)
-		guildGroup.PUT("/:id", guild.Update)
-		guildGroup.POST("/:id/update_staffs", guild.UpdateStaffs)
-		guildGroup.POST("/:id/update_budget", guild.UpdateBudget)
-		guildGroup.POST("/:id/add_related_proposal", guild.AddRelatedProposal)
-		guildGroup.POST("/:id/close", guild.Close)
-		// my guilds
-		authorizedGroup.GET("/my_guilds", guild.MyGuilds)
+		// guildGroup := authorizedGroup.Group("/guilds")
+		// guildGroup.POST("/", guild.Create)
+		// guildGroup.PUT("/:id", guild.Update)
+		// guildGroup.POST("/:id/update_staffs", guild.UpdateStaffs)
+		// guildGroup.POST("/:id/update_budget", guild.UpdateBudget)
+		// guildGroup.POST("/:id/add_related_proposal", guild.AddRelatedProposal)
+		// guildGroup.POST("/:id/close", guild.Close)
+		// // my guilds
+		// authorizedGroup.GET("/my_guilds", guild.MyGuilds)
 
 		// application endpoints
 		// Note: Most NEW_REWARD applications has been moved to app_bundle part
-		applicationGroup := authorizedGroup.Group("/applications")
-		applicationGroup.POST("/", application.Create)
+		// applicationGroup := authorizedGroup.Group("/applications")
+		// applicationGroup.POST("/", application.Create)
 
-		appBundleGroup := authorizedGroup.Group("/app_bundles")
-		appBundleGroup.GET("/available_projects_guilds", app_bundle.ListAvailableProjectsAndGuilds)
-		appBundleGroup.GET("/", app_bundle.ListAppBundle)
-		appBundleGroup.POST("/", app_bundle.CreateAppBundle)
+		// appBundleGroup := authorizedGroup.Group("/app_bundles")
+		// appBundleGroup.GET("/available_projects_guilds", app_bundle.ListAvailableProjectsAndGuilds)
+		// appBundleGroup.GET("/", app_bundle.ListAppBundle)
+		// appBundleGroup.POST("/", app_bundle.CreateAppBundle)
 
-		authorizedGroup.POST("/app_bundle_approve", app_bundle.ApproveAppBundles)
-		authorizedGroup.POST("/app_bundle_reject", app_bundle.RejectAppBundles)
+		// authorizedGroup.POST("/app_bundle_approve", app_bundle.ApproveAppBundles)
+		// authorizedGroup.POST("/app_bundle_reject", app_bundle.RejectAppBundles)
 
-		// batch application routers
-		authorizedGroup.POST("/apps_approve", application.BatchApprove)
-		authorizedGroup.POST("/apps_reject", application.BatchReject)
-		authorizedGroup.POST("/apps_process", application.BatchProcess)
-		authorizedGroup.POST("/apps_complete", application.BatchComplete)
+		// // batch application routers
+		// authorizedGroup.POST("/apps_approve", application.BatchApprove)
+		// authorizedGroup.POST("/apps_reject", application.BatchReject)
+		// authorizedGroup.POST("/apps_process", application.BatchProcess)
+		// authorizedGroup.POST("/apps_complete", application.BatchComplete)
 
-		// Auto transfer SCR application routers
-		authorizedGroup.GET("/scr_tasks/", application.AutoXferTaskList)
-		authorizedGroup.GET("/scr_tasks/:id", application.AutoXferTaskDetail)
-		authorizedGroup.POST("/scr_tasks/:id/cancel", application.CancelAutoXferTask)
+		// // Auto transfer SCR application routers
+		// authorizedGroup.GET("/scr_tasks/", application.AutoXferTaskList)
+		// authorizedGroup.GET("/scr_tasks/:id", application.AutoXferTaskDetail)
+		// authorizedGroup.POST("/scr_tasks/:id/cancel", application.CancelAutoXferTask)
 
 		// SeeDAO assets routers
-		treasuryGroup := authorizedGroup.Group("/treasury")
-		treasuryGroup.POST("/update_assets", treasury.UpdateAssets)
+		// treasuryGroup := authorizedGroup.Group("/treasury")
+		// treasuryGroup.POST("/update_assets", treasury.UpdateAssets)
 
 		// SeeDAO events routers
-		eventsGroup := authorizedGroup.Group("/events")
-		eventsGroup.POST("/", event.Create)
-		eventsGroup.PUT("/:id", event.Update)
-		eventsGroup.DELETE("/:id", event.Delete)
+		// eventsGroup := authorizedGroup.Group("/events")
+		// eventsGroup.POST("/", event.Create)
+		// eventsGroup.PUT("/:id", event.Update)
+		// eventsGroup.DELETE("/:id", event.Delete)
 
-		// my events
-		authorizedGroup.GET("/my_events", event.MyList)
+		// // my events
+		// authorizedGroup.GET("/my_events", event.MyList)
 
 		// permission routers
-		permissionGroup := authorizedGroup.Group("/permission")
-		permissionGroup.POST("/grant_role", permission.GrantRole)
-		permissionGroup.POST("/revoke_role", permission.RevokeRole)
+		// permissionGroup := authorizedGroup.Group("/permission")
+		// permissionGroup.POST("/grant_role", permission.GrantRole)
+		// permissionGroup.POST("/revoke_role", permission.RevokeRole)
 
 		// city hall
-		cityHallGroup := authorizedGroup.Group("/cityhall")
-		cityHallGroup.POST("/update_budget", city_hall.UpdateBudget)
-		cityHallGroup.POST("/update_members", city_hall.UpdateMember)
-		cityHallGroup.POST("/batch_update_members", city_hall.BatchUpdateMembers)
+		// cityHallGroup := authorizedGroup.Group("/cityhall")
+		// cityHallGroup.POST("/update_budget", city_hall.UpdateBudget)
+		// cityHallGroup.POST("/update_members", city_hall.UpdateMember)
+		// cityHallGroup.POST("/batch_update_members", city_hall.BatchUpdateMembers)
 
 		// push routers
-		pushGroup := authorizedGroup.Group("/push")
-		pushGroup.POST("/", push.Create)
-		pushGroup.GET("/", push.List)
+		// pushGroup := authorizedGroup.Group("/push")
+		// pushGroup.POST("/", push.Create)
+		// pushGroup.GET("/", push.List)
 
 		// reward routers
-		rewardsGroup := authorizedGroup.Group("/rewards")
-		rewardsGroup.POST("/approve_mint_reward", rewards.ApproveMintReward)
-		rewardsGroup.POST("/snapshot_seed", rewards.SnapshotSeed)
-		rewardsGroup.POST("/approve_mint_snap_seed", rewards.ApproveMintAndSnapshotSeed)
+		// rewardsGroup := authorizedGroup.Group("/rewards")
+		// rewardsGroup.POST("/approve_mint_reward", rewards.ApproveMintReward)
+		// rewardsGroup.POST("/snapshot_seed", rewards.SnapshotSeed)
+		// rewardsGroup.POST("/approve_mint_snap_seed", rewards.ApproveMintAndSnapshotSeed)
 
-		// proposal routers
-		proposalGroup := authorizedGroup.Group("/proposals")
-		// Save or update proposal to Local DB. If submit flag in post data is true,
-		// the proposal will also be published to Metaforo and convert to Draft state
-		proposalGroup.POST("/create", proposal.Create)
-		proposalGroup.POST("/update/:id", proposal.Update)
-		proposalGroup.POST("/add_comment/:id", proposal.AddComment)
-		proposalGroup.POST("/edit_comment/:id", proposal.EditComment)
-		proposalGroup.POST("/delete_comment/:id", proposal.DeleteComment)
-		proposalGroup.GET("/my", proposal.MyList)
-		proposalGroup.GET("/creating_project_proposals", proposal.GetProposalsUsedForCreatingProjects)
+		// // proposal routers
+		// proposalGroup := authorizedGroup.Group("/proposals")
+		// // Save or update proposal to Local DB. If submit flag in post data is true,
+		// // the proposal will also be published to Metaforo and convert to Draft state
+		// proposalGroup.POST("/create", proposal.Create)
+		// proposalGroup.POST("/update/:id", proposal.Update)
+		// proposalGroup.POST("/add_comment/:id", proposal.AddComment)
+		// proposalGroup.POST("/edit_comment/:id", proposal.EditComment)
+		// proposalGroup.POST("/delete_comment/:id", proposal.DeleteComment)
+		// proposalGroup.GET("/my", proposal.MyList)
+		// proposalGroup.GET("/creating_project_proposals", proposal.GetProposalsUsedForCreatingProjects)
 
-		// State change actions for proposals
-		proposalGroup.POST("/withdraw/:id", proposal.Withdraw)
-		proposalGroup.POST("/approve/:id", proposal.Approve)
-		proposalGroup.POST("/reject/:id", proposal.Reject)
+		// // State change actions for proposals
+		// proposalGroup.POST("/withdraw/:id", proposal.Withdraw)
+		// proposalGroup.POST("/approve/:id", proposal.Approve)
+		// proposalGroup.POST("/reject/:id", proposal.Reject)
 
-		proposalGroup.POST("/can_vote/:id", proposal.CheckVotePermission)
-		proposalGroup.POST("/vote/:id", proposal.CastVote)
-		proposalGroup.POST("/revoke_vote/:id", proposal.RevokeVote)
-		proposalGroup.POST("/close_vote/:id", proposal.CloseVote)
+		// proposalGroup.POST("/can_vote/:id", proposal.CheckVotePermission)
+		// proposalGroup.POST("/vote/:id", proposal.CastVote)
+		// proposalGroup.POST("/revoke_vote/:id", proposal.RevokeVote)
+		// proposalGroup.POST("/close_vote/:id", proposal.CloseVote)
 
-		// Proposal templates router
-		proposalTmplRouter := authorizedGroup.Group("/proposal_tmpl")
-		proposalTmplRouter.GET("/list_with_perm", proposal.ListTemplatesWithPerm)
+		// // Proposal templates router
+		// proposalTmplRouter := authorizedGroup.Group("/proposal_tmpl")
+		// proposalTmplRouter.GET("/list_with_perm", proposal.ListTemplatesWithPerm)
 
-		// List proposal categories
-		proposalCategoryRouter := authorizedGroup.Group("/proposal_categories")
-		proposalCategoryRouter.GET("/list_with_perm", proposal.ListCategoriesWithPerm)
+		// // List proposal categories
+		// proposalCategoryRouter := authorizedGroup.Group("/proposal_categories")
+		// proposalCategoryRouter.GET("/list_with_perm", proposal.ListCategoriesWithPerm)
 
-		// Data services API
-		dataSrv := authorizedGroup.Group("/data_srv")
-		dataSrv.GET("/widget_data", data_srv.WidgetData)
+		// // Data services API
+		// dataSrv := authorizedGroup.Group("/data_srv")
+		// dataSrv.GET("/widget_data", data_srv.WidgetData)
 
 		// SNS invite
-		snsInvite := authorizedGroup.Group("/sns_invite")
-		snsInvite.GET("/my_sns_invite_code", sns_invite.GetMySnsInviteCode)
-		snsInvite.GET("/my_sns_invite_rewards", sns_invite.GetMySnsInviteRewards)
-		snsInvite.POST("/invited_by/:invite_code", sns_invite.SnsInvitedBy)
+		// snsInvite := authorizedGroup.Group("/sns_invite")
+		// snsInvite.GET("/my_sns_invite_code", sns_invite.GetMySnsInviteCode)
+		// snsInvite.GET("/my_sns_invite_rewards", sns_invite.GetMySnsInviteRewards)
+		// snsInvite.POST("/invited_by/:invite_code", sns_invite.SnsInvitedBy)
 	}
 	{
-		adminGroup := r.Group("/admin", middleware.AdminPermissionRequired)
-		proposalTmplAdminRouter := adminGroup.Group("/proposal_tmpl")
-		proposalTmplAdminRouter.POST("/update", proposal.UpdateTemplate)
+		// 	adminGroup := r.Group("/admin", middleware.AdminPermissionRequired)
+		// 	proposalTmplAdminRouter := adminGroup.Group("/proposal_tmpl")
+		// 	proposalTmplAdminRouter.POST("/update", proposal.UpdateTemplate)
 
-		userAdminRouter := adminGroup.Group("/user")
-		userAdminRouter.POST("/check_vote_permission", user.CheckVotePermission)
+		// 	userAdminRouter := adminGroup.Group("/user")
+		// 	userAdminRouter.POST("/check_vote_permission", user.CheckVotePermission)
 
-		// Schedule jobs routers
-		jobsRouter := adminGroup.Group("/jobs")
-		jobsRouter.GET("/list", cron_jobs.List)
+		// 	// Schedule jobs routers
+		// 	jobsRouter := adminGroup.Group("/jobs")
+		// 	jobsRouter.GET("/list", cron_jobs.List)
 
-		// TODO: New tasks required
-		//metaforoRouter := adminGroup.Group("/mf")
-		//metaforoRouter.POST("/update_mf_admin_token", TBD)
-		//metaforoRouter.POST("/sync_perm_group", TBD)
+		// 	// TODO: New tasks required
+		// 	//metaforoRouter := adminGroup.Group("/mf")
+		// 	//metaforoRouter.POST("/update_mf_admin_token", TBD)
+		// 	//metaforoRouter.POST("/sync_perm_group", TBD)
 
-		// Fetch single proposal user vote record
-		adminGroup.POST("/update_proposal_vote_record/:proposal_id", data_srv.FetchSingleProposalUserVoteRecord)
+		// 	// Fetch single proposal user vote record
+		// 	adminGroup.POST("/update_proposal_vote_record/:proposal_id", data_srv.FetchSingleProposalUserVoteRecord)
 	}
 
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
