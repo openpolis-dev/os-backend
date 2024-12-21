@@ -213,7 +213,7 @@ func (c *PublicityController) Update(ctx *gin.Context) {
 	}
 
 	var data *model.Publicity
-	err = c.Db.Model(&model.Publicity{}).Where("id = ? and is_del = 0", id).First(&data).Error
+	err = c.Db.Model(&model.Publicity{}).Where("id = ? and is_del = 0", req.ID).First(&data).Error
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get publicity error")))
 		return
