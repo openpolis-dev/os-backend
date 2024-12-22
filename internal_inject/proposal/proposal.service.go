@@ -686,8 +686,15 @@ func (s *ProposalService) SaveProposalToMetaforo(db *gorm.DB, dbProposalId uint,
 	// Get metaforo proposal detail
 	metaforoProposalResponse, err = metaforo.GetProposal(metaforoThreadId, metaforoGroupName, metaforoAccessToken, 0)
 	if err != nil {
-		log.Error().Msgf("get metaforoProposal %d error: %+v", metaforoThreadId, err)
-		return err
+		if strings.Contains(err.Error(), "not found") {
+			// Metaforo proposal not found, update proposal to deletedFromMetaforo
+			// Code branch for updating proposal to deletedFromMetaforo state doesn't require user and cfg data
+			_, err = s.UpdateProposalStateAndLaunchStateChangeActions(db, nil, strconv.Itoa(int(dbProposalId)), model.ProposalStateDeletedFromMetaforo, nil)
+			return err
+		} else {
+			log.Error().Msgf("get metaforoProposal %d error: %+v", metaforoThreadId, err)
+			return err
+		}
 	}
 
 	err = s.UpdateDbRecordsFromMetaforoProposalResponse(db, updatedProposalRecord.ID, metaforoProposalResponse)
@@ -2611,6 +2618,11 @@ func (s *ProposalService) UpdateProposalStateAndLaunchStateChangeActions(db *gor
 		err = db.Model(&proposalRecord).Where("id = ?", proposalRecord.ID).Update("state", model.ProposalStateExecuted).Error
 		if err != nil {
 			log.Error().Msgf("change proposal to executed error")
+			return 0, err
+		}
+	case model.ProposalStateDeletedFromMetaforo:
+		if err = db.Model(&proposalRecord).Where("id = ?", proposalRecord.ID).Update("state", model.ProposalStateDeletedFromMetaforo).Error; err != nil {
+			log.Error().Msgf("update proposal %d state to deleted_by_metaforo error", proposalRecord.ID)
 			return 0, err
 		}
 	default:
