@@ -103,7 +103,14 @@ func main() {
 		metaforo.UpdateVoteTime(*voteAccessToken, *voteGroup, *voteId, startTs.Unix(), endTs.Unix())
 	case "show":
 		showCommand.Parse(os.Args[2:])
-		proposal, _ := metaforo.GetProposal(*showThreadId, *showGroup, "", 0)
+		proposal, err := metaforo.GetProposal(*showThreadId, *showGroup, "", 0)
+		if err != nil {
+			if strings.Contains(err.Error(), "thread not found") {
+				log.Err(err).Msgf("thread not found, threadId: %d", *showThreadId)
+			} else {
+				panic(err)
+			}
+		}
 		api.PrintStructAsJson(proposal, "")
 	default:
 		fmt.Println("Unknown subcommand:", os.Args[1])
