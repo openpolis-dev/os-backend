@@ -41,6 +41,9 @@ const (
 
 	// ProposalStateDeletedFromMetaforo indicates the proposal has been deleted from metaforo
 	ProposalStateDeletedFromMetaforo
+
+	// ProposalStateUncategorizedMetaforoError indicates other errors returned by metaforo
+	ProposalStateUncategorizedMetaforoError
 )
 
 const (
