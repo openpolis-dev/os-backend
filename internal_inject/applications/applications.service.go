@@ -203,3 +203,20 @@ func (s *ApplicationsService) GetCronJobRecordFromStrId(taskId string) (model.Cr
 
 	return task, nil
 }
+
+func (s *ApplicationsService) SumAssetAmount(ctx *gin.Context, stat string, assetName string, seasonId int) (float64, error) {
+	var value float64
+
+	err := s.Db.Model(&model.Application{}).
+		Select("sum(cast(asset_amount as decimal)) as total").
+		Where("state = ?", stat).Where("asset_name = ?", assetName).
+		Where("season_id = ?", seasonId).
+		Scan(&value).Error
+	if err != nil {
+		log.Error().Msgf("get sum asset amount error: %+v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
+		return 0, err
+	}
+
+	return value, nil
+}
