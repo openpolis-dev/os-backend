@@ -686,18 +686,12 @@ func (s *ProposalService) SaveProposalToMetaforo(db *gorm.DB, dbProposalId uint,
 	// Get metaforo proposal detail
 	metaforoProposalResponse, err = metaforo.GetProposal(metaforoThreadId, metaforoGroupName, metaforoAccessToken, 0)
 	if err != nil {
-		if strings.Contains(err.Error(), "not found") {
-			// Metaforo proposal not found, update proposal to deletedFromMetaforo
-			// Code branch for updating proposal to deletedFromMetaforo state doesn't require user and cfg data
-			_, err = s.UpdateProposalStateAndLaunchStateChangeActions(db, nil, strconv.Itoa(int(dbProposalId)), model.ProposalStateDeletedFromMetaforo, nil)
-			return err
-		} else {
-			log.Error().Msgf("get metaforoProposal %d error: %+v", metaforoThreadId, err)
-			return err
-		}
+		log.Error().Msgf("get metaforoProposal %d error: %+v", metaforoThreadId, err)
+		_ = s.UpdateDbRecordsFromMetaforoProposalResponse(db, updatedProposalRecord.ID, metaforoProposalResponse, err)
+		return err
 	}
 
-	err = s.UpdateDbRecordsFromMetaforoProposalResponse(db, updatedProposalRecord.ID, metaforoProposalResponse)
+	err = s.UpdateDbRecordsFromMetaforoProposalResponse(db, updatedProposalRecord.ID, metaforoProposalResponse, nil)
 	if err != nil {
 		log.Error().Msgf("update db records from metaforoProposalResponse error: %+v", err)
 	}
@@ -907,7 +901,23 @@ func (s *ProposalService) IsUserMetVoteGate(userSeepassData *sdk.SeepassResponse
 	}
 }
 
-func (s *ProposalService) UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcdId uint, metaforoProposal *metaforo.ProposalResponse) error {
+func (s *ProposalService) UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcdId uint, metaforoProposal *metaforo.ProposalResponse, mfError error) error {
+	// Check whether update form metaforo contains error, if yes, update state to metaforo error and return
+	if mfError != nil {
+		log.Error().Msgf("get metaforo proposal error: %+v", mfError)
+		proposalStateForMetaforoError := model.ProposalStateUncategorizedMetaforoError
+		if strings.Contains(mfError.Error(), "not found") {
+			proposalStateForMetaforoError = model.ProposalStateDeletedFromMetaforo
+		}
+
+		if err := db.Model(&model.Proposal{}).Where("id = ?", dbProposalRcdId).Update("state", proposalStateForMetaforoError).Error; err != nil {
+			log.Error().Msgf("update proposal %d state to deleted_by_metaforo error", dbProposalRcdId)
+			return err
+		}
+
+		return nil
+	}
+
 	// Save all version proposals' arweave hash
 	if err := s.UpdateArweaveHashFromMetaforoProposalResponse(db, dbProposalRcdId, metaforoProposal); err != nil {
 		log.Error().Msgf("update arweave hash error: %+v", err)
@@ -2018,17 +2028,19 @@ func (s *ProposalService) ConvertProposalToFrontendDetailRecord(db *gorm.DB, pro
 	if proposal.ProposalRecordId != "" {
 		metaforoProposal, err := metaforo.GetProposal(proposal.GetMetaforoThreadId(), metaforoGroupName, accessToken, startPostId)
 		if err != nil {
+			log.Error().Msgf("get proposal %d from metaforo error: %+v", proposalId, err)
+			_ = s.UpdateDbRecordsFromMetaforoProposalResponse(db, proposalId, metaforoProposal, err)
+			return nil, err
+		}
+
+		err = s.UpdateDbRecordsFromMetaforoProposalResponse(db, proposalId, metaforoProposal, nil)
+		if err != nil {
+			log.Error().Msgf("update proposal %d from metaforo error: %+v", proposalId, err)
 			return nil, err
 		}
 
 		commentCount = metaforoProposal.Thread.PostsCount
 		votes = metaforoProposal.Thread.Polls
-
-		err = s.UpdateDbRecordsFromMetaforoProposalResponse(db, proposalId, metaforoProposal)
-		if err != nil {
-			log.Error().Msgf("update proposal %d from metaforo error: %+v", proposalId, err)
-			return nil, err
-		}
 
 		pollStatusChanged, err := s.UpdateDbVoteOptionRecordsFromMetaforoProposalResponse(db, proposalId, metaforoProposal)
 		if err != nil {
@@ -2218,10 +2230,11 @@ func (s *ProposalService) GetMetaforoProposalByInternalId(db *gorm.DB, proposalI
 	metaforoProposalResponse, err := metaforo.GetProposal(osProposalRcd.GetMetaforoThreadId(), metaforoGroupName, mfAccessToken, 0)
 	if err != nil {
 		log.Error().Msgf("get metaforo proposal error: %+v", err)
+		_ = s.UpdateDbRecordsFromMetaforoProposalResponse(db, osProposalRcd.ID, metaforoProposalResponse, err)
 		return nil, nil, err
 	}
 
-	err = s.UpdateDbRecordsFromMetaforoProposalResponse(db, osProposalRcd.ID, metaforoProposalResponse)
+	err = s.UpdateDbRecordsFromMetaforoProposalResponse(db, osProposalRcd.ID, metaforoProposalResponse, nil)
 	if err != nil {
 		log.Error().Msgf("update db records from metaforoProposalResponse error: %+v", err)
 	}
