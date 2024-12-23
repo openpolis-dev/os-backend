@@ -215,7 +215,7 @@ func (s *ApplicationsService) SumAssetAmount(ctx *gin.Context, stat string, asse
 	if err != nil {
 		log.Error().Msgf("get sum asset amount error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
-		return 0, err
+		return 0, nil
 	}
 
 	return value, nil
