@@ -48,7 +48,7 @@ func Register(fatherGroup *gin.RouterGroup) {
 		publicityGroup = fatherGroup.Group("/publicity")
 		publicityAuthGroup = fatherGroup.Group("/", middleware.AuthRequired).Group("/publicity")
 	} else {
-		publicityGroup = publicity.Gin.Group("/projects")
+		publicityGroup = publicity.Gin.Group("/publicity")
 		publicityAuthGroup = publicity.Gin.Group("/", middleware.AuthRequired).Group("/publicity")
 	}
 
@@ -57,7 +57,7 @@ func Register(fatherGroup *gin.RouterGroup) {
 
 	publicityAuthGroup.POST("/create", publicity.Create)
 	publicityAuthGroup.DELETE("/delete/:id", publicity.Delete)
-	publicityAuthGroup.PUT("/update/:id", publicity.Update)
+	publicityAuthGroup.POST("/update/:id", publicity.Update)
 }
 
 func (c *PublicityController) List(ctx *gin.Context) {
