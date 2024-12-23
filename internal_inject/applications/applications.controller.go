@@ -71,6 +71,7 @@ func Register(fatherGroup *gin.RouterGroup) {
 		applications.Gin.GET("/apps_applicants", applications.ListApplicants)
 		applications.Gin.GET("/download_applications", applications.Download)
 	}
+	applicationsGroup.GET("/assets/statistics", applications.AssetStatistics)
 
 	// auth
 	applicationsAuthGroup.POST("/", applications.Create)
@@ -601,4 +602,80 @@ func (c *ApplicationsController) CancelAutoXferTask(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, api.Success(nil))
+}
+
+func (c *ApplicationsController) AssetStatistics(ctx *gin.Context) {
+	var waitForGrantUsd float64
+	var waitForGrantScr float64
+
+	var grantedUsd float64
+	var grantedScr float64
+
+	var checkingUsd float64
+	var checkingScr float64
+
+	currentSeason, err := model.GetCurrentSeason(c.Db)
+	if err != nil {
+		log.Error().Msgf("fetch current season error: %v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("fetch current season error")))
+		return
+	}
+
+	waitForGrantUsd, err = c.ApplicationsService.SumAssetAmount(ctx, string(model.ApplicationStateOpen), "USD", int(currentSeason.ID))
+	if err != nil {
+		log.Error().Msgf("get sum wait grant usd amount error: %+v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get sum wait grant usd amount error")))
+		return
+	}
+
+	waitForGrantScr, err = c.ApplicationsService.SumAssetAmount(ctx, string(model.ApplicationStateOpen), "SCR", int(currentSeason.ID))
+	if err != nil {
+		log.Error().Msgf("get sum wait grant scr amount error: %+v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get sum wait grant scr amount error")))
+		return
+	}
+
+	grantedUsd, err = c.ApplicationsService.SumAssetAmount(ctx, string(model.ApplicationStateCompleted), "USD", int(currentSeason.ID))
+	if err != nil {
+		log.Error().Msgf("get sum granted usd amount error: %+v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get sum granted usd amount error")))
+		return
+	}
+
+	grantedScr, err = c.ApplicationsService.SumAssetAmount(ctx, string(model.ApplicationStateCompleted), "SCR", int(currentSeason.ID))
+	if err != nil {
+		log.Error().Msgf("get sum granted scr amount error: %+v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get sum granted scr amount error")))
+		return
+	}
+
+	checkingUsd, err = c.ApplicationsService.SumAssetAmount(ctx, string(model.ApplicationStateApproved), "USD", int(currentSeason.ID))
+	if err != nil {
+		log.Error().Msgf("get sum checking usd amount error: %+v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get sum checking usd amount error")))
+		return
+	}
+
+	checkingScr, err = c.ApplicationsService.SumAssetAmount(ctx, string(model.ApplicationStateApproved), "SCR", int(currentSeason.ID))
+	if err != nil {
+		log.Error().Msgf("get sum checking scr amount error: %+v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get sum checking scr amount error")))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, api.Success(&ApplicationAssetStatistic{
+		WaitForGrantUsd: waitForGrantUsd,
+		WaitForGrantScr: waitForGrantScr,
+		GrantedUsd:      grantedUsd,
+		GrantedScr:      grantedScr,
+		CheckingUsd:     checkingUsd,
+		CheckingScr:     checkingScr,
+	}))
 }

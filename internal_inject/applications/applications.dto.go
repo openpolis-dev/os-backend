@@ -34,3 +34,12 @@ type AutoXferTaskListQueryParams struct {
 
 	State string `form:"state"`
 }
+
+type ApplicationAssetStatistic struct {
+	WaitForGrantUsd float64 `json:"wait_for_grant_usd"`
+	WaitForGrantScr float64 `json:"wait_for_grant_scr"`
+	GrantedUsd      float64 `json:"granted_usd"`
+	GrantedScr      float64 `json:"granted_scr"`
+	CheckingUsd     float64 `json:"checking_usd"`
+	CheckingScr     float64 `json:"checking_scr"`
+}
