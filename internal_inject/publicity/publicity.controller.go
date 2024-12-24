@@ -223,9 +223,9 @@ func (c *PublicityController) Update(ctx *gin.Context) {
 		Update("title", req.Title).
 		Update("content", req.Content).
 		Update("update_at", model.GetCurrentUtcEpochSecond()).
-		Update("editor", user.Wallet).Error
+		Update("eidtor", user.Wallet).Error
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create publicity error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("update publicity error")))
 		return
 	}
 
