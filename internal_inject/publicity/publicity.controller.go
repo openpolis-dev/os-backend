@@ -85,7 +85,7 @@ func (c *PublicityController) List(ctx *gin.Context) {
 		return
 	}
 
-	sortKey := "create_time"
+	sortKey := "create_at"
 	order := "desc"
 
 	data, err := model.QueryRows[model.Publicity](querySeg, &gormfind.Page{
