@@ -61,7 +61,7 @@ func (c *DataSrvController) AggrScr(ctx *gin.Context) {
 	currentSeason, err := model.GetCurrentSeason(c.Db)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get current season error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get current season error detail:"+err.Error())))
 		return
 	}
 	log.Debug().Msgf("current season: %+v", currentSeason)
@@ -69,7 +69,7 @@ func (c *DataSrvController) AggrScr(ctx *gin.Context) {
 	mintResult, err := c.DataSrvService.CalcMintRewards(ctx, currentSeason)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("calc mint rewards error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("calc mint rewards error detail:"+err.Error())))
 		return
 	}
 
@@ -100,7 +100,7 @@ func (c *DataSrvController) WidgetData(ctx *gin.Context) {
 	if err != nil {
 		log.Error().Err(err).Msg("casbin error")
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("query user permission error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("query user permission error detail:"+err.Error())))
 		return
 	}
 
@@ -111,7 +111,7 @@ func (c *DataSrvController) WidgetData(ctx *gin.Context) {
 		if err != nil {
 			log.Error().Err(err).Msg("query project list error")
 			sdk.LogServerErrorToSentry(ctx, err)
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("query project list error")))
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("query project list error detail:"+err.Error())))
 			return
 		}
 
@@ -122,7 +122,7 @@ func (c *DataSrvController) WidgetData(ctx *gin.Context) {
 		if err != nil {
 			log.Error().Err(err).Msg("query project list error")
 			sdk.LogServerErrorToSentry(ctx, err)
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("query project list error")))
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("query project list error detail:"+err.Error())))
 			return
 		}
 
@@ -133,7 +133,7 @@ func (c *DataSrvController) WidgetData(ctx *gin.Context) {
 		if err != nil {
 			log.Error().Err(err).Msg("query guild list error")
 			sdk.LogServerErrorToSentry(ctx, err)
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("query guild list error")))
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("query guild list error detail:"+err.Error())))
 			return
 		}
 		ctx.JSON(http.StatusOK, api.Success(rcds))
@@ -148,7 +148,7 @@ func (c *DataSrvController) WidgetData(ctx *gin.Context) {
 		if err != nil {
 			log.Error().Err(err).Msg("query project list error")
 			sdk.LogServerErrorToSentry(ctx, err)
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("query project list error")))
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("query project list error detail:"+err.Error())))
 			return
 		}
 
@@ -160,7 +160,7 @@ func (c *DataSrvController) WidgetData(ctx *gin.Context) {
 		if err != nil {
 			log.Error().Err(err).Msg("query guild list error")
 			sdk.LogServerErrorToSentry(ctx, err)
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("query guild list error")))
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("query guild list error detail:"+err.Error())))
 			return
 		}
 		ctx.JSON(http.StatusOK, api.Success(lo.Union(projectRcds, guildRcds)))
@@ -184,7 +184,7 @@ func (c *DataSrvController) WidgetData(ctx *gin.Context) {
 		if err != nil {
 			log.Error().Err(err).Msg("query passed proposal error")
 			sdk.LogServerErrorToSentry(ctx, err)
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("query passed proposal error")))
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("query passed proposal error detail:"+err.Error())))
 			return
 		}
 		ctx.JSON(http.StatusOK, api.Success(rcds))
@@ -194,7 +194,7 @@ func (c *DataSrvController) WidgetData(ctx *gin.Context) {
 		if err != nil {
 			log.Error().Err(err).Msg("query passed proposal error")
 			sdk.LogServerErrorToSentry(ctx, err)
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("query passed proposal error")))
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("query passed proposal error detail:"+err.Error())))
 			return
 		}
 		ctx.JSON(http.StatusOK, api.Success(rcds))

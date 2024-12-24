@@ -77,14 +77,14 @@ func (c *CityHallController) Info(ctx *gin.Context) {
 
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall record error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall record error detail:"+err.Error())))
 		return
 	}
 
 	budgets, err := model.ProjectBudgetModel.ListByProjectId(c.Db, cityHallProject.ID)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall budget error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall budget error detail:"+err.Error())))
 		return
 	}
 
@@ -96,7 +96,7 @@ func (c *CityHallController) CurrentSeasonNodeList(ctx *gin.Context) {
 	tokenAddr, tokenId, err := model.GetNodeSbtAddrAndId(c.Db)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get node sbt address and id error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get node sbt address and id error detail:"+err.Error())))
 		return
 	}
 
@@ -110,7 +110,7 @@ func (c *CityHallController) CurrentSeasonNodeList(ctx *gin.Context) {
 		currSeason, err := model.GetCurrentSeason(c.Db)
 		if err != nil {
 			sdk.LogServerErrorToSentry(ctx, err)
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get current season error")))
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get current season error detail:"+err.Error())))
 			return
 		}
 		indexerClient := sdk.GetIndexerClient()
@@ -118,14 +118,14 @@ func (c *CityHallController) CurrentSeasonNodeList(ctx *gin.Context) {
 
 		if err != nil {
 			sdk.LogServerErrorToSentry(ctx, err)
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get current season node list error")))
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get current season node list error detail:"+err.Error())))
 			return
 		}
 
 		csNodeBytes, err := json.Marshal(csNodeWallets)
 		if err != nil {
 			sdk.LogServerErrorToSentry(ctx, err)
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("marshal current season node list error")))
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("marshal current season node list error detail:"+err.Error())))
 			return
 		}
 		_ = storage.StoreCachedData(storage.CurrentSeasonNodeCacheKey(tokenAddr, tokenId), csNodeBytes)
@@ -133,7 +133,7 @@ func (c *CityHallController) CurrentSeasonNodeList(ctx *gin.Context) {
 		err = json.Unmarshal(cachedData, &csNodeWallets)
 		if err != nil {
 			sdk.LogServerErrorToSentry(ctx, err)
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("unmarshal current season node list error")))
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("unmarshal current season node list error detail:"+err.Error())))
 			return
 		}
 	}
@@ -147,7 +147,7 @@ func (c *CityHallController) UpdateBudget(ctx *gin.Context) {
 	cityHallProject, err := c.CityHallService.GetOrCreateCityHallProject(c.Db, enforcer)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall record error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall record error detail:"+err.Error())))
 		return
 	}
 
@@ -163,7 +163,7 @@ func (c *CityHallController) UpdateBudget(ctx *gin.Context) {
 	ok, err := enforcer.HasRoleForUser(formattedWallet, internal.RoleHall)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall permission error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall permission error detail:"+err.Error())))
 		return
 	}
 
@@ -201,12 +201,12 @@ func (c *CityHallController) UpdateBudget(ctx *gin.Context) {
 			err = c.Db.Create(&budget).Error
 			if err != nil {
 				sdk.LogServerErrorToSentry(ctx, err)
-				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create cityhall budget error")))
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create cityhall budget error detail:"+err.Error())))
 				return
 			}
 		} else {
 			sdk.LogServerErrorToSentry(ctx, err)
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall budget error")))
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall budget error detail:"+err.Error())))
 			return
 		}
 	}
@@ -219,7 +219,7 @@ func (c *CityHallController) UpdateBudget(ctx *gin.Context) {
 	err = model.ProjectBudgetModel.Update(c.Db, &budget)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("update cityhall budget error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("update cityhall budget error detail:"+err.Error())))
 		return
 	}
 
@@ -233,7 +233,7 @@ func (c *CityHallController) UpdateMember(ctx *gin.Context) {
 	cityHallProject, err := c.CityHallService.GetOrCreateCityHallProject(c.Db, enforcer)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall record error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall record error detail:"+err.Error())))
 		return
 	}
 
@@ -242,7 +242,7 @@ func (c *CityHallController) UpdateMember(ctx *gin.Context) {
 	if err != nil {
 		log.Error().Msgf("check permission error %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall permission error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall permission error detail:"+err.Error())))
 		return
 	}
 
@@ -275,13 +275,13 @@ func (c *CityHallController) UpdateMember(ctx *gin.Context) {
 		return
 	case http.StatusInternalServerError:
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("update cityhall member error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("update cityhall member error detail:"+err.Error())))
 		return
 	case http.StatusOK:
 		budgets, err := model.ProjectBudgetModel.ListByProjectId(c.Db, cityHallProject.ID)
 		if err != nil {
 			sdk.LogServerErrorToSentry(ctx, err)
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall budget error")))
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall budget error detail:"+err.Error())))
 			return
 		}
 
@@ -298,7 +298,7 @@ func (c *CityHallController) BatchUpdateMembers(ctx *gin.Context) {
 	if err != nil {
 		log.Error().Msgf("get cityhall record error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall record error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall record error detail:"+err.Error())))
 		return
 	}
 
@@ -307,7 +307,7 @@ func (c *CityHallController) BatchUpdateMembers(ctx *gin.Context) {
 	if err != nil {
 		log.Error().Msgf("check permission error %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall permission error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall permission error detail:"+err.Error())))
 		return
 	}
 
@@ -338,7 +338,7 @@ func (c *CityHallController) BatchUpdateMembers(ctx *gin.Context) {
 				return
 			case http.StatusInternalServerError:
 				sdk.LogServerErrorToSentry(ctx, err)
-				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("update cityhall member error")))
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("update cityhall member error detail:"+err.Error())))
 				return
 			}
 		}
@@ -347,7 +347,7 @@ func (c *CityHallController) BatchUpdateMembers(ctx *gin.Context) {
 	if err != nil {
 		log.Error().Msgf("get project budget error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall budget error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall budget error detail:"+err.Error())))
 		return
 	}
 

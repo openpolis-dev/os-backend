@@ -90,7 +90,7 @@ func (c *EventsController) Detail(ctx *gin.Context) {
 	eventRecord, err := c.EventsService.GetRecord(c.Db, ctx.Param("id"))
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get event error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get event error detail:"+err.Error())))
 		return
 	}
 	if eventRecord == nil {
@@ -126,7 +126,7 @@ func (c *EventsController) Create(ctx *gin.Context) {
 	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), internal.ObjEvent, internal.ActCreateEvent)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error detail:"+err.Error())))
 		return
 	}
 	if !ok {
@@ -154,12 +154,12 @@ func (c *EventsController) Create(ctx *gin.Context) {
 	startDate, _ := c.EventsService.ParseTimestampStrToTime(req.StartAt)
 	endDate, err := c.EventsService.ParseTimestampStrToTime(req.EndAt)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("invalid start or end date")))
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("invalid start or end date detail:"+err.Error())))
 		return
 	}
 
 	if endDate.Before(startDate) || startDate.Before(time.Now()) || endDate.Before(time.Now()) {
-		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("invalid start or end date")))
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("invalid start or end date detail:"+err.Error())))
 		return
 	}
 
@@ -180,7 +180,7 @@ func (c *EventsController) Create(ctx *gin.Context) {
 	err = c.Db.Create(&eventRecord).Error
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create event error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create event error detail:"+err.Error())))
 	} else {
 		ctx.JSON(http.StatusCreated, api.Success(eventRecord))
 	}
@@ -192,7 +192,7 @@ func (c *EventsController) Update(ctx *gin.Context) {
 	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), internal.ObjEvent, internal.ActCreateEvent)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error detail:"+err.Error())))
 		return
 	}
 	if !ok {
@@ -211,7 +211,7 @@ func (c *EventsController) Update(ctx *gin.Context) {
 	eventRecord, err := c.EventsService.GetRecord(c.Db, ctx.Param("id"))
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get event error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get event error detail:"+err.Error())))
 		return
 	}
 
@@ -221,7 +221,7 @@ func (c *EventsController) Update(ctx *gin.Context) {
 	}
 
 	if eventRecord.StartAt.Before(time.Now()) {
-		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("updating started event is not allowed")))
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("updating started event is not allowed detail:"+err.Error())))
 		return
 	}
 	err = c.EventsService.UpdateEventFromRequest(eventRecord, req)
@@ -252,7 +252,7 @@ func (c *EventsController) Delete(ctx *gin.Context) {
 	err := c.Db.Delete(&eventRecord).Error
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("delete event error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("delete event error detail:"+err.Error())))
 		return
 	}
 	ctx.JSON(http.StatusOK, api.Success(eventRecord))

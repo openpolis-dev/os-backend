@@ -65,7 +65,7 @@ func (s *ApplicationsService) Create(ctx *gin.Context) (httpCode int, reply *api
 				log.Error().Msgf("check permission error: %+v", err)
 				sdk.LogServerErrorToSentry(ctx, err)
 				// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
-				httpCode, reply = http.StatusInternalServerError, api.ServerError(errors.New("check permission error"))
+				httpCode, reply = http.StatusInternalServerError, api.ServerError(errors.New("check permission error detail:"+err.Error()))
 				return err
 			}
 			if !ok {
@@ -129,7 +129,7 @@ func (s *ApplicationsService) Create(ctx *gin.Context) (httpCode int, reply *api
 		if httpCode != 0 {
 			return
 		} else {
-			return http.StatusInternalServerError, api.ServerError(errors.New("creation application records error"))
+			return http.StatusInternalServerError, api.ServerError(errors.New("creation application records error detail:" + err.Error()))
 		}
 	}
 
