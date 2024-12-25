@@ -90,13 +90,13 @@ func (ctrl *UserController) RefreshNonce(ctx *gin.Context) {
 	userNonce, err := model.UserNonceModel.Detail(ctrl.Db, common.FormatUserWallet(req.Wallet))
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("nonce not found")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("nonce not found detail:"+err.Error())))
 		return
 	}
 
 	err = ctrl.UserSrv.RefreshNonce(ctx, req.Wallet, userNonce)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("update nonce error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("update nonce error detail:"+err.Error())))
 		return
 	}
 
@@ -124,7 +124,7 @@ func (ctrl *UserController) Users(ctx *gin.Context) {
 	users, err := model.UserModel.List(ctrl.Db, wallets)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("query users error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("query users error detail:"+err.Error())))
 		return
 	}
 
@@ -200,7 +200,7 @@ func (ctrl *UserController) GetFrountedPermission(ctx *gin.Context) {
 	err := encoder.Encode(m)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("query frontend permission error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("query frontend permission error detail:"+err.Error())))
 		return
 	}
 
@@ -227,7 +227,7 @@ func (ctrl *UserController) MetaforoActivities(ctx *gin.Context) {
 		if err != nil {
 			log.Error().Msgf("parse size error: %+v", err)
 			sdk.LogServerErrorToSentry(ctx, err)
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("parse size error")))
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("parse size error detail:"+err.Error())))
 			return
 		}
 	}
@@ -240,7 +240,7 @@ func (ctrl *UserController) MetaforoActivities(ctx *gin.Context) {
 	if err != nil {
 		log.Error().Msgf("get metaforo activities error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get activities error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get activities error detail:"+err.Error())))
 		return
 	}
 
@@ -264,7 +264,7 @@ func (ctrl *UserController) MetaforoActivities(ctx *gin.Context) {
 	if err != nil {
 		log.Error().Msgf("get proposal error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get proposal error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get proposal error detail:"+err.Error())))
 		return
 	}
 
@@ -277,7 +277,7 @@ func (ctrl *UserController) MetaforoActivities(ctx *gin.Context) {
 	if err != nil {
 		log.Error().Msgf("get os user error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get os user error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get os user error detail:"+err.Error())))
 		return
 	}
 
@@ -345,7 +345,7 @@ func (ctrl *UserController) Detail(ctx *gin.Context) {
 	u, err := model.UserModel.Detail(ctrl.Db, user.Wallet)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("user not found")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("user not found detail:"+err.Error())))
 		return
 	}
 	if u == nil {
@@ -405,7 +405,7 @@ func (ctrl *UserController) JoinMetaforoGroup(ctx *gin.Context) {
 	if err != nil {
 		log.Error().Msgf("join group error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("join group error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("join group error detail:"+err.Error())))
 		return
 	}
 
@@ -426,7 +426,7 @@ func (ctrl *UserController) LeaveMetaforoGroup(ctx *gin.Context) {
 	if err != nil {
 		log.Error().Msgf("leave group error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("leave group error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("leave group error detail:"+err.Error())))
 		return
 	}
 
@@ -450,7 +450,7 @@ func (ctrl *UserController) PrepareMetaforoData(ctx *gin.Context) {
 	if err != nil {
 		log.Error().Msgf("serialize metaforo user group info error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("processing user info error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("processing user info error detail:"+err.Error())))
 		return
 	}
 
@@ -466,7 +466,7 @@ func (ctrl *UserController) PrepareMetaforoData(ctx *gin.Context) {
 	if err != nil {
 		log.Error().Msgf("update metaforo user error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("update user info error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("update user info error detail:"+err.Error())))
 		return
 	}
 
@@ -474,7 +474,7 @@ func (ctrl *UserController) PrepareMetaforoData(ctx *gin.Context) {
 	if err != nil {
 		log.Error().Msgf("join group error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("join group error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("join group error detail:"+err.Error())))
 		return
 	}
 
@@ -499,7 +499,7 @@ func (ctrl *UserController) UserLvl(ctx *gin.Context) {
 	_, err = model.UserModel.Detail(ctrl.Db, user.Wallet)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("user not found")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("user not found detail:"+err.Error())))
 		return
 	}
 

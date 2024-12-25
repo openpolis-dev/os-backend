@@ -81,7 +81,7 @@ func (c *PublicityController) List(ctx *gin.Context) {
 	total, err := gormfind.Count(querySeg)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("list projects error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("list projects error detail:"+err.Error())))
 		return
 	}
 
@@ -96,7 +96,7 @@ func (c *PublicityController) List(ctx *gin.Context) {
 	})
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("list projects error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("list projects error detail:"+err.Error())))
 		return
 	}
 
@@ -119,7 +119,7 @@ func (c *PublicityController) Detail(ctx *gin.Context) {
 	var data *model.Publicity
 	err = c.Db.Model(&model.Publicity{}).Where("id = ? and is_del = 0", id).First(&data).Error
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get publicity error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get publicity error detail:"+err.Error())))
 		return
 	}
 
@@ -142,7 +142,7 @@ func (c *PublicityController) Create(ctx *gin.Context) {
 	ok, err := enforcer.HasRoleForUser(user.Wallet, internal.RoleHall)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall permission error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall permission error detail:"+err.Error())))
 		return
 	}
 
@@ -162,7 +162,7 @@ func (c *PublicityController) Create(ctx *gin.Context) {
 		Eidtor:   user.Wallet,
 	}).Error
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create publicity error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create publicity error detail:"+err.Error())))
 		return
 	}
 
@@ -179,7 +179,7 @@ func (c *PublicityController) Delete(ctx *gin.Context) {
 
 	err = c.Db.Model(&model.Publicity{}).Where("id = ?", id).Update("is_del", 1).Error
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("delete publicity error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("delete publicity error detail:"+err.Error())))
 		return
 	}
 
@@ -202,7 +202,7 @@ func (c *PublicityController) Update(ctx *gin.Context) {
 	ok, err := enforcer.HasRoleForUser(user.Wallet, internal.RoleHall)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall permission error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall permission error detail:"+err.Error())))
 		return
 	}
 
@@ -215,7 +215,7 @@ func (c *PublicityController) Update(ctx *gin.Context) {
 	var data *model.Publicity
 	err = c.Db.Model(&model.Publicity{}).Where("id = ? and is_del = 0", req.ID).First(&data).Error
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get publicity error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get publicity error detail:"+err.Error())))
 		return
 	}
 
@@ -225,7 +225,7 @@ func (c *PublicityController) Update(ctx *gin.Context) {
 		Update("update_at", model.GetCurrentUtcEpochSecond()).
 		Update("eidtor", user.Wallet).Error
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("update publicity error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("update publicity error detail:"+err.Error())))
 		return
 	}
 

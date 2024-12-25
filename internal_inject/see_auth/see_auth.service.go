@@ -30,7 +30,7 @@ func (s *SeeAuthService) SeeAuthNonce(ctx *gin.Context, wallet string) (int, *ap
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("nonce not found")))
-		return http.StatusInternalServerError, api.ServerError(errors.New("nonce not found"))
+		return http.StatusInternalServerError, api.ServerError(errors.New("nonce not found detail:" + err.Error()))
 	}
 
 	// new nonce and refreshAt
@@ -46,7 +46,7 @@ func (s *SeeAuthService) SeeAuthNonce(ctx *gin.Context, wallet string) (int, *ap
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("update nonce error")))
-		return http.StatusInternalServerError, api.ServerError(errors.New("update nonce error"))
+		return http.StatusInternalServerError, api.ServerError(errors.New("update nonce error detail:" + err.Error()))
 	}
 
 	return http.StatusOK, api.Success(&RefreshNonceReply{Nonce: nonce})
@@ -57,11 +57,11 @@ func (s *SeeAuthService) LoginWithSeeAuth(ctx *gin.Context, req *seeauth.SeeLogi
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("nonce not found")))
-		return http.StatusInternalServerError, api.ServerError(errors.New("nonce not found"))
+		return http.StatusInternalServerError, api.ServerError(errors.New("nonce not found detail:" + err.Error()))
 	}
 	if userNonce == nil {
 		// ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("please refresh nonce firstly")))
-		return http.StatusBadRequest, api.BadRequest(errors.New("please refresh nonce firstly"))
+		return http.StatusBadRequest, api.BadRequest(errors.New("please refresh nonce firstly detail:" + err.Error()))
 	}
 
 	seeAuthPk, err := model.GetSeeAuthPk(s.Db)
@@ -98,7 +98,7 @@ func (s *SeeAuthService) LoginWithSeeAuth(ctx *gin.Context, req *seeauth.SeeLogi
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("user not found")))
-		return http.StatusInternalServerError, api.ServerError(errors.New("user not found"))
+		return http.StatusInternalServerError, api.ServerError(errors.New("user not found detail:" + err.Error()))
 	}
 	if user == nil {
 		user = &model.User{
@@ -108,7 +108,7 @@ func (s *SeeAuthService) LoginWithSeeAuth(ctx *gin.Context, req *seeauth.SeeLogi
 		if err != nil {
 			sdk.LogServerErrorToSentry(ctx, err)
 			// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("failed to create user")))
-			return http.StatusInternalServerError, api.ServerError(errors.New("failed to create user"))
+			return http.StatusInternalServerError, api.ServerError(errors.New("failed to create user detail:" + err.Error()))
 		}
 	}
 
@@ -123,7 +123,7 @@ func (s *SeeAuthService) LoginWithSeeAuth(ctx *gin.Context, req *seeauth.SeeLogi
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("failed to generate jwt token")))
-		return http.StatusInternalServerError, api.ServerError(errors.New("failed to generate jwt token"))
+		return http.StatusInternalServerError, api.ServerError(errors.New("failed to generate jwt token detail:" + err.Error()))
 	}
 
 	return http.StatusOK, api.Success(&LoginWithSeeAuthReply{

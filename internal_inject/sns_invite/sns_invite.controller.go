@@ -58,7 +58,7 @@ func (c *SnsInviteController) GetMySnsInviteCode(ctx *gin.Context) {
 	inviteCode, err := service.GetMySnsInviteCode(c.Db, user.Wallet)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get my invite code error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get my invite code error detail:"+err.Error())))
 		return
 	}
 
@@ -71,7 +71,7 @@ func (c *SnsInviteController) GetMySnsInviteRewards(ctx *gin.Context) {
 	inviteCount, totalRewards, err := service.GetMySnsInviteRewards(c.Db, user.Wallet)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get my invite rewards error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get my invite rewards error detail:"+err.Error())))
 		return
 	}
 
@@ -95,7 +95,7 @@ func (c *SnsInviteController) SnsInvitedBy(ctx *gin.Context) {
 	}
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("sns invited by error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("sns invited by error detail:"+err.Error())))
 		return
 	}
 

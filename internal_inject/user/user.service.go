@@ -72,9 +72,9 @@ func (u *UserService) Login(ctx *gin.Context, req *LoginReq) (int, *api.Reply) {
 			sdk.LogServerErrorToSentry(ctx, err)
 			// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("nonce not found")))
 			httpCode = http.StatusInternalServerError
-			reply = api.ServerError(errors.New("nonce not found"))
+			reply = api.ServerError(errors.New("nonce not found detail:" + err.Error()))
 
-			return errors.New("nonce not found")
+			return errors.New("nonce not found detail:" + err.Error())
 		}
 		if userNonce == nil {
 			// ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("please refresh nonce firstly")))
@@ -115,9 +115,9 @@ func (u *UserService) Login(ctx *gin.Context, req *LoginReq) (int, *api.Reply) {
 				sdk.LogServerErrorToSentry(ctx, err)
 				// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("failed to connect to polygon rpc")))
 				httpCode = http.StatusInternalServerError
-				reply = api.ServerError(errors.New("failed to connect to polygon rpc"))
+				reply = api.ServerError(errors.New("failed to connect to polygon rpc detail:" + err.Error()))
 
-				return errors.New("failed to connect to polygon rpc")
+				return errors.New("failed to connect to polygon rpc detail:" + err.Error())
 			}
 
 			// get AA's bytecode
@@ -126,9 +126,9 @@ func (u *UserService) Login(ctx *gin.Context, req *LoginReq) (int, *api.Reply) {
 				sdk.LogServerErrorToSentry(ctx, err)
 				// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("failed to get bytecode")))
 				httpCode = http.StatusInternalServerError
-				reply = api.ServerError(errors.New("failed to get bytecode"))
+				reply = api.ServerError(errors.New("failed to get bytecode detail:" + err.Error()))
 
-				return errors.New("failed to get bytecode")
+				return errors.New("failed to get bytecode detail:" + err.Error())
 			}
 			// if bytecode is not empty, means the wallet has deployed
 			// 2023/12/04: only verify signature when AA is deployed!
@@ -142,9 +142,9 @@ func (u *UserService) Login(ctx *gin.Context, req *LoginReq) (int, *api.Reply) {
 					sdk.LogServerErrorToSentry(ctx, err)
 					// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("failed to verify signature")))
 					httpCode = http.StatusInternalServerError
-					reply = api.ServerError(errors.New("failed to verify signature"))
+					reply = api.ServerError(errors.New("failed to verify signature detail:" + err.Error()))
 
-					return errors.New("failed to verify signature")
+					return errors.New("failed to verify signature detail:" + err.Error())
 				}
 				if !ok {
 					// ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("signature not match")))
@@ -164,9 +164,9 @@ func (u *UserService) Login(ctx *gin.Context, req *LoginReq) (int, *api.Reply) {
 			sdk.LogServerErrorToSentry(ctx, err)
 			// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("user not found")))
 			httpCode = http.StatusInternalServerError
-			reply = api.ServerError(errors.New("user not found"))
+			reply = api.ServerError(errors.New("user not found detail:" + err.Error()))
 
-			return errors.New("user not found")
+			return errors.New("user not found detail:" + err.Error())
 		}
 		if user == nil {
 			user = &model.User{
@@ -177,9 +177,9 @@ func (u *UserService) Login(ctx *gin.Context, req *LoginReq) (int, *api.Reply) {
 				sdk.LogServerErrorToSentry(ctx, err)
 				// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("failed to create user")))
 				httpCode = http.StatusInternalServerError
-				reply = api.ServerError(errors.New("failed to create user"))
+				reply = api.ServerError(errors.New("failed to create user detail:" + err.Error()))
 
-				return errors.New("failed to create user")
+				return errors.New("failed to create user detail:" + err.Error())
 			}
 		}
 
@@ -195,9 +195,9 @@ func (u *UserService) Login(ctx *gin.Context, req *LoginReq) (int, *api.Reply) {
 			sdk.LogServerErrorToSentry(ctx, err)
 			// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("failed to generate jwt token")))
 			httpCode = http.StatusInternalServerError
-			reply = api.ServerError(errors.New("failed to generate jwt token"))
+			reply = api.ServerError(errors.New("failed to generate jwt token detail:" + err.Error()))
 
-			return errors.New("failed to generate jwt token")
+			return errors.New("failed to generate jwt token detail:" + err.Error())
 		}
 
 		httpCode = http.StatusOK
@@ -219,7 +219,7 @@ func (u *UserService) Update(ctx *gin.Context, user *middleware.CurUser, req *Up
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("user not found")))
-		return http.StatusInternalServerError, api.ServerError(errors.New("user not found"))
+		return http.StatusInternalServerError, api.ServerError(errors.New("user not found detail:" + err.Error()))
 	}
 	if u == nil {
 		// ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("user %s not found", user.Wallet)))
@@ -242,7 +242,7 @@ func (u *UserService) Update(ctx *gin.Context, user *middleware.CurUser, req *Up
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("upload avatar error")))
-		return http.StatusInternalServerError, api.ServerError(errors.New("upload avatar error"))
+		return http.StatusInternalServerError, api.ServerError(errors.New("upload avatar error detail:" + err.Error()))
 	}
 	userM.Avatar = avatarUrl
 
@@ -250,7 +250,7 @@ func (u *UserService) Update(ctx *gin.Context, user *middleware.CurUser, req *Up
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("update user error")))
-		return http.StatusInternalServerError, api.ServerError(errors.New("update user error"))
+		return http.StatusInternalServerError, api.ServerError(errors.New("update user error detail:" + err.Error()))
 	}
 
 	sppClient := sdk.GetSppClient()

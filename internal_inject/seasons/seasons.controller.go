@@ -57,7 +57,7 @@ func (c *SeasonsController) List(ctx *gin.Context) {
 
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get seasons error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get seasons error detail:"+err.Error())))
 	}
 
 	resp := lo.Map(seasonRcds, func(seasonRcd *model.Season, _ int) *SeasonResponse {
@@ -75,7 +75,7 @@ func (c *SeasonsController) Current(ctx *gin.Context) {
 	currSeason, err := model.GetCurrentSeason(c.Db)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get current season error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get current season error detail:"+err.Error())))
 		return
 	}
 	ctx.JSON(http.StatusOK, api.Success(&SeasonResponse{
