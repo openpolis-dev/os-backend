@@ -52,12 +52,62 @@ func Register(fatherGroup *gin.RouterGroup) {
 		publicityAuthGroup = publicity.Gin.Group("/", middleware.AuthRequired).Group("/publicity")
 	}
 
+	publicityGroup.GET("/public", publicity.Public)
+
 	publicityGroup.GET("/list", publicity.List)
 	publicityGroup.GET("/detail/:id", publicity.Detail)
 
 	publicityAuthGroup.POST("/create", publicity.Create)
 	publicityAuthGroup.DELETE("/delete/:id", publicity.Delete)
 	publicityAuthGroup.POST("/update/:id", publicity.Update)
+}
+
+func (c *PublicityController) Public(ctx *gin.Context) {
+	pageParam := ctx.Query("page")
+	sizeParam := ctx.Query("size")
+
+	page, err := strconv.Atoi(pageParam)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
+		return
+	}
+
+	size, err := strconv.Atoi(sizeParam)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
+		return
+	}
+
+	querySeg := c.Db.Raw("select p.id, p.creator, p.content, p.create_at, p.is_del, p.is_draft, p.season, p.title, p.update_at, u.avatar from publicities as p join users as u on p.creator = u.wallet where p.is_del = 0 and p.is_draft = 0")
+
+	total, err := gormfind.Count(querySeg)
+	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("list projects error")))
+		return
+	}
+
+	sortKey := "p.create_at"
+	order := "desc"
+
+	data, err := model.QueryRows[PublicityInfo](querySeg, &gormfind.Page{
+		Page:      page,
+		Size:      size,
+		SortField: &sortKey,
+		Order:     &order,
+	})
+	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("list projects error")))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, api.Success(api.ListReplyData{
+		Page:  page,
+		Size:  size,
+		Total: total,
+		Rows:  data,
+	}))
 }
 
 func (c *PublicityController) List(ctx *gin.Context) {
@@ -76,7 +126,7 @@ func (c *PublicityController) List(ctx *gin.Context) {
 		return
 	}
 
-	querySeg := c.Db.Table("publicities")
+	querySeg := c.Db.Raw("select p.id, p.creator, p.content, p.create_at, p.is_del, p.is_draft, p.season, p.title, p.update_at, u.avatar from publicities as p join users as u on p.creator = u.wallet")
 
 	total, err := gormfind.Count(querySeg)
 	if err != nil {
@@ -85,10 +135,10 @@ func (c *PublicityController) List(ctx *gin.Context) {
 		return
 	}
 
-	sortKey := "create_at"
+	sortKey := "p.create_at asc, p.id"
 	order := "desc"
 
-	data, err := model.QueryRows[model.Publicity](querySeg, &gormfind.Page{
+	data, err := model.QueryRows[PublicityInfo](querySeg, &gormfind.Page{
 		Page:      page,
 		Size:      size,
 		SortField: &sortKey,
@@ -116,14 +166,26 @@ func (c *PublicityController) Detail(ctx *gin.Context) {
 		return
 	}
 
-	var data *model.Publicity
-	err = c.Db.Model(&model.Publicity{}).Where("id = ?", id).First(&data).Error
+	var data *PublicityInfo
+	err = c.Db.Raw("select p.id, p.creator, p.content, p.create_at, p.is_del, p.is_draft, p.season, p.title, p.update_at, u.avatar from publicities as p join users as u on p.creator = u.wallet").
+		Where("id = ?", id).First(&data).Error
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get publicity error")))
 		return
 	}
 
-	ctx.JSON(http.StatusOK, api.Success(data))
+	var logs []*PublicityLogInfo
+	err = c.Db.Raw("select p.id, p.eidtor, p.publicity_id, p.update_at, u.avatar from publicity_logs as p join users as u on p.eidtor = u.wallet").
+		Where("p.publicity_id = ?", id).Find(&logs).Error
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get publicity logs error")))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, api.Success(&PublicityDetail{
+		Detail: data,
+		Log:    logs,
+	}))
 }
 
 func (c *PublicityController) Create(ctx *gin.Context) {
@@ -208,7 +270,7 @@ func (c *PublicityController) Create(ctx *gin.Context) {
 			err = c.Db.Model(&model.Publicity{}).Where("id = ? and is_del = 0 and is_draft = 1", req.ID).
 				Update("title", req.Title).
 				Update("content", req.Content).
-				Update("IsDraft", 0).
+				Update("is_draft", 0).
 				Update("update_at", model.GetCurrentUtcEpochSecond()).
 				Update("create_at", model.GetCurrentUtcEpochSecond()).
 				Update("creator", user.Wallet).
