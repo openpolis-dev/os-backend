@@ -2,6 +2,7 @@ package publicity_inject
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -78,7 +79,10 @@ func (c *PublicityController) Public(ctx *gin.Context) {
 		return
 	}
 
-	querySeg := c.Db.Raw("select p.id, p.creator, p.content, p.create_at, p.is_del, p.is_draft, p.season, p.title, p.update_at, u.avatar from publicities as p join users as u on p.creator = u.wallet where p.is_del = 0 and p.is_draft = 0")
+	sqlStr := "select p.id, p.creator, p.content, p.create_at, p.is_del, p.is_draft, p.season, p.title, p.update_at, u.avatar from publicities as p join users as u on p.creator = u.wallet where p.is_del = 0 and p.is_draft = 0"
+	sqlStr += " order by p.create_at desc" + fmt.Sprintf(" limit %d offset %d", size, (page-1)*size)
+
+	querySeg := c.Db.Raw(sqlStr)
 	totalQuerySeg := c.Db.Table("publicities").Where("is_del = 0 and is_draft = 0")
 	total, err := gormfind.Count(totalQuerySeg)
 	if err != nil {
@@ -137,6 +141,8 @@ func (c *PublicityController) List(ctx *gin.Context) {
 	} else if typeParam == "del" {
 		sqlStr += " where p.is_del = 1"
 	}
+
+	sqlStr += " order by p.update_at desc" + fmt.Sprintf(" limit %d offset %d", size, (page-1)*size)
 
 	querySeg := c.Db.Raw(sqlStr)
 	totalQuerySeg := c.Db.Table("publicities")
