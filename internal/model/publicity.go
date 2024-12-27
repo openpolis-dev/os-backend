@@ -8,5 +8,13 @@ type Publicity struct {
 	Creator  string `json:"creator"`
 	UpdateAt int64  `json:"updateAt"`
 	IsDel    int    `json:"isDel"`
-	Eidtor   string `json:"editor"`
+	Season   int    `json:"season"`
+	IsDraft  int    `json:"isDraft"`
+}
+
+type PublicityLog struct {
+	ID          uint   `json:"id" gorm:"primaryKey"`
+	PublicityID uint   `json:"publicityId" gorm:"index"`
+	UpdateAt    int64  `json:"updateAt" gorm:"index"`
+	Eidtor      string `json:"eidtor"`
 }

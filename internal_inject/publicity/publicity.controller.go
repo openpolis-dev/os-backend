@@ -52,12 +52,62 @@ func Register(fatherGroup *gin.RouterGroup) {
 		publicityAuthGroup = publicity.Gin.Group("/", middleware.AuthRequired).Group("/publicity")
 	}
 
+	publicityGroup.GET("/public", publicity.Public)
+
 	publicityGroup.GET("/list", publicity.List)
 	publicityGroup.GET("/detail/:id", publicity.Detail)
 
 	publicityAuthGroup.POST("/create", publicity.Create)
 	publicityAuthGroup.DELETE("/delete/:id", publicity.Delete)
 	publicityAuthGroup.POST("/update/:id", publicity.Update)
+}
+
+func (c *PublicityController) Public(ctx *gin.Context) {
+	pageParam := ctx.Query("page")
+	sizeParam := ctx.Query("size")
+
+	page, err := strconv.Atoi(pageParam)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
+		return
+	}
+
+	size, err := strconv.Atoi(sizeParam)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
+		return
+	}
+
+	querySeg := c.Db.Raw("select p.id, p.creator, p.content, p.create_at, p.is_del, p.is_draft, p.season, p.title, p.update_at, u.avatar from publicities as p join users as u on p.creator = u.wallet where p.is_del = 0 and p.is_draft = 0")
+
+	total, err := gormfind.Count(querySeg)
+	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("list projects error")))
+		return
+	}
+
+	sortKey := "p.create_at"
+	order := "desc"
+
+	data, err := model.QueryRows[PublicityInfo](querySeg, &gormfind.Page{
+		Page:      page,
+		Size:      size,
+		SortField: &sortKey,
+		Order:     &order,
+	})
+	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("list projects error")))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, api.Success(api.ListReplyData{
+		Page:  page,
+		Size:  size,
+		Total: total,
+		Rows:  data,
+	}))
 }
 
 func (c *PublicityController) List(ctx *gin.Context) {
@@ -76,7 +126,7 @@ func (c *PublicityController) List(ctx *gin.Context) {
 		return
 	}
 
-	querySeg := c.Db.Table("publicities").Where("is_del = 0")
+	querySeg := c.Db.Raw("select p.id, p.creator, p.content, p.create_at, p.is_del, p.is_draft, p.season, p.title, p.update_at, u.avatar from publicities as p join users as u on p.creator = u.wallet")
 
 	total, err := gormfind.Count(querySeg)
 	if err != nil {
@@ -85,10 +135,10 @@ func (c *PublicityController) List(ctx *gin.Context) {
 		return
 	}
 
-	sortKey := "create_at"
+	sortKey := "p.create_at asc, p.update_at"
 	order := "desc"
 
-	data, err := model.QueryRows[model.Publicity](querySeg, &gormfind.Page{
+	data, err := model.QueryRows[PublicityInfo](querySeg, &gormfind.Page{
 		Page:      page,
 		Size:      size,
 		SortField: &sortKey,
@@ -116,14 +166,26 @@ func (c *PublicityController) Detail(ctx *gin.Context) {
 		return
 	}
 
-	var data *model.Publicity
-	err = c.Db.Model(&model.Publicity{}).Where("id = ? and is_del = 0", id).First(&data).Error
+	var data *PublicityInfo
+	err = c.Db.Raw("select p.id, p.creator, p.content, p.create_at, p.is_del, p.is_draft, p.season, p.title, p.update_at, u.avatar from publicities as p join users as u on p.creator = u.wallet").
+		Where("id = ?", id).First(&data).Error
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get publicity error")))
 		return
 	}
 
-	ctx.JSON(http.StatusOK, api.Success(data))
+	var logs []*PublicityLogInfo
+	err = c.Db.Raw("select p.id, p.eidtor, p.publicity_id, p.update_at, u.avatar from publicity_logs as p join users as u on p.eidtor = u.wallet").
+		Where("p.publicity_id = ?", id).Find(&logs).Error
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get publicity logs error")))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, api.Success(&PublicityDetail{
+		Detail: data,
+		Log:    logs,
+	}))
 }
 
 func (c *PublicityController) Create(ctx *gin.Context) {
@@ -152,18 +214,88 @@ func (c *PublicityController) Create(ctx *gin.Context) {
 		return
 	}
 
-	err = c.Db.Model(&model.Publicity{}).Create(&model.Publicity{
-		Title:    req.Title,
-		Content:  req.Content,
-		CreateAt: model.GetCurrentUtcEpochSecond(),
-		Creator:  user.Wallet,
-		UpdateAt: model.GetCurrentUtcEpochSecond(),
-		IsDel:    0,
-		Eidtor:   user.Wallet,
-	}).Error
+	currentSeason, err := model.GetCurrentSeason(c.Db)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create publicity error")))
+		log.Error().Msgf("fetch current season error: %v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("fetch current season error")))
 		return
+	}
+
+	if req.IsSaveDraft {
+
+		if req.ID > 0 {
+			var data *model.Publicity
+			err = c.Db.Model(&model.Publicity{}).Where("id = ? and is_del = 0 and is_draft = 1", req.ID).First(&data).Error
+			if err != nil {
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get publicity error")))
+				return
+			}
+
+			err = c.Db.Model(&model.Publicity{}).Where("id = ? and is_del = 0 and is_draft = 1", req.ID).
+				Update("title", req.Title).
+				Update("content", req.Content).
+				Update("update_at", model.GetCurrentUtcEpochSecond()).
+				Update("creator", user.Wallet).Error
+			if err != nil {
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("save publicity error")))
+				return
+			}
+
+		} else {
+			err = c.Db.Model(&model.Publicity{}).Create(&model.Publicity{
+				Title:    req.Title,
+				Content:  req.Content,
+				CreateAt: 0,
+				Creator:  user.Wallet,
+				UpdateAt: model.GetCurrentUtcEpochSecond(),
+				IsDel:    0,
+				IsDraft:  1,
+			}).Error
+			if err != nil {
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("save publicity error")))
+				return
+			}
+		}
+
+	} else {
+		if req.ID > 0 {
+			var data *model.Publicity
+			err = c.Db.Model(&model.Publicity{}).Where("id = ? and is_del = 0 and is_draft = 1", req.ID).First(&data).Error
+			if err != nil {
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get publicity error")))
+				return
+			}
+
+			err = c.Db.Model(&model.Publicity{}).Where("id = ? and is_del = 0 and is_draft = 1", req.ID).
+				Update("title", req.Title).
+				Update("content", req.Content).
+				Update("is_draft", 0).
+				Update("update_at", model.GetCurrentUtcEpochSecond()).
+				Update("create_at", model.GetCurrentUtcEpochSecond()).
+				Update("creator", user.Wallet).
+				Update("season", int(currentSeason.Idx)).Error
+			if err != nil {
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("save publicity error")))
+				return
+			}
+
+		} else {
+			err = c.Db.Model(&model.Publicity{}).Create(&model.Publicity{
+				Title:    req.Title,
+				Content:  req.Content,
+				CreateAt: model.GetCurrentUtcEpochSecond(),
+				Creator:  user.Wallet,
+				UpdateAt: model.GetCurrentUtcEpochSecond(),
+				IsDel:    0,
+				Season:   int(currentSeason.Idx),
+				IsDraft:  0,
+			}).Error
+			if err != nil {
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create publicity error")))
+				return
+			}
+		}
 	}
 
 	ctx.JSON(http.StatusOK, api.Success(nil))
@@ -177,7 +309,31 @@ func (c *PublicityController) Delete(ctx *gin.Context) {
 		return
 	}
 
-	err = c.Db.Model(&model.Publicity{}).Where("id = ?", id).Update("is_del", 1).Error
+	user, enforcer, _, _ := api.ForContext(ctx)
+
+	//  check permission
+	ok, err := enforcer.HasRoleForUser(user.Wallet, internal.RoleHall)
+	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall permission error")))
+		return
+	}
+
+	if !ok {
+		sdk.LogForbiddenError(ctx, user.Wallet, internal.RoleHall, "access")
+		ctx.JSON(http.StatusForbidden, api.Forbidden())
+		return
+	}
+
+	currentSeason, err := model.GetCurrentSeason(c.Db)
+	if err != nil {
+		log.Error().Msgf("fetch current season error: %v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("fetch current season error")))
+		return
+	}
+
+	err = c.Db.Model(&model.Publicity{}).Where("id = ? and season = ? and is_del = 0", id, currentSeason.Idx).Update("is_del", 1).Error
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("delete publicity error")))
 		return
@@ -212,9 +368,18 @@ func (c *PublicityController) Update(ctx *gin.Context) {
 		return
 	}
 
-	var data *model.Publicity
-	err = c.Db.Model(&model.Publicity{}).Where("id = ? and is_del = 0", req.ID).First(&data).Error
+	currentSeason, err := model.GetCurrentSeason(c.Db)
 	if err != nil {
+		log.Error().Msgf("fetch current season error: %v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("fetch current season error")))
+		return
+	}
+
+	var data *model.Publicity
+	err = c.Db.Model(&model.Publicity{}).Where("id = ? and is_del = 0 and season = ?", req.ID, currentSeason.Idx).First(&data).Error
+	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get publicity error")))
 		return
 	}
@@ -222,11 +387,20 @@ func (c *PublicityController) Update(ctx *gin.Context) {
 	err = c.Db.Model(data).
 		Update("title", req.Title).
 		Update("content", req.Content).
-		Update("update_at", model.GetCurrentUtcEpochSecond()).
-		Update("eidtor", user.Wallet).Error
+		Update("update_at", model.GetCurrentUtcEpochSecond()).Error
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("update publicity error")))
 		return
+	} else {
+		err = c.Db.Model(&model.PublicityLog{}).Create(&model.PublicityLog{
+			UpdateAt:    model.GetCurrentUtcEpochSecond(),
+			Eidtor:      user.Wallet,
+			PublicityID: data.ID,
+		}).Error
+		if err != nil {
+			log.Error().Msgf("add publicity editor log error: %v", err)
+			sdk.LogServerErrorToSentry(ctx, err)
+		}
 	}
 
 	ctx.JSON(http.StatusOK, api.Success(nil))

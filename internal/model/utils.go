@@ -464,5 +464,6 @@ func MigrateTables(db *gorm.DB) error {
 		&SnsInviteCode{},
 		&SnsInviteRecord{},
 		&Publicity{},
+		&PublicityLog{},
 	)
 }
