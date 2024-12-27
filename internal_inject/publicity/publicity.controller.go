@@ -167,16 +167,14 @@ func (c *PublicityController) Detail(ctx *gin.Context) {
 	}
 
 	var data *PublicityInfo
-	err = c.Db.Raw("select p.id, p.creator, p.content, p.create_at, p.is_del, p.is_draft, p.season, p.title, p.update_at, u.avatar from publicities as p join users as u on p.creator = u.wallet").
-		Where("p.id = ?", id).First(&data).Error
+	err = c.Db.Raw("select p.id, p.creator, p.content, p.create_at, p.is_del, p.is_draft, p.season, p.title, p.update_at, u.avatar from publicities as p join users as u on p.creator = u.wallet where p.id = ?", id).First(&data).Error
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get publicity error")))
 		return
 	}
 
 	var logs []*PublicityLogInfo
-	err = c.Db.Raw("select p.id, p.eidtor, p.publicity_id, p.update_at, u.avatar from publicity_logs as p join users as u on p.eidtor = u.wallet").
-		Where("p.publicity_id = ?", id).Find(&logs).Error
+	err = c.Db.Raw("select p.id, p.eidtor, p.publicity_id, p.update_at, u.avatar from publicity_logs as p join users as u on p.eidtor = u.wallet where p.publicity_id = ?", id).Find(&logs).Error
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get publicity logs error")))
 		return
