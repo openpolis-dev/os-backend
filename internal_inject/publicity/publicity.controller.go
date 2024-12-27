@@ -87,21 +87,18 @@ func (c *PublicityController) Public(ctx *gin.Context) {
 		return
 	}
 
-	// sortKey := "p.create_at"
-	// order := "desc"
+	sortKey := "p.create_at"
+	order := "desc"
 
-	// data, err := model.QueryRows[PublicityInfo](querySeg, &gormfind.Page{
-	// 	Page:      page,
-	// 	Size:      size,
-	// 	SortField: &sortKey,
-	// 	Order:     &order,
-	// })
-
-	var resultRows []*PublicityInfo
-	err = querySeg.Order("p.create_at desc").Offset(page * (page - 1)).Limit(size).Find(&resultRows).Error
+	data, err := model.QueryRows[PublicityInfo](querySeg, &gormfind.Page{
+		Page:      page,
+		Size:      size,
+		SortField: &sortKey,
+		Order:     &order,
+	})
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("public list projects error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("list projects error")))
 		return
 	}
 
@@ -109,7 +106,7 @@ func (c *PublicityController) Public(ctx *gin.Context) {
 		Page:  page,
 		Size:  size,
 		Total: total,
-		Rows:  resultRows,
+		Rows:  data,
 	}))
 }
 
@@ -138,18 +135,15 @@ func (c *PublicityController) List(ctx *gin.Context) {
 		return
 	}
 
-	// sortKey := "p.create_at asc, p.update_at"
-	// order := "desc"
+	sortKey := "p.create_at asc, p.update_at"
+	order := "desc"
 
-	// data, err := model.QueryRows[PublicityInfo](querySeg, &gormfind.Page{
-	// 	Page:      page,
-	// 	Size:      size,
-	// 	SortField: &sortKey,
-	// 	Order:     &order,
-	// })
-
-	var resultRows []*PublicityInfo
-	err = querySeg.Order("p.create_at asc, p.update_at desc").Offset(page * (page - 1)).Limit(size).Find(&resultRows).Error
+	data, err := model.QueryRows[PublicityInfo](querySeg, &gormfind.Page{
+		Page:      page,
+		Size:      size,
+		SortField: &sortKey,
+		Order:     &order,
+	})
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("list projects error")))
@@ -160,7 +154,7 @@ func (c *PublicityController) List(ctx *gin.Context) {
 		Page:  page,
 		Size:  size,
 		Total: total,
-		Rows:  resultRows,
+		Rows:  data,
 	}))
 }
 
