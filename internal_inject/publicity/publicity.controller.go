@@ -243,10 +243,12 @@ func (c *PublicityController) Create(ctx *gin.Context) {
 			}
 
 			err = c.Db.Model(&model.Publicity{}).Where("id = ? and is_del = 0 and is_draft = 1", req.ID).
-				Update("title", req.Title).
-				Update("content", req.Content).
-				Update("update_at", model.GetCurrentUtcEpochSecond()).
-				Update("creator", user.Wallet).Error
+				Updates(&model.Publicity{
+					Title:    req.Title,
+					Content:  req.Content,
+					UpdateAt: model.GetCurrentUtcEpochSecond(),
+					Creator:  user.Wallet,
+				}).Error
 			if err != nil {
 				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("save publicity error")))
 				return
@@ -278,13 +280,16 @@ func (c *PublicityController) Create(ctx *gin.Context) {
 			}
 
 			err = c.Db.Model(&model.Publicity{}).Where("id = ? and is_del = 0 and is_draft = 1", req.ID).
-				Update("title", req.Title).
-				Update("content", req.Content).
-				Update("is_draft", 0).
-				Update("update_at", model.GetCurrentUtcEpochSecond()).
-				Update("create_at", model.GetCurrentUtcEpochSecond()).
-				Update("creator", user.Wallet).
-				Update("season", int(currentSeason.Idx)).Error
+				Updates(&model.Publicity{
+					Title:    req.Title,
+					Content:  req.Content,
+					CreateAt: model.GetCurrentUtcEpochSecond(),
+					Creator:  user.Wallet,
+					UpdateAt: model.GetCurrentUtcEpochSecond(),
+					IsDel:    0,
+					Season:   int(currentSeason.Idx),
+					IsDraft:  0,
+				}).Error
 			if err != nil {
 				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("save publicity error")))
 				return
@@ -389,24 +394,17 @@ func (c *PublicityController) Update(ctx *gin.Context) {
 	var data *model.Publicity
 	err = c.Db.Model(&model.Publicity{}).Where("id = ? and is_del = 0 and season = ?", req.ID, currentSeason.Idx).First(&data).Error
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			err = c.Db.Model(&model.Publicity{}).Where("id = ? and is_draft = 1", req.ID, currentSeason.Idx).First(&data).Error
-			if err != nil {
-				sdk.LogServerErrorToSentry(ctx, err)
-				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get publicity error")))
-				return
-			}
-		} else {
-			sdk.LogServerErrorToSentry(ctx, err)
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get publicity error")))
-			return
-		}
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get publicity error")))
+		return
 	}
 
 	err = c.Db.Model(data).
-		Update("title", req.Title).
-		Update("content", req.Content).
-		Update("update_at", model.GetCurrentUtcEpochSecond()).Error
+		Updates(&model.Publicity{
+			Title:    req.Title,
+			Content:  req.Content,
+			UpdateAt: model.GetCurrentUtcEpochSecond(),
+		}).Error
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("update publicity error")))
 		return
