@@ -168,7 +168,7 @@ func (c *PublicityController) Detail(ctx *gin.Context) {
 
 	var data *PublicityInfo
 	err = c.Db.Raw("select p.id, p.creator, p.content, p.create_at, p.is_del, p.is_draft, p.season, p.title, p.update_at, u.avatar from publicities as p join users as u on p.creator = u.wallet").
-		Where("id = ?", id).First(&data).Error
+		Where("p.id = ?", id).First(&data).Error
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get publicity error")))
 		return
