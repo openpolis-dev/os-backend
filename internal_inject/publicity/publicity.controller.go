@@ -114,6 +114,8 @@ func (c *PublicityController) List(ctx *gin.Context) {
 	pageParam := ctx.Query("page")
 	sizeParam := ctx.Query("size")
 
+	typeParam := ctx.Query("type")
+
 	page, err := strconv.Atoi(pageParam)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
@@ -126,7 +128,17 @@ func (c *PublicityController) List(ctx *gin.Context) {
 		return
 	}
 
-	querySeg := c.Db.Raw("select p.id, p.creator, p.content, p.create_at, p.is_del, p.is_draft, p.season, p.title, p.update_at, u.avatar from publicities as p join users as u on p.creator = u.wallet")
+	sqlStr := "select p.id, p.creator, p.content, p.create_at, p.is_del, p.is_draft, p.season, p.title, p.update_at, u.avatar from publicities as p join users as u on p.creator = u.wallet"
+
+	if typeParam == "list" {
+		sqlStr += " where p.is_del = 0 and p.is_draft = 0"
+	} else if typeParam == "unlist" {
+		sqlStr += " where p.is_del = 0 and p.is_draft = 1"
+	} else if typeParam == "del" {
+		sqlStr += " where p.is_del = 1"
+	}
+
+	querySeg := c.Db.Raw(sqlStr)
 	totalQuerySeg := c.Db.Table("publicities")
 	total, err := gormfind.Count(totalQuerySeg)
 	if err != nil {
@@ -331,7 +343,7 @@ func (c *PublicityController) Delete(ctx *gin.Context) {
 		return
 	}
 
-	err = c.Db.Model(&model.Publicity{}).Where("id = ? and season = ? and is_del = 0", id, currentSeason.Idx).Update("is_del", 1).Error
+	err = c.Db.Model(&model.Publicity{}).Where("id = ? and (season = ? or is_draft = 1) and is_del = 0", id, currentSeason.Idx).Update("is_del", 1).Error
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("delete publicity error")))
 		return
@@ -377,9 +389,18 @@ func (c *PublicityController) Update(ctx *gin.Context) {
 	var data *model.Publicity
 	err = c.Db.Model(&model.Publicity{}).Where("id = ? and is_del = 0 and season = ?", req.ID, currentSeason.Idx).First(&data).Error
 	if err != nil {
-		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get publicity error")))
-		return
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			err = c.Db.Model(&model.Publicity{}).Where("id = ? and is_draft = 1", req.ID, currentSeason.Idx).First(&data).Error
+			if err != nil {
+				sdk.LogServerErrorToSentry(ctx, err)
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get publicity error")))
+				return
+			}
+		} else {
+			sdk.LogServerErrorToSentry(ctx, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get publicity error")))
+			return
+		}
 	}
 
 	err = c.Db.Model(data).
