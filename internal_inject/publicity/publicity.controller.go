@@ -286,15 +286,14 @@ func (c *PublicityController) Create(ctx *gin.Context) {
 			}
 
 			err = c.Db.Model(&model.Publicity{}).Where("id = ? and is_del = 0 and is_draft = 1", req.ID).
-				Updates(&model.Publicity{
-					Title:    req.Title,
-					Content:  req.Content,
-					CreateAt: model.GetCurrentUtcEpochSecond(),
-					Creator:  user.Wallet,
-					UpdateAt: model.GetCurrentUtcEpochSecond(),
-					IsDel:    0,
-					Season:   int(currentSeason.Idx),
-					IsDraft:  0,
+				Updates(map[string]interface{}{
+					"title":     req.Title,
+					"content":   req.Content,
+					"update_at": model.GetCurrentUtcEpochSecond(),
+					"creator":   user.Wallet,
+					"is_draft":  0,
+					"create_at": model.GetCurrentUtcEpochSecond(),
+					"season":    int(currentSeason.Idx),
 				}).Error
 			if err != nil {
 				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("save publicity error")))
