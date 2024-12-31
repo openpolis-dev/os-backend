@@ -72,7 +72,7 @@ func (c *AppBundlesController) ListAvailableProjectsAndGuilds(ctx *gin.Context) 
 	ok, err := enforcer.HasRoleForUser(common.FormatUserWallet(user.Wallet), internal.RoleHall)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("check permission error detail:"+err.Error())))
 		return
 	}
 
@@ -83,28 +83,28 @@ func (c *AppBundlesController) ListAvailableProjectsAndGuilds(ctx *gin.Context) 
 		guilds, _, err = model.GuildModel.List(c.Db, nil)
 		if err != nil {
 			sdk.LogServerErrorToSentry(ctx, err)
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("list guilds error detail:"+err.Error())))
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("list guilds error")))
 			return
 		}
 
 		projects, _, err = model.ProjectModel.List(c.Db, "open,close_failed", nil, true)
 		if err != nil {
 			sdk.LogServerErrorToSentry(ctx, err)
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("list projects error detail:"+err.Error())))
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("list projects error")))
 			return
 		}
 	} else {
 		guilds, _, err = model.GuildModel.ListBySponsor(c.Db, common.FormatUserWallet(user.Wallet), nil)
 		if err != nil {
 			sdk.LogServerErrorToSentry(ctx, err)
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("list guilds error detail:"+err.Error())))
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("list guilds error")))
 			return
 		}
 
 		projects, _, err = model.ProjectModel.ListBySponsor(c.Db, common.FormatUserWallet(user.Wallet), "open", nil, false)
 		if err != nil {
 			sdk.LogServerErrorToSentry(ctx, err)
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("list projects error detail:"+err.Error())))
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("list projects error")))
 			return
 		}
 	}
@@ -113,7 +113,7 @@ func (c *AppBundlesController) ListAvailableProjectsAndGuilds(ctx *gin.Context) 
 	err = c.Db.Model(&model.CommonBudgetSource{}).Find(&commonBudgetSources).Error
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("list common budget sources error detail:"+err.Error())))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("list common budget sources error")))
 		return
 	}
 
@@ -135,7 +135,7 @@ func (c *AppBundlesController) ListAppBundle(ctx *gin.Context) {
 	appBundleRecords, total, err := model.QueryAppBundleRecords(c.Db, &queryParams)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("query result error detail:"+err.Error())))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("query result error")))
 		return
 	}
 

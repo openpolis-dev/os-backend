@@ -72,14 +72,14 @@ func (c *CommonBudgetSourcesController) List(ctx *gin.Context) {
 	total, err := gormfind.Count(querySeg)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("list guilds error detail:"+err.Error())))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("list guilds error")))
 		return
 	}
 
 	commonBudgetSources, err := model.QueryRows[model.CommonBudgetSource](querySeg, page)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("list guilds error detail:"+err.Error())))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("list guilds error")))
 		return
 	}
 

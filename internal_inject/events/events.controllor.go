@@ -90,7 +90,7 @@ func (c *EventsController) Detail(ctx *gin.Context) {
 	eventRecord, err := c.EventsService.GetRecord(c.Db, ctx.Param("id"))
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get event error detail:"+err.Error())))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get event error")))
 		return
 	}
 	if eventRecord == nil {
@@ -126,7 +126,7 @@ func (c *EventsController) Create(ctx *gin.Context) {
 	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), internal.ObjEvent, internal.ActCreateEvent)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error detail:"+err.Error())))
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("check permission error detail:"+err.Error())))
 		return
 	}
 	if !ok {
@@ -192,7 +192,7 @@ func (c *EventsController) Update(ctx *gin.Context) {
 	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), internal.ObjEvent, internal.ActCreateEvent)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error detail:"+err.Error())))
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("check permission error detail:"+err.Error())))
 		return
 	}
 	if !ok {
@@ -211,7 +211,7 @@ func (c *EventsController) Update(ctx *gin.Context) {
 	eventRecord, err := c.EventsService.GetRecord(c.Db, ctx.Param("id"))
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get event error detail:"+err.Error())))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get event error")))
 		return
 	}
 
@@ -221,7 +221,7 @@ func (c *EventsController) Update(ctx *gin.Context) {
 	}
 
 	if eventRecord.StartAt.Before(time.Now()) {
-		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("updating started event is not allowed detail:"+err.Error())))
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("updating started event is not allowed")))
 		return
 	}
 	err = c.EventsService.UpdateEventFromRequest(eventRecord, req)

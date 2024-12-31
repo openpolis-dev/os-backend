@@ -91,7 +91,7 @@ func (c *GuildsController) List(ctx *gin.Context) {
 	guilds, total, err := model.GuildModel.ListWithSearch(c.Db, k, w, page)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("list guilds error detail:"+err.Error())))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("list guilds error")))
 		return
 	}
 
@@ -118,7 +118,7 @@ func (c *GuildsController) Detail(ctx *gin.Context) {
 	guild, err := model.GuildModel.Detail(db, uint(id))
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get guild error detail:"+err.Error())))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get guild error")))
 		return
 	}
 	if guild == nil {
@@ -129,7 +129,7 @@ func (c *GuildsController) Detail(ctx *gin.Context) {
 	budgets, err := model.GuildBudgetModel.ListByGuildId(db, guild.ID)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get guild budgets error detail:"+err.Error())))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get guild budgets error")))
 		return
 	}
 
@@ -160,7 +160,7 @@ func (c *GuildsController) ShowBudgets(ctx *gin.Context) {
 	budgets, err := model.GuildBudgetModel.ListByGuildId(db, uint(id))
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get project budgets error detail:"+err.Error())))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get project budgets error")))
 		return
 	}
 
@@ -276,7 +276,7 @@ func (c *GuildsController) MyGuilds(ctx *gin.Context) {
 	guilds, total, err := model.GuildModel.ListBySponsorOrMember(c.Db, common.FormatUserWallet(user.Wallet), page)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("list guilds error detail:"+err.Error())))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("list guilds error")))
 		return
 	}
 

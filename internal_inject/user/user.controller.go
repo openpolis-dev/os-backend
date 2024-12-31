@@ -90,7 +90,7 @@ func (ctrl *UserController) RefreshNonce(ctx *gin.Context) {
 	userNonce, err := model.UserNonceModel.Detail(ctrl.Db, common.FormatUserWallet(req.Wallet))
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("nonce not found detail:"+err.Error())))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("nonce not found")))
 		return
 	}
 
@@ -124,7 +124,7 @@ func (ctrl *UserController) Users(ctx *gin.Context) {
 	users, err := model.UserModel.List(ctrl.Db, wallets)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("query users error detail:"+err.Error())))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("query users error")))
 		return
 	}
 
@@ -227,7 +227,7 @@ func (ctrl *UserController) MetaforoActivities(ctx *gin.Context) {
 		if err != nil {
 			log.Error().Msgf("parse size error: %+v", err)
 			sdk.LogServerErrorToSentry(ctx, err)
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("parse size error detail:"+err.Error())))
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("parse size error")))
 			return
 		}
 	}
@@ -240,7 +240,7 @@ func (ctrl *UserController) MetaforoActivities(ctx *gin.Context) {
 	if err != nil {
 		log.Error().Msgf("get metaforo activities error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get activities error detail:"+err.Error())))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get activities error")))
 		return
 	}
 
@@ -264,7 +264,7 @@ func (ctrl *UserController) MetaforoActivities(ctx *gin.Context) {
 	if err != nil {
 		log.Error().Msgf("get proposal error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get proposal error detail:"+err.Error())))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get proposal error")))
 		return
 	}
 
@@ -277,7 +277,7 @@ func (ctrl *UserController) MetaforoActivities(ctx *gin.Context) {
 	if err != nil {
 		log.Error().Msgf("get os user error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get os user error detail:"+err.Error())))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get os user error")))
 		return
 	}
 
@@ -345,7 +345,7 @@ func (ctrl *UserController) Detail(ctx *gin.Context) {
 	u, err := model.UserModel.Detail(ctrl.Db, user.Wallet)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("user not found detail:"+err.Error())))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("user not found")))
 		return
 	}
 	if u == nil {
@@ -499,7 +499,7 @@ func (ctrl *UserController) UserLvl(ctx *gin.Context) {
 	_, err = model.UserModel.Detail(ctrl.Db, user.Wallet)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("user not found detail:"+err.Error())))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("user not found")))
 		return
 	}
 

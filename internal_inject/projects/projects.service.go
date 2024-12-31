@@ -50,7 +50,7 @@ func (s *ProjectsService) Create(ctx *gin.Context, req *CreateReq) (int, *api.Re
 		log.Error().Msgf("check permission error %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
 		// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall permission error")))
-		return http.StatusInternalServerError, api.ServerError(errors.New("get cityhall permission error detail:" + err.Error()))
+		return http.StatusBadRequest, api.BadRequest(errors.New("get cityhall permission error detail:" + err.Error()))
 	}
 
 	if !ok {
@@ -170,7 +170,7 @@ func (s *ProjectsService) Update(ctx *gin.Context, id int, req *UpdateReq) (int,
 		log.Error().Msgf("get project error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
 		// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get project error")))
-		return http.StatusInternalServerError, api.ServerError(errors.New("get project error detail:" + err.Error()))
+		return http.StatusInternalServerError, api.ServerError(errors.New("get project error"))
 	}
 
 	if proj == nil {
@@ -186,7 +186,7 @@ func (s *ProjectsService) Update(ctx *gin.Context, id int, req *UpdateReq) (int,
 		log.Error().Msgf("check permission error %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
 		// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall permission error")))
-		return http.StatusInternalServerError, api.ServerError(errors.New("get cityhall permission error detail:" + err.Error()))
+		return http.StatusBadRequest, api.BadRequest(errors.New("get cityhall permission error detail:" + err.Error()))
 	}
 
 	requesterHasCityHallPerm := ok
@@ -303,7 +303,7 @@ func (s *ProjectsService) Close(ctx *gin.Context, id int) (int, *api.Reply) {
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
-		return http.StatusInternalServerError, api.ServerError(errors.New("check permission error detail:" + err.Error()))
+		return http.StatusBadRequest, api.BadRequest(errors.New("check permission error detail:" + err.Error()))
 	}
 	if !ok {
 		sdk.LogForbiddenError(ctx, user.Wallet, internal.ObjProj, internal.ActClose)
@@ -315,7 +315,7 @@ func (s *ProjectsService) Close(ctx *gin.Context, id int) (int, *api.Reply) {
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get project error")))
-		return http.StatusInternalServerError, api.ServerError(errors.New("get project error detail:" + err.Error()))
+		return http.StatusInternalServerError, api.ServerError(errors.New("get project error"))
 	}
 	if project == nil {
 		// ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("project %d not exist", id)))
@@ -370,7 +370,7 @@ func (s *ProjectsService) UpdateStaffs(ctx *gin.Context, id int, req *UpdateStaf
 		if err != nil {
 			sdk.LogServerErrorToSentry(ctx, err)
 			// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
-			return http.StatusInternalServerError, api.ServerError(errors.New("check permission error detail:" + err.Error()))
+			return http.StatusBadRequest, api.BadRequest(errors.New("check permission error detail:" + err.Error()))
 		}
 		if !ok {
 			sdk.LogForbiddenError(ctx, user.Wallet, permObject, internal.ActUpdateSponsor)
@@ -384,7 +384,7 @@ func (s *ProjectsService) UpdateStaffs(ctx *gin.Context, id int, req *UpdateStaf
 		if err != nil {
 			sdk.LogServerErrorToSentry(ctx, err)
 			// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
-			return http.StatusInternalServerError, api.ServerError(errors.New("check permission error detail:" + err.Error()))
+			return http.StatusBadRequest, api.BadRequest(errors.New("check permission error detail:" + err.Error()))
 		}
 		if !ok {
 			sdk.LogForbiddenError(ctx, user.Wallet, permObject, internal.ActUpdateMember)
@@ -405,7 +405,7 @@ func (s *ProjectsService) UpdateStaffs(ctx *gin.Context, id int, req *UpdateStaf
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get project error")))
-		return http.StatusInternalServerError, api.ServerError(errors.New("get project error detail:" + err.Error()))
+		return http.StatusInternalServerError, api.ServerError(errors.New("get project error"))
 	}
 	if proj == nil {
 		// ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("project %d not exist", id)))
@@ -602,7 +602,7 @@ func (s *ProjectsService) UpdateBudget(ctx *gin.Context, id int, req *UpdateBudg
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
-		return http.StatusInternalServerError, api.ServerError(errors.New("check permission error detail:" + err.Error()))
+		return http.StatusBadRequest, api.BadRequest(errors.New("check permission error detail:" + err.Error()))
 	}
 	if !ok {
 		sdk.LogForbiddenError(ctx, user.Wallet, permObject, internal.ActUpdateBudget)
@@ -614,7 +614,7 @@ func (s *ProjectsService) UpdateBudget(ctx *gin.Context, id int, req *UpdateBudg
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get project error")))
-		return http.StatusInternalServerError, api.ServerError(errors.New("get project error detail:" + err.Error()))
+		return http.StatusInternalServerError, api.ServerError(errors.New("get project error"))
 	}
 	if proj == nil {
 		// ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("project %d not exist", id)))
@@ -631,7 +631,7 @@ func (s *ProjectsService) UpdateBudget(ctx *gin.Context, id int, req *UpdateBudg
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get project budget error")))
-		return http.StatusInternalServerError, api.ServerError(errors.New("get project budget error detail:" + err.Error()))
+		return http.StatusInternalServerError, api.ServerError(errors.New("get project budget error"))
 	}
 
 	// update `TotalAmount`
@@ -643,7 +643,7 @@ func (s *ProjectsService) UpdateBudget(ctx *gin.Context, id int, req *UpdateBudg
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("update project budget error")))
-		return http.StatusInternalServerError, api.ServerError(errors.New("update project budget error detail:" + err.Error()))
+		return http.StatusInternalServerError, api.ServerError(errors.New("update project budget error"))
 	}
 
 	// ctx.JSON(http.StatusOK, api.Success(nil))
@@ -658,7 +658,7 @@ func (s *ProjectsService) AddRelatedProposal(ctx *gin.Context, id int, proposalI
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
-		return http.StatusInternalServerError, api.ServerError(errors.New("check permission error detail:" + err.Error()))
+		return http.StatusBadRequest, api.BadRequest(errors.New("check permission error detail:" + err.Error()))
 	}
 	if !ok {
 		sdk.LogForbiddenError(ctx, user.Wallet, permObject, internal.ActModify)
@@ -670,7 +670,7 @@ func (s *ProjectsService) AddRelatedProposal(ctx *gin.Context, id int, proposalI
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get project error")))
-		return http.StatusInternalServerError, api.ServerError(errors.New("get project error detail:" + err.Error()))
+		return http.StatusInternalServerError, api.ServerError(errors.New("get project error"))
 	}
 	if proj == nil {
 		// ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("project %d not exist", id)))

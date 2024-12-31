@@ -29,7 +29,7 @@ func (s *TreasuryService) UpdateAssets(ctx *gin.Context) (int, *api.Reply) {
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
-		return http.StatusInternalServerError, api.ServerError(errors.New("check permission error detail:" + err.Error()))
+		return http.StatusBadRequest, api.BadRequest(errors.New("check permission error detail:" + err.Error()))
 	}
 	if !ok {
 		sdk.LogForbiddenError(ctx, user.Wallet, internal.ObjTreasury, internal.ActUpdateAssertBudget)

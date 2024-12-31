@@ -33,7 +33,7 @@ func (s *GuildsService) Close(ctx *gin.Context, id int) (int, *api.Reply) {
 		log.Error().Msgf("check permission error %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
 		// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall permission error")))
-		return http.StatusInternalServerError, api.ServerError(errors.New("get cityhall permission error detail:" + err.Error()))
+		return http.StatusBadRequest, api.BadRequest(errors.New("get cityhall permission error detail:" + err.Error()))
 	}
 
 	if !ok {
@@ -47,7 +47,7 @@ func (s *GuildsService) Close(ctx *gin.Context, id int) (int, *api.Reply) {
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get guild error")))
-		return http.StatusInternalServerError, api.ServerError(errors.New("get guild error detail:" + err.Error()))
+		return http.StatusInternalServerError, api.ServerError(errors.New("get guild error"))
 	}
 	if guild == nil {
 		// ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("guild %d not exist", id)))
@@ -98,7 +98,7 @@ func (s *GuildsService) Create(ctx *gin.Context, req *CreateReq) (int, *api.Repl
 		log.Error().Msgf("check permission error %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
 		// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall permission error")))
-		return http.StatusInternalServerError, api.ServerError(errors.New("get cityhall permission error detail:" + err.Error()))
+		return http.StatusBadRequest, api.BadRequest(errors.New("get cityhall permission error detail:" + err.Error()))
 	}
 
 	if !ok {
@@ -186,7 +186,7 @@ func (s *GuildsService) Update(ctx *gin.Context, id int, req *UpdateReq) (int, *
 		log.Error().Msgf("check permission error %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
 		// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall permission error")))
-		return http.StatusInternalServerError, api.ServerError(errors.New("get cityhall permission error detail:" + err.Error()))
+		return http.StatusBadRequest, api.BadRequest(errors.New("get cityhall permission error detail:" + err.Error()))
 	}
 
 	if !ok {
@@ -200,7 +200,7 @@ func (s *GuildsService) Update(ctx *gin.Context, id int, req *UpdateReq) (int, *
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get guild error")))
-		return http.StatusInternalServerError, api.ServerError(errors.New("get guild error detail:" + err.Error()))
+		return http.StatusInternalServerError, api.ServerError(errors.New("get guild error"))
 	}
 	if guild == nil {
 		// ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("guild %d not exist", id)))
@@ -281,7 +281,7 @@ func (s *GuildsService) UpdateStaffs(ctx *gin.Context, id int, req *UpdateStaffs
 		if err != nil {
 			sdk.LogServerErrorToSentry(ctx, err)
 			// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("list guilds error")))
-			return http.StatusInternalServerError, api.ServerError(errors.New("list guilds error detail:" + err.Error()))
+			return http.StatusInternalServerError, api.ServerError(errors.New("list guilds error"))
 		}
 		if !ok {
 			sdk.LogForbiddenError(ctx, user.Wallet, permObject, internal.ActUpdateSponsor)
@@ -295,7 +295,7 @@ func (s *GuildsService) UpdateStaffs(ctx *gin.Context, id int, req *UpdateStaffs
 		if err != nil {
 			sdk.LogServerErrorToSentry(ctx, err)
 			// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("list guilds error")))
-			return http.StatusInternalServerError, api.ServerError(errors.New("list guilds error detail:" + err.Error()))
+			return http.StatusInternalServerError, api.ServerError(errors.New("list guilds error"))
 		}
 		if !ok {
 			sdk.LogForbiddenError(ctx, user.Wallet, permObject, internal.ActUpdateMember)
@@ -316,7 +316,7 @@ func (s *GuildsService) UpdateStaffs(ctx *gin.Context, id int, req *UpdateStaffs
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get guild error")))
-		return http.StatusInternalServerError, api.ServerError(errors.New("get guild error detail:" + err.Error()))
+		return http.StatusInternalServerError, api.ServerError(errors.New("get guild error"))
 	}
 	if guild == nil {
 		// ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("guild %d not exist", id)))
@@ -509,7 +509,7 @@ func (s *GuildsService) UpdateBudget(ctx *gin.Context, id int, req *UpdateBudget
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
-		return http.StatusInternalServerError, api.ServerError(errors.New("check permission error detail:" + err.Error()))
+		return http.StatusBadRequest, api.BadRequest(errors.New("check permission error detail:" + err.Error()))
 	}
 	if !ok {
 		sdk.LogForbiddenError(ctx, user.Wallet, permObject, internal.ActModify)
@@ -521,7 +521,7 @@ func (s *GuildsService) UpdateBudget(ctx *gin.Context, id int, req *UpdateBudget
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get guild budget error")))
-		return http.StatusInternalServerError, api.ServerError(errors.New("get guild budget error detail:" + err.Error()))
+		return http.StatusInternalServerError, api.ServerError(errors.New("get guild budget error"))
 	}
 	// update `TotalAmount`
 	budget.TotalAmount = req.TotalAmount
@@ -544,7 +544,7 @@ func (s *GuildsService) AddRelatedProposal(ctx *gin.Context, id int, proposalIDs
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
-		return http.StatusInternalServerError, api.ServerError(errors.New("check permission error detail:" + err.Error()))
+		return http.StatusBadRequest, api.BadRequest(errors.New("check permission error detail:" + err.Error()))
 	}
 	if !ok {
 		sdk.LogForbiddenError(ctx, user.Wallet, permObject, internal.ActModify)
@@ -556,7 +556,7 @@ func (s *GuildsService) AddRelatedProposal(ctx *gin.Context, id int, proposalIDs
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get guild error")))
-		return http.StatusInternalServerError, api.ServerError(errors.New("get guild error detail:" + err.Error()))
+		return http.StatusInternalServerError, api.ServerError(errors.New("get guild error"))
 	}
 	if guild == nil {
 		// ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("guild %d not exist", id)))

@@ -157,7 +157,7 @@ func (c *ProposalController) ListVoteGates(ctx *gin.Context) {
 	if err := c.Db.Model(&model.ProposalVoteGate{}).Find(&dbRecords).Error; err != nil {
 		log.Error().Msgf("fetch poll gates error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("list poll gates error detail:"+err.Error())))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("list poll gates error")))
 		return
 	}
 
@@ -230,7 +230,7 @@ func (c *ProposalController) List(ctx *gin.Context) {
 	if err != nil {
 		log.Error().Msgf("get proposal list error: query sql: %s, err: %+v", querySql, err)
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get proposal error detail:"+err.Error())))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get proposal error")))
 		return
 	}
 
@@ -312,7 +312,7 @@ func (c *ProposalController) Detail(ctx *gin.Context) {
 	if err != nil {
 		log.Error().Msgf("convert proposal to frontend format error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("load proposal data error detail:"+err.Error())))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("load proposal data error")))
 		return
 	}
 
@@ -348,7 +348,7 @@ func (c *ProposalController) ShowVoteDetail(ctx *gin.Context) {
 	if err != nil {
 		log.Error().Msgf("get vote list error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(fmt.Errorf("get vote list error detail:"+err.Error())))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(fmt.Errorf("get vote list error")))
 		return
 	}
 
@@ -431,7 +431,7 @@ func (c *ProposalController) ShowVoteDetail(ctx *gin.Context) {
 	if err != nil {
 		log.Error().Msgf("list user vote detail error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(fmt.Errorf("list user vote detail error detail:"+err.Error())))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(fmt.Errorf("list user vote detail error")))
 		return
 	}
 
@@ -524,7 +524,7 @@ func (c *ProposalController) Create(ctx *gin.Context) {
 		// If the publicity second is 0, update the db proposal to voting state or pending execution state, and handle SIP data
 		if proposalRecord.PublicitySecond == 0 {
 			log.Debug().Msgf("proposal has no publicity time, change to approved status directly")
-			_, err = c.ProposalService.UpdateProposalStateAndLaunchStateChangeActions(c.Db, user, fmt.Sprintf("%d", proposalRecord.ID), model.ProposalStateApproved, c.Cfg)
+			_, _ = c.ProposalService.UpdateProposalStateAndLaunchStateChangeActions(c.Db, user, fmt.Sprintf("%d", proposalRecord.ID), model.ProposalStateApproved, c.Cfg)
 		} else if proposalRecord.VoteType == model.ProposalVoteTypeNone {
 			if err = c.ProposalService.CreateJobToUpdateNoVoteProposalToNextState(c.Db, proposalRecord.ID, proposalRecord.VoteType, proposalRecord.CreateTs+proposalRecord.PublicitySecond, model.ProposalStateApproved); err != nil {
 				log.Error().Msgf("create proposal state change error: %+v", err)
@@ -541,7 +541,7 @@ func (c *ProposalController) Create(ctx *gin.Context) {
 	if err != nil {
 		log.Error().Msgf("convert proposal to frontend format error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("load proposal data error detail:"+err.Error())))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("load proposal data error")))
 		return
 	}
 
@@ -561,7 +561,7 @@ func (c *ProposalController) Update(ctx *gin.Context) {
 		} else {
 			log.Error().Msgf("get proposal id %s error: %+v", proposalIdStr, err)
 			sdk.LogUserSideError(ctx, err)
-			ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("get proposal error detail:"+err.Error())))
+			ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("get proposal error")))
 			return
 		}
 	}
@@ -661,7 +661,7 @@ func (c *ProposalController) Update(ctx *gin.Context) {
 		// If the publicity second is 0, update the db proposal to voting state
 		if proposalRecord.PublicitySecond == 0 {
 			log.Debug().Msgf("proposal has no publicity time, change to approved status directly")
-			_, err = c.ProposalService.UpdateProposalStateAndLaunchStateChangeActions(c.Db, user, proposalIdStr, model.ProposalStateApproved, c.Cfg)
+			_, _ = c.ProposalService.UpdateProposalStateAndLaunchStateChangeActions(c.Db, user, proposalIdStr, model.ProposalStateApproved, c.Cfg)
 		} else if proposalRecord.VoteType == model.ProposalVoteTypeNone {
 			if err = c.ProposalService.CreateJobToUpdateNoVoteProposalToNextState(c.Db, proposalRecord.ID, proposalRecord.VoteType, proposalRecord.CreateTs+proposalRecord.PublicitySecond, model.ProposalStateApproved); err != nil {
 				log.Error().Msgf("create proposal state change error: %+v", err)
@@ -676,7 +676,7 @@ func (c *ProposalController) Update(ctx *gin.Context) {
 	if err != nil {
 		log.Error().Msgf("convert proposal to frontend format error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("load proposal data error detail:"+err.Error())))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("load proposal data error")))
 		return
 	}
 
@@ -744,7 +744,7 @@ func (c *ProposalController) AddComment(ctx *gin.Context) {
 			if !errors.Is(err, gorm.ErrRecordNotFound) {
 				log.Error().Msgf("get parent comment error: %+v", err)
 				sdk.LogServerErrorToSentry(ctx, err)
-				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get parent comment error detail:"+err.Error())))
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get parent comment error")))
 				return
 			} else {
 				// This branch indicates that the parent comment has been added to metaforo but haven't saved in DB
@@ -911,7 +911,7 @@ func (c *ProposalController) MyList(ctx *gin.Context) {
 	if err != nil {
 		log.Error().Msgf("get proposal list error: query sql: %s, err: %+v", querySql, err)
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get proposal error detail:"+err.Error())))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get proposal error")))
 		return
 	}
 
@@ -1006,7 +1006,7 @@ func (c *ProposalController) GetProposalsUsedForCreatingProjects(ctx *gin.Contex
 		if err != nil {
 			log.Error().Msgf("get closable common project error: %+v", err)
 			sdk.LogServerErrorToSentry(ctx, err)
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get proposal error detail:"+err.Error())))
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get proposal error")))
 			return
 		}
 
@@ -1019,7 +1019,7 @@ func (c *ProposalController) GetProposalsUsedForCreatingProjects(ctx *gin.Contex
 		if err != nil {
 			log.Error().Msgf("get create project template id error: err: %+v", err)
 			sdk.LogServerErrorToSentry(ctx, err)
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get proposal error detail:"+err.Error())))
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get proposal error")))
 			return
 		}
 
@@ -1038,7 +1038,7 @@ func (c *ProposalController) GetProposalsUsedForCreatingProjects(ctx *gin.Contex
 		if err != nil {
 			log.Error().Msgf("get create project template id error: err: %+v", err)
 			sdk.LogServerErrorToSentry(ctx, err)
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get proposal error detail:"+err.Error())))
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get proposal error")))
 			return
 		}
 
@@ -1066,7 +1066,7 @@ func (c *ProposalController) GetProposalsUsedForCreatingProjects(ctx *gin.Contex
 	if err != nil {
 		log.Error().Msgf("get proposal list error: query sql: %s, err: %+v", querySql, err)
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get proposal error detail:"+err.Error())))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get proposal error")))
 		return
 	}
 
@@ -1107,7 +1107,7 @@ func (c *ProposalController) Approve(ctx *gin.Context) {
 	ok, err := enforcer.HasRoleForUser(formattedWallet, internal.RoleHall)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall permission error detail:"+err.Error())))
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("get cityhall permission error detail:"+err.Error())))
 		return
 	}
 
@@ -1142,7 +1142,7 @@ func (c *ProposalController) Reject(ctx *gin.Context) {
 	ok, err := enforcer.HasRoleForUser(formattedWallet, internal.RoleHall)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall permission error detail:"+err.Error())))
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("get cityhall permission error detail:"+err.Error())))
 		return
 	}
 
@@ -1195,7 +1195,7 @@ func (c *ProposalController) Reject(ctx *gin.Context) {
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		log.Error().Msgf("get proposal %s error: %+v", proposalIdStr, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get proposal error detail:"+err.Error())))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get proposal error")))
 		return
 	}
 
@@ -1228,7 +1228,7 @@ func (c *ProposalController) CheckVotePermission(ctx *gin.Context) {
 	if err != nil {
 		log.Error().Msgf("check user vote permission error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(fmt.Errorf("check user permission error detail:"+err.Error())))
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("check user permission error detail:"+err.Error())))
 		return
 	}
 	ctx.JSON(http.StatusOK, api.Success(userHasVotePermissionOnThread))
@@ -1242,7 +1242,7 @@ func (c *ProposalController) CastVote(ctx *gin.Context) {
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		log.Error().Msgf("check user vote permission error: %+v", err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(fmt.Errorf("check user permission error detail:"+err.Error())))
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("check user permission error detail:"+err.Error())))
 		return
 	}
 
@@ -1410,7 +1410,7 @@ func (c *ProposalController) ListTemplates(ctx *gin.Context) {
 	var dbRcds []*model.ProposalTemplate
 	if err := c.Db.Model(&model.ProposalTemplate{}).Preload("Components").Find(&dbRcds).Error; err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("list templates failed detail:"+err.Error())))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("list templates failed")))
 		return
 	}
 
@@ -1450,7 +1450,7 @@ func (c *ProposalController) ListTemplatesWithPerm(ctx *gin.Context) {
 	err = c.Db.Raw(listTemplateWithPermSQL, model.ProposalTemplateTypeCloseProject).Scan(&rcds).Error
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("list templates failed detail:"+err.Error())))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("list templates failed")))
 		return
 	}
 
@@ -1512,7 +1512,7 @@ func (c *ProposalController) ListAllCategories(ctx *gin.Context) {
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		log.Error().Msgf("get proposal categories error: %+v", err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get proposal categories error detail:"+err.Error())))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get proposal categories error")))
 		return
 	}
 
@@ -1543,7 +1543,7 @@ func (c *ProposalController) ListCategoriesWithPerm(ctx *gin.Context) {
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		log.Error().Msgf("get proposal categories error: %+v", err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get proposal categories error detail:"+err.Error())))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get proposal categories error")))
 		return
 	}
 

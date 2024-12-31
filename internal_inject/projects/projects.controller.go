@@ -97,7 +97,7 @@ func (c *ProjectsController) List(ctx *gin.Context) {
 	projects, total, err := model.ProjectModel.ListWithSearch(c.Db, status, k, w, page, showSpecialProjectFlag)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("list projects error detail:"+err.Error())))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("list projects error")))
 		return
 	}
 
@@ -122,7 +122,7 @@ func (c *ProjectsController) Detail(ctx *gin.Context) {
 	proj, err := model.ProjectModel.Detail(c.Db, uint(id))
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get project error detail:"+err.Error())))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get project error")))
 		return
 	}
 	if proj == nil {
@@ -133,7 +133,7 @@ func (c *ProjectsController) Detail(ctx *gin.Context) {
 	budgets, err := model.ProjectBudgetModel.ListByProjectId(c.Db, proj.ID)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get project budgets error detail:"+err.Error())))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get project budgets error")))
 		return
 	}
 
@@ -158,7 +158,7 @@ func (c *ProjectsController) ShowBudgets(ctx *gin.Context) {
 	budgets, err := model.ProjectBudgetModel.ListByProjectId(db, uint(id))
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get project budgets error detail:"+err.Error())))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get project budgets error")))
 		return
 	}
 
@@ -276,7 +276,7 @@ func (c *ProjectsController) MyProjects(ctx *gin.Context) {
 	projects, total, err := model.ProjectModel.ListBySponsorOrMember(c.Db, common.FormatUserWallet(user.Wallet), page)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("list projects error detail:"+err.Error())))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("list projects error")))
 		return
 	}
 

@@ -72,9 +72,9 @@ func (u *UserService) Login(ctx *gin.Context, req *LoginReq) (int, *api.Reply) {
 			sdk.LogServerErrorToSentry(ctx, err)
 			// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("nonce not found")))
 			httpCode = http.StatusInternalServerError
-			reply = api.ServerError(errors.New("nonce not found detail:" + err.Error()))
+			reply = api.ServerError(errors.New("nonce not found"))
 
-			return errors.New("nonce not found detail:" + err.Error())
+			return errors.New("nonce not found")
 		}
 		if userNonce == nil {
 			// ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("please refresh nonce firstly")))
@@ -142,9 +142,9 @@ func (u *UserService) Login(ctx *gin.Context, req *LoginReq) (int, *api.Reply) {
 					sdk.LogServerErrorToSentry(ctx, err)
 					// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("failed to verify signature")))
 					httpCode = http.StatusInternalServerError
-					reply = api.ServerError(errors.New("failed to verify signature detail:" + err.Error()))
+					reply = api.ServerError(errors.New("failed to verify signature"))
 
-					return errors.New("failed to verify signature detail:" + err.Error())
+					return errors.New("failed to verify signature")
 				}
 				if !ok {
 					// ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("signature not match")))
@@ -164,9 +164,9 @@ func (u *UserService) Login(ctx *gin.Context, req *LoginReq) (int, *api.Reply) {
 			sdk.LogServerErrorToSentry(ctx, err)
 			// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("user not found")))
 			httpCode = http.StatusInternalServerError
-			reply = api.ServerError(errors.New("user not found detail:" + err.Error()))
+			reply = api.ServerError(errors.New("user not found"))
 
-			return errors.New("user not found detail:" + err.Error())
+			return errors.New("user not found")
 		}
 		if user == nil {
 			user = &model.User{
@@ -219,7 +219,7 @@ func (u *UserService) Update(ctx *gin.Context, user *middleware.CurUser, req *Up
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("user not found")))
-		return http.StatusInternalServerError, api.ServerError(errors.New("user not found detail:" + err.Error()))
+		return http.StatusInternalServerError, api.ServerError(errors.New("user not found"))
 	}
 	if u == nil {
 		// ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("user %s not found", user.Wallet)))

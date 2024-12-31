@@ -187,7 +187,7 @@ func (c *PublicityController) Detail(ctx *gin.Context) {
 	var data *PublicityInfo
 	err = c.Db.Raw("select p.id, p.creator, p.content, p.create_at, p.is_del, p.is_draft, p.season, p.title, p.update_at, u.avatar from publicities as p join users as u on p.creator = u.wallet where p.id = ?", id).First(&data).Error
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get publicity error detail:"+err.Error())))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get publicity error")))
 		return
 	}
 
@@ -220,7 +220,7 @@ func (c *PublicityController) Create(ctx *gin.Context) {
 	ok, err := enforcer.HasRoleForUser(user.Wallet, internal.RoleHall)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall permission error detail:"+err.Error())))
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("get cityhall permission error detail:"+err.Error())))
 		return
 	}
 
@@ -256,7 +256,7 @@ func (c *PublicityController) Create(ctx *gin.Context) {
 					Creator:  user.Wallet,
 				}).Error
 			if err != nil {
-				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("save publicity error")))
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("save publicity error detail:"+err.Error())))
 				return
 			}
 
@@ -271,7 +271,7 @@ func (c *PublicityController) Create(ctx *gin.Context) {
 				IsDraft:  1,
 			}).Error
 			if err != nil {
-				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("save publicity error")))
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("save publicity error detail:"+err.Error())))
 				return
 			}
 		}
@@ -296,7 +296,7 @@ func (c *PublicityController) Create(ctx *gin.Context) {
 					"season":    int(currentSeason.Idx),
 				}).Error
 			if err != nil {
-				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("save publicity error")))
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("save publicity error detail:"+err.Error())))
 				return
 			}
 
@@ -312,7 +312,7 @@ func (c *PublicityController) Create(ctx *gin.Context) {
 				IsDraft:  0,
 			}).Error
 			if err != nil {
-				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create publicity error")))
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create publicity error detail:"+err.Error())))
 				return
 			}
 		}
@@ -335,7 +335,7 @@ func (c *PublicityController) Delete(ctx *gin.Context) {
 	ok, err := enforcer.HasRoleForUser(user.Wallet, internal.RoleHall)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall permission error")))
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("get cityhall permission error")))
 		return
 	}
 
@@ -378,7 +378,7 @@ func (c *PublicityController) Update(ctx *gin.Context) {
 	ok, err := enforcer.HasRoleForUser(user.Wallet, internal.RoleHall)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall permission error detail:"+err.Error())))
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("get cityhall permission error detail:"+err.Error())))
 		return
 	}
 

@@ -33,7 +33,7 @@ func (s *AppBundlesService) CreateAppBundle(ctx *gin.Context, newAppBundleReq *m
 		log.Error().Msgf("check permission error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
 		// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
-		return http.StatusInternalServerError, api.ServerError(errors.New("check permission error detail:" + err.Error()))
+		return http.StatusBadRequest, api.BadRequest(errors.New("check permission error detail:" + err.Error()))
 	}
 
 	isCityHallProject := false
@@ -71,7 +71,7 @@ func (s *AppBundlesService) CreateAppBundle(ctx *gin.Context, newAppBundleReq *m
 				log.Error().Msgf("check permission for project %d error: %+v", newAppBundleReq.EntityId, err)
 				sdk.LogServerErrorToSentry(ctx, err)
 				// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
-				return http.StatusInternalServerError, api.ServerError(errors.New("check permission error detail:" + err.Error()))
+				return http.StatusBadRequest, api.BadRequest(errors.New("check permission error detail:" + err.Error()))
 			}
 			if projectRecord.IsSpecial && projectRecord.SpecialType == model.SpecialProjectCityHall {
 				isCityHallProject = true
@@ -84,12 +84,12 @@ func (s *AppBundlesService) CreateAppBundle(ctx *gin.Context, newAppBundleReq *m
 				log.Error().Msgf("check permission for guild %d error: %+v", newAppBundleReq.EntityId, err)
 				sdk.LogServerErrorToSentry(ctx, err)
 				// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
-				return http.StatusInternalServerError, api.ServerError(errors.New("check permission error detail:" + err.Error()))
+				return http.StatusBadRequest, api.BadRequest(errors.New("check permission error detail:" + err.Error()))
 			}
 			sponsorsList = guildRecord.Sponsors
 		default:
-			sdk.LogUserSideError(ctx, errors.New("invalid entity type detail:"+err.Error()))
-			ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("invalid entity type detail:"+err.Error())))
+			sdk.LogUserSideError(ctx, errors.New("invalid entity type"))
+			ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("invalid entity type")))
 		}
 
 		if lo.ContainsBy(sponsorsList, func(sponsorWallet string) bool {
@@ -110,7 +110,7 @@ func (s *AppBundlesService) CreateAppBundle(ctx *gin.Context, newAppBundleReq *m
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get current season error")))
-		return http.StatusInternalServerError, api.ServerError(errors.New("get current season error detail:" + err.Error()))
+		return http.StatusInternalServerError, api.ServerError(errors.New("get current season error"))
 	}
 
 	// Variable to save used asset amount for the project if this app bundle created successfully, which will be used to update project budget records
@@ -124,7 +124,7 @@ func (s *AppBundlesService) CreateAppBundle(ctx *gin.Context, newAppBundleReq *m
 		if err != nil {
 			sdk.LogServerErrorToSentry(ctx, err)
 			// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get project budgets error")))
-			return http.StatusInternalServerError, api.ServerError(errors.New("get project budgets error detail:" + err.Error()))
+			return http.StatusInternalServerError, api.ServerError(errors.New("get project budgets"))
 		}
 
 		if len(projectBudgets) == 0 {
@@ -182,7 +182,7 @@ func (s *AppBundlesService) CreateAppBundle(ctx *gin.Context, newAppBundleReq *m
 		if err != nil {
 			sdk.LogServerErrorToSentry(ctx, err)
 			// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get guild budgets error")))
-			return http.StatusInternalServerError, api.ServerError(errors.New("get guild budgets error detail:" + err.Error()))
+			return http.StatusInternalServerError, api.ServerError(errors.New("get guild budgets error"))
 		}
 
 		if len(guildBudgets) == 0 {
@@ -388,7 +388,7 @@ func (s *AppBundlesService) UpdateAppBundleToNewState(ctx *gin.Context, newState
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
-		return http.StatusInternalServerError, api.ServerError(errors.New("check permission error detail:" + err.Error()))
+		return http.StatusBadRequest, api.BadRequest(errors.New("check permission error detail:" + err.Error()))
 	}
 	if !ok {
 		sdk.LogForbiddenError(ctx, user.Wallet, internal.ObjProjAndGuild, internal.ActCreateApplication)
