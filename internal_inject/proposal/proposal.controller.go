@@ -222,7 +222,7 @@ func (c *ProposalController) List(ctx *gin.Context) {
 
 	listBySip := false
 	if queryParams.Sip != "" {
-		querySql += fmt.Sprintf(" AND sip != 0")
+		querySql += " AND sip != 0"
 		listBySip = true
 	}
 
