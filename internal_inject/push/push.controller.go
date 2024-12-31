@@ -67,7 +67,7 @@ func (c *PushController) Create(ctx *gin.Context) {
 	ok, err := enforcer.Enforce(common.FormatUserWallet(user.Wallet), internal.ObjPush, internal.ActCreatePush)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("check permission error detail:"+err.Error())))
 		return
 	}
 	if !ok {
@@ -92,7 +92,7 @@ func (c *PushController) Create(ctx *gin.Context) {
 	err = model.PushModel.CreateOrUpdate(c.Db, &push)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create push error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create push error detail:"+err.Error())))
 		return
 	}
 

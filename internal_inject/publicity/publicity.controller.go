@@ -220,7 +220,7 @@ func (c *PublicityController) Create(ctx *gin.Context) {
 	ok, err := enforcer.HasRoleForUser(user.Wallet, internal.RoleHall)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall permission error")))
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("get cityhall permission error detail:"+err.Error())))
 		return
 	}
 
@@ -256,7 +256,7 @@ func (c *PublicityController) Create(ctx *gin.Context) {
 					Creator:  user.Wallet,
 				}).Error
 			if err != nil {
-				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("save publicity error")))
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("save publicity error detail:"+err.Error())))
 				return
 			}
 
@@ -271,7 +271,7 @@ func (c *PublicityController) Create(ctx *gin.Context) {
 				IsDraft:  1,
 			}).Error
 			if err != nil {
-				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("save publicity error")))
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("save publicity error detail:"+err.Error())))
 				return
 			}
 		}
@@ -296,7 +296,7 @@ func (c *PublicityController) Create(ctx *gin.Context) {
 					"season":    int(currentSeason.Idx),
 				}).Error
 			if err != nil {
-				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("save publicity error")))
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("save publicity error detail:"+err.Error())))
 				return
 			}
 
@@ -312,7 +312,7 @@ func (c *PublicityController) Create(ctx *gin.Context) {
 				IsDraft:  0,
 			}).Error
 			if err != nil {
-				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create publicity error")))
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create publicity error detail:"+err.Error())))
 				return
 			}
 		}
@@ -335,7 +335,7 @@ func (c *PublicityController) Delete(ctx *gin.Context) {
 	ok, err := enforcer.HasRoleForUser(user.Wallet, internal.RoleHall)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall permission error")))
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("get cityhall permission error")))
 		return
 	}
 
@@ -355,7 +355,7 @@ func (c *PublicityController) Delete(ctx *gin.Context) {
 
 	err = c.Db.Model(&model.Publicity{}).Where("id = ? and (season = ? or is_draft = 1) and is_del = 0", id, currentSeason.Idx).Update("is_del", 1).Error
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("delete publicity error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("delete publicity error detail:"+err.Error())))
 		return
 	}
 
@@ -378,7 +378,7 @@ func (c *PublicityController) Update(ctx *gin.Context) {
 	ok, err := enforcer.HasRoleForUser(user.Wallet, internal.RoleHall)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall permission error")))
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("get cityhall permission error detail:"+err.Error())))
 		return
 	}
 
@@ -411,7 +411,7 @@ func (c *PublicityController) Update(ctx *gin.Context) {
 			UpdateAt: model.GetCurrentUtcEpochSecond(),
 		}).Error
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("update publicity error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("update publicity error detail:"+err.Error())))
 		return
 	} else {
 		err = c.Db.Model(&model.PublicityLog{}).Create(&model.PublicityLog{
