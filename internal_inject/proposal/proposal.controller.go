@@ -267,6 +267,15 @@ func (c *ProposalController) List(ctx *gin.Context) {
 				return r
 			})
 		}
+
+		// add can vote check
+		resultRows = lo.Map(resultRows, func(r *FrontendProposalListRecord, _ int) *FrontendProposalListRecord {
+			userHasVotePermissionOnThread, err := c.ProposalService.CanUserVoteOnThread(c.Db, user.Wallet, fmt.Sprintf("%d", r.ID))
+			if err == nil {
+				r.CanVote = userHasVotePermissionOnThread
+			}
+			return r
+		})
 	}
 	// >>
 
@@ -948,6 +957,15 @@ func (c *ProposalController) MyList(ctx *gin.Context) {
 				return r
 			})
 		}
+
+		// add can vote check
+		resultRows = lo.Map(resultRows, func(r *FrontendProposalListRecord, _ int) *FrontendProposalListRecord {
+			userHasVotePermissionOnThread, err := c.ProposalService.CanUserVoteOnThread(c.Db, user.Wallet, fmt.Sprintf("%d", r.ID))
+			if err == nil {
+				r.CanVote = userHasVotePermissionOnThread
+			}
+			return r
+		})
 	}
 	// >>
 
