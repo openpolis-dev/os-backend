@@ -179,10 +179,7 @@ func (c *ProposalController) List(ctx *gin.Context) {
 	user, _ := api.ForContextUserAndDB(ctx)
 	queryParams := ListProposalQueryParams{}
 	if err := ctx.Bind(&queryParams); err != nil {
-		ctx.JSON(http.StatusBadRequest, api.Reply{
-			Code: -1,
-			Msg:  fmt.Sprintf("query params error: %+v", err),
-		})
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("query params error: %+v", err)))
 		return
 	}
 	// Parse pagination
@@ -897,10 +894,7 @@ func (c *ProposalController) MyList(ctx *gin.Context) {
 	user, _, _, _ := api.ForContext(ctx)
 	queryParams := ListProposalQueryParams{}
 	if err := ctx.Bind(&queryParams); err != nil {
-		ctx.JSON(http.StatusBadRequest, api.Reply{
-			Code: -1,
-			Msg:  fmt.Sprintf("query params error: %+v", err),
-		})
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("query params error: %+v", err)))
 		return
 	}
 
@@ -1543,9 +1537,7 @@ func (c *ProposalController) ListAllCategories(ctx *gin.Context) {
 		}
 	})
 
-	ctx.JSON(http.StatusOK, api.Reply{
-		Data: categoryResp,
-	})
+	ctx.JSON(http.StatusOK, api.Success(categoryResp))
 }
 
 func (c *ProposalController) ListCategoriesWithPerm(ctx *gin.Context) {
@@ -1575,7 +1567,5 @@ func (c *ProposalController) ListCategoriesWithPerm(ctx *gin.Context) {
 		}
 	})
 
-	ctx.JSON(http.StatusOK, api.Reply{
-		Data: categoryResp,
-	})
+	ctx.JSON(http.StatusOK, api.Success(categoryResp))
 }

@@ -515,10 +515,7 @@ func (c *ApplicationsController) BatchComplete(ctx *gin.Context) {
 func (c *ApplicationsController) AutoXferTaskList(ctx *gin.Context) {
 	queryParams := AutoXferTaskListQueryParams{}
 	if err := ctx.Bind(&queryParams); err != nil {
-		ctx.JSON(http.StatusBadRequest, api.Reply{
-			Code: -1,
-			Msg:  fmt.Sprintf("query params error: %+v", err),
-		})
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("query params error: %+v", err)))
 		return
 	}
 
