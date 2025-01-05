@@ -146,6 +146,13 @@ func (c *PublicityController) List(ctx *gin.Context) {
 
 	querySeg := c.Db.Raw(sqlStr)
 	totalQuerySeg := c.Db.Table("publicities")
+	if typeParam == "list" {
+		totalQuerySeg = totalQuerySeg.Where("is_del = 0 and is_draft = 0")
+	} else if typeParam == "unlist" {
+		totalQuerySeg = totalQuerySeg.Where("is_del = 0 and is_draft = 1")
+	} else if typeParam == "del" {
+		totalQuerySeg = totalQuerySeg.Where("is_del = 1")
+	}
 	total, err := gormfind.Count(totalQuerySeg)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
