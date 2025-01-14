@@ -50,6 +50,13 @@ func ServerError(err error) *Reply {
 	}
 }
 
+func ServerErrorCode(code int, err error) *Reply {
+	return &Reply{
+		Code: code,
+		Msg:  err.Error(),
+	}
+}
+
 func Forbidden() *Reply {
 	return &Reply{
 		Code: -1,

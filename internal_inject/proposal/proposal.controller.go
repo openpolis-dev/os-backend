@@ -314,11 +314,15 @@ func (c *ProposalController) Detail(ctx *gin.Context) {
 		}
 	}
 
-	responseData, err := c.ProposalService.ConvertProposalToFrontendDetailRecord(c.Db, proposalRecord.ID, startPostId, metaforoAccessToken, c.Cfg.MetaforoData.GroupName)
+	responseData, err, errCode := c.ProposalService.ConvertProposalToFrontendDetailRecord(c.Db, proposalRecord.ID, startPostId, metaforoAccessToken, c.Cfg.MetaforoData.GroupName)
 	if err != nil {
 		log.Error().Msgf("convert proposal to frontend format error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("load proposal data error")))
+		if errCode == -1 {
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("load proposal data error")))
+		} else {
+			ctx.JSON(http.StatusInternalServerError, api.ServerErrorCode(errCode, errors.New("The original proposal data was deleted in metaforo.")))
+		}
 		return
 	}
 
@@ -543,11 +547,16 @@ func (c *ProposalController) Create(ctx *gin.Context) {
 		c.Db.First(&proposalRecord, proposalRecord.ID)
 	}
 
-	responseData, err := c.ProposalService.ConvertProposalToFrontendDetailRecord(c.Db, proposalRecord.ID, 0, reqData.MetaforoAccessToken, c.Cfg.MetaforoData.GroupName)
+	responseData, err, errCode := c.ProposalService.ConvertProposalToFrontendDetailRecord(c.Db, proposalRecord.ID, 0, reqData.MetaforoAccessToken, c.Cfg.MetaforoData.GroupName)
 	if err != nil {
 		log.Error().Msgf("convert proposal to frontend format error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("load proposal data error")))
+		if errCode == -1 {
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("load proposal data error")))
+		} else {
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("The original proposal data was deleted in metaforo.")))
+		}
+
 		return
 	}
 
@@ -678,11 +687,15 @@ func (c *ProposalController) Update(ctx *gin.Context) {
 		}
 	}
 
-	responseData, err := c.ProposalService.ConvertProposalToFrontendDetailRecord(c.Db, proposalRecord.ID, 0, reqData.MetaforoAccessToken, c.Cfg.MetaforoData.GroupName)
+	responseData, err, errCode := c.ProposalService.ConvertProposalToFrontendDetailRecord(c.Db, proposalRecord.ID, 0, reqData.MetaforoAccessToken, c.Cfg.MetaforoData.GroupName)
 	if err != nil {
 		log.Error().Msgf("convert proposal to frontend format error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("load proposal data error")))
+		if errCode == -1 {
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("load proposal data error")))
+		} else {
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("The original proposal data was deleted in metaforo.")))
+		}
 		return
 	}
 
