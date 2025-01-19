@@ -13,6 +13,7 @@ import (
 	"github.com/theseed-labs/os-backend/global_object"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/config"
+	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk"
 	"gorm.io/gorm"
 )
@@ -53,6 +54,7 @@ func Register(fatherGroup *gin.RouterGroup) {
 	publicDataGroup.GET("/notion/page/:id", publicData.NotionPage)
 	publicDataGroup.GET("/notion/user/:id", publicData.NotionUser)
 	publicDataGroup.GET("/safe_vault", publicData.SafeVault)
+	publicDataGroup.GET("/node_sbt_count", publicData.NodeSbtCount)
 }
 
 func (c *PublicDataController) DiscordData(ctx *gin.Context) {
@@ -200,4 +202,17 @@ func (c *PublicDataController) SafeVault(ctx *gin.Context) {
 
 		return vault, nil
 	})
+}
+
+func (c *PublicDataController) NodeSbtCount(ctx *gin.Context) {
+	var data []*model.SystemVariable
+	err := c.Db.Model(&model.SystemVariable{}).Where("name like ?", "compute_").Find(&data).Error
+	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
+		log.Error().Msgf("node sbt count error: %s", err.Error())
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("node sbt count error")))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, api.Success(data))
 }
