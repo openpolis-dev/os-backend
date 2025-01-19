@@ -206,7 +206,7 @@ func (c *PublicDataController) SafeVault(ctx *gin.Context) {
 
 func (c *PublicDataController) NodeSbtCount(ctx *gin.Context) {
 	var data []*model.SystemVariable
-	err := c.Db.Model(&model.SystemVariable{}).Where("name like ?", "compute_").Find(&data).Error
+	err := c.Db.Model(&model.SystemVariable{}).Where("name like ?", "compute_%").Find(&data).Error
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		log.Error().Msgf("node sbt count error: %s", err.Error())
