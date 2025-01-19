@@ -35,7 +35,7 @@ func (s *WebhookService) RefreshNodeSbtNum() error {
 
 	sbt := &model.SystemVariable{
 		Name:     "compute_sbt_num",
-		NumValue: computNodeSbt.Node,
+		NumValue: computNodeSbt.Sbt,
 	}
 	err = s.Db.Model(&model.SystemVariable{}).Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "name"}},
