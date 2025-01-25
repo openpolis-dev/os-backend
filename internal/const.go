@@ -156,3 +156,7 @@ const (
 )
 
 const MetaforoPollNotExistsPrompt = "Poll not exists"
+
+const (
+	ERRCODE_GetMetaforoDataError = -1001
+)

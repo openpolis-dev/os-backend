@@ -33,7 +33,7 @@ func (s *AppBundlesService) CreateAppBundle(ctx *gin.Context, newAppBundleReq *m
 		log.Error().Msgf("check permission error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
 		// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
-		return http.StatusInternalServerError, api.ServerError(errors.New("check permission error"))
+		return http.StatusBadRequest, api.BadRequest(errors.New("check permission error detail:" + err.Error()))
 	}
 
 	isCityHallProject := false
@@ -71,7 +71,7 @@ func (s *AppBundlesService) CreateAppBundle(ctx *gin.Context, newAppBundleReq *m
 				log.Error().Msgf("check permission for project %d error: %+v", newAppBundleReq.EntityId, err)
 				sdk.LogServerErrorToSentry(ctx, err)
 				// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
-				return http.StatusInternalServerError, api.ServerError(errors.New("check permission error"))
+				return http.StatusBadRequest, api.BadRequest(errors.New("check permission error detail:" + err.Error()))
 			}
 			if projectRecord.IsSpecial && projectRecord.SpecialType == model.SpecialProjectCityHall {
 				isCityHallProject = true
@@ -84,7 +84,7 @@ func (s *AppBundlesService) CreateAppBundle(ctx *gin.Context, newAppBundleReq *m
 				log.Error().Msgf("check permission for guild %d error: %+v", newAppBundleReq.EntityId, err)
 				sdk.LogServerErrorToSentry(ctx, err)
 				// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
-				return http.StatusInternalServerError, api.ServerError(errors.New("check permission error"))
+				return http.StatusBadRequest, api.BadRequest(errors.New("check permission error detail:" + err.Error()))
 			}
 			sponsorsList = guildRecord.Sponsors
 		default:
@@ -124,7 +124,7 @@ func (s *AppBundlesService) CreateAppBundle(ctx *gin.Context, newAppBundleReq *m
 		if err != nil {
 			sdk.LogServerErrorToSentry(ctx, err)
 			// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get project budgets error")))
-			return http.StatusInternalServerError, api.ServerError(errors.New("get project budgets error"))
+			return http.StatusInternalServerError, api.ServerError(errors.New("get project budgets"))
 		}
 
 		if len(projectBudgets) == 0 {
@@ -259,7 +259,7 @@ func (s *AppBundlesService) CreateAppBundle(ctx *gin.Context, newAppBundleReq *m
 		if err != nil {
 			log.Error().Msgf("Create app bundle records error: %+v", err)
 			sdk.LogServerErrorToSentry(ctx, err)
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create app bundle record error")))
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create app bundle record error detail:"+err.Error())))
 			return err
 		}
 
@@ -350,7 +350,7 @@ func (s *AppBundlesService) CreateAppBundle(ctx *gin.Context, newAppBundleReq *m
 		log.Error().Msgf("Transaction error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
 		// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create application error")))
-		return http.StatusInternalServerError, api.ServerError(errors.New("create application error"))
+		return http.StatusInternalServerError, api.ServerError(errors.New("create application error detail:" + err.Error()))
 	}
 
 	// ctx.JSON(http.StatusCreated, api.Success(nil))
@@ -371,7 +371,7 @@ func (s *AppBundlesService) UpdateAppBundleToNewState(ctx *gin.Context, newState
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		sdk.LogUserSideError(ctx, err)
 		// ctx.JSON(http.StatusNotFound, api.BadRequest(errors.New("app bundle record not found")))
-		return http.StatusNotFound, api.BadRequest(errors.New("app bundle record not found"))
+		return http.StatusNotFound, api.BadRequest(errors.New("app bundle record not found detail:" + err.Error()))
 	}
 
 	for _, r := range appBundleRcds {
@@ -388,7 +388,7 @@ func (s *AppBundlesService) UpdateAppBundleToNewState(ctx *gin.Context, newState
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
-		return http.StatusInternalServerError, api.ServerError(errors.New("check permission error"))
+		return http.StatusBadRequest, api.BadRequest(errors.New("check permission error detail:" + err.Error()))
 	}
 	if !ok {
 		sdk.LogForbiddenError(ctx, user.Wallet, internal.ObjProjAndGuild, internal.ActCreateApplication)
@@ -522,7 +522,7 @@ func (s *AppBundlesService) UpdateAppBundleToNewState(ctx *gin.Context, newState
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("update app bundle state error")))
-		return http.StatusInternalServerError, api.ServerError(errors.New("update app bundle state error"))
+		return http.StatusInternalServerError, api.ServerError(errors.New("update app bundle state error detail:" + err.Error()))
 	}
 
 	//// send to QuickAccounting

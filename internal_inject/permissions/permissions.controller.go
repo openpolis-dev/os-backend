@@ -58,7 +58,7 @@ func (c *PermissionsController) GrantRole(ctx *gin.Context) {
 	ok, err := enforcer.HasRoleForUser(formattedWallet, internal.RoleHall)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("check permission error detail:"+err.Error())))
 		return
 	}
 	if !ok {
@@ -81,13 +81,13 @@ func (c *PermissionsController) GrantRole(ctx *gin.Context) {
 	_, err = enforcer.AddGroupingPolicies(policies)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("grant role error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("grant role error detail:"+err.Error())))
 		return
 	}
 	err = enforcer.SavePolicy()
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("grant role error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("grant role error detail:"+err.Error())))
 		return
 	}
 
@@ -99,7 +99,7 @@ func (c *PermissionsController) RevokeRole(ctx *gin.Context) {
 	ok, err := enforcer.HasRoleForUser(common.FormatUserWallet(user.Wallet), internal.RoleHall)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("check permission error detail:"+err.Error())))
 		return
 	}
 	if !ok {
@@ -122,13 +122,13 @@ func (c *PermissionsController) RevokeRole(ctx *gin.Context) {
 	_, err = enforcer.RemoveGroupingPolicies(policies)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("revoke role error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("revoke role error detail:"+err.Error())))
 		return
 	}
 	err = enforcer.SavePolicy()
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("revoke role error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("revoke role error detail:"+err.Error())))
 		return
 	}
 

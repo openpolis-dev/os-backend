@@ -60,14 +60,14 @@ func (c *TreasuryController) GetOrCreateCurrentAssetRecords(ctx *gin.Context) {
 	currQuarterTreasuryRecord, err := model.TreasuryAssetHelper.GetOrCreateCurrentSeasonRecord(c.Db)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get or create current quarter treasury record error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get or create current quarter treasury record error detail:"+err.Error())))
 		return
 	}
 
 	treasuryAssetResp, err := currQuarterTreasuryRecord.ToTreasuryAssetsResponse(c.Db)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get or create current quarter treasury record error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get or create current quarter treasury record error detail:"+err.Error())))
 		return
 	}
 
