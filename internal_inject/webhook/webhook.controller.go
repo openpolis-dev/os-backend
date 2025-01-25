@@ -45,11 +45,25 @@ func Register(fatherGroup *gin.RouterGroup) {
 
 	// no auth
 	webhookGroup.POST("/tally", webhook.Tally)
+
+	// refresh node sbt num
+	webhookGroup.GET("/refresh_node_sbt_num", webhook.RefreshNodeSbtNum)
 }
 
 func (c *WebhookController) Tally(ctx *gin.Context) {
 	body, _ := ctx.GetRawData()
 	log.Warn().Msgf("webhook>>tally: %s", string(body))
+
+	ctx.JSON(http.StatusOK, api.Success(nil))
+}
+
+func (c *WebhookController) RefreshNodeSbtNum(ctx *gin.Context) {
+	err := c.WebhookService.RefreshNodeSbtNum()
+
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		return
+	}
 
 	ctx.JSON(http.StatusOK, api.Success(nil))
 }

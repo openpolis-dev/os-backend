@@ -282,6 +282,7 @@ type FrontendProposalListRecord struct {
 	// TODO: Vote Gate related logic
 	VoteState string `json:"-"`
 	IsVoted   bool   `json:"is_voted"`
+	CanVote   bool   `json:"can_vote"`
 }
 
 type FrontendContentBlockRecord struct {

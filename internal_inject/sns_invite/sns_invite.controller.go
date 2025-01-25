@@ -95,7 +95,7 @@ func (c *SnsInviteController) SnsInvitedBy(ctx *gin.Context) {
 	}
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("sns invited by error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("sns invited by error detail:"+err.Error())))
 		return
 	}
 

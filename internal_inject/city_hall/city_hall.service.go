@@ -25,12 +25,12 @@ type CityHallService struct {
 func (s *CityHallService) GetOrCreateCityHallProject(db *gorm.DB, enforcer *casbin.SyncedEnforcer) (*model.Project, error) {
 	configuredCityHallUser, err := enforcer.GetUsersForRole(internal.RoleHall)
 	if err != nil {
-		return nil, errors.New("get cityhall permission error")
+		return nil, errors.New("get cityhall permission error detail:" + err.Error())
 	}
 
 	cityHallProject, err := model.GetOrCreateCityHallProject(db, configuredCityHallUser)
 	if err != nil {
-		return nil, errors.New("get cityhall record error")
+		return nil, errors.New("get cityhall record error detail:" + err.Error())
 	}
 
 	for grpName := range cityHallProject.GroupedSponsors {

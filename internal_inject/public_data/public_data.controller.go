@@ -13,6 +13,7 @@ import (
 	"github.com/theseed-labs/os-backend/global_object"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/config"
+	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk"
 	"gorm.io/gorm"
 )
@@ -53,6 +54,7 @@ func Register(fatherGroup *gin.RouterGroup) {
 	publicDataGroup.GET("/notion/page/:id", publicData.NotionPage)
 	publicDataGroup.GET("/notion/user/:id", publicData.NotionUser)
 	publicDataGroup.GET("/safe_vault", publicData.SafeVault)
+	publicDataGroup.GET("/node_sbt_count", publicData.NodeSbtCount)
 }
 
 func (c *PublicDataController) DiscordData(ctx *gin.Context) {
@@ -77,14 +79,14 @@ func (c *PublicDataController) NotionDatabase(ctx *gin.Context) {
 	body, err := ctx.GetRawData()
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusBadRequest, api.ServerError(errors.New("get raw data error")))
+		ctx.JSON(http.StatusBadRequest, api.ServerError(errors.New("get raw data error detail:"+err.Error())))
 		return
 	}
 
 	data, err := sdk.NotionDatabase(databaseId, c.Cfg.PublicData.Notion.APIToken, body)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("notion database error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("notion database error detail:"+err.Error())))
 		return
 	}
 
@@ -92,7 +94,7 @@ func (c *PublicDataController) NotionDatabase(ctx *gin.Context) {
 	err = json.Unmarshal(data, &databaseData)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("notion database error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("notion database error detail:"+err.Error())))
 		return
 	}
 
@@ -129,7 +131,7 @@ func (c *PublicDataController) NotionPage(ctx *gin.Context) {
 	data, err := sdk.NotionPage(pageId, c.Cfg.PublicData.Notion.APIToken)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("notion page error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("notion page error detail:"+err.Error())))
 		return
 	}
 
@@ -137,7 +139,7 @@ func (c *PublicDataController) NotionPage(ctx *gin.Context) {
 	err = json.Unmarshal(data, &pageData)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("notion page error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("notion page error detail:"+err.Error())))
 		return
 	}
 
@@ -150,7 +152,7 @@ func (c *PublicDataController) NotionUser(ctx *gin.Context) {
 	data, err := sdk.NotionUser(userId, c.Cfg.PublicData.Notion.APIToken)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("notion user error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("notion user error detail:"+err.Error())))
 		return
 	}
 
@@ -158,7 +160,7 @@ func (c *PublicDataController) NotionUser(ctx *gin.Context) {
 	err = json.Unmarshal(data, &pageData)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("notion user error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("notion user error detail:"+err.Error())))
 		return
 	}
 
@@ -200,4 +202,17 @@ func (c *PublicDataController) SafeVault(ctx *gin.Context) {
 
 		return vault, nil
 	})
+}
+
+func (c *PublicDataController) NodeSbtCount(ctx *gin.Context) {
+	var data []*model.SystemVariable
+	err := c.Db.Model(&model.SystemVariable{}).Where("name like ?", "compute_%").Find(&data).Error
+	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
+		log.Error().Msgf("node sbt count error: %s", err.Error())
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("node sbt count error")))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, api.Success(data))
 }

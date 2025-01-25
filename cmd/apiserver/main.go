@@ -28,6 +28,7 @@ import (
 	projects_inject "github.com/theseed-labs/os-backend/internal_inject/projects"
 	proposal_inject "github.com/theseed-labs/os-backend/internal_inject/proposal"
 	publicdata_inject "github.com/theseed-labs/os-backend/internal_inject/public_data"
+	publicity_inject "github.com/theseed-labs/os-backend/internal_inject/publicity"
 	push_inject "github.com/theseed-labs/os-backend/internal_inject/push"
 	rewards_inject "github.com/theseed-labs/os-backend/internal_inject/rewards"
 	seasons_inject "github.com/theseed-labs/os-backend/internal_inject/seasons"
@@ -251,6 +252,9 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 		proposal_inject.Register(v1)
 		// admin
 		admin_inject.Register(r.Group("/"))
+
+		// publicity
+		publicity_inject.Register(v1)
 	}
 	// --> no auth required
 	{

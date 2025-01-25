@@ -72,7 +72,7 @@ func (c *AppBundlesController) ListAvailableProjectsAndGuilds(ctx *gin.Context) 
 	ok, err := enforcer.HasRoleForUser(common.FormatUserWallet(user.Wallet), internal.RoleHall)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("check permission error detail:"+err.Error())))
 		return
 	}
 

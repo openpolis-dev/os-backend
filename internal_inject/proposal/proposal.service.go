@@ -144,7 +144,7 @@ func (s *ProposalService) ValidateProposalComponentParams(db *gorm.DB, reqData *
 			for assetName, remainBudgetAmount := range remainBudgetAmount {
 				if componentBudgetAmount, found := componentRewardAmountData[assetName]; found {
 					if componentBudgetAmount.GreaterThan(remainBudgetAmount) {
-						return errors.New(fmt.Sprintf("motivation component %s budget amount %s is greater than project budget %s", assetName, componentBudgetAmount.String(), remainBudgetAmount.String()))
+						return fmt.Errorf("motivation component %s budget amount %s is greater than project budget %s", assetName, componentBudgetAmount.String(), remainBudgetAmount.String())
 					}
 				}
 			}
@@ -173,7 +173,7 @@ func (s *ProposalService) SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrU
 	//   4. In this case, the proposal must be updated to metaforo without checking the Submit flag
 
 	// Lock the proposal id for write
-	if proposalId != 0 && s.TryAcquireUpdateProposalDbLockOrReturn(proposalId) == false {
+	if proposalId != 0 && !s.TryAcquireUpdateProposalDbLockOrReturn(proposalId) {
 		err := fmt.Errorf("proposal %d is updating", proposalId)
 		log.Error().Msg(err.Error())
 		return nil, err
@@ -541,7 +541,7 @@ func (s *ProposalService) SaveProposalVoteOptionRecords(tx *gorm.DB, proposalId 
 // and the metaforo API invoked here is updateProposal.
 // TODO: Refactor this function
 func (s *ProposalService) SaveProposalToMetaforo(db *gorm.DB, dbProposalId uint, voteType int, metaforoAccessToken string, EditorType int, isMultipleVote bool, metaforoGroupName string) error {
-	if s.TryAcquireUpdateProposalDbLockOrReturn(dbProposalId) == false {
+	if !s.TryAcquireUpdateProposalDbLockOrReturn(dbProposalId) {
 		err := fmt.Errorf("proposal %d is updating", dbProposalId)
 		log.Error().Msg(err.Error())
 		return err
@@ -1166,7 +1166,7 @@ func (s *ProposalService) HandleProposalPollStatusChange(db *gorm.DB, proposalId
 // It will update the proposal state based on vote result and external check rules if configured
 // TODO: Check how to migrate this state change function into UpdateProposalStateAndLaunchStateChangeActions
 func (s *ProposalService) UpdateProposalStateAfterVoteClosed(db *gorm.DB, proposalId uint, pVoteRcd *model.ProposalVoteRecord) error {
-	if s.TryAcquireUpdateProposalDbLockOrReturn(proposalId) == false {
+	if !s.TryAcquireUpdateProposalDbLockOrReturn(proposalId) {
 		err := fmt.Errorf("proposal %d is updating", proposalId)
 		log.Error().Msg(err.Error())
 		return err
@@ -1445,8 +1445,7 @@ func (s *ProposalService) CreateProposalAutomationTasks(db *gorm.DB, proposalId 
 
 		for _, componentAction := range proposalComponentActions {
 			log.Debug().Msgf("proposal %d vote finState: %+v, action: %+v", proposalId, finState, componentAction)
-			var actionName string
-			actionName = componentAction.ApproveActionName
+			actionName := componentAction.ApproveActionName
 			err = s.CreateCronJob(db, proposal.ID, proposal.PendingExecutionSecond, actionName, componentAction.ComponentParams, voteResult, voteType, componentAction.ProposalComponentRecordId)
 			if err != nil {
 				log.Error().Msgf("create cron job error: %+v", err)
@@ -1797,10 +1796,6 @@ func (s *ProposalService) SetProposalSip(db *gorm.DB, pTemplate *model.ProposalT
 				return err
 			}
 			log.Error().Msgf("TTT: get next sip value: %d", proposalSip)
-			if err != nil {
-				log.Error().Msgf("get next sip value error: %+v", err)
-				return err
-			}
 		}
 
 		// Only update proposal has same state with passed in object
@@ -1922,17 +1917,17 @@ func (s *ProposalService) RefreshMetaforoAdminToken() {
 // Some converter functions
 ///////////////////////
 
-func (s *ProposalService) ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposalId uint, startPostId int, accessToken string, metaforoGroupName string) (*FrontendProposalDetailRecord, error) {
+func (s *ProposalService) ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposalId uint, startPostId int, accessToken string, metaforoGroupName string) (*FrontendProposalDetailRecord, error, int) {
 	var proposalBlocks []*model.ProposalContentBlock
 	if err := db.Where(&model.ProposalContentBlock{ProposalID: proposalId}).Order("id").Find(&proposalBlocks).Error; err != nil {
-		return nil, err
+		return nil, err, -1
 	}
 
 	var proposalComponentRecords []*model.ProposalComponentRecord
 	if err := db.Where(&model.ProposalComponentRecord{ProposalID: proposalId}).
 		Where("component_id != ?", 0).
 		Order("id").Find(&proposalComponentRecords).Error; err != nil {
-		return nil, err
+		return nil, err, -1
 	}
 
 	proposalContentResponse := lo.Map(proposalBlocks, func(item *model.ProposalContentBlock, _ int) *FrontendContentBlockRecord {
@@ -1999,7 +1994,7 @@ func (s *ProposalService) ConvertProposalToFrontendDetailRecord(db *gorm.DB, pro
 	var proposal model.Proposal
 	if err := db.Find(&proposal, proposalId).Error; err != nil {
 		log.Error().Msgf("query proposal %d from DB error: %+v", proposalId, err)
-		return nil, err
+		return nil, err, -1
 	}
 
 	var editHistoryRecords []*FrontendProposalEditHistoryRecord
@@ -2011,7 +2006,7 @@ func (s *ProposalService) ConvertProposalToFrontendDetailRecord(db *gorm.DB, pro
 	if proposal.ProposalRecordId != "" {
 		metaforoProposal, err := metaforo.GetProposal(proposal.GetMetaforoThreadId(), metaforoGroupName, accessToken, startPostId)
 		if err != nil {
-			return nil, err
+			return nil, err, internal.ERRCODE_GetMetaforoDataError
 		}
 
 		commentCount = metaforoProposal.Thread.PostsCount
@@ -2020,13 +2015,13 @@ func (s *ProposalService) ConvertProposalToFrontendDetailRecord(db *gorm.DB, pro
 		err = s.UpdateDbRecordsFromMetaforoProposalResponse(db, proposalId, metaforoProposal)
 		if err != nil {
 			log.Error().Msgf("update proposal %d from metaforo error: %+v", proposalId, err)
-			return nil, err
+			return nil, err, -1
 		}
 
 		pollStatusChanged, err := s.UpdateDbVoteOptionRecordsFromMetaforoProposalResponse(db, proposalId, metaforoProposal)
 		if err != nil {
 			log.Error().Msgf("update propsal vote option records with metaforo response error: %+v", err)
-			return nil, err
+			return nil, err, -1
 		} else {
 			log.Debug().Msgf("poll of proposal %d status changed: %+v", proposalId, pollStatusChanged)
 		}
@@ -2034,27 +2029,27 @@ func (s *ProposalService) ConvertProposalToFrontendDetailRecord(db *gorm.DB, pro
 		if pollStatusChanged {
 			if err = s.HandleProposalPollStatusChange(db, proposalId, metaforoGroupName); err != nil {
 				log.Error().Msgf("handle proposal poll status change error: %+v", err)
-				return nil, err
+				return nil, err, -1
 			}
 		}
 
 		err = db.Model(model.ProposalComment{}).Where("proposal_id = ? AND is_reject_comment = ?", proposalId, true).First(&rejectedComment).Error
 		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 			log.Error().Msgf("fetch rejected comment error: %+v", err)
-			return nil, err
+			return nil, err, -1
 		}
 
 		editHistoryRecords, err = s.GetLocalEditHistoriesWithOsUserData(db, proposal.ProposalRecordId)
 		if err != nil {
 			log.Error().Msgf("fetch local history record error: %+v", err)
-			return nil, err
+			return nil, err, -1
 		}
 
 		// Process comments
 		frontendCommentsRecords, err = s.GetProposalCommentsWithOsUserData(db, metaforoProposal.Thread.Posts)
 		if err != nil {
 			log.Error().Msgf("fetch proposal comments error: %+v", err)
-			return nil, err
+			return nil, err, -1
 		}
 	}
 
@@ -2066,7 +2061,7 @@ func (s *ProposalService) ConvertProposalToFrontendDetailRecord(db *gorm.DB, pro
 		Where(model.ProposalCategory{ID: proposal.ProposalCategoryID}).First(&proposalCategory).Error
 	if err != nil {
 		log.Error().Msgf("fetch proposal category error: %+v", err)
-		return nil, err
+		return nil, err, -1
 	}
 
 	var voteGate *FrontendVoteGateResponse
@@ -2087,7 +2082,7 @@ func (s *ProposalService) ConvertProposalToFrontendDetailRecord(db *gorm.DB, pro
 		err := db.Find(&template, *proposal.ProposalTemplateID).Error
 		if err != nil {
 			log.Error().Msgf("fetch proposal template error: %+v", err)
-			return nil, err
+			return nil, err, -1
 		}
 		templateName = template.Name
 	}
@@ -2102,7 +2097,7 @@ func (s *ProposalService) ConvertProposalToFrontendDetailRecord(db *gorm.DB, pro
 	err = db.Model(proposal).Association("VoteRecords").Find(&voteRecords)
 	if err != nil {
 		log.Error().Msgf("get vote records error: %+v", err)
-		return nil, err
+		return nil, err, -1
 	}
 
 	for _, job := range proposalCronJobs {
@@ -2115,7 +2110,7 @@ func (s *ProposalService) ConvertProposalToFrontendDetailRecord(db *gorm.DB, pro
 	err = db.Model(&model.ProposalVoteOptionRecord{}).Where("proposal_id = ?", proposalId).Find(&osVoteOptionRecords).Error
 	if err != nil {
 		log.Error().Msgf("get vote option records error: %+v", err)
-		return nil, err
+		return nil, err, -1
 	}
 
 	frontendVoteOptions := lo.Map(osVoteOptionRecords, func(r *model.ProposalVoteOptionRecord, _ int) *FrontendProposalVoteOptionRecord {
@@ -2144,7 +2139,7 @@ func (s *ProposalService) ConvertProposalToFrontendDetailRecord(db *gorm.DB, pro
 		proposalIsForClosingProject, closingProject, err := s.IsProposalIsForClosingProject(db, proposal.ID)
 		if err != nil {
 			log.Error().Msgf("checking proposal is for closing project failed, err: %+v", err)
-			return nil, err
+			return nil, err, -1
 		}
 
 		if proposalIsForClosingProject {
@@ -2163,7 +2158,7 @@ func (s *ProposalService) ConvertProposalToFrontendDetailRecord(db *gorm.DB, pro
 	// Refresh proposal record
 	if err = db.Find(&proposal, proposalId).Error; err != nil {
 		log.Error().Msgf("fetch proposal error: %+v", err)
-		return nil, err
+		return nil, err, -1
 	}
 	return &FrontendProposalDetailRecord{
 		ID:                      proposalId,
@@ -2198,7 +2193,7 @@ func (s *ProposalService) ConvertProposalToFrontendDetailRecord(db *gorm.DB, pro
 		ExecutionTs:              proposalExecTs,
 		PublicityTs:              proposal.VoteStartTs,
 		AssociatedProjectBudgets: budgetsResponse,
-	}, nil
+	}, nil, 0
 }
 
 func (s *ProposalService) GetMetaforoProposalByInternalId(db *gorm.DB, proposalIdStr string, metaforoGroupName string, mfAccessToken string) (*model.Proposal, *metaforo.ProposalResponse, error) {
@@ -2411,7 +2406,7 @@ func (s *ProposalService) UpdateProposalStateAndLaunchStateChangeActions(db *gor
 		return 0, err
 	}
 
-	if s.TryAcquireUpdateProposalDbLockOrReturn(uint(proposalId)) == false {
+	if !s.TryAcquireUpdateProposalDbLockOrReturn(uint(proposalId)) {
 		err := fmt.Errorf("proposal %s is updating", proposalStrId)
 		log.Error().Msg(err.Error())
 		return 0, err
@@ -2621,8 +2616,8 @@ func (s *ProposalService) UpdateProposalStateAndLaunchStateChangeActions(db *gor
 
 func (s *ProposalService) GenerateFrontendProposalRecords(db *gorm.DB, querySql string, page *gormfind.Page, listBySip bool) (int64, []*FrontendProposalListRecord, error) {
 	var tmpRcd []*FrontendProposalListRecord
-	var countTx *gorm.DB
-	countTx = db.Raw(querySql).Scan(&tmpRcd)
+
+	countTx := db.Raw(querySql).Scan(&tmpRcd)
 	if err := countTx.Error; err != nil {
 		log.Error().Msgf("get proposal count error: %+v", err)
 		return 0, nil, err
@@ -2633,7 +2628,7 @@ func (s *ProposalService) GenerateFrontendProposalRecords(db *gorm.DB, querySql 
 		// Specify custom order by state
 		// Note: this is PG specified function
 		if listBySip {
-			querySql += fmt.Sprintf("\nORDER BY sip desc, create_ts desc")
+			querySql += "\nORDER BY sip desc, create_ts desc"
 		} else {
 			querySql += fmt.Sprintf("\nORDER BY array_position(array[%s], p.state), create_ts desc",
 				strings.Join(lo.Map(StateOrder, func(state model.ProposalState, _ int) string { return fmt.Sprintf("%d", state) }), ", "))

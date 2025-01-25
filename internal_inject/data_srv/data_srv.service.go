@@ -102,7 +102,7 @@ func (s *DataSrvService) CalcMintRewards(ctx *gin.Context, currentSeason *model.
 	if err = s.Db.Raw(dbQueryForSeasonTotalRewards).Find(&aggregatedSeasonCredits).Error; err != nil {
 		log.Error().Msgf("query aggregated credit score error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("query aggregated credit score error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("query aggregated credit score error detail:"+err.Error())))
 		return
 	}
 
@@ -119,7 +119,7 @@ func (s *DataSrvService) CalcMintRewards(ctx *gin.Context, currentSeason *model.
 	metaforoVoteCount, err := s.GetSeasonVoteRecords(currentSeason)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get metaforo vote count error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get metaforo vote count error detail:"+err.Error())))
 		return
 	}
 
@@ -228,13 +228,13 @@ func (s *DataSrvService) CalcMintRewards(ctx *gin.Context, currentSeason *model.
 	log.Error().Msgf("TTT: Write buf size: %d", buffer.Len())
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("encode metaforo data error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("encode metaforo data error detail:"+err.Error())))
 		return
 	}
 	err = storage.StoreCachedData(storage.MetaforoRewardCacheKey(currentSeason.Idx), buffer.Bytes())
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("store metaforo data error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("store metaforo data error detail:"+err.Error())))
 		return
 	}
 
