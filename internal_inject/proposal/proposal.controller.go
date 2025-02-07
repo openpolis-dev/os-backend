@@ -636,7 +636,7 @@ func (c *ProposalController) Update(ctx *gin.Context) {
 		}
 
 		if !projectCanBeClosed {
-			sdk.LogUserSideError(ctx, err)
+			sdk.LogUserSideError(ctx, errors.New("project in status can't be closed"))
 			log.Error().Msgf("project in status can't be closed")
 			ctx.JSON(http.StatusBadRequest, api.ServerError(errors.New("related project can't be closed")))
 			return
