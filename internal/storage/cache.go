@@ -48,3 +48,7 @@ func UserSeepassCacheKey(userWallet string) string {
 func CurrentSeasonNodeCacheKey(nodeSbtAddr, tokenId string) string {
 	return fmt.Sprintf("cs_node.%s.%s", common.FormatUserWallet(nodeSbtAddr), tokenId)
 }
+
+func SeasonNodeCacheKey(seasonIdx string) string {
+	return fmt.Sprintf("season_nodes.%s", seasonIdx)
+}
