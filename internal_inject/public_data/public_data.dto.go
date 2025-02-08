@@ -90,9 +90,13 @@ type safeBalanceResponse struct {
 }
 
 type SeasonProposals struct {
-	Link     string `json:"link"`
-	Season   string `json:"season"`
-	Category string `json:"category"`
-	Title    string `json:"title"`
-	Create   int    `json:"create"`
+	Link      string `json:"link"`
+	Season    string `json:"season"`
+	Category  string `json:"category"`
+	Title     string `json:"title"`
+	Create    int    `json:"create"`
+	State     int    `json:"state"`
+	Applicant string `json:"applicant"`
+	Name      string `json:"name"`
+	Avatar    string `json:"avatar"`
 }
