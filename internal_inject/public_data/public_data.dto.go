@@ -93,6 +93,6 @@ type SeasonProposals struct {
 	Link     string `json:"link"`
 	Season   string `json:"season"`
 	Category string `json:"category"`
-	Tile     string `json:"title"`
+	Title    string `json:"title"`
 	Create   int    `json:"create"`
 }
