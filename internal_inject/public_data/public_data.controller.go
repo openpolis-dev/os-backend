@@ -3,6 +3,7 @@ package publicdata_inject
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"sync"
 
@@ -15,6 +16,7 @@ import (
 	"github.com/theseed-labs/os-backend/internal/config"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk"
+	"github.com/theseed-labs/os-backend/internal/storage"
 	"gorm.io/gorm"
 )
 
@@ -29,6 +31,22 @@ type PublicDataController struct {
 
 	PublicDataService *PublicDataService `inject:""`
 }
+
+const getSeasonPropsalsSQL = `WITH max_version_proposals AS (
+    SELECT
+        proposals.proposal_record_id,
+        MAX(version) AS max_version
+    FROM
+        proposals
+    GROUP BY
+        proposals.proposal_record_id
+)
+select concat('https://app.seedao.xyz/proposal/thread/', p.id::text) as link, s.name as season, pc.name as category, p.title as title, p.create_ts as create
+from proposals p
+         join max_version_proposals mvp on p.proposal_record_id = mvp.proposal_record_id
+         join proposal_categories pc on p.proposal_category_id = pc.id
+         join seasons s on p.create_ts between s.start_at and s.end_at
+where pc.id in (21, 24) and p.sip is not null`
 
 func Register(fatherGroup *gin.RouterGroup) {
 	g := global_object.GetGlobalObject()
@@ -55,6 +73,62 @@ func Register(fatherGroup *gin.RouterGroup) {
 	publicDataGroup.GET("/notion/user/:id", publicData.NotionUser)
 	publicDataGroup.GET("/safe_vault", publicData.SafeVault)
 	publicDataGroup.GET("/node_sbt_count", publicData.NodeSbtCount)
+	publicDataGroup.GET("/get_season_proposals/:seasonIdx", publicData.GetSeasonProposals)
+	publicDataGroup.GET("/get_season_nodes/:seasonIdx", publicData.GetSeasonNodes)
+}
+
+func (c *PublicDataController) GetSeasonNodes(ctx *gin.Context) {
+	seasonIdx := ctx.Param("seasonIdx")
+
+	cachedData, err := storage.GetCachedData(storage.SeasonNodeCacheKey(seasonIdx))
+	var csNodeWallets []string
+	if err != nil {
+		log.Warn().Msgf("get cached data error: %+v, try to fetch from indexer", err)
+		// TODO: Fetch node list from indexer
+		log.Debug().Msgf("node seasonIdx: %s", seasonIdx)
+
+		indexerClient := sdk.GetIndexerClient()
+		csNodeWallets, err = indexerClient.GetCurrentSeasonNodeList(seasonIdx)
+
+		if err != nil {
+			sdk.LogServerErrorToSentry(ctx, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get season node list error")))
+			return
+		}
+
+		csNodeBytes, err := json.Marshal(csNodeWallets)
+		if err != nil {
+			sdk.LogServerErrorToSentry(ctx, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("marshal season node list error")))
+			return
+		}
+		_ = storage.StoreCachedData(storage.SeasonNodeCacheKey(seasonIdx), csNodeBytes)
+	} else {
+		err = json.Unmarshal(cachedData, &csNodeWallets)
+		if err != nil {
+			sdk.LogServerErrorToSentry(ctx, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("unmarshal season node list error")))
+			return
+		}
+	}
+
+	ctx.JSON(http.StatusOK, api.Success(csNodeWallets))
+}
+
+func (c *PublicDataController) GetSeasonProposals(ctx *gin.Context) {
+	seasonIdx := ctx.Param("seasonIdx")
+
+	findSql := fmt.Sprintf("%s and s.idx = %s order by p.id desc;", getSeasonPropsalsSQL, seasonIdx)
+
+	var seasonProposals []*SeasonProposals
+	err := c.Db.Raw(findSql).Find(&seasonProposals).Error
+	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusBadRequest, api.ServerError(errors.New("get season proposals error detail:"+err.Error())))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, api.Success(seasonProposals))
 }
 
 func (c *PublicDataController) DiscordData(ctx *gin.Context) {
