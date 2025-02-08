@@ -41,11 +41,12 @@ const getSeasonPropsalsSQL = `WITH max_version_proposals AS (
     GROUP BY
         proposals.proposal_record_id
 )
-select concat('https://app.seedao.xyz/proposal/thread/', p.id::text) as link, s.name as season, pc.name as category, p.title as title, p.create_ts as create
+select concat('https://app.seedao.xyz/proposal/thread/', p.id::text) as link, s.name as season, pc.name as category, p.title as title, p.create_ts as create, p.state as state, u.wallet as applicant, u.name as name, u.avatar as avatar
 from proposals p
          join max_version_proposals mvp on p.proposal_record_id = mvp.proposal_record_id
          join proposal_categories pc on p.proposal_category_id = pc.id
          join seasons s on p.create_ts between s.start_at and s.end_at
+		 join users u on p.applicant = u.wallet
 where pc.id in (21, 24) and p.sip is not null`
 
 func Register(fatherGroup *gin.RouterGroup) {
