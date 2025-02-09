@@ -100,3 +100,9 @@ type SeasonProposals struct {
 	Name      string `json:"name"`
 	Avatar    string `json:"avatar"`
 }
+
+type SeasonUsers struct {
+	Wallet string `json:"wallet"`
+	Name   string `json:"name"`
+	Avatar string `json:"avatar"`
+}
