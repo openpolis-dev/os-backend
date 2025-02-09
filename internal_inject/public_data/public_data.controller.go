@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"sync"
 
 	"github.com/bwmarrin/discordgo"
@@ -48,6 +49,8 @@ from proposals p
          join seasons s on p.create_ts between s.start_at and s.end_at
 		 join users u on p.applicant = u.wallet
 where pc.id in (21, 24) and p.sip is not null`
+
+const getSeasonUsersSQL = `select wallet, name, avatar from users where wallet in `
 
 func Register(fatherGroup *gin.RouterGroup) {
 	g := global_object.GetGlobalObject()
@@ -113,7 +116,17 @@ func (c *PublicDataController) GetSeasonNodes(ctx *gin.Context) {
 		}
 	}
 
-	ctx.JSON(http.StatusOK, api.Success(csNodeWallets))
+	users := strings.Join(csNodeWallets, "','")
+	findSql := fmt.Sprintf("%s ('%s')", getSeasonUsersSQL, users)
+	var seasonUsers []*SeasonUsers
+	err = c.Db.Raw(findSql).Find(&seasonUsers).Error
+	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusBadRequest, api.ServerError(errors.New("get season proposals error detail:"+err.Error())))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, api.Success(seasonUsers))
 }
 
 func (c *PublicDataController) GetSeasonProposals(ctx *gin.Context) {
