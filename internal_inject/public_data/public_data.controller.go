@@ -48,7 +48,7 @@ from proposals p
          join proposal_categories pc on p.proposal_category_id = pc.id
          join seasons s on p.create_ts between s.start_at and s.end_at
 		 join users u on p.applicant = u.wallet
-where pc.id in (21, 24) and p.sip is not null`
+where pc.id in (21, 22, 24) and p.sip is not null`
 
 const getSeasonUsersSQL = `select wallet, name, avatar from users where wallet in `
 
