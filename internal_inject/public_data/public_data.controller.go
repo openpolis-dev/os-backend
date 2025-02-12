@@ -46,7 +46,8 @@ select concat('https://app.seedao.xyz/proposal/thread/', p.id::text) as link, s.
 from proposals p
          join max_version_proposals mvp on p.proposal_record_id = mvp.proposal_record_id
          join proposal_categories pc on p.proposal_category_id = pc.id
-         join seasons s on p.create_ts between s.start_at and s.end_at
+         join proposal_vote_gates pg on p.vote_gate_id = pg.id
+         join seasons s on s.id = pg.season_id
 		 join users u on p.applicant = u.wallet
 where pc.id in (21, 22, 24) and p.sip is not null`
 
