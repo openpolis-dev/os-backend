@@ -358,7 +358,7 @@ func (c *ApplicationsController) BatchApprove(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, "")
+	ctx.JSON(http.StatusOK, api.Success(nil))
 }
 
 func (c *ApplicationsController) BatchReject(ctx *gin.Context) {
@@ -395,7 +395,7 @@ func (c *ApplicationsController) BatchReject(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, "")
+	ctx.JSON(http.StatusOK, api.Success(nil))
 }
 
 func (c *ApplicationsController) BatchProcess(ctx *gin.Context) {
@@ -509,7 +509,7 @@ func (c *ApplicationsController) BatchComplete(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, "")
+	ctx.JSON(http.StatusOK, api.Success(nil))
 }
 
 func (c *ApplicationsController) AutoXferTaskList(ctx *gin.Context) {
