@@ -6,10 +6,10 @@ import (
 
 	"github.com/aptible/supercronic/cronexpr"
 	"github.com/rs/zerolog/log"
-	"github.com/theseed-labs/os-backend/internal/api/proposal"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk/metaforo"
 	"github.com/theseed-labs/os-backend/internal/storage"
+	proposal_inject "github.com/theseed-labs/os-backend/internal_inject/proposal"
 	"gorm.io/gorm"
 )
 
@@ -64,6 +64,7 @@ func RefreshVotingProposalInfoJob(db *gorm.DB, job *model.CronJob, jobParams str
 			log.Warn().Msgf("get proposal list error: %+v", err)
 			jobFailed = true
 		} else {
+			proposalService := &proposal_inject.ProposalService{}
 			for _, dbRcd := range proposals {
 				metaforoThreadId := dbRcd.GetMetaforoThreadId()
 				metaforoProposalData, err := metaforo.GetProposal(metaforoThreadId, params.GroupName, cfg.MetaforoData.AccessToken, 0)
@@ -74,20 +75,20 @@ func RefreshVotingProposalInfoJob(db *gorm.DB, job *model.CronJob, jobParams str
 
 				// Start transaction to update db records
 				if err = db.Transaction(func(tx *gorm.DB) error {
-					err = proposal.UpdateDbRecordsFromMetaforoProposalResponse(tx, dbRcd.ID, metaforoProposalData)
+					err = /*proposal*/ proposalService.UpdateDbRecordsFromMetaforoProposalResponse(tx, dbRcd.ID, metaforoProposalData)
 					if err != nil {
 						log.Warn().Msgf("update propsal with metaforo response error: %+v", err)
 						return err
 					}
 
-					pollStatusChanged, err := proposal.UpdateDbVoteOptionRecordsFromMetaforoProposalResponse(tx, dbRcd.ID, metaforoProposalData)
+					pollStatusChanged, err := /*proposal*/ proposalService.UpdateDbVoteOptionRecordsFromMetaforoProposalResponse(tx, dbRcd.ID, metaforoProposalData)
 					if err != nil {
 						log.Warn().Msgf("update propsal vote option records with metaforo response error: %+v", err)
 						return err
 					}
 
 					if pollStatusChanged {
-						if err = proposal.HandleProposalPollStatusChange(tx, dbRcd.ID, cfg.MetaforoData.GroupName); err != nil {
+						if err = /*proposal*/ proposalService.HandleProposalPollStatusChange(tx, dbRcd.ID, cfg.MetaforoData.GroupName); err != nil {
 							log.Warn().Msgf("handle proposal poll status change error: %+v", err)
 							return err
 						}
