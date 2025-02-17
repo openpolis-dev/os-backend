@@ -15,7 +15,6 @@ import (
 	"github.com/theseed-labs/os-backend/global_object"
 	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api"
-	"github.com/theseed-labs/os-backend/internal/api/proposal"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/config"
 	"github.com/theseed-labs/os-backend/internal/middleware"
@@ -25,6 +24,8 @@ import (
 	"gorm.io/gorm"
 
 	eth_common "github.com/ethereum/go-ethereum/common"
+
+	proposal_inject "github.com/theseed-labs/os-backend/internal_inject/proposal"
 )
 
 type UserController struct {
@@ -38,6 +39,8 @@ type UserController struct {
 
 	// user service
 	UserSrv *UserService `inject:""`
+
+	ProposalSrv *proposal_inject.ProposalService `inject:""`
 }
 
 func Register(fatherGroup *gin.RouterGroup) {
@@ -273,7 +276,7 @@ func (ctrl *UserController) MetaforoActivities(ctx *gin.Context) {
 		metaforoThreadIdToProposalIdMapping[p.GetMetaforoThreadId()] = p.ID
 	}
 
-	userRecords, err := proposal.GetOsUserFromMetaforoUserId(db, metaforoUserIds)
+	userRecords, err := /*proposal*/ ctrl.ProposalSrv.GetOsUserFromMetaforoUserId(db, metaforoUserIds)
 	if err != nil {
 		log.Error().Msgf("get os user error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
@@ -281,7 +284,7 @@ func (ctrl *UserController) MetaforoActivities(ctx *gin.Context) {
 		return
 	}
 
-	metaforoUidUserMapping := lo.KeyBy(userRecords, func(r *proposal.JointMetaforoAndOsUser) int {
+	metaforoUidUserMapping := lo.KeyBy(userRecords, func(r *proposal_inject.JointMetaforoAndOsUser) int {
 		return r.MetaforoUserID
 	})
 

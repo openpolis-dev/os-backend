@@ -6,10 +6,12 @@ import (
 	"github.com/theseed-labs/os-backend/global_object"
 	"github.com/theseed-labs/os-backend/internal/api/cron_jobs"
 	"github.com/theseed-labs/os-backend/internal/api/data_srv"
-	"github.com/theseed-labs/os-backend/internal/api/proposal"
 	"github.com/theseed-labs/os-backend/internal/api/user"
 	"github.com/theseed-labs/os-backend/internal/config"
 	"github.com/theseed-labs/os-backend/internal/middleware"
+
+	proposal_inject "github.com/theseed-labs/os-backend/internal_inject/proposal"
+
 	"gorm.io/gorm"
 )
 
@@ -23,6 +25,8 @@ type AdminController struct {
 	Cfg *config.Config `inject:""`
 
 	AdminService *AdminService `inject:""`
+
+	ProposalSrv *proposal_inject.ProposalService `inject:""`
 }
 
 func Register(fatherGroup *gin.RouterGroup) {
@@ -45,7 +49,7 @@ func Register(fatherGroup *gin.RouterGroup) {
 	}
 
 	proposalTmplAdminRouter := adminAuthGroup.Group("/proposal_tmpl")
-	proposalTmplAdminRouter.POST("/update", proposal.UpdateTemplate)
+	proposalTmplAdminRouter.POST("/update", adminController.ProposalSrv.UpdateTemplate)
 
 	userAdminRouter := adminAuthGroup.Group("/user")
 	userAdminRouter.POST("/check_vote_permission", user.CheckVotePermission)

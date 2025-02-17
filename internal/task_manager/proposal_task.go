@@ -6,9 +6,9 @@ import (
 	"strings"
 
 	"github.com/rs/zerolog/log"
-	"github.com/theseed-labs/os-backend/internal/api/proposal"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/storage"
+	proposal_inject "github.com/theseed-labs/os-backend/internal_inject/proposal"
 	"gorm.io/gorm"
 )
 
@@ -110,7 +110,8 @@ func CreateVetoProposalTask(db *gorm.DB, job *model.CronJob, jobParams string) {
 				jobFailed = true
 				return err
 			}
-			proposalIsForClosingProject, project, err := proposal.IsProposalIsForClosingProject(tx, dbProposalRcd.ID)
+			proposalService := &proposal_inject.ProposalService{}
+			proposalIsForClosingProject, project, err := /*proposal*/ proposalService.IsProposalIsForClosingProject(tx, dbProposalRcd.ID)
 			if err != nil {
 				log.Warn().Msgf("check proposal is closing project error: %+v", err)
 				execResult = err.Error()
@@ -191,7 +192,8 @@ func UpdateProposalStateTask(db *gorm.DB, job *model.CronJob, jobParams string) 
 			execResult = err.Error()
 			jobFailed = true
 		} else {
-			_, err = proposal.UpdateProposalStateAndLaunchStateChangeActions(db, nil, fmt.Sprintf("%d", dbProposalRcd.ID), model.ProposalState(params.State), storage.GetConfig())
+			proposalService := &proposal_inject.ProposalService{}
+			_, err = /*proposal*/ proposalService.UpdateProposalStateAndLaunchStateChangeActions(db, nil, fmt.Sprintf("%d", dbProposalRcd.ID), model.ProposalState(params.State), storage.GetConfig())
 			if err != nil {
 				log.Warn().Msgf("update dbProposalRcd state error: %+v", err)
 				execResult = err.Error()

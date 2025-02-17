@@ -4,11 +4,14 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/theseed-labs/os-backend/internal"
-	"github.com/theseed-labs/os-backend/internal/api/proposal"
 	"github.com/theseed-labs/os-backend/internal/model"
+	proposal_inject "github.com/theseed-labs/os-backend/internal_inject/proposal"
 )
 
 var _ = Describe("Internal/TaskManager/MetaforoTask", func() {
+
+	proposalService := &proposal_inject.ProposalService{}
+
 	BeforeEach(func() {
 		_ = db.AutoMigrate(tables...)
 	})
@@ -23,7 +26,7 @@ var _ = Describe("Internal/TaskManager/MetaforoTask", func() {
 			It("should not update metaforo_admin_token field", func() {
 				_, err := model.GetMetaforoData(db)
 				Expect(err).NotTo(BeNil())
-				proposal.RefreshMetaforoAdminToken()
+				proposalService.RefreshMetaforoAdminToken()
 				_, err = model.GetMetaforoData(db)
 				Expect(err).NotTo(BeNil())
 			})
@@ -62,7 +65,7 @@ var _ = Describe("Internal/TaskManager/MetaforoTask", func() {
 				Expect(err).To(BeNil())
 				Expect(mfData[internal.SysVarMfAdminToken]).To(BeEmpty())
 
-				proposal.RefreshMetaforoAdminToken()
+				proposalService.RefreshMetaforoAdminToken()
 
 				mfData, err = model.GetMetaforoData(db)
 				Expect(err).To(BeNil())

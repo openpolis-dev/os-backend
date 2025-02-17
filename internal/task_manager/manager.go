@@ -9,9 +9,9 @@ import (
 	"github.com/go-co-op/gocron/v2"
 	"github.com/rs/zerolog/log"
 	"github.com/theseed-labs/os-backend/internal"
-	"github.com/theseed-labs/os-backend/internal/api/proposal"
 	"github.com/theseed-labs/os-backend/internal/config"
 	"github.com/theseed-labs/os-backend/internal/model"
+	proposal_inject "github.com/theseed-labs/os-backend/internal_inject/proposal"
 	"gorm.io/gorm"
 )
 
@@ -89,9 +89,10 @@ func (t *TaskManager) StartRunner() {
 	}
 
 	// Start refresh metaforo admin token task every days
+	proposalService := &proposal_inject.ProposalService{}
 	if _, err = t.Scheduler.NewJob(
 		gocron.DurationJob(time.Hour*time.Duration(24)),
-		gocron.NewTask(proposal.RefreshMetaforoAdminToken),
+		gocron.NewTask(proposalService.RefreshMetaforoAdminToken),
 	); err != nil {
 		panic(err)
 	}

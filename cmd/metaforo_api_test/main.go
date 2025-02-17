@@ -11,12 +11,14 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"github.com/theseed-labs/os-backend/internal/api"
-	proposal "github.com/theseed-labs/os-backend/internal/api/proposal"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/config"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk/metaforo"
 	"github.com/theseed-labs/os-backend/internal/storage"
+
+	proposal_inject "github.com/theseed-labs/os-backend/internal_inject/proposal"
+
 	"github.com/valyala/fasthttp"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -352,9 +354,10 @@ func SyncUserVote(db *gorm.DB, grpName string, waitSeconds int) {
 		}
 	}
 
+	proposalService := &proposal_inject.ProposalService{}
 	for _, p := range proposalRcd {
 		log.Debug().Msgf("update user vote record for proposal: %d, group: %s", p.ID, grpName)
-		err = proposal.UpdateUserVoteRecordViaMetaforo(db, grpName, p.ID)
+		err = /*proposal*/ proposalService.UpdateUserVoteRecordViaMetaforo(db, grpName, p.ID)
 		if err != nil {
 			if strings.Contains(err.Error(), "thread not found") {
 				log.Warn().Msgf("proposal record %d is not found in metaforo", p.ID)
