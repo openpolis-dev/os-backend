@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/rs/zerolog/log"
 )
@@ -26,6 +27,10 @@ type autoTransferScrItem struct {
 	ApplicationId uint   `json:"application_id"`
 	TargetWallet  string `json:"target_wallet"`
 	ScrAmount     string `json:"scr_amount"`
+}
+
+var client = &http.Client{
+	Timeout: 10 * 60 * time.Second,
 }
 
 func SendScr(apiEndpoint, apiKey, apiSecret, taskParamStr, applicant string) ([]byte, error) {
@@ -62,7 +67,9 @@ func SendScr(apiEndpoint, apiKey, apiSecret, taskParamStr, applicant string) ([]
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Api-Key", apiKey)
 	req.Header.Set("Api-Secret", apiSecret)
-	resp, err := http.DefaultClient.Do(req)
+
+	// resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		log.Error().Msgf("send SCR request error: %+v", err)
 		return nil, err
