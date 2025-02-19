@@ -15,20 +15,21 @@ import (
 )
 
 type Config struct {
-	DataSource       dataSource      `json:"dataSource" yaml:"dataSource"`
-	Jwt              jwt             `json:"jwt" yaml:"jwt"`
-	Auth             auth            `json:"auth" yaml:"auth"`
-	PreviewMode      previewMode     `json:"previewMode" yaml:"previewMode"`
-	Casbin           casbin          `json:"casbin" yaml:"casbin"`
-	CronJob          cronJob         `json:"cronJob" yaml:"cronJob"`
-	Push             push            `json:"push" yaml:"push"`
-	AwsConfig        awsConfig       `json:"awsConfig" yaml:"awsConfig"`
-	ExternalServices externalService `json:"externalServices" yaml:"externalServices"`
-	PublicData       publicData      `json:"publicData" yaml:"publicData"`
-	MetaforoData     metaforoData    `json:"metaforoData" yaml:"metaforoData"`
-	Admin            adminData       `json:"admin" yaml:"admin"`
-	QuickAccounting  QuickAccounting `json:"quickAccounting" yaml:"quickAccounting"`
-	SnsInvite        SnsInvite       `json:"snsInvite" yaml:"snsInvite"`
+	DataSource       dataSource       `json:"dataSource" yaml:"dataSource"`
+	Jwt              jwt              `json:"jwt" yaml:"jwt"`
+	Auth             auth             `json:"auth" yaml:"auth"`
+	PreviewMode      previewMode      `json:"previewMode" yaml:"previewMode"`
+	Casbin           casbin           `json:"casbin" yaml:"casbin"`
+	CronJob          cronJob          `json:"cronJob" yaml:"cronJob"`
+	Push             push             `json:"push" yaml:"push"`
+	AwsConfig        awsConfig        `json:"awsConfig" yaml:"awsConfig"`
+	ExternalServices externalService  `json:"externalServices" yaml:"externalServices"`
+	PublicData       publicData       `json:"publicData" yaml:"publicData"`
+	MetaforoData     metaforoData     `json:"metaforoData" yaml:"metaforoData"`
+	Admin            adminData        `json:"admin" yaml:"admin"`
+	QuickAccounting  QuickAccounting  `json:"quickAccounting" yaml:"quickAccounting"`
+	SnsInvite        SnsInvite        `json:"snsInvite" yaml:"snsInvite"`
+	MetaforoSysState MetaforoSysState `json:"metaforoSysState" yaml:"metaforoSysState"`
 }
 
 type (
@@ -121,6 +122,10 @@ type (
 		EntityId   uint   `json:"entityId" yaml:"entityId"`
 		EntityName string `json:"entityName" yaml:"entityName"`
 		Applicant  string `json:"applicant" yaml:"applicant"`
+	}
+
+	MetaforoSysState struct {
+		Stat string `json:"stat" yaml:"stat"` // both and close is self sys first
 	}
 )
 
