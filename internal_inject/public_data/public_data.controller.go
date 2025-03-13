@@ -49,7 +49,7 @@ from proposals p
          join proposal_vote_gates pg on p.vote_gate_id = pg.id
          join seasons s on s.id = pg.season_id
 		 join users u on p.applicant = u.wallet
-where pc.id in (21, 22, 24) and p.sip is not null`
+where pc.id in (21, 22, 24) and p.sip is not null and p.sip > 0`
 
 const getSeasonUsersSQL = `select wallet, name, avatar from users where wallet in `
 
