@@ -81,6 +81,15 @@ func Register(fatherGroup *gin.RouterGroup) {
 	userAuthGroup.POST("/auth/dschat", user.AuthDsChat)
 }
 
+func findString(slice []string, target string) (int, bool) {
+	for i, s := range slice {
+		if s == target {
+			return i, true // 返回索引和存在标记
+		}
+	}
+	return -1, false // 未找到
+}
+
 func (ctrl *UserController) AuthDsChat(ctx *gin.Context) {
 	user, _ := api.ForContextUserAndDB(ctx)
 	if user == nil {
@@ -95,7 +104,8 @@ func (ctrl *UserController) AuthDsChat(ctx *gin.Context) {
 		return
 	}
 
-	if len(seepassResp.Sns) > 0 {
+	_, ok := findString(seepassResp.Roles, "SEEDAO_MEMBER")
+	if ok {
 		dsChatClient := sdk.GetDsChatClient()
 		res, err := dsChatClient.Auth(user.Wallet)
 		if err != nil {
@@ -125,7 +135,8 @@ func (ctrl *UserController) RefreshDsApiKey(ctx *gin.Context) {
 		return
 	}
 
-	if len(seepassResp.Sns) > 0 {
+	_, ok := findString(seepassResp.Roles, "SEEDAO_MEMBER")
+	if ok {
 		dsChatClient := sdk.GetDsChatClient()
 		res, err := dsChatClient.Refersh(user.Wallet)
 		if err != nil {
@@ -398,7 +409,8 @@ func (ctrl *UserController) Detail(ctx *gin.Context) {
 	sppClient := sdk.GetSppClient()
 	seepassResp, err := api.GetCachedSeepassData(sppClient, user.Wallet, false)
 	if err == nil {
-		if len(seepassResp.Sns) > 0 {
+		_, ok := findString(seepassResp.Roles, "SEEDAO_MEMBER")
+		if ok {
 			dsChatClient := sdk.GetDsChatClient()
 			res, err := dsChatClient.Auth(user.Wallet)
 			if err == nil {
