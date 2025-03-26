@@ -77,6 +77,68 @@ func Register(fatherGroup *gin.RouterGroup) {
 	userAuthGroup.POST("/leave_metaforo_group", user.LeaveMetaforoGroup)
 	userAuthGroup.POST("/prepare_metaforo", user.PrepareMetaforoData)
 	userAuthGroup.GET("/level", user.UserLvl)
+	userAuthGroup.POST("/refresh/dsapikey", user.RefreshDsApiKey)
+	userAuthGroup.POST("/auth/dschat", user.AuthDsChat)
+}
+
+func (ctrl *UserController) AuthDsChat(ctx *gin.Context) {
+	user, _ := api.ForContextUserAndDB(ctx)
+	if user == nil {
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("user need to login")))
+		return
+	}
+	sppClient := sdk.GetSppClient()
+	seepassResp, err := api.GetCachedSeepassData(sppClient, user.Wallet, false)
+	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("seepass data error")))
+		return
+	}
+
+	if len(seepassResp.Sns) > 0 {
+		dsChatClient := sdk.GetDsChatClient()
+		res, err := dsChatClient.Auth(user.Wallet)
+		if err != nil {
+			sdk.LogServerErrorToSentry(ctx, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("dschat auth error")))
+			return
+		}
+		ctx.JSON(http.StatusOK, api.Success(res))
+		return
+	} else {
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("you don't have sns")))
+		return
+	}
+}
+
+func (ctrl *UserController) RefreshDsApiKey(ctx *gin.Context) {
+	user, _ := api.ForContextUserAndDB(ctx)
+	if user == nil {
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("user need to login")))
+		return
+	}
+	sppClient := sdk.GetSppClient()
+	seepassResp, err := api.GetCachedSeepassData(sppClient, user.Wallet, false)
+	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("seepass data error")))
+		return
+	}
+
+	if len(seepassResp.Sns) > 0 {
+		dsChatClient := sdk.GetDsChatClient()
+		res, err := dsChatClient.Refersh(user.Wallet)
+		if err != nil {
+			sdk.LogServerErrorToSentry(ctx, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("dschat refresh error")))
+			return
+		}
+		ctx.JSON(http.StatusOK, api.Success(res))
+		return
+	} else {
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("you don't have sns")))
+		return
+	}
 }
 
 func (ctrl *UserController) RefreshNonce(ctx *gin.Context) {
@@ -336,6 +398,14 @@ func (ctrl *UserController) Detail(ctx *gin.Context) {
 	sppClient := sdk.GetSppClient()
 	seepassResp, err := api.GetCachedSeepassData(sppClient, user.Wallet, false)
 	if err == nil {
+		if len(seepassResp.Sns) > 0 {
+			dsChatClient := sdk.GetDsChatClient()
+			res, err := dsChatClient.Auth(user.Wallet)
+			if err == nil {
+				seepassResp.DsApiKey = res.ApiKey
+			}
+		}
+
 		ctx.JSON(http.StatusOK, api.Success(seepassResp))
 		return
 	}
