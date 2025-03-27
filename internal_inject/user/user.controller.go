@@ -100,7 +100,7 @@ func (ctrl *UserController) AuthDsChat(ctx *gin.Context) {
 	seepassResp, err := api.GetCachedSeepassData(sppClient, user.Wallet, false)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("seepass data error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("you need has a sns")))
 		return
 	}
 
@@ -116,7 +116,7 @@ func (ctrl *UserController) AuthDsChat(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, api.Success(res))
 		return
 	} else {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("you don't have sns")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("you need has a sns")))
 		return
 	}
 }
@@ -131,7 +131,7 @@ func (ctrl *UserController) RefreshDsApiKey(ctx *gin.Context) {
 	seepassResp, err := api.GetCachedSeepassData(sppClient, user.Wallet, false)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("seepass data error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("you need has a sns")))
 		return
 	}
 
@@ -147,7 +147,7 @@ func (ctrl *UserController) RefreshDsApiKey(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, api.Success(res))
 		return
 	} else {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("you don't have sns")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("you need has a sns")))
 		return
 	}
 }
