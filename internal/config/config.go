@@ -29,6 +29,7 @@ type Config struct {
 	Admin            adminData       `json:"admin" yaml:"admin"`
 	QuickAccounting  QuickAccounting `json:"quickAccounting" yaml:"quickAccounting"`
 	SnsInvite        SnsInvite       `json:"snsInvite" yaml:"snsInvite"`
+	DsChatConfig     DsChatConfig    `json:"dsChatConfig" yaml:"dsChatConfig"`
 }
 
 type (
@@ -121,6 +122,11 @@ type (
 		EntityId   uint   `json:"entityId" yaml:"entityId"`
 		EntityName string `json:"entityName" yaml:"entityName"`
 		Applicant  string `json:"applicant" yaml:"applicant"`
+	}
+
+	DsChatConfig struct {
+		BaseUrl string `json:"baseUrl" yaml:"baseUrl"`
+		AuthKey string `json:"authKey" yaml:"authKey"`
 	}
 )
 
