@@ -52,6 +52,8 @@ type SeepassResponse struct {
 	} `json:"sbt"`
 
 	SocialAccounts []interface{} `json:"social_accounts"`
+
+	DsApiKey string `json:"ds_api_key"`
 }
 
 type ProfileSocialAccount struct {

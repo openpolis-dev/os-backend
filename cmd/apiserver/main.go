@@ -154,6 +154,12 @@ func main() {
 		panic(err)
 	}
 
+	// setup DS chat API client
+	err = sdk.InitDsChatClient(cfg.DsChatConfig.BaseUrl, cfg.DsChatConfig.AuthKey)
+	if err != nil {
+		panic(err)
+	}
+
 	// Setup zerolog
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 	zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
