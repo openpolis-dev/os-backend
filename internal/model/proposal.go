@@ -175,6 +175,10 @@ type Proposal struct {
 
 	// Whether user vote record has been saved for this proposal
 	UserVoteRecordSaved bool `gorm:"default:false"`
+
+	// IsMultiple saves the proposal is multiple vote or not, the flag will be used for draft proposal
+	// For proposals already created in Metaforo, the max_vote will be used as proporal multiple vote flag
+	IsMultipleVote bool `gorm:"default:false"`
 }
 
 func (p *Proposal) StateName() string {

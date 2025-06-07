@@ -344,6 +344,7 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 		proposalRcd.VoteDurationSecond = dbProposalRcd.VoteDurationSecond
 		proposalRcd.VoteDurationSecond = dbProposalRcd.VoteDurationSecond
 		proposalRcd.AssociateProposalId = reqData.CreateProjectProposalId
+		proposalRcd.IsMultipleVote = reqData.IsMultipleVote
 
 		// proposalRcd is a new record, use create function here. Also update other data related to proposal
 		if err = db.Transaction(func(tx *gorm.DB) error {

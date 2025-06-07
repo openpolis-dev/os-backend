@@ -2160,6 +2160,12 @@ func (s *ProposalService) ConvertProposalToFrontendDetailRecord(db *gorm.DB, pro
 		log.Error().Msgf("fetch proposal error: %+v", err)
 		return nil, err, -1
 	}
+
+	proposalMultipleVoteFlag := proposal.IsMultipleVote
+	if proposal.ProposalRecordId != "" {
+		proposalMultipleVoteFlag = len(votes) > 0 && votes[0].Max > 1
+	}
+
 	return &FrontendProposalDetailRecord{
 		ID:                      proposalId,
 		Title:                   proposal.Title,
@@ -2185,7 +2191,7 @@ func (s *ProposalService) ConvertProposalToFrontendDetailRecord(db *gorm.DB, pro
 		Votes:                    votes,
 		OsVoteOptions:            frontendVoteOptions,
 		VoteType:                 proposal.VoteType,
-		IsMultipleVote:           len(votes) > 0 && votes[0].Max > 1,
+		IsMultipleVote:           proposalMultipleVoteFlag,
 		CreateTs:                 proposal.CreateTs,
 		IsBasedOnCustomTemplate:  proposal.IsBasedOnCustomTemplate,
 		TemplateName:             templateName,
