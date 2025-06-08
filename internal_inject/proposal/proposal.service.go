@@ -334,6 +334,7 @@ func (s *ProposalService) SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrU
 			AssociateProposalId:     reqData.CreateProjectProposalId,
 			ProposalTemplateID:      &reqData.TemplateId,
 			ExtraResultCheckRule:    pTemplate.ExtraResultCheckRule,
+			IsMultipleVote:          reqData.IsMultipleVote,
 		}
 		proposalRecord.PublicitySecond = voteTimeProps.PublicitySecond
 		proposalRecord.PendingExecutionSecond = voteTimeProps.PendingExecutionSecond
