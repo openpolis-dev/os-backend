@@ -38,6 +38,12 @@ const (
 	// ProposalStateVetoed indicates the proposal has been voted by city hall proposal.
 	// TODO: In this case, there should be some field to reflect this relationship
 	ProposalStateVetoed
+
+	// ProposalStateDeletedFromMetaforo indicates the proposal has been deleted from metaforo
+	ProposalStateDeletedFromMetaforo
+
+	// ProposalStateUncategorizedMetaforoError indicates other errors returned by metaforo
+	ProposalStateUncategorizedMetaforoError
 )
 
 const (
@@ -49,18 +55,19 @@ const (
 )
 
 var ProposalStateIdNameMapping = map[string]ProposalState{
-	"pending_submit":    ProposalStatePendingSubmit,
-	"draft":             ProposalStateDraft,
-	"withdrawn":         ProposalStateWithdrawn,
-	"rejected":          ProposalStateRejected,
-	"approved":          ProposalStateApproved,
-	"voting":            ProposalStateVoting,
-	"vote_passed":       ProposalStateVotePassed,
-	"vote_failed":       ProposalStateVoteFailed,
-	"pending_execution": ProposalStatePendingExecution,
-	"executed":          ProposalStateExecuted,
-	"execution_failed":  ProposalStateExecutionFailed,
-	"vetoed":            ProposalStateVetoed,
+	"pending_submit":        ProposalStatePendingSubmit,
+	"draft":                 ProposalStateDraft,
+	"withdrawn":             ProposalStateWithdrawn,
+	"rejected":              ProposalStateRejected,
+	"approved":              ProposalStateApproved,
+	"voting":                ProposalStateVoting,
+	"vote_passed":           ProposalStateVotePassed,
+	"vote_failed":           ProposalStateVoteFailed,
+	"pending_execution":     ProposalStatePendingExecution,
+	"executed":              ProposalStateExecuted,
+	"execution_failed":      ProposalStateExecutionFailed,
+	"vetoed":                ProposalStateVetoed,
+	"deleted_from_metaforo": ProposalStateDeletedFromMetaforo,
 }
 
 var ProposalStateName = []string{
@@ -201,7 +208,7 @@ func (p *Proposal) TaskStartDelay() time.Duration {
 // which means the no more actions should be performed to the proposal
 // VoteFailed may require additional actions, so it is not in here
 func (p *Proposal) IsInFinState() bool {
-	return p.State == int(ProposalStateExecuted) || p.State == int(ProposalStateVetoed)
+	return p.State == int(ProposalStateExecuted) || p.State == int(ProposalStateVetoed) || p.State == int(ProposalStateDeletedFromMetaforo)
 }
 
 // StateIsUpdatable returns bool value indicates whether this proposal can be updated.
