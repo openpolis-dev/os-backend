@@ -22,6 +22,11 @@ type SeasonSBTRecord struct {
 	Values []string `json:"values"`
 }
 
+type ComputeNodeSbt struct {
+	Node int `json:"node"`
+	Sbt  int `json:"sbt"`
+}
+
 type IndexerClient struct {
 	ApiBase string `json:"api_base"`
 }
@@ -145,4 +150,28 @@ func (c *IndexerClient) GetCurrentCityHallCount() int {
 		}
 		return resultCount
 	}
+}
+
+func (c *IndexerClient) GetComputeNodeSbt() (*ComputeNodeSbt, error) {
+	endpoint := fmt.Sprintf("%s/computenodesbt", c.ApiBase)
+	log.Debug().Msgf("Try to get compute node SBT, endpoint is %s", endpoint)
+
+	resp, err := http.Get(endpoint)
+	if err != nil {
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("got error response from indexer endpoint: status code: %d, resp: %+v", resp.StatusCode, resp)
+	}
+
+	var respData *ComputeNodeSbt
+	err = json.NewDecoder(resp.Body).Decode(&respData)
+	if err != nil {
+		return nil, err
+	}
+
+	return respData, nil
 }

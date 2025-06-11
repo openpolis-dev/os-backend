@@ -71,6 +71,7 @@ func Register(fatherGroup *gin.RouterGroup) {
 		applications.Gin.GET("/apps_applicants", applications.ListApplicants)
 		applications.Gin.GET("/download_applications", applications.Download)
 	}
+	applicationsGroup.GET("/assets/statistics", applications.AssetStatistics)
 
 	// auth
 	applicationsAuthGroup.POST("/", applications.Create)
@@ -187,7 +188,7 @@ func (c *ApplicationsController) Download(ctx *gin.Context) {
 		if err != nil {
 			log.Error().Msgf("write csv header error: %+v", err)
 			sdk.LogServerErrorToSentry(ctx, err)
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("write csv header error")))
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("write csv header error detail:"+err.Error())))
 			return
 		}
 
@@ -207,7 +208,7 @@ func (c *ApplicationsController) Download(ctx *gin.Context) {
 			if err != nil {
 				log.Error().Msgf("write csv row error: %+v", err)
 				sdk.LogServerErrorToSentry(ctx, err)
-				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("write csv row error")))
+				ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("write csv row error detail:"+err.Error())))
 				return
 			}
 		}
@@ -231,7 +232,7 @@ func (c *ApplicationsController) Download(ctx *gin.Context) {
 		if err != nil {
 			log.Error().Msgf("create excel stream writer error: %+v", err)
 			sdk.LogServerErrorToSentry(ctx, err)
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create excel stream writer error")))
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create excel stream writer error detail:"+err.Error())))
 			return
 		}
 
@@ -241,7 +242,7 @@ func (c *ApplicationsController) Download(ctx *gin.Context) {
 		if err := streamWriter.SetRow(cell, title); err != nil {
 			log.Error().Msgf("write excel header error: %+v", err)
 			sdk.LogServerErrorToSentry(ctx, err)
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("write excel header error")))
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("write excel header error detail:"+err.Error())))
 			return
 		}
 
@@ -269,7 +270,7 @@ func (c *ApplicationsController) Download(ctx *gin.Context) {
 		if err = streamWriter.Flush(); err != nil {
 			log.Error().Msgf("flush writer [%s] failed: %s", fileName, err)
 			sdk.LogServerErrorToSentry(ctx, err)
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("flush excel writer error")))
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("flush excel writer error detail:"+err.Error())))
 			return
 		}
 
@@ -278,7 +279,7 @@ func (c *ApplicationsController) Download(ctx *gin.Context) {
 		if err != nil {
 			log.Error().Msgf("write excel to response error: %+v", err)
 			sdk.LogServerErrorToSentry(ctx, err)
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("write excel to response error")))
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("write excel to response error detail:"+err.Error())))
 		}
 	} else if fileFormat == "json" {
 		tmpFile, _ := os.CreateTemp(os.TempDir(), "application-list-*.json")
@@ -289,7 +290,7 @@ func (c *ApplicationsController) Download(ctx *gin.Context) {
 		jsonBytes, err := json.Marshal(rcds)
 		if err != nil {
 			sdk.LogServerErrorToSentry(ctx, err)
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("marshal json error")))
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("marshal json error detail:"+err.Error())))
 			return
 		}
 
@@ -297,7 +298,7 @@ func (c *ApplicationsController) Download(ctx *gin.Context) {
 		if err != nil {
 			log.Error().Msgf("write json error: %+v", err)
 			sdk.LogServerErrorToSentry(ctx, err)
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("write json error")))
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("write json error detail:"+err.Error())))
 			return
 		}
 
@@ -319,7 +320,7 @@ func (c *ApplicationsController) BatchApprove(ctx *gin.Context) {
 	err := c.ApplicationsService.GetBatchApplicationsOrReturnError(ctx, &applications)
 	if err != nil {
 		sdk.LogUserSideError(ctx, err)
-		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("parse request data error")))
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("parse request data error detail:"+err.Error())))
 		return
 	}
 
@@ -330,7 +331,7 @@ func (c *ApplicationsController) BatchApprove(ctx *gin.Context) {
 	if err != nil {
 		log.Error().Msgf("check permission error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("check permission error detail:"+err.Error())))
 		return
 	}
 	if !ok {
@@ -345,7 +346,7 @@ func (c *ApplicationsController) BatchApprove(ctx *gin.Context) {
 	if err != nil {
 		log.Error().Msgf("approve applications error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("approve applications error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("approve applications error detail:"+err.Error())))
 		return
 	}
 
@@ -353,11 +354,11 @@ func (c *ApplicationsController) BatchApprove(ctx *gin.Context) {
 	if err != nil {
 		log.Error().Msgf("create auto transfer SCR task error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create auto transfer SCR task error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create auto transfer SCR task error detail:"+err.Error())))
 		return
 	}
 
-	ctx.JSON(http.StatusOK, "")
+	ctx.JSON(http.StatusOK, api.Success(nil))
 }
 
 func (c *ApplicationsController) BatchReject(ctx *gin.Context) {
@@ -365,7 +366,7 @@ func (c *ApplicationsController) BatchReject(ctx *gin.Context) {
 	err := c.ApplicationsService.GetBatchApplicationsOrReturnError(ctx, &applications)
 	if err != nil {
 		sdk.LogUserSideError(ctx, err)
-		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("parse request data error")))
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("parse request data error detail:"+err.Error())))
 		return
 	}
 
@@ -376,7 +377,7 @@ func (c *ApplicationsController) BatchReject(ctx *gin.Context) {
 	if err != nil {
 		log.Error().Msgf("check permission error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("check permission error detail:"+err.Error())))
 		return
 	}
 	if !ok {
@@ -390,11 +391,11 @@ func (c *ApplicationsController) BatchReject(ctx *gin.Context) {
 	if err != nil {
 		log.Error().Msgf("reject applications error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusBadRequest, api.ServerError(errors.New("reject applications error")))
+		ctx.JSON(http.StatusBadRequest, api.ServerError(errors.New("reject applications error detail:"+err.Error())))
 		return
 	}
 
-	ctx.JSON(http.StatusOK, "")
+	ctx.JSON(http.StatusOK, api.Success(nil))
 }
 
 func (c *ApplicationsController) BatchProcess(ctx *gin.Context) {
@@ -405,7 +406,7 @@ func (c *ApplicationsController) BatchProcess(ctx *gin.Context) {
 	if err != nil {
 		log.Error().Msgf("check permission error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("check permission error detail:"+err.Error())))
 		return
 	}
 	if !ok {
@@ -438,7 +439,7 @@ func (c *ApplicationsController) BatchProcess(ctx *gin.Context) {
 	if err != nil {
 		log.Error().Msgf("process applications error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("process applications error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("process applications error detail:"+err.Error())))
 		return
 	}
 
@@ -451,7 +452,7 @@ func (c *ApplicationsController) BatchProcess(ctx *gin.Context) {
 	if err != nil {
 		log.Error().Msgf("process applications error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("process applications error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("process applications error detail:"+err.Error())))
 		return
 	}
 
@@ -466,7 +467,7 @@ func (c *ApplicationsController) BatchComplete(ctx *gin.Context) {
 	if err != nil {
 		log.Error().Msgf("check permission error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("check permission error")))
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("check permission error detail:"+err.Error())))
 		return
 	}
 	if !ok {
@@ -482,7 +483,7 @@ func (c *ApplicationsController) BatchComplete(ctx *gin.Context) {
 	err = ctx.Bind(&reqBody)
 	if err != nil {
 		sdk.LogUserSideError(ctx, err)
-		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("parse request data error")))
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("parse request data error detail:"+err.Error())))
 		return
 	}
 
@@ -492,7 +493,7 @@ func (c *ApplicationsController) BatchComplete(ctx *gin.Context) {
 	if err != nil {
 		log.Error().Msgf("complete applications error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusBadRequest, api.ServerError(errors.New("complete applications error")))
+		ctx.JSON(http.StatusBadRequest, api.ServerError(errors.New("complete applications error detail:"+err.Error())))
 		return
 	}
 
@@ -504,20 +505,17 @@ func (c *ApplicationsController) BatchComplete(ctx *gin.Context) {
 	if err != nil {
 		log.Error().Msgf("complete applications error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusBadRequest, api.ServerError(errors.New("complete applications error")))
+		ctx.JSON(http.StatusBadRequest, api.ServerError(errors.New("complete applications error detail:"+err.Error())))
 		return
 	}
 
-	ctx.JSON(http.StatusOK, "")
+	ctx.JSON(http.StatusOK, api.Success(nil))
 }
 
 func (c *ApplicationsController) AutoXferTaskList(ctx *gin.Context) {
 	queryParams := AutoXferTaskListQueryParams{}
 	if err := ctx.Bind(&queryParams); err != nil {
-		ctx.JSON(http.StatusBadRequest, api.Reply{
-			Code: -1,
-			Msg:  fmt.Sprintf("query params error: %+v", err),
-		})
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("query params error: %+v", err)))
 		return
 	}
 
@@ -573,7 +571,7 @@ func (c *ApplicationsController) CancelAutoXferTask(ctx *gin.Context) {
 	if err != nil {
 		log.Error().Msgf("check permission error %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get cityhall permission error")))
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("get cityhall permission error detail:"+err.Error())))
 		return
 	}
 
@@ -596,9 +594,85 @@ func (c *ApplicationsController) CancelAutoXferTask(ctx *gin.Context) {
 	if err != nil {
 		log.Error().Msgf("cancel auto transfer SCR task error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("cancel auto transfer SCR task error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("cancel auto transfer SCR task error detail:"+err.Error())))
 		return
 	}
 
 	ctx.JSON(http.StatusOK, api.Success(nil))
+}
+
+func (c *ApplicationsController) AssetStatistics(ctx *gin.Context) {
+	var waitForGrantUsd float64
+	var waitForGrantScr float64
+
+	var grantedUsd float64
+	var grantedScr float64
+
+	var checkingUsd float64
+	var checkingScr float64
+
+	currentSeason, err := model.GetCurrentSeason(c.Db)
+	if err != nil {
+		log.Error().Msgf("fetch current season error: %v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("fetch current season error")))
+		return
+	}
+
+	waitForGrantUsd, err = c.ApplicationsService.SumAssetAmount(ctx, string(model.ApplicationStateOpen), "USD", int(currentSeason.ID))
+	if err != nil {
+		log.Error().Msgf("get sum wait grant usd amount error: %+v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get sum wait grant usd amount error")))
+		return
+	}
+
+	waitForGrantScr, err = c.ApplicationsService.SumAssetAmount(ctx, string(model.ApplicationStateOpen), "SCR", int(currentSeason.ID))
+	if err != nil {
+		log.Error().Msgf("get sum wait grant scr amount error: %+v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get sum wait grant scr amount error")))
+		return
+	}
+
+	grantedUsd, err = c.ApplicationsService.SumAssetAmount(ctx, string(model.ApplicationStateCompleted), "USD", int(currentSeason.ID))
+	if err != nil {
+		log.Error().Msgf("get sum granted usd amount error: %+v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get sum granted usd amount error")))
+		return
+	}
+
+	grantedScr, err = c.ApplicationsService.SumAssetAmount(ctx, string(model.ApplicationStateCompleted), "SCR", int(currentSeason.ID))
+	if err != nil {
+		log.Error().Msgf("get sum granted scr amount error: %+v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get sum granted scr amount error")))
+		return
+	}
+
+	checkingUsd, err = c.ApplicationsService.SumAssetAmount(ctx, string(model.ApplicationStateApproved), "USD", int(currentSeason.ID))
+	if err != nil {
+		log.Error().Msgf("get sum checking usd amount error: %+v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get sum checking usd amount error")))
+		return
+	}
+
+	checkingScr, err = c.ApplicationsService.SumAssetAmount(ctx, string(model.ApplicationStateApproved), "SCR", int(currentSeason.ID))
+	if err != nil {
+		log.Error().Msgf("get sum checking scr amount error: %+v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get sum checking scr amount error")))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, api.Success(&ApplicationAssetStatistic{
+		WaitForGrantUsd: waitForGrantUsd,
+		WaitForGrantScr: waitForGrantScr,
+		GrantedUsd:      grantedUsd,
+		GrantedScr:      grantedScr,
+		CheckingUsd:     checkingUsd,
+		CheckingScr:     checkingScr,
+	}))
 }

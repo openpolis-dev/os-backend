@@ -34,7 +34,7 @@ func cacheLogic[C any, D any](ctx *gin.Context, cache *dataCache[C, D], cacheInS
 		cache.client, err = c()
 		if err != nil {
 			sdk.LogServerErrorToSentry(ctx, err)
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create client error")))
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create client error detail"+err.Error())))
 			return
 		}
 	}
@@ -87,4 +87,22 @@ type safeResponse struct {
 
 type safeBalanceResponse struct {
 	FiatTotal string `json:"fiatTotal"`
+}
+
+type SeasonProposals struct {
+	Link      string `json:"link"`
+	Season    string `json:"season"`
+	Category  string `json:"category"`
+	Title     string `json:"title"`
+	Create    int    `json:"create"`
+	State     int    `json:"state"`
+	Applicant string `json:"applicant"`
+	Name      string `json:"name"`
+	Avatar    string `json:"avatar"`
+}
+
+type SeasonUsers struct {
+	Wallet string `json:"wallet"`
+	Name   string `json:"name"`
+	Avatar string `json:"avatar"`
 }

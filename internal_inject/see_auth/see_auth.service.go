@@ -46,7 +46,7 @@ func (s *SeeAuthService) SeeAuthNonce(ctx *gin.Context, wallet string) (int, *ap
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("update nonce error")))
-		return http.StatusInternalServerError, api.ServerError(errors.New("update nonce error"))
+		return http.StatusInternalServerError, api.ServerError(errors.New("update nonce error detail:" + err.Error()))
 	}
 
 	return http.StatusOK, api.Success(&RefreshNonceReply{Nonce: nonce})
@@ -108,7 +108,7 @@ func (s *SeeAuthService) LoginWithSeeAuth(ctx *gin.Context, req *seeauth.SeeLogi
 		if err != nil {
 			sdk.LogServerErrorToSentry(ctx, err)
 			// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("failed to create user")))
-			return http.StatusInternalServerError, api.ServerError(errors.New("failed to create user"))
+			return http.StatusInternalServerError, api.ServerError(errors.New("failed to create user detail:" + err.Error()))
 		}
 	}
 
@@ -123,7 +123,7 @@ func (s *SeeAuthService) LoginWithSeeAuth(ctx *gin.Context, req *seeauth.SeeLogi
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("failed to generate jwt token")))
-		return http.StatusInternalServerError, api.ServerError(errors.New("failed to generate jwt token"))
+		return http.StatusInternalServerError, api.ServerError(errors.New("failed to generate jwt token detail:" + err.Error()))
 	}
 
 	return http.StatusOK, api.Success(&LoginWithSeeAuthReply{

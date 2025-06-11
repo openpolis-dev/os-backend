@@ -77,6 +77,79 @@ func Register(fatherGroup *gin.RouterGroup) {
 	userAuthGroup.POST("/leave_metaforo_group", user.LeaveMetaforoGroup)
 	userAuthGroup.POST("/prepare_metaforo", user.PrepareMetaforoData)
 	userAuthGroup.GET("/level", user.UserLvl)
+	userAuthGroup.POST("/refresh/dsapikey", user.RefreshDsApiKey)
+	userAuthGroup.POST("/auth/dschat", user.AuthDsChat)
+}
+
+func findString(slice []string, target string) (int, bool) {
+	for i, s := range slice {
+		if s == target {
+			return i, true // 返回索引和存在标记
+		}
+	}
+	return -1, false // 未找到
+}
+
+func (ctrl *UserController) AuthDsChat(ctx *gin.Context) {
+	user, _ := api.ForContextUserAndDB(ctx)
+	if user == nil {
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("user need to login")))
+		return
+	}
+	sppClient := sdk.GetSppClient()
+	seepassResp, err := api.GetCachedSeepassData(sppClient, user.Wallet, false)
+	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("you need become seedao member")))
+		return
+	}
+
+	_, ok := findString(seepassResp.Roles, "SEEDAO_MEMBER")
+	if ok {
+		dsChatClient := sdk.GetDsChatClient()
+		res, err := dsChatClient.Auth(user.Wallet)
+		if err != nil {
+			sdk.LogServerErrorToSentry(ctx, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("dschat auth error")))
+			return
+		}
+		ctx.JSON(http.StatusOK, api.Success(res))
+		return
+	} else {
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("you need become seedao member")))
+		return
+	}
+}
+
+func (ctrl *UserController) RefreshDsApiKey(ctx *gin.Context) {
+	user, _ := api.ForContextUserAndDB(ctx)
+	if user == nil {
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("user need to login")))
+		return
+	}
+	sppClient := sdk.GetSppClient()
+	seepassResp, err := api.GetCachedSeepassData(sppClient, user.Wallet, false)
+	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("you need become seedao member")))
+		return
+	}
+
+	_, ok := findString(seepassResp.Roles, "SEEDAO_MEMBER")
+	if ok {
+		dsChatClient := sdk.GetDsChatClient()
+		res, err := dsChatClient.Refersh(user.Wallet)
+		if err != nil {
+			sdk.LogServerErrorToSentry(ctx, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("dschat refresh error")))
+			return
+		}
+		ctx.JSON(http.StatusOK, api.Success(res))
+		return
+	} else {
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("you need become seedao member")))
+		return
+	}
 }
 
 func (ctrl *UserController) RefreshNonce(ctx *gin.Context) {
@@ -96,7 +169,7 @@ func (ctrl *UserController) RefreshNonce(ctx *gin.Context) {
 
 	err = ctrl.UserSrv.RefreshNonce(ctx, req.Wallet, userNonce)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("update nonce error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("update nonce error detail:"+err.Error())))
 		return
 	}
 
@@ -200,7 +273,7 @@ func (ctrl *UserController) GetFrountedPermission(ctx *gin.Context) {
 	err := encoder.Encode(m)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("query frontend permission error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("query frontend permission error detail:"+err.Error())))
 		return
 	}
 
@@ -336,6 +409,15 @@ func (ctrl *UserController) Detail(ctx *gin.Context) {
 	sppClient := sdk.GetSppClient()
 	seepassResp, err := api.GetCachedSeepassData(sppClient, user.Wallet, false)
 	if err == nil {
+		_, ok := findString(seepassResp.Roles, "SEEDAO_MEMBER")
+		if ok {
+			dsChatClient := sdk.GetDsChatClient()
+			res, err := dsChatClient.Auth(user.Wallet)
+			if err == nil {
+				seepassResp.DsApiKey = res.ApiKey
+			}
+		}
+
 		ctx.JSON(http.StatusOK, api.Success(seepassResp))
 		return
 	}
@@ -405,7 +487,7 @@ func (ctrl *UserController) JoinMetaforoGroup(ctx *gin.Context) {
 	if err != nil {
 		log.Error().Msgf("join group error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("join group error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("join group error detail:"+err.Error())))
 		return
 	}
 
@@ -426,7 +508,7 @@ func (ctrl *UserController) LeaveMetaforoGroup(ctx *gin.Context) {
 	if err != nil {
 		log.Error().Msgf("leave group error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("leave group error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("leave group error detail:"+err.Error())))
 		return
 	}
 
@@ -450,7 +532,7 @@ func (ctrl *UserController) PrepareMetaforoData(ctx *gin.Context) {
 	if err != nil {
 		log.Error().Msgf("serialize metaforo user group info error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("processing user info error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("processing user info error detail:"+err.Error())))
 		return
 	}
 
@@ -466,7 +548,7 @@ func (ctrl *UserController) PrepareMetaforoData(ctx *gin.Context) {
 	if err != nil {
 		log.Error().Msgf("update metaforo user error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("update user info error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("update user info error detail:"+err.Error())))
 		return
 	}
 
@@ -474,7 +556,7 @@ func (ctrl *UserController) PrepareMetaforoData(ctx *gin.Context) {
 	if err != nil {
 		log.Error().Msgf("join group error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("join group error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("join group error detail:"+err.Error())))
 		return
 	}
 

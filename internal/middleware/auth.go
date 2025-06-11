@@ -21,7 +21,7 @@ func AuthOption(ctx *gin.Context) {
 	// `Authorization: Bearer <token>`
 	authHeader := ctx.GetHeader("Authorization")
 	log.Debug().Msgf("auth option: header: %+v", authHeader)
-	if !(authHeader == "" || len(authHeader) < len(BearerSchema)) {
+	if len(authHeader) > len(BearerSchema) {
 		token := authHeader[len(BearerSchema)+1:]
 
 		cfg, _ := ctx.Value(CfgKey).(*config.Config)
