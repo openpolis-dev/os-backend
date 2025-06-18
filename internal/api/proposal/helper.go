@@ -344,6 +344,7 @@ func SaveProposalRecordToDB(db *gorm.DB, reqData *CreateOrUpdateProposalData, us
 		proposalRcd.VoteDurationSecond = dbProposalRcd.VoteDurationSecond
 		proposalRcd.VoteDurationSecond = dbProposalRcd.VoteDurationSecond
 		proposalRcd.AssociateProposalId = reqData.CreateProjectProposalId
+		proposalRcd.IsMultipleVote = reqData.IsMultipleVote
 
 		// proposalRcd is a new record, use create function here. Also update other data related to proposal
 		if err = db.Transaction(func(tx *gorm.DB) error {
@@ -764,10 +765,11 @@ func SaveProposalToMetaforo(db *gorm.DB, dbProposalId uint, voteType int, metafo
 	metaforoProposalResponse, err = metaforo.GetProposal(metaforoThreadId, metaforoGroupName, metaforoAccessToken, 0)
 	if err != nil {
 		log.Error().Msgf("get metaforoProposal %d error: %+v", metaforoThreadId, err)
+		_ = UpdateDbRecordsFromMetaforoProposalResponse(db, updatedProposalRecord.ID, metaforoProposalResponse, err)
 		return err
 	}
 
-	err = UpdateDbRecordsFromMetaforoProposalResponse(db, updatedProposalRecord.ID, metaforoProposalResponse)
+	err = UpdateDbRecordsFromMetaforoProposalResponse(db, updatedProposalRecord.ID, metaforoProposalResponse, nil)
 	if err != nil {
 		log.Error().Msgf("update db records from metaforoProposalResponse error: %+v", err)
 	}
@@ -977,7 +979,23 @@ func IsUserMetVoteGate(userSeepassData *sdk.SeepassResponse, proposalVoteGate *m
 	}
 }
 
-func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcdId uint, metaforoProposal *metaforo.ProposalResponse) error {
+func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcdId uint, metaforoProposal *metaforo.ProposalResponse, mfError error) error {
+	// Check whether update form metaforo contains error, if yes, update state to metaforo error and return
+	if mfError != nil {
+		log.Error().Msgf("get metaforo proposal error: %+v", mfError)
+		proposalStateForMetaforoError := model.ProposalStateUncategorizedMetaforoError
+		if strings.Contains(mfError.Error(), "not found") {
+			proposalStateForMetaforoError = model.ProposalStateDeletedFromMetaforo
+		}
+
+		if err = db.Model(&model.Proposal{}).Where("id = ?", dbProposalRcdId).Update("state", proposalStateForMetaforoError).Error; err != nil {
+			log.Error().Msgf("update proposal %d state to deleted_by_metaforo error", dbProposalRcdId)
+			return err
+		}
+
+		return nil
+	}
+
 	// Save all version proposals' arweave hash
 	if err = UpdateArweaveHashFromMetaforoProposalResponse(db, dbProposalRcdId, metaforoProposal); err != nil {
 		log.Error().Msgf("update arweave hash error: %+v", err)

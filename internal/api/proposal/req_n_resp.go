@@ -371,17 +371,19 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposalId uint, startPo
 	if proposal.ProposalRecordId != "" {
 		metaforoProposal, err := metaforo.GetProposal(proposal.GetMetaforoThreadId(), metaforoGroupName, accessToken, startPostId)
 		if err != nil {
+			log.Error().Msgf("get metaforo proposal error: %+v", err)
+			_ = UpdateDbRecordsFromMetaforoProposalResponse(db, proposalId, metaforoProposal, err)
+			return nil, err
+		}
+
+		err = UpdateDbRecordsFromMetaforoProposalResponse(db, proposalId, metaforoProposal, nil)
+		if err != nil {
+			log.Error().Msgf("update proposal %d from metaforo error: %+v", proposalId, err)
 			return nil, err
 		}
 
 		commentCount = metaforoProposal.Thread.PostsCount
 		votes = metaforoProposal.Thread.Polls
-
-		err = UpdateDbRecordsFromMetaforoProposalResponse(db, proposalId, metaforoProposal)
-		if err != nil {
-			log.Error().Msgf("update proposal %d from metaforo error: %+v", proposalId, err)
-			return nil, err
-		}
 
 		pollStatusChanged, err := UpdateDbVoteOptionRecordsFromMetaforoProposalResponse(db, proposalId, metaforoProposal)
 		if err != nil {

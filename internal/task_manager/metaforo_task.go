@@ -67,14 +67,16 @@ func RefreshVotingProposalInfoJob(db *gorm.DB, job *model.CronJob, jobParams str
 			for _, dbRcd := range proposals {
 				metaforoThreadId := dbRcd.GetMetaforoThreadId()
 				metaforoProposalData, err := metaforo.GetProposal(metaforoThreadId, params.GroupName, cfg.MetaforoData.AccessToken, 0)
+
 				if err != nil {
+					_ = proposal.UpdateDbRecordsFromMetaforoProposalResponse(db, dbRcd.ID, metaforoProposalData, err)
 					log.Warn().Msgf("get metaforo proposal error: %+v", err)
 					continue
 				}
 
 				// Start transaction to update db records
 				if err = db.Transaction(func(tx *gorm.DB) error {
-					err = proposal.UpdateDbRecordsFromMetaforoProposalResponse(tx, dbRcd.ID, metaforoProposalData)
+					err = proposal.UpdateDbRecordsFromMetaforoProposalResponse(tx, dbRcd.ID, metaforoProposalData, nil)
 					if err != nil {
 						log.Warn().Msgf("update propsal with metaforo response error: %+v", err)
 						return err

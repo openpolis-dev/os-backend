@@ -100,10 +100,11 @@ func GetMetaforoProposalByInternalId(db *gorm.DB, proposalIdStr string, metaforo
 	metaforoProposalResponse, err := metaforo.GetProposal(osProposalRcd.GetMetaforoThreadId(), metaforoGroupName, mfAccessToken, 0)
 	if err != nil {
 		log.Error().Msgf("get metaforo proposal error: %+v", err)
+		_ = UpdateDbRecordsFromMetaforoProposalResponse(db, osProposalRcd.ID, metaforoProposalResponse, err)
 		return nil, nil, err
 	}
 
-	err = UpdateDbRecordsFromMetaforoProposalResponse(db, osProposalRcd.ID, metaforoProposalResponse)
+	err = UpdateDbRecordsFromMetaforoProposalResponse(db, osProposalRcd.ID, metaforoProposalResponse, nil)
 	if err != nil {
 		log.Error().Msgf("update db records from metaforoProposalResponse error: %+v", err)
 	}
