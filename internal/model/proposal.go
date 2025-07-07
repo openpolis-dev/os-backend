@@ -83,6 +83,7 @@ var ProposalStateName = []string{
 	"executed",
 	"execution_failed",
 	"vetoed",
+	"deleted_from_metaforo",
 }
 
 // MetaforoUser saves user mapping between OS and metaforo
