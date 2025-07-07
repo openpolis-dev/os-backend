@@ -68,6 +68,7 @@ var ProposalStateIdNameMapping = map[string]ProposalState{
 	"execution_failed":      ProposalStateExecutionFailed,
 	"vetoed":                ProposalStateVetoed,
 	"deleted_from_metaforo": ProposalStateDeletedFromMetaforo,
+	"metaforo_error":        ProposalStateUncategorizedMetaforoError,
 }
 
 var ProposalStateName = []string{
@@ -84,6 +85,7 @@ var ProposalStateName = []string{
 	"execution_failed",
 	"vetoed",
 	"deleted_from_metaforo",
+	"metaforo_error",
 }
 
 // MetaforoUser saves user mapping between OS and metaforo
