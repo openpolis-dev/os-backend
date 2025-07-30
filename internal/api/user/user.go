@@ -445,6 +445,14 @@ func Detail(ctx *gin.Context) {
 		return
 	}
 
+	// Get see data from db
+	assetRecords, err := model.UserAssetRecordModel.FindWithUserWalletAndAssetProps(db, user.Wallet, "SEE")
+	if len(assetRecords) == 0 {
+		seepassResp.See.Amount = "0"
+	} else {
+		seepassResp.See.Amount = assetRecords[0].DealtAmount.String()
+	}
+
 	log.Warn().Msgf("query seepass data error, wallet: %s, error: %+v", user.Wallet, err)
 
 	u, err := model.UserModel.Detail(db, user.Wallet)
