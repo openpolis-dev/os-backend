@@ -56,6 +56,8 @@ func Register(fatherGroup *gin.RouterGroup) {
 
 // Create creates a new asset transfer
 func (c *AssetRecordsController) Create(ctx *gin.Context) {
+	user := api.ForContextOnlyUser(ctx)
+
 	var req CreateTransferRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		sdk.LogUserSideError(ctx, err)
@@ -63,7 +65,7 @@ func (c *AssetRecordsController) Create(ctx *gin.Context) {
 		return
 	}
 
-	transferLog, err := c.Service.CreateTransfer(req.FromUser, req.ToUser, req.AssetName, req.Amount, req.Comment)
+	transferLog, err := c.Service.CreateTransfer(user.Wallet, req.ToUser, req.AssetName, req.Amount, req.Comment)
 	if err != nil {
 		log.Error().Msgf("Error creating transfer: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
@@ -104,7 +106,7 @@ func (c *AssetRecordsController) List(ctx *gin.Context) {
 		queryParams.Size = DefaultPageSize
 	}
 
-	transfers, total, err := c.Service.ListTransfers(queryParams.Page, queryParams.Size, queryParams.FromUser, queryParams.ToUser)
+	transferLogs, total, err := c.Service.ListTransfers(queryParams.Page, queryParams.Size, queryParams.FromUser, queryParams.ToUser)
 	if err != nil {
 		log.Error().Msgf("Error listing transfers: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
@@ -113,17 +115,17 @@ func (c *AssetRecordsController) List(ctx *gin.Context) {
 	}
 
 	// Convert to response format
-	response := make([]*TransferResponse, len(transfers))
-	for i, transfer := range transfers {
+	response := make([]*TransferResponse, len(transferLogs))
+	for i, transferLog := range transferLogs {
 		response[i] = &TransferResponse{
-			ID:            transfer.ID,
-			FromUser:      transfer.FromUser,
-			ToUser:        transfer.ToUser,
-			AssetName:     transfer.AssetName,
-			Amount:        transfer.Amount,
-			TransactionTs: transfer.TransactionTs,
-			Result:        transfer.Result,
-			Comment:       transfer.Comment,
+			ID:            transferLog.ID,
+			FromUser:      transferLog.FromUser,
+			ToUser:        transferLog.ToUser,
+			AssetName:     transferLog.AssetName,
+			Amount:        transferLog.Amount,
+			TransactionTs: transferLog.TransactionTs,
+			Result:        transferLog.Result,
+			Comment:       transferLog.Comment,
 		}
 	}
 
@@ -145,7 +147,7 @@ func (c *AssetRecordsController) Detail(ctx *gin.Context) {
 		return
 	}
 
-	transfer, err := c.Service.GetTransferByID(uint(transferID))
+	transferLog, err := c.Service.GetTransferByID(uint(transferID))
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			sdk.LogUserSideError(ctx, err)
@@ -159,14 +161,14 @@ func (c *AssetRecordsController) Detail(ctx *gin.Context) {
 	}
 
 	response := &TransferResponse{
-		ID:            transfer.ID,
-		FromUser:      transfer.FromUser,
-		ToUser:        transfer.ToUser,
-		AssetName:     transfer.AssetName,
-		Amount:        transfer.Amount,
-		TransactionTs: transfer.TransactionTs,
-		Result:        transfer.Result,
-		Comment:       transfer.Comment,
+		ID:            transferLog.ID,
+		FromUser:      transferLog.FromUser,
+		ToUser:        transferLog.ToUser,
+		AssetName:     transferLog.AssetName,
+		Amount:        transferLog.Amount,
+		TransactionTs: transferLog.TransactionTs,
+		Result:        transferLog.Result,
+		Comment:       transferLog.Comment,
 	}
 
 	ctx.JSON(http.StatusOK, api.Success(response))

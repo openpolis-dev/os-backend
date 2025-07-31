@@ -3,7 +3,9 @@ package asset_records_inject
 import (
 	"errors"
 	"fmt"
+	"strings"
 
+	"github.com/rs/zerolog/log"
 	"github.com/shopspring/decimal"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"gorm.io/gorm"
@@ -21,9 +23,11 @@ func NewAssetRecordsService(db *gorm.DB) *AssetRecordsService {
 
 // CreateTransfer creates a new asset transfer with all necessary validations
 func (s *AssetRecordsService) CreateTransfer(fromUser, toUser, assetName string, amount decimal.Decimal, comment string) (*model.UserAssetTransferLog, error) {
+	upperAssetName := strings.ToUpper(assetName)
+	log.Debug().Msgf("CreateTransfer: fromUser=%s, toUser=%s, assetName=%s, amount=%s, comment=%s", fromUser, toUser, upperAssetName, amount, comment)
 	// Set default asset name to "see" if empty
-	if assetName == "" {
-		assetName = DefaultAssetName
+	if upperAssetName == "" {
+		upperAssetName = DefaultAssetName
 	}
 	// Validate that from and to users are different
 	if fromUser == toUser {
@@ -36,7 +40,7 @@ func (s *AssetRecordsService) CreateTransfer(fromUser, toUser, assetName string,
 	}
 
 	// Check if from user has sufficient balance
-	fromUserRecords, err := model.UserAssetRecordModel.FindWithUserWalletAndAssetProps(s.db, fromUser, assetName)
+	fromUserRecords, err := model.UserAssetRecordModel.FindWithUserWalletAndAssetProps(s.db, fromUser, upperAssetName)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", ErrCheckingBalance, err)
 	}
@@ -56,18 +60,20 @@ func (s *AssetRecordsService) CreateTransfer(fromUser, toUser, assetName string,
 	err = s.db.Transaction(func(tx *gorm.DB) error {
 		// Create transfer log
 		var createErr error
-		transferLog, createErr = model.UserAssetTransferLogModel.Create(tx, fromUser, toUser, assetName, amount, comment)
+		transferLog, createErr = model.UserAssetTransferLogModel.Create(tx, fromUser, toUser, upperAssetName, amount, comment)
 		if createErr != nil {
 			return fmt.Errorf("%s: %w", ErrCreatingTransfer, createErr)
 		}
 
 		// Deduct amount from from user's dealt amount
-		if updateErr := model.UserAssetRecordModel.CreateOrUpdate(tx, fromUser, assetName, decimal.Zero, amount.Neg()); updateErr != nil {
+		if updateErr := model.UserAssetRecordModel.CreateOrUpdate(tx, fromUser, upperAssetName, decimal.Zero, amount.Neg()); updateErr != nil {
+			model.UserAssetTransferLogModel.UpdateResult(tx, transferLog.ID, model.TransferResultFailed)
 			return fmt.Errorf("%s: %w", ErrUpdatingFromUser, updateErr)
 		}
 
 		// Add amount to to user's dealt amount
-		if updateErr := model.UserAssetRecordModel.CreateOrUpdate(tx, toUser, assetName, decimal.Zero, amount); updateErr != nil {
+		if updateErr := model.UserAssetRecordModel.CreateOrUpdate(tx, toUser, upperAssetName, decimal.Zero, amount); updateErr != nil {
+			model.UserAssetTransferLogModel.UpdateResult(tx, transferLog.ID, model.TransferResultFailed)
 			return fmt.Errorf("%s: %w", ErrUpdatingToUser, updateErr)
 		}
 

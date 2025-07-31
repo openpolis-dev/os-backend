@@ -6,8 +6,7 @@ import (
 
 // CreateTransferRequest represents the request payload for creating a new asset transfer
 type CreateTransferRequest struct {
-	FromUser  string          `json:"from_user" binding:"required"`
-	ToUser    string          `json:"to_user" binding:"required"`
+	ToUser    string          `json:"to" binding:"required"`
 	AssetName string          `json:"asset_name"`
 	Amount    decimal.Decimal `json:"amount" binding:"required,gt=0"`
 	Comment   string          `json:"comment"`

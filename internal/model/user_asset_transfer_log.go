@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/shopspring/decimal"
-	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"gorm.io/gorm"
 )
@@ -49,24 +48,13 @@ func (*userAssetTransferLogModel) Create(db *gorm.DB, fromUser string, toUser st
 
 	// Ensure both users exist in the database
 	var fromUserRecord, toUserRecord User
-	
-	// Create or get from user
-	if err := db.Where(User{Wallet: fromUser}).Attrs(User{
-		CreatedAt: time.Now().In(internal.ProjectTimezone),
-		UpdatedAt: time.Now().In(internal.ProjectTimezone),
-		CreateTs:  GetCurrentUtcEpochSecond(),
-		UpdateTs:  GetCurrentUtcEpochSecond(),
-	}).FirstOrCreate(&fromUserRecord).Error; err != nil {
+
+	// get from user and to user
+	if err := db.Where(User{Wallet: fromUser}).First(&fromUserRecord).Error; err != nil {
 		return nil, err
 	}
 
-	// Create or get to user
-	if err := db.Where(User{Wallet: toUser}).Attrs(User{
-		CreatedAt: time.Now().In(internal.ProjectTimezone),
-		UpdatedAt: time.Now().In(internal.ProjectTimezone),
-		CreateTs:  GetCurrentUtcEpochSecond(),
-		UpdateTs:  GetCurrentUtcEpochSecond(),
-	}).FirstOrCreate(&toUserRecord).Error; err != nil {
+	if err := db.Where(User{Wallet: toUser}).FirstOrCreate(&toUserRecord).Error; err != nil {
 		return nil, err
 	}
 
@@ -78,8 +66,6 @@ func (*userAssetTransferLogModel) Create(db *gorm.DB, fromUser string, toUser st
 		TransactionTs: GetCurrentUtcEpochSecond(),
 		Result:        TransferResultPending,
 		Comment:       comment,
-		CreateTs:      GetCurrentUtcEpochSecond(),
-		UpdateTs:      GetCurrentUtcEpochSecond(),
 	}
 
 	if err := db.Create(transferLog).Error; err != nil {
@@ -92,9 +78,7 @@ func (*userAssetTransferLogModel) Create(db *gorm.DB, fromUser string, toUser st
 // UpdateResult updates the result of a transfer log
 func (*userAssetTransferLogModel) UpdateResult(db *gorm.DB, id uint, result string) error {
 	return db.Model(&UserAssetTransferLog{}).Where("id = ?", id).Updates(map[string]interface{}{
-		"result":     result,
-		"update_ts":  GetCurrentUtcEpochSecond(),
-		"updated_at": time.Now().In(internal.ProjectTimezone),
+		"result": result,
 	}).Error
 }
 
