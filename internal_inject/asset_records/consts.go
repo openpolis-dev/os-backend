@@ -49,5 +49,5 @@ const (
 
 // Default values
 const (
-	DefaultAssetName = "see"
+	DefaultTransferAssetName = "SEE"
 )

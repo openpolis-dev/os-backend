@@ -23,12 +23,14 @@ func NewAssetRecordsService(db *gorm.DB) *AssetRecordsService {
 
 // CreateTransfer creates a new asset transfer with all necessary validations
 func (s *AssetRecordsService) CreateTransfer(fromUser, toUser, assetName string, amount decimal.Decimal, comment string) (*model.UserAssetTransferLog, error) {
-	upperAssetName := strings.ToUpper(assetName)
-	log.Debug().Msgf("CreateTransfer: fromUser=%s, toUser=%s, assetName=%s, amount=%s, comment=%s", fromUser, toUser, upperAssetName, amount, comment)
 	// Set default asset name to "see" if empty
-	if upperAssetName == "" {
-		upperAssetName = DefaultAssetName
+	if assetName == "" {
+		assetName = DefaultTransferAssetName
 	}
+	upperAssetName := strings.ToUpper(assetName)
+
+	log.Debug().Msgf("CreateTransfer: fromUser=%s, toUser=%s, assetName=%s, amount=%s, comment=%s", fromUser, toUser, upperAssetName, amount, comment)
+
 	// Validate that from and to users are different
 	if fromUser == toUser {
 		return nil, errors.New(ErrSameUserTransfer)
