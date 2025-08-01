@@ -134,6 +134,12 @@ type DecimalsAndContractAddr struct {
 	Addr     string
 }
 
+var (
+	AssetNameSCR  = "SCR"
+	AssetNameSEE  = "SEE"
+	AssetNameUSDT = "USDT"
+)
+
 // AssertDecimalsAndContractAddr supported token for sending application to QuickAccounting
 var AssertDecimalsAndContractAddr = map[string]*DecimalsAndContractAddr{
 	"SCR":  {Decimals: 18, Addr: ScrContractAddr},
