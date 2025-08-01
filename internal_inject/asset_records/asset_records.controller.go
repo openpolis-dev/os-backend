@@ -2,6 +2,7 @@ package asset_records_inject
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/theseed-labs/os-backend/global_object"
 	"github.com/theseed-labs/os-backend/internal/api"
+	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/config"
 	"github.com/theseed-labs/os-backend/internal/middleware"
 	"github.com/theseed-labs/os-backend/internal/sdk"
@@ -65,7 +67,21 @@ func (c *AssetRecordsController) Create(ctx *gin.Context) {
 		return
 	}
 
-	transferLog, err := c.Service.CreateTransfer(user.Wallet, req.ToUser, req.AssetName, req.Amount, req.Comment)
+	if !common.ValidateUserWallet(req.ToUser) {
+		err := fmt.Errorf("invalid target user wallet: %s", req.ToUser)
+		sdk.LogUserSideError(ctx, err)
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
+		return
+	}
+
+	transferLog, err := c.Service.CreateTransfer(
+		common.FormatUserWallet(user.Wallet),
+		common.FormatUserWallet(req.ToUser),
+		req.AssetName,
+		req.Amount,
+		req.Comment,
+	)
+
 	if err != nil {
 		log.Error().Msgf("Error creating transfer: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
