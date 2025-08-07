@@ -97,7 +97,7 @@ func (s *ProjectsService) Create(ctx *gin.Context, req *CreateReq) (int, *api.Re
 	if req.ScrBudget != decimal.Zero {
 		budgets = append(budgets, &model.ProjectBudget{
 			ProjectID:    proj.ID,
-			AssetName:    "SCR",
+			AssetName:    internal.AssetNameWANG,
 			TotalAmount:  req.ScrBudget,
 			RemainAmount: req.ScrBudget,
 			CreateTs:     model.GetCurrentUtcEpochSecond(),
@@ -108,7 +108,7 @@ func (s *ProjectsService) Create(ctx *gin.Context, req *CreateReq) (int, *api.Re
 	if req.UsdcBudget != decimal.Zero {
 		budgets = append(budgets, &model.ProjectBudget{
 			ProjectID:    proj.ID,
-			AssetName:    "USDC",
+			AssetName:    internal.AssetNameUSDC,
 			TotalAmount:  req.UsdcBudget,
 			RemainAmount: req.UsdcBudget,
 			CreateTs:     model.GetCurrentUtcEpochSecond(),
