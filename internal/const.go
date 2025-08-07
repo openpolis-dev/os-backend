@@ -111,6 +111,7 @@ const (
 
 const (
 	ComponentNameBudgetP1          = "budget_p1"
+	ComponentNameBudgetP2          = "budget_p2"
 	ComponentNameBudget            = "budget"
 	ComponentNameDeliverables      = "deliverables"
 	ComponentNameDeadline          = "deadline"
@@ -135,9 +136,11 @@ type DecimalsAndContractAddr struct {
 }
 
 var (
+	AssetNameWANG = "WANG"
 	AssetNameSCR  = "SCR"
 	AssetNameSEE  = "SEE"
 	AssetNameUSDT = "USDT"
+	AssetNameUSDC = "USDC"
 )
 
 // AssertDecimalsAndContractAddr supported token for sending application to QuickAccounting
