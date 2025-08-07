@@ -1777,35 +1777,36 @@ func CreateProjectFromAutoTasks(db *gorm.DB, proposalId uint) (*model.Project, e
 
 	for _, pComponentRecord := range pComponents {
 		if compName, found := getProposalComponentIdNameMapping(db)[pComponentRecord.ComponentID]; found {
-			if compName == internal.ComponentNameBudgetP1 {
+			switch compName {
+			case internal.ComponentNameBudgetP1, internal.ComponentNameBudgetP2:
 				var budgetParams budgetComponentDataP1
-				err := json.Unmarshal([]byte(pComponentRecord.Data), &budgetParams)
+				err = json.Unmarshal([]byte(pComponentRecord.Data), &budgetParams)
 				if err != nil {
 					log.Error().Msgf("unmarshal project deliverables data error: %+v", err)
 					return nil, err
 				}
 
 				projectBudgetRcds = budgetParams.prepareBudgetRecords(proposalId)
-			} else if compName == internal.ComponentNameBudget {
+			case internal.ComponentNameBudget:
 				var budgetParams budgetComponentData
-				err := json.Unmarshal([]byte(pComponentRecord.Data), &budgetParams)
+				err = json.Unmarshal([]byte(pComponentRecord.Data), &budgetParams)
 				if err != nil {
 					log.Error().Msgf("unmarshal project deliverables data error: %+v", err)
 					return nil, err
 				}
 
 				projectBudgetRcds = budgetParams.prepareBudgetRecords(proposalId)
-			} else if compName == internal.ComponentNameDeliverables {
+			case internal.ComponentNameDeliverables:
 				var deliverableParams commonCreateProjectRelatedData
-				err := json.Unmarshal([]byte(pComponentRecord.Data), &deliverableParams)
+				err = json.Unmarshal([]byte(pComponentRecord.Data), &deliverableParams)
 				if err != nil {
 					log.Error().Msgf("unmarshal project deliverables data error: %+v", err)
 					return nil, err
 				}
 				newProjectData.Deliverable = deliverableParams.Desc
-			} else if compName == internal.ComponentNameDeadline {
+			case internal.ComponentNameDeadline:
 				var deadlineParams commonCreateProjectRelatedData
-				err := json.Unmarshal([]byte(pComponentRecord.Data), &deadlineParams)
+				err = json.Unmarshal([]byte(pComponentRecord.Data), &deadlineParams)
 				if err != nil {
 					log.Error().Msgf("unmarshal project deadline data error: %+v", err)
 					return nil, err
