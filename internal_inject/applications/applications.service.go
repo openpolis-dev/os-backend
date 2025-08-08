@@ -208,7 +208,7 @@ func (s *ApplicationsService) GetCronJobRecordFromStrId(taskId string) (model.Cr
 func (s *ApplicationsService) SumAssetAmount(ctx *gin.Context, stat string, assetNames []string, seasonId int) (float64, error) {
 	var value float64
 
-	assetQueryCond := fmt.Sprintf("(%s)", strings.Join(assetNames, ","))
+	assetQueryCond := fmt.Sprintf("('%s')", strings.Join(assetNames, "','"))
 
 	err := s.Db.Model(&model.Application{}).
 		Select("sum(cast(asset_amount as decimal)) as total").
