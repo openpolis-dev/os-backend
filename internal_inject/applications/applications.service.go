@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -204,12 +205,14 @@ func (s *ApplicationsService) GetCronJobRecordFromStrId(taskId string) (model.Cr
 	return task, nil
 }
 
-func (s *ApplicationsService) SumAssetAmount(ctx *gin.Context, stat string, assetName string, seasonId int) (float64, error) {
+func (s *ApplicationsService) SumAssetAmount(ctx *gin.Context, stat string, assetNames []string, seasonId int) (float64, error) {
 	var value float64
+
+	assetQueryCond := fmt.Sprintf("(%s)", strings.Join(assetNames, ","))
 
 	err := s.Db.Model(&model.Application{}).
 		Select("sum(cast(asset_amount as decimal)) as total").
-		Where("state = ?", stat).Where("asset_name = ?", assetName).
+		Where("state = ?", stat).Where("asset_name in ?", assetQueryCond).
 		Where("season_id = ?", seasonId).
 		Scan(&value).Error
 	if err != nil {
