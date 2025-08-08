@@ -627,7 +627,7 @@ func (c *ApplicationsController) AssetStatistics(ctx *gin.Context) {
 		return
 	}
 
-	waitForGrantScr, err = c.ApplicationsService.SumAssetAmount(ctx, string(model.ApplicationStateOpen), "SCR", int(currentSeason.ID))
+	waitForGrantScr, err = c.ApplicationsService.SumAssetAmount(ctx, string(model.ApplicationStateOpen), internal.AssetNameWANG, int(currentSeason.ID))
 	if err != nil {
 		log.Error().Msgf("get sum wait grant scr amount error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
@@ -643,7 +643,7 @@ func (c *ApplicationsController) AssetStatistics(ctx *gin.Context) {
 		return
 	}
 
-	grantedScr, err = c.ApplicationsService.SumAssetAmount(ctx, string(model.ApplicationStateCompleted), "SCR", int(currentSeason.ID))
+	grantedScr, err = c.ApplicationsService.SumAssetAmount(ctx, string(model.ApplicationStateCompleted), internal.AssetNameWANG, int(currentSeason.ID))
 	if err != nil {
 		log.Error().Msgf("get sum granted scr amount error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
@@ -659,7 +659,7 @@ func (c *ApplicationsController) AssetStatistics(ctx *gin.Context) {
 		return
 	}
 
-	checkingScr, err = c.ApplicationsService.SumAssetAmount(ctx, string(model.ApplicationStateApproved), "SCR", int(currentSeason.ID))
+	checkingScr, err = c.ApplicationsService.SumAssetAmount(ctx, string(model.ApplicationStateApproved), internal.AssetNameWANG, int(currentSeason.ID))
 	if err != nil {
 		log.Error().Msgf("get sum checking scr amount error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
