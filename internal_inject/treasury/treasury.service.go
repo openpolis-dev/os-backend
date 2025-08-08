@@ -77,7 +77,7 @@ func (s *TreasuryService) GetSumOfIssuedAsset(db *gorm.DB, assetName string, sea
 		query = query.Where("season_id = ?", seasonId)
 	}
 
-	err := query.Select("SUM(asset_amount)").
+	err := query.Select("SUM(asset_amount::decimal)").
 		Scan(&sum).Error
 	if err != nil {
 		return decimal.Zero, err
