@@ -1786,6 +1786,9 @@ func CreateProjectFromAutoTasks(db *gorm.DB, proposalId uint) (*model.Project, e
 					return nil, err
 				}
 
+				log.Error().Msgf("TTT: component data: %q", pComponentRecord.Data)
+				log.Error().Msgf("TTT: budget params: %+v", budgetParams)
+
 				projectBudgetRcds = budgetParams.prepareBudgetRecords(proposalId)
 			case internal.ComponentNameBudget:
 				var budgetParams budgetComponentData
