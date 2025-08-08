@@ -68,7 +68,7 @@ func (s *TreasuryService) UpdateAssets(ctx *gin.Context) (int, *api.Reply) {
 }
 
 func (s *TreasuryService) GetSumOfIssuedAsset(db *gorm.DB, assetName string, seasonId uint) (decimal.Decimal, error) {
-	var sum decimal.Decimal
+	var applications []model.Application
 	query := db.Model(&model.Application{}).Where(&model.Application{
 		AssetName: strings.ToUpper(assetName),
 	})
@@ -77,10 +77,17 @@ func (s *TreasuryService) GetSumOfIssuedAsset(db *gorm.DB, assetName string, sea
 		query = query.Where("season_id = ?", seasonId)
 	}
 
-	err := query.Select("SUM(asset_amount::decimal)").
-		Scan(&sum).Error
+	// Load all records
+	err := query.Find(&applications).Error
 	if err != nil {
 		return decimal.Zero, err
 	}
+
+	// Sum in golang
+	var sum decimal.Decimal
+	for _, app := range applications {
+		sum = sum.Add(app.AssetAmount)
+	}
+
 	return sum, nil
 }
