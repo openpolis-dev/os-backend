@@ -208,6 +208,7 @@ type TreasuryAssetsResponse struct {
 	CreditUsedAmount  decimal.Decimal `json:"credit_used_amount"`
 	TokenTotalAmount  decimal.Decimal `json:"token_total_amount"`
 	TokenUsedAmount   decimal.Decimal `json:"token_used_amount"`
+	SeeUsedAmount     decimal.Decimal `json:"see_used_amount"`
 }
 
 // NewApplicationRequest is used to save new application request data passed from frontend

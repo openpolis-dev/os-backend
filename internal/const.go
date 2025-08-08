@@ -136,11 +136,12 @@ type DecimalsAndContractAddr struct {
 }
 
 var (
-	AssetNameWANG = "WANG"
-	AssetNameSCR  = "SCR"
-	AssetNameSEE  = "SEE"
-	AssetNameUSDT = "USDT"
-	AssetNameUSDC = "USDC"
+	AssetNameWANG  = "WANG"
+	AssetNameSCR   = "SCR"
+	AssetNameSEE   = "SEE"
+	AssetPrefixUSD = "USD"
+	AssetNameUSDT  = "USDT"
+	AssetNameUSDC  = "USDC"
 )
 
 // AssertDecimalsAndContractAddr supported token for sending application to QuickAccounting

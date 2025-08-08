@@ -60,13 +60,13 @@ type TreasuryAuditLog struct {
 }
 
 func (r *TreasuryAsset) ToTreasuryAssetsResponse(db *gorm.DB) (*TreasuryAssetsResponse, error) {
-	var creditTotal, creditUsed, tokenTotal, tokenUsed decimal.Decimal
+	var creditTotal, creditUsed, tokenTotal, tokenUsed, seeUsed decimal.Decimal
 
 	// Calculate total amount
 	for _, detailedRcd := range r.DetailedRecords {
-		if strings.HasPrefix(detailedRcd.AssetName, "USD") {
+		if strings.HasPrefix(detailedRcd.AssetName, internal.AssetPrefixUSD) {
 			tokenTotal = tokenTotal.Add(detailedRcd.TotalAmount)
-		} else if strings.EqualFold(detailedRcd.AssetName, "SCR") {
+		} else if strings.EqualFold(detailedRcd.AssetName, internal.AssetNameWANG) {
 			creditTotal = creditTotal.Add(detailedRcd.TotalAmount)
 		} else {
 			log.Warn().Msgf("non token or credit asset %s, ignore the treasury record: %+v", detailedRcd.AssetName, detailedRcd)
@@ -84,15 +84,18 @@ func (r *TreasuryAsset) ToTreasuryAssetsResponse(db *gorm.DB) (*TreasuryAssetsRe
 
 	creditUsed = decimal.Zero
 	tokenUsed = decimal.Zero
+	seeUsed = decimal.Zero
 	for _, application := range applications {
-		if strings.HasPrefix(application.AssetName, "USD") {
+		if strings.HasPrefix(application.AssetName, internal.AssetPrefixUSD) {
 			// only calculate completed USD
 			if application.State == ApplicationStateCompleted {
 				tokenUsed = tokenUsed.Add(application.AssetAmount)
 			}
-		} else if strings.EqualFold(application.AssetName, "SCR") {
+		} else if strings.EqualFold(application.AssetName, internal.AssetNameWANG) {
 			// calculate processing and completed SCR
 			creditUsed = creditUsed.Add(application.AssetAmount)
+		} else if strings.EqualFold(application.AssetName, internal.AssetNameSEE) {
+			seeUsed = seeUsed.Add(application.AssetAmount)
 		} else {
 			log.Warn().Msgf("non token or credit asset %s, ignore the application record: %+v", application.AssetName, application)
 		}
@@ -103,6 +106,7 @@ func (r *TreasuryAsset) ToTreasuryAssetsResponse(db *gorm.DB) (*TreasuryAssetsRe
 		CreditUsedAmount:  creditUsed,
 		TokenTotalAmount:  tokenTotal,
 		TokenUsedAmount:   tokenUsed,
+		SeeUsedAmount:     seeUsed,
 	}, nil
 }
 
