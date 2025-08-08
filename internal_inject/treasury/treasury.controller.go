@@ -7,6 +7,7 @@ import (
 	"github.com/facebookgo/inject"
 	"github.com/gin-gonic/gin"
 	"github.com/theseed-labs/os-backend/global_object"
+	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/config"
 	"github.com/theseed-labs/os-backend/internal/middleware"
@@ -70,6 +71,24 @@ func (c *TreasuryController) GetOrCreateCurrentAssetRecords(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get or create current quarter treasury record error detail:"+err.Error())))
 		return
 	}
+
+	// Get SEE records
+	totalSeeAmount, err := c.TreasuryService.GetSumOfIssuedAsset(c.Db, internal.AssetNameSEE, 0)
+	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get sum of issued asset error detail:"+err.Error())))
+		return
+	}
+
+	seasonSeeAmount, err := c.TreasuryService.GetSumOfIssuedAsset(c.Db, internal.AssetNameSEE, currQuarterTreasuryRecord.SeasonId)
+	if err != nil {
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get sum of issued asset error detail:"+err.Error())))
+		return
+	}
+
+	treasuryAssetResp.SeeTotalAmount = totalSeeAmount
+	treasuryAssetResp.SeeUsedAmount = seasonSeeAmount
 
 	ctx.JSON(http.StatusOK, api.Success(treasuryAssetResp))
 }
