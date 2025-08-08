@@ -1778,8 +1778,17 @@ func CreateProjectFromAutoTasks(db *gorm.DB, proposalId uint) (*model.Project, e
 	for _, pComponentRecord := range pComponents {
 		if compName, found := getProposalComponentIdNameMapping(db)[pComponentRecord.ComponentID]; found {
 			switch compName {
-			case internal.ComponentNameBudgetP1, internal.ComponentNameBudgetP2:
+			case internal.ComponentNameBudgetP1:
 				var budgetParams budgetComponentDataP1
+				err = json.Unmarshal([]byte(pComponentRecord.Data), &budgetParams)
+				if err != nil {
+					log.Error().Msgf("unmarshal project deliverables data error: %+v", err)
+					return nil, err
+				}
+
+				projectBudgetRcds = budgetParams.prepareBudgetRecords(proposalId)
+			case internal.ComponentNameBudget, internal.ComponentNameBudgetP2:
+				var budgetParams budgetComponentData
 				err = json.Unmarshal([]byte(pComponentRecord.Data), &budgetParams)
 				if err != nil {
 					log.Error().Msgf("unmarshal project deliverables data error: %+v", err)
@@ -1788,15 +1797,6 @@ func CreateProjectFromAutoTasks(db *gorm.DB, proposalId uint) (*model.Project, e
 
 				log.Error().Msgf("TTT: component data: %q", pComponentRecord.Data)
 				log.Error().Msgf("TTT: budget params: %+v", budgetParams)
-
-				projectBudgetRcds = budgetParams.prepareBudgetRecords(proposalId)
-			case internal.ComponentNameBudget:
-				var budgetParams budgetComponentData
-				err = json.Unmarshal([]byte(pComponentRecord.Data), &budgetParams)
-				if err != nil {
-					log.Error().Msgf("unmarshal project deliverables data error: %+v", err)
-					return nil, err
-				}
 
 				projectBudgetRcds = budgetParams.prepareBudgetRecords(proposalId)
 			case internal.ComponentNameDeliverables:
