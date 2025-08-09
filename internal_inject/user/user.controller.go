@@ -404,11 +404,22 @@ func (ctrl *UserController) MetaforoActivities(ctx *gin.Context) {
 }
 
 func (ctrl *UserController) Detail(ctx *gin.Context) {
-	user, _ := api.ForContextUserAndDB(ctx)
+	user, db := api.ForContextUserAndDB(ctx)
 
 	sppClient := sdk.GetSppClient()
 	seepassResp, err := api.GetCachedSeepassData(sppClient, user.Wallet, false)
 	if err == nil {
+
+		// Get see data from db
+		assetRecords, _ := model.UserAssetRecordModel.FindWithUserWalletAndAssetProps(db, user.Wallet, internal.AssetNameSEE)
+		api.PrintStructAsJson(assetRecords, "assetRecords")
+		if len(assetRecords) == 0 {
+			seepassResp.See.Amount = "0"
+		} else {
+			seepassResp.See.Amount = assetRecords[0].DealtAmount.String()
+		}
+
+		// populate deepseek key
 		_, ok := findString(seepassResp.Roles, "SEEDAO_MEMBER")
 		if ok {
 			dsChatClient := sdk.GetDsChatClient()

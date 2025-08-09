@@ -132,8 +132,9 @@ func RefreshSeepassDataCache(sppClient *sdk.SppClient, wallet string) (*sdk.Seep
 
 func CreateAutoTransferScrTask(db *gorm.DB, applications []*model.Application, proposalId uint) error {
 	// Issue send SCR tasks
+	// 20250809 - Change the SCR into WANG, and only change the asset name in DB, but keep the variable name to minimal changes
 	scrApplications := lo.Filter(applications, func(app *model.Application, _ int) bool {
-		return app.Type == model.ApplicationNewReward && app.AssetName == "SCR"
+		return app.Type == model.ApplicationNewReward && app.AssetName == internal.AssetNameWANG
 	})
 
 	if len(scrApplications) > 0 {

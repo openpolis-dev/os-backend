@@ -430,6 +430,7 @@ func MigrateTables(db *gorm.DB) error {
 		&User{},
 		&UserNonce{},
 		&UserAssetRecord{},
+		&UserAssetTransferLog{},
 		&Project{},
 		&ProjectBudget{},
 		&Guild{},

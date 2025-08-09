@@ -24,6 +24,10 @@ type SeepassResponse struct {
 		ContractAddr string `json:"contract_addr"`
 	} `json:"scr"`
 
+	See struct {
+		Amount string `json:"amount"`
+	} `json:"see"`
+
 	Level struct {
 		CurrentLv      string `json:"current_lv"`
 		NextLv         string `json:"next_lv"`
