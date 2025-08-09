@@ -91,7 +91,7 @@ func (r *TreasuryAsset) ToTreasuryAssetsResponse(db *gorm.DB) (*TreasuryAssetsRe
 				tokenUsed = tokenUsed.Add(application.AssetAmount)
 			}
 		} else if strings.EqualFold(application.AssetName, internal.AssetNameWANG) {
-			// calculate processing and completed SCR
+			// calculate processing and completed asset
 			creditUsed = creditUsed.Add(application.AssetAmount)
 		} else {
 			log.Warn().Msgf("non token or credit asset %s, ignore the application record: %+v", application.AssetName, application)

@@ -136,23 +136,29 @@ type DecimalsAndContractAddr struct {
 }
 
 var (
-	AssetNameWANG  = "WANG"
-	AssetNameSCR   = "SCR"
-	AssetNameSEE   = "SEE"
+	AssetNameWANG = "WANG"
+	AssetNameSCR  = "SCR"
+	AssetNameSEE  = "SEE"
+	AssetNameUSDT = "USDT"
+	AssetNameUSDC = "USDC"
+
+	// This is for DB query of USD* asssets
 	AssetPrefixUSD = "USD"
-	AssetNameUSDT  = "USDT"
-	AssetNameUSDC  = "USDC"
+
+	SNSInviteRewardsToken = AssetNameWANG
 )
 
 // AssertDecimalsAndContractAddr supported token for sending application to QuickAccounting
 var AssertDecimalsAndContractAddr = map[string]*DecimalsAndContractAddr{
-	"SCR":  {Decimals: 18, Addr: ScrContractAddr},
-	"USDT": {Decimals: 6, Addr: USDTContractAddr},
+	AssetNameSCR:  {Decimals: 18, Addr: ScrContractAddr},
+	AssetNameWANG: {Decimals: 18, Addr: ScrContractAddr},
+	AssetNameSEE:  {Decimals: 18, Addr: ""},
+	AssetNameUSDT: {Decimals: 6, Addr: USDTContractAddr},
+	AssetNameUSDC: {Decimals: 6, Addr: ""},
 }
 
 const (
-	SNSInviteRewardsToken = "SCR"
-	SNSInviteItem         = "邀请 SNS"
+	SNSInviteItem = "邀请 SNS"
 )
 
 const (
