@@ -9,6 +9,7 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // AssetRecordsService handles business logic for asset transfers
@@ -22,6 +23,7 @@ func NewAssetRecordsService(db *gorm.DB) *AssetRecordsService {
 }
 
 // CreateTransfer creates a new asset transfer with all necessary validations
+// This implementation uses pessimistic locking within transaction to prevent race conditions
 func (s *AssetRecordsService) CreateTransfer(fromUser, toUser, assetName string, amount decimal.Decimal, comment string) (*model.UserAssetTransferLog, error) {
 	// Set default asset name to "see" if empty
 	if assetName == "" {
@@ -41,42 +43,69 @@ func (s *AssetRecordsService) CreateTransfer(fromUser, toUser, assetName string,
 		return nil, errors.New(ErrInvalidAmount)
 	}
 
-	// Check if from user has sufficient balance
-	fromUserRecords, err := model.UserAssetRecordModel.FindWithUserWalletAndAssetProps(s.db, fromUser, upperAssetName)
-	if err != nil {
-		return nil, fmt.Errorf("%s: %w", ErrCheckingBalance, err)
-	}
-
-	if len(fromUserRecords) == 0 {
-		return nil, errors.New(ErrNoAssetRecords)
-	}
-
-	availableBalance := fromUserRecords[0].DealtAmount
-	if availableBalance.Cmp(amount) < 0 {
-		return nil, errors.New(ErrInsufficientBalance)
-	}
-
 	var transferLog *model.UserAssetTransferLog
 
 	// Execute all operations within a database transaction
-	err = s.db.Transaction(func(tx *gorm.DB) error {
-		// Create transfer log
+	err := s.db.Transaction(func(tx *gorm.DB) error {
+		// Create transfer log first
 		var createErr error
 		transferLog, createErr = model.UserAssetTransferLogModel.Create(tx, fromUser, toUser, upperAssetName, amount, comment)
 		if createErr != nil {
 			return fmt.Errorf("%s: %w", ErrCreatingTransfer, createErr)
 		}
 
-		// Deduct amount from from user's dealt amount
-		if updateErr := model.UserAssetRecordModel.CreateOrUpdate(tx, fromUser, upperAssetName, decimal.Zero, amount.Neg()); updateErr != nil {
+		// Lock and check from user's balance within transaction using SELECT FOR UPDATE
+		var fromUserRecord model.UserAssetRecord
+		err := tx.Clauses(clause.Locking{Strength: "UPDATE", Options: "NOWAIT"}).
+			Where("user_wallet = ? AND asset_name = ?", fromUser, upperAssetName).
+			First(&fromUserRecord).Error
+
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				model.UserAssetTransferLogModel.UpdateResult(tx, transferLog.ID, model.TransferResultFailed)
+				return errors.New(ErrNoAssetRecords)
+			}
 			model.UserAssetTransferLogModel.UpdateResult(tx, transferLog.ID, model.TransferResultFailed)
-			return fmt.Errorf("%s: %w", ErrUpdatingFromUser, updateErr)
+			return fmt.Errorf("%s: %w", ErrCheckingBalance, err)
 		}
 
-		// Add amount to to user's dealt amount
-		if updateErr := model.UserAssetRecordModel.CreateOrUpdate(tx, toUser, upperAssetName, decimal.Zero, amount); updateErr != nil {
+		// Check if balance is sufficient
+		if fromUserRecord.DealtAmount.Cmp(amount) < 0 {
 			model.UserAssetTransferLogModel.UpdateResult(tx, transferLog.ID, model.TransferResultFailed)
-			return fmt.Errorf("%s: %w", ErrUpdatingToUser, updateErr)
+			return errors.New(ErrInsufficientBalance)
+		}
+
+		// Atomically update balances using direct SQL
+		// Deduct amount from from user
+		result := tx.Model(&model.UserAssetRecord{}).
+			Where("user_wallet = ? AND asset_name = ?", fromUser, upperAssetName).
+			Update("dealt_amount", gorm.Expr("dealt_amount - ?", amount.String()))
+		if result.Error != nil {
+			model.UserAssetTransferLogModel.UpdateResult(tx, transferLog.ID, model.TransferResultFailed)
+			return fmt.Errorf("%s: %w", ErrUpdatingFromUser, result.Error)
+		}
+
+		// Add amount to to user (create record if not exists)
+		var toUserRecord model.UserAssetRecord
+		err = tx.Where("user_wallet = ? AND asset_name = ?", toUser, upperAssetName).First(&toUserRecord).Error
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			// Create new record for to user
+			if createErr := model.UserAssetRecordModel.CreateOrUpdate(tx, toUser, upperAssetName, amount, decimal.Zero); createErr != nil {
+				model.UserAssetTransferLogModel.UpdateResult(tx, transferLog.ID, model.TransferResultFailed)
+				return fmt.Errorf("%s: %w", ErrUpdatingToUser, createErr)
+			}
+		} else if err != nil {
+			model.UserAssetTransferLogModel.UpdateResult(tx, transferLog.ID, model.TransferResultFailed)
+			return fmt.Errorf("%s: %w", ErrUpdatingToUser, err)
+		} else {
+			// Update existing record
+			result := tx.Model(&model.UserAssetRecord{}).
+				Where("user_wallet = ? AND asset_name = ?", toUser, upperAssetName).
+				Update("dealt_amount", gorm.Expr("dealt_amount + ?", amount.String()))
+			if result.Error != nil {
+				model.UserAssetTransferLogModel.UpdateResult(tx, transferLog.ID, model.TransferResultFailed)
+				return fmt.Errorf("%s: %w", ErrUpdatingToUser, result.Error)
+			}
 		}
 
 		// Update transfer result to success
