@@ -101,7 +101,7 @@ func (s *AssetRecordsService) CreateTransfer(fromUser, toUser, assetName string,
 			// Update existing record
 			result := tx.Model(&model.UserAssetRecord{}).
 				Where("user_wallet = ? AND asset_name = ?", toUser, upperAssetName).
-				Update("dealt_amount", gorm.Expr("dealt_amount + ?", amount.String()))
+				Update("dealt_amount", gorm.Expr("dealt_amount::decimal + ?", amount.String()))
 			if result.Error != nil {
 				model.UserAssetTransferLogModel.UpdateResult(tx, transferLog.ID, model.TransferResultFailed)
 				return fmt.Errorf("%s: %w", ErrUpdatingToUser, result.Error)
