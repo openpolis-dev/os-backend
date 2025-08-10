@@ -3,8 +3,10 @@ package treasury_inject
 import (
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/shopspring/decimal"
 	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/common"
@@ -63,4 +65,29 @@ func (s *TreasuryService) UpdateAssets(ctx *gin.Context) (int, *api.Reply) {
 	// ctx.JSON(http.StatusOK, api.Success(currQuarterTreasuryRecord))
 
 	return http.StatusOK, api.Success(currQuarterTreasuryRecord)
+}
+
+func (s *TreasuryService) GetSumOfIssuedAsset(db *gorm.DB, assetName string, seasonId uint) (decimal.Decimal, error) {
+	var applications []model.Application
+	query := db.Model(&model.Application{}).Where(&model.Application{
+		AssetName: strings.ToUpper(assetName),
+	})
+
+	if seasonId != 0 {
+		query = query.Where("season_id = ?", seasonId)
+	}
+
+	// Load all records
+	err := query.Find(&applications).Error
+	if err != nil {
+		return decimal.Zero, err
+	}
+
+	// Sum in golang
+	var sum decimal.Decimal
+	for _, app := range applications {
+		sum = sum.Add(app.AssetAmount)
+	}
+
+	return sum, nil
 }
