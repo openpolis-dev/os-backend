@@ -611,6 +611,9 @@ func (c *ApplicationsController) AssetStatistics(ctx *gin.Context) {
 	var checkingUsd float64
 	var checkingScr float64
 
+	usdAssets := []string{internal.AssetNameUSDC, internal.AssetNameUSDT}
+	scrAssets := []string{internal.AssetNameWANG}
+
 	currentSeason, err := model.GetCurrentSeason(c.Db)
 	if err != nil {
 		log.Error().Msgf("fetch current season error: %v", err)
@@ -619,7 +622,8 @@ func (c *ApplicationsController) AssetStatistics(ctx *gin.Context) {
 		return
 	}
 
-	waitForGrantUsd, err = c.ApplicationsService.SumAssetAmount(ctx, string(model.ApplicationStateOpen), "USD", int(currentSeason.ID))
+	waitForGrantUsd, err = c.ApplicationsService.SumAssetAmount(ctx, string(model.ApplicationStateOpen), usdAssets, int(currentSeason.ID))
+
 	if err != nil {
 		log.Error().Msgf("get sum wait grant usd amount error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
@@ -627,7 +631,8 @@ func (c *ApplicationsController) AssetStatistics(ctx *gin.Context) {
 		return
 	}
 
-	waitForGrantScr, err = c.ApplicationsService.SumAssetAmount(ctx, string(model.ApplicationStateOpen), "SCR", int(currentSeason.ID))
+	waitForGrantScr, err = c.ApplicationsService.SumAssetAmount(ctx, string(model.ApplicationStateOpen), scrAssets, int(currentSeason.ID))
+
 	if err != nil {
 		log.Error().Msgf("get sum wait grant scr amount error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
@@ -635,7 +640,8 @@ func (c *ApplicationsController) AssetStatistics(ctx *gin.Context) {
 		return
 	}
 
-	grantedUsd, err = c.ApplicationsService.SumAssetAmount(ctx, string(model.ApplicationStateCompleted), "USD", int(currentSeason.ID))
+	grantedUsd, err = c.ApplicationsService.SumAssetAmount(ctx, string(model.ApplicationStateCompleted), usdAssets, int(currentSeason.ID))
+
 	if err != nil {
 		log.Error().Msgf("get sum granted usd amount error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
@@ -643,7 +649,7 @@ func (c *ApplicationsController) AssetStatistics(ctx *gin.Context) {
 		return
 	}
 
-	grantedScr, err = c.ApplicationsService.SumAssetAmount(ctx, string(model.ApplicationStateCompleted), "SCR", int(currentSeason.ID))
+	grantedScr, err = c.ApplicationsService.SumAssetAmount(ctx, string(model.ApplicationStateCompleted), scrAssets, int(currentSeason.ID))
 	if err != nil {
 		log.Error().Msgf("get sum granted scr amount error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
@@ -651,7 +657,7 @@ func (c *ApplicationsController) AssetStatistics(ctx *gin.Context) {
 		return
 	}
 
-	checkingUsd, err = c.ApplicationsService.SumAssetAmount(ctx, string(model.ApplicationStateApproved), "USD", int(currentSeason.ID))
+	checkingUsd, err = c.ApplicationsService.SumAssetAmount(ctx, string(model.ApplicationStateApproved), usdAssets, int(currentSeason.ID))
 	if err != nil {
 		log.Error().Msgf("get sum checking usd amount error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
@@ -659,7 +665,8 @@ func (c *ApplicationsController) AssetStatistics(ctx *gin.Context) {
 		return
 	}
 
-	checkingScr, err = c.ApplicationsService.SumAssetAmount(ctx, string(model.ApplicationStateApproved), "SCR", int(currentSeason.ID))
+	checkingScr, err = c.ApplicationsService.SumAssetAmount(ctx, string(model.ApplicationStateApproved), scrAssets, int(currentSeason.ID))
+
 	if err != nil {
 		log.Error().Msgf("get sum checking scr amount error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)

@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -49,7 +50,7 @@ func (*userAssetRecordModel) FindWithUserWalletAndAssetProps(db *gorm.DB, userWa
 		}
 	}
 
-	querySeg := db.Where(&UserAssetRecord{UserWallet: formattedUserWallet, AssetName: assetName})
+	querySeg := db.Where(&UserAssetRecord{UserWallet: formattedUserWallet, AssetName: strings.ToUpper(assetName)})
 	return QueryRows[UserAssetRecord](querySeg, nil)
 }
 
@@ -66,7 +67,7 @@ func (*userAssetRecordModel) CreateOrUpdate(db *gorm.DB, userWallet string, asse
 	if len(assetRecords) == 0 {
 		return db.Save(&UserAssetRecord{
 			UserWallet:       common.FormatUserWallet(userWallet),
-			AssetName:        assetName,
+			AssetName:        strings.ToUpper(assetName),
 			DealtAmount:      dealtAmount,
 			ProcessingAmount: processingAmount,
 		}).Error
@@ -79,7 +80,7 @@ func (*userAssetRecordModel) CreateOrUpdate(db *gorm.DB, userWallet string, asse
 
 // Rollback extracts processing and dealt amount from records
 func (*userAssetRecordModel) Rollback(db *gorm.DB, userWallet string, assetName string, processingAmount, dealtAmount decimal.Decimal) error {
-	assetRecords, err := UserAssetRecordModel.FindWithUserWalletAndAssetProps(db, common.FormatUserWallet(userWallet), assetName)
+	assetRecords, err := UserAssetRecordModel.FindWithUserWalletAndAssetProps(db, common.FormatUserWallet(userWallet), strings.ToUpper(assetName))
 	if err != nil {
 		return err
 	}
@@ -95,7 +96,7 @@ func (*userAssetRecordModel) Rollback(db *gorm.DB, userWallet string, assetName 
 }
 
 func (*userAssetRecordModel) CompleteAssetTransaction(db *gorm.DB, userWallet string, assetName string, amountToBeDealt decimal.Decimal) error {
-	assetRecords, err := UserAssetRecordModel.FindWithUserWalletAndAssetProps(db, common.FormatUserWallet(userWallet), assetName)
+	assetRecords, err := UserAssetRecordModel.FindWithUserWalletAndAssetProps(db, common.FormatUserWallet(userWallet), strings.ToUpper(assetName))
 	if err != nil {
 		return err
 	}
