@@ -49,7 +49,7 @@ func Register(fatherGroup *gin.RouterGroup) {
 	}
 
 	// No auth endpoints
-	assetRecordsGroup.GET("/", assetRecords.List)
+	assetRecordsGroup.GET("/list", assetRecords.List)
 	assetRecordsGroup.GET("/show/:id", assetRecords.Detail)
 
 	// Auth required endpoints
