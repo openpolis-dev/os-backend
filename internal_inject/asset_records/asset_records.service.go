@@ -124,8 +124,8 @@ func (s *AssetRecordsService) CreateTransfer(fromUser, toUser, assetName string,
 }
 
 // ListTransfers returns paginated asset transfer records with optional filters
-func (s *AssetRecordsService) ListTransfers(page, size int, fromUser, toUser string) ([]*model.UserAssetTransferLog, int64, error) {
-	return model.UserAssetTransferLogModel.ListPaginated(s.db, page, size, fromUser, toUser)
+func (s *AssetRecordsService) ListTransfers(page, size int, fromUser, toUser, myWallet string) ([]*model.UserAssetTransferLog, int64, error) {
+	return model.UserAssetTransferLogModel.ListPaginated(s.db, page, size, fromUser, toUser, myWallet)
 }
 
 // GetTransferByID returns a single transfer record by ID

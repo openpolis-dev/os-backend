@@ -50,9 +50,10 @@ func Register(fatherGroup *gin.RouterGroup) {
 
 	// No auth endpoints
 	assetRecordsGroup.GET("/", assetRecords.List)
-	assetRecordsGroup.GET("/:id", assetRecords.Detail)
+	assetRecordsGroup.GET("/show/:id", assetRecords.Detail)
 
 	// Auth required endpoints
+	assetRecordsAuthGroup.GET("/my", assetRecords.MyList)
 	assetRecordsAuthGroup.POST("/", assetRecords.Create)
 }
 
@@ -105,6 +106,55 @@ func (c *AssetRecordsController) Create(ctx *gin.Context) {
 	}))
 }
 
+func (c *AssetRecordsController) MyList(ctx *gin.Context) {
+	user := api.ForContextOnlyUser(ctx)
+
+	var queryParams TransferListQueryParams
+	if err := ctx.ShouldBindQuery(&queryParams); err != nil {
+		sdk.LogUserSideError(ctx, err)
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
+		return
+	}
+
+	// Validate pagination parameters
+	if queryParams.Page <= 0 {
+		queryParams.Page = DefaultPageNumber
+	}
+	if queryParams.Size <= 0 || queryParams.Size > MaxPageSize {
+		queryParams.Size = DefaultPageSize
+	}
+
+	transferLogs, total, err := c.Service.ListTransfers(queryParams.Page, queryParams.Size, "", "", user.Wallet)
+	if err != nil {
+		log.Error().Msgf("Error listing transfers: %+v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		return
+	}
+
+	// Convert to response format
+	response := make([]*TransferResponse, len(transferLogs))
+	for i, transferLog := range transferLogs {
+		response[i] = &TransferResponse{
+			ID:            transferLog.ID,
+			FromUser:      transferLog.FromUser,
+			ToUser:        transferLog.ToUser,
+			AssetName:     transferLog.AssetName,
+			Amount:        transferLog.Amount,
+			TransactionTs: transferLog.TransactionTs,
+			Result:        transferLog.Result,
+			Comment:       transferLog.Comment,
+		}
+	}
+
+	ctx.JSON(http.StatusOK, api.Success(api.ListReplyData{
+		Page:  queryParams.Page,
+		Size:  queryParams.Size,
+		Total: total,
+		Rows:  response,
+	}))
+}
+
 // List returns paginated asset transfer records with optional query filters
 func (c *AssetRecordsController) List(ctx *gin.Context) {
 	var queryParams TransferListQueryParams
@@ -122,7 +172,7 @@ func (c *AssetRecordsController) List(ctx *gin.Context) {
 		queryParams.Size = DefaultPageSize
 	}
 
-	transferLogs, total, err := c.Service.ListTransfers(queryParams.Page, queryParams.Size, queryParams.FromUser, queryParams.ToUser)
+	transferLogs, total, err := c.Service.ListTransfers(queryParams.Page, queryParams.Size, queryParams.FromUser, queryParams.ToUser, "")
 	if err != nil {
 		log.Error().Msgf("Error listing transfers: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
