@@ -150,47 +150,60 @@ func (s *AssetRecordsService) GetUserAssetRecords(userWallet string, assetName s
 }
 
 // ClaimUserSeeAssets gets user asset info from indexer and creates asset records
-func (s *AssetRecordsService) ClaimUserSeeAssets(userWallet string) ([]*model.UserAssetRecord, error) {
+func (s *AssetRecordsService) ClaimUserSeeAssets(userWallet string) error {
 	formattedWallet := common.FormatUserWallet(userWallet)
 
-	// TODO: Replace this with actual indexer API call to get user SEE balance
-	// For now, we'll use a placeholder implementation
-	userScrBalance, err := s.getUserScrBalanceFromIndexer(formattedWallet)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get user balance from indexer: %w", err)
-	}
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		// Use pessimistic locking to prevent concurrent access issues and check record count
+		var existingRecords []model.UserAssetRecord
+		err := tx.Clauses(clause.Locking{Strength: "UPDATE", Options: "NOWAIT"}).
+			Where("user_wallet = ? AND asset_name = ?", formattedWallet, internal.AssetNameSEE).
+			Find(&existingRecords).Error
 
-	// Create asset record for SEE token
-	var createdRecords []*model.UserAssetRecord
-
-	if userScrBalance.GreaterThan(decimal.Zero) {
-		err = model.UserAssetRecordModel.CreateOrUpdate(
-			s.db,
-			formattedWallet,
-			internal.AssetNameSEE,
-			decimal.Zero,   // processing_amount
-			userScrBalance, // dealt_amount
-		)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create asset record: %w", err)
+			return err
 		}
 
-		// Fetch the created record
-		records, err := model.UserAssetRecordModel.FindWithUserWalletAndAssetProps(
-			s.db,
-			formattedWallet,
-			internal.AssetNameSEE,
-		)
-		if err != nil {
-			return nil, err
+		if len(existingRecords) == 0 {
+			return errors.New("user has no see asset records")
 		}
 
-		if len(records) > 0 {
-			createdRecords = append(createdRecords, records[0])
+		if len(existingRecords) > 1 {
+			return errors.New("user has multiple see asset records")
 		}
-	}
 
-	return createdRecords, nil
+		existingRecord := existingRecords[0]
+
+		// Check if there's any processing amount to claim
+		if existingRecord.ProcessingAmount.Cmp(decimal.Zero) <= 0 {
+			return errors.New("user has no see amount to claim")
+		}
+
+		// Perform atomic update using the locked record's processing amount
+		// This ensures we use the exact amount that was locked, preventing race conditions
+		result := tx.Model(&model.UserAssetRecord{}).
+			Where("id = ? AND processing_amount >= ?", existingRecord.ID, existingRecord.ProcessingAmount).
+			Updates(map[string]interface{}{
+				"processing_amount": gorm.Expr("processing_amount::decimal - ?", existingRecord.ProcessingAmount.String()),
+				"dealt_amount":      gorm.Expr("dealt_amount::decimal + ?", existingRecord.ProcessingAmount.String()),
+			})
+
+		if result.Error != nil {
+			return result.Error
+		}
+
+		// Check if the update actually affected any rows
+		if result.RowsAffected == 0 {
+			return errors.New("failed to claim assets: record may have been modified by another transaction")
+		}
+
+		return nil
+	})
+}
+
+func (s *AssetRecordsService) CreateUserAssetRecord(userWallet string, assetName string, amount decimal.Decimal, dealtAmount decimal.Decimal) error {
+	formattedWallet := common.FormatUserWallet(userWallet)
+	return model.UserAssetRecordModel.CreateOrUpdate(s.db, formattedWallet, assetName, amount, dealtAmount)
 }
 
 // getUserScrBalanceFromIndexer gets user SCR token balance from indexer
