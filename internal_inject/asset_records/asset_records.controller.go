@@ -54,7 +54,8 @@ func Register(fatherGroup *gin.RouterGroup) {
 
 	// Auth required endpoints
 	assetRecordsAuthGroup.GET("/my", assetRecords.MyList)
-	assetRecordsAuthGroup.POST("/", assetRecords.Create)
+	assetRecordsAuthGroup.POST("/new", assetRecords.Create)
+	assetRecordsAuthGroup.POST("/claim_see", assetRecords.ClaimSee)
 }
 
 // Create creates a new asset transfer
@@ -238,4 +239,39 @@ func (c *AssetRecordsController) Detail(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, api.Success(response))
+}
+
+// ClaimSee allows users to claim their asset records from indexer
+func (c *AssetRecordsController) ClaimSee(ctx *gin.Context) {
+	user := api.ForContextOnlyUser(ctx)
+
+	// Check if user already has asset records
+	existingRecords, err := c.Service.GetUserAssetRecords(user.Wallet, DefaultTransferAssetName)
+	if err != nil {
+		log.Error().Msgf("Error checking user asset records: %+v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		return
+	}
+
+	// If user already has records, return already claimed message
+	if len(existingRecords) > 0 {
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("assets has already claimed")))
+		return
+	}
+
+	// Get user asset info from indexer and create records
+	assetRecords, err := c.Service.ClaimUserSeeAssets(user.Wallet)
+
+	if err != nil {
+		log.Error().Msgf("Error claiming user assets: %+v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		return
+	}
+
+	ctx.JSON(http.StatusCreated, api.Success(map[string]any{
+		"message": "Assets claimed successfully",
+		"records": len(assetRecords),
+	}))
 }

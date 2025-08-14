@@ -7,7 +7,10 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"github.com/shopspring/decimal"
+	"github.com/theseed-labs/os-backend/internal"
+	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
+	"github.com/theseed-labs/os-backend/internal/sdk"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -131,4 +134,72 @@ func (s *AssetRecordsService) ListTransfers(page, size int, fromUser, toUser, my
 // GetTransferByID returns a single transfer record by ID
 func (s *AssetRecordsService) GetTransferByID(id uint) (*model.UserAssetTransferLog, error) {
 	return model.UserAssetTransferLogModel.GetByID(s.db, id)
+}
+
+// GetUserAssetRecords checks if user already has asset records for specified asset
+func (s *AssetRecordsService) GetUserAssetRecords(userWallet string, assetName string) ([]*model.UserAssetRecord, error) {
+	formattedWallet := common.FormatUserWallet(userWallet)
+
+	var records []*model.UserAssetRecord
+	err := s.db.Where("user_wallet = ? AND asset_name = ?", formattedWallet, assetName).Find(&records).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return records, nil
+}
+
+// ClaimUserSeeAssets gets user asset info from indexer and creates asset records
+func (s *AssetRecordsService) ClaimUserSeeAssets(userWallet string) ([]*model.UserAssetRecord, error) {
+	formattedWallet := common.FormatUserWallet(userWallet)
+
+	// TODO: Replace this with actual indexer API call to get user SEE balance
+	// For now, we'll use a placeholder implementation
+	userScrBalance, err := s.getUserScrBalanceFromIndexer(formattedWallet)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user balance from indexer: %w", err)
+	}
+
+	// Create asset record for SEE token
+	var createdRecords []*model.UserAssetRecord
+
+	if userScrBalance.GreaterThan(decimal.Zero) {
+		err = model.UserAssetRecordModel.CreateOrUpdate(
+			s.db,
+			formattedWallet,
+			internal.AssetNameSEE,
+			decimal.Zero,   // processing_amount
+			userScrBalance, // dealt_amount
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create asset record: %w", err)
+		}
+
+		// Fetch the created record
+		records, err := model.UserAssetRecordModel.FindWithUserWalletAndAssetProps(
+			s.db,
+			formattedWallet,
+			internal.AssetNameSEE,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		if len(records) > 0 {
+			createdRecords = append(createdRecords, records[0])
+		}
+	}
+
+	return createdRecords, nil
+}
+
+// getUserScrBalanceFromIndexer gets user SCR token balance from indexer
+func (s *AssetRecordsService) getUserScrBalanceFromIndexer(userWallet string) (decimal.Decimal, error) {
+	indexerClient := sdk.GetIndexerClient()
+	scrAmount, err := indexerClient.GetUserCurrentScrAmount(userWallet)
+	if err != nil {
+		return decimal.Zero, err
+	}
+
+	return scrAmount, nil
 }

@@ -8,7 +8,9 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
+	"github.com/shopspring/decimal"
 	"github.com/theseed-labs/os-backend/internal"
+	"github.com/theseed-labs/os-backend/internal/common"
 )
 
 type SeedHolderRecord struct {
@@ -20,6 +22,11 @@ type SeasonSBTRecord struct {
 	Wallet string   `json:"wallet"`
 	Ids    []string `json:"ids"`
 	Values []string `json:"values"`
+}
+
+type Erc20SnapshotRecord struct {
+	Wallet string          `json:"wallet"`
+	Value  decimal.Decimal `json:"amount"`
 }
 
 type ComputeNodeSbt struct {
@@ -174,4 +181,36 @@ func (c *IndexerClient) GetComputeNodeSbt() (*ComputeNodeSbt, error) {
 	}
 
 	return respData, nil
+}
+
+func (c *IndexerClient) GetUserCurrentScrAmount(userWallet string) (decimal.Decimal, error) {
+	endpoint := fmt.Sprintf("%s/snapshot/%s/%s", c.ApiBase, internal.ScrContractType, internal.ScrContractAddr)
+	log.Debug().Msgf("Try to get SCR amount, endpoint is %s", endpoint)
+
+	resp, err := http.Get(endpoint)
+	if err != nil {
+		return decimal.Zero, err
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return decimal.Zero, fmt.Errorf("got error response from indexer endpoint: status code: %d, resp: %+v", resp.StatusCode, resp)
+	}
+
+	var respData []*Erc20SnapshotRecord
+	err = json.NewDecoder(resp.Body).Decode(&respData)
+	if err != nil {
+		return decimal.Zero, err
+	}
+
+	formattedWallet := common.FormatUserWallet(userWallet)
+	scrAmount := decimal.Zero
+	for _, record := range respData {
+		if record.Wallet == formattedWallet {
+			scrAmount = record.Value
+			break
+		}
+	}
+	return scrAmount, nil
 }
