@@ -246,19 +246,25 @@ func (c *AssetRecordsController) Detail(ctx *gin.Context) {
 // ClaimSee allows users to claim their asset records from indexer
 func (c *AssetRecordsController) ClaimSee(ctx *gin.Context) {
 	if time.Now().After(internal.ClaimSeeAssetEndDate) {
-		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("claim see asset end")))
+		err := errors.New("claim see asset end")
+		sdk.LogUserSideError(ctx, err)
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
 		return
 	}
 
 	user := api.ForContextOnlyUser(ctx)
-	err := c.Service.ClaimUserSeeAssets(user.Wallet)
-	if err != nil {
-		log.Error().Msgf("Error claiming user see assets: %+v", err)
+	statusCode, err := c.Service.ClaimUserSeeAssets(user.Wallet)
+	switch statusCode {
+	case http.StatusOK:
+		ctx.JSON(http.StatusOK, api.Success("see claimed successfully"))
+		return
+	case http.StatusBadRequest:
+		sdk.LogUserSideError(ctx, err)
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
+		return
+	default:
 		sdk.LogServerErrorToSentry(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, api.BadRequest(errors.New("asset record error, please contract admin")))
-		return
-	} else {
-		ctx.JSON(http.StatusOK, api.Success("see claimed successfully"))
 		return
 	}
 }
