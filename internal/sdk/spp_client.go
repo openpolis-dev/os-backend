@@ -25,7 +25,9 @@ type SeepassResponse struct {
 	} `json:"scr"`
 
 	See struct {
-		Amount string `json:"amount"`
+		Amount             string `json:"amount"`
+		Claimed            bool   `json:"claimed"`
+		AmountCanBeClaimed string `json:"amount_can_be_claimed"`
 	} `json:"see"`
 
 	Level struct {
