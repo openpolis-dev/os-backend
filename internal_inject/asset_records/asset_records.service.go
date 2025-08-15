@@ -11,7 +11,6 @@ import (
 	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
-	"github.com/theseed-labs/os-backend/internal/sdk"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -215,20 +214,4 @@ func (s *AssetRecordsService) ClaimUserSeeAssets(userWallet string) (int, error)
 	})
 
 	return statusCode, err
-}
-
-func (s *AssetRecordsService) CreateUserAssetRecord(userWallet string, assetName string, amount decimal.Decimal, dealtAmount decimal.Decimal) error {
-	formattedWallet := common.FormatUserWallet(userWallet)
-	return model.UserAssetRecordModel.CreateOrUpdate(s.db, formattedWallet, assetName, amount, dealtAmount)
-}
-
-// getUserScrBalanceFromIndexer gets user SCR token balance from indexer
-func (s *AssetRecordsService) getUserScrBalanceFromIndexer(userWallet string) (decimal.Decimal, error) {
-	indexerClient := sdk.GetIndexerClient()
-	scrAmount, err := indexerClient.GetUserCurrentScrAmount(userWallet)
-	if err != nil {
-		return decimal.Zero, err
-	}
-
-	return scrAmount, nil
 }
