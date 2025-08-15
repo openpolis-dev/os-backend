@@ -1,11 +1,15 @@
 package user_inject
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
 	"github.com/spruceid/siwe-go"
@@ -16,6 +20,9 @@ import (
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk"
 	"gorm.io/gorm"
+
+	eth_common "github.com/ethereum/go-ethereum/common"
+	unipass_sigverify "github.com/unipassid/unipass-sigverify-go"
 )
 
 type UserService struct {
@@ -51,7 +58,6 @@ func (u *UserService) Login(ctx *gin.Context, req *LoginReq) (int, *api.Reply) {
 	var token string
 	var tokenExp int64
 	var user *model.User
-	var err error
 	var httpCode int
 	var reply *api.Reply
 
@@ -59,98 +65,98 @@ func (u *UserService) Login(ctx *gin.Context, req *LoginReq) (int, *api.Reply) {
 
 	_ = u.Db.Transaction(func(tx *gorm.DB) error {
 
-		// // verify sign
-		// // --> query nonce
-		// userNonce, err := model.UserNonceModel.RecentNonce(tx, common.FormatUserWallet(req.Wallet), u.Cfg.Auth.NonceLifespan)
-		// if err != nil {
-		// 	sdk.LogServerErrorToSentry(ctx, err)
-		// 	// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("nonce not found")))
-		// 	httpCode = http.StatusInternalServerError
-		// 	reply = api.ServerError(errors.New("nonce not found"))
+		// verify sign
+		// --> query nonce
+		userNonce, err := model.UserNonceModel.RecentNonce(tx, common.FormatUserWallet(req.Wallet), u.Cfg.Auth.NonceLifespan)
+		if err != nil {
+			sdk.LogServerErrorToSentry(ctx, err)
+			// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("nonce not found")))
+			httpCode = http.StatusInternalServerError
+			reply = api.ServerError(errors.New("nonce not found"))
 
-		// 	return errors.New("nonce not found")
-		// }
-		// if userNonce == nil {
-		// 	// ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("please refresh nonce firstly")))
-		// 	httpCode = http.StatusBadRequest
-		// 	reply = api.BadRequest(errors.New("please refresh nonce firstly"))
+			return errors.New("nonce not found")
+		}
+		if userNonce == nil {
+			// ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("please refresh nonce firstly")))
+			httpCode = http.StatusBadRequest
+			reply = api.BadRequest(errors.New("please refresh nonce firstly"))
 
-		// 	return errors.New("please refresh nonce firstly")
-		// }
-		// if strings.EqualFold(req.WalletType, "EOA") {
-		// 	// --> verify signature
-		// 	message, err := siwe.ParseMessage(req.Message)
-		// 	if err != nil {
-		// 		// ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
-		// 		httpCode = http.StatusBadRequest
-		// 		reply = api.BadRequest(err)
+			return errors.New("please refresh nonce firstly")
+		}
+		if strings.EqualFold(req.WalletType, "EOA") {
+			// --> verify signature
+			message, err := siwe.ParseMessage(req.Message)
+			if err != nil {
+				// ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
+				httpCode = http.StatusBadRequest
+				reply = api.BadRequest(err)
 
-		// 		return err
-		// 	}
-		// 	timestamp := time.Now()
-		// 	publicKey, err := message.Verify(req.Signature, &req.Domain, &userNonce.Nonce, &timestamp)
-		// 	if err != nil {
-		// 		// ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
-		// 		httpCode = http.StatusBadRequest
-		// 		reply = api.BadRequest(err)
+				return err
+			}
+			timestamp := time.Now()
+			publicKey, err := message.Verify(req.Signature, &req.Domain, &userNonce.Nonce, &timestamp)
+			if err != nil {
+				// ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
+				httpCode = http.StatusBadRequest
+				reply = api.BadRequest(err)
 
-		// 		return err
-		// 	}
-		// 	if !strings.EqualFold(req.Wallet, crypto.PubkeyToAddress(*publicKey).Hex()) {
-		// 		// ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("signature not match")))
-		// 		httpCode = http.StatusBadRequest
-		// 		reply = api.BadRequest(errors.New("signature not match"))
+				return err
+			}
+			if !strings.EqualFold(req.Wallet, crypto.PubkeyToAddress(*publicKey).Hex()) {
+				// ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("signature not match")))
+				httpCode = http.StatusBadRequest
+				reply = api.BadRequest(errors.New("signature not match"))
 
-		// 		return errors.New("signature not match")
-		// 	}
-		// } else if strings.EqualFold(req.WalletType, "AA") {
-		// 	client, err := ethclient.Dial(u.Cfg.Auth.PolygonRPC)
-		// 	if err != nil {
-		// 		sdk.LogServerErrorToSentry(ctx, err)
-		// 		// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("failed to connect to polygon rpc")))
-		// 		httpCode = http.StatusInternalServerError
-		// 		reply = api.ServerError(errors.New("failed to connect to polygon rpc detail:" + err.Error()))
+				return errors.New("signature not match")
+			}
+		} else if strings.EqualFold(req.WalletType, "AA") {
+			client, err := ethclient.Dial(u.Cfg.Auth.PolygonRPC)
+			if err != nil {
+				sdk.LogServerErrorToSentry(ctx, err)
+				// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("failed to connect to polygon rpc")))
+				httpCode = http.StatusInternalServerError
+				reply = api.ServerError(errors.New("failed to connect to polygon rpc detail:" + err.Error()))
 
-		// 		return errors.New("failed to connect to polygon rpc detail:" + err.Error())
-		// 	}
+				return errors.New("failed to connect to polygon rpc detail:" + err.Error())
+			}
 
-		// 	// get AA's bytecode
-		// 	bytecode, err := client.CodeAt(context.Background(), eth_common.HexToAddress(req.Wallet), nil)
-		// 	if err != nil {
-		// 		sdk.LogServerErrorToSentry(ctx, err)
-		// 		// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("failed to get bytecode")))
-		// 		httpCode = http.StatusInternalServerError
-		// 		reply = api.ServerError(errors.New("failed to get bytecode detail:" + err.Error()))
+			// get AA's bytecode
+			bytecode, err := client.CodeAt(context.Background(), eth_common.HexToAddress(req.Wallet), nil)
+			if err != nil {
+				sdk.LogServerErrorToSentry(ctx, err)
+				// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("failed to get bytecode")))
+				httpCode = http.StatusInternalServerError
+				reply = api.ServerError(errors.New("failed to get bytecode detail:" + err.Error()))
 
-		// 		return errors.New("failed to get bytecode detail:" + err.Error())
-		// 	}
-		// 	// if bytecode is not empty, means the wallet has deployed
-		// 	// 2023/12/04: only verify signature when AA is deployed!
-		// 	if len(bytecode) > 0 {
-		// 		account := eth_common.HexToAddress(req.Wallet)
-		// 		sig := eth_common.FromHex(req.Signature)
-		// 		msg := []byte(req.Message)
+				return errors.New("failed to get bytecode detail:" + err.Error())
+			}
+			// if bytecode is not empty, means the wallet has deployed
+			// 2023/12/04: only verify signature when AA is deployed!
+			if len(bytecode) > 0 {
+				account := eth_common.HexToAddress(req.Wallet)
+				sig := eth_common.FromHex(req.Signature)
+				msg := []byte(req.Message)
 
-		// 		ok, err := unipass_sigverify.VerifyMessageSignature(context.Background(), account, msg, sig, req.IsEIP191Prefix, client)
-		// 		if err != nil {
-		// 			sdk.LogServerErrorToSentry(ctx, err)
-		// 			// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("failed to verify signature")))
-		// 			httpCode = http.StatusInternalServerError
-		// 			reply = api.ServerError(errors.New("failed to verify signature"))
+				ok, err := unipass_sigverify.VerifyMessageSignature(context.Background(), account, msg, sig, req.IsEIP191Prefix, client)
+				if err != nil {
+					sdk.LogServerErrorToSentry(ctx, err)
+					// ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("failed to verify signature")))
+					httpCode = http.StatusInternalServerError
+					reply = api.ServerError(errors.New("failed to verify signature"))
 
-		// 			return errors.New("failed to verify signature")
-		// 		}
-		// 		if !ok {
-		// 			// ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("signature not match")))
-		// 			httpCode = http.StatusBadRequest
-		// 			reply = api.BadRequest(errors.New("signature not match"))
+					return errors.New("failed to verify signature")
+				}
+				if !ok {
+					// ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("signature not match")))
+					httpCode = http.StatusBadRequest
+					reply = api.BadRequest(errors.New("signature not match"))
 
-		// 			return errors.New("signature not match")
-		// 		}
-		// 	} else {
-		// 		userVerified = false
-		// 	}
-		// }
+					return errors.New("signature not match")
+				}
+			} else {
+				userVerified = false
+			}
+		}
 
 		// query user
 		user, err = model.UserModel.Detail(tx, common.FormatUserWallet(req.Wallet))
