@@ -415,8 +415,12 @@ func (ctrl *UserController) Detail(ctx *gin.Context) {
 		api.PrintStructAsJson(assetRecords, "assetRecords")
 		if len(assetRecords) == 0 {
 			seepassResp.See.Amount = "0"
+			seepassResp.See.Claimed = true
+			seepassResp.See.AmountCanBeClaimed = "0"
 		} else {
 			seepassResp.See.Amount = assetRecords[0].DealtAmount.String()
+			seepassResp.See.Claimed = assetRecords[0].Claimed
+			seepassResp.See.AmountCanBeClaimed = assetRecords[0].ProcessingAmount.String()
 		}
 
 		// populate deepseek key

@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/facebookgo/inject"
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
 	"github.com/theseed-labs/os-backend/global_object"
+	"github.com/theseed-labs/os-backend/internal"
 	"github.com/theseed-labs/os-backend/internal/api"
 	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/config"
@@ -49,11 +51,13 @@ func Register(fatherGroup *gin.RouterGroup) {
 	}
 
 	// No auth endpoints
-	assetRecordsGroup.GET("/", assetRecords.List)
-	assetRecordsGroup.GET("/:id", assetRecords.Detail)
+	assetRecordsGroup.GET("/list", assetRecords.List)
+	assetRecordsGroup.GET("/show/:id", assetRecords.Detail)
 
 	// Auth required endpoints
-	assetRecordsAuthGroup.POST("/", assetRecords.Create)
+	assetRecordsAuthGroup.GET("/my", assetRecords.MyList)
+	assetRecordsAuthGroup.POST("/new", assetRecords.Create)
+	assetRecordsAuthGroup.POST("/claim_see", assetRecords.ClaimSee)
 }
 
 // Create creates a new asset transfer
@@ -105,6 +109,55 @@ func (c *AssetRecordsController) Create(ctx *gin.Context) {
 	}))
 }
 
+func (c *AssetRecordsController) MyList(ctx *gin.Context) {
+	user := api.ForContextOnlyUser(ctx)
+
+	var queryParams TransferListQueryParams
+	if err := ctx.ShouldBindQuery(&queryParams); err != nil {
+		sdk.LogUserSideError(ctx, err)
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
+		return
+	}
+
+	// Validate pagination parameters
+	if queryParams.Page <= 0 {
+		queryParams.Page = DefaultPageNumber
+	}
+	if queryParams.Size <= 0 || queryParams.Size > MaxPageSize {
+		queryParams.Size = DefaultPageSize
+	}
+
+	transferLogs, total, err := c.Service.ListTransfers(queryParams.Page, queryParams.Size, "", "", user.Wallet)
+	if err != nil {
+		log.Error().Msgf("Error listing transfers: %+v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(err))
+		return
+	}
+
+	// Convert to response format
+	response := make([]*TransferResponse, len(transferLogs))
+	for i, transferLog := range transferLogs {
+		response[i] = &TransferResponse{
+			ID:            transferLog.ID,
+			FromUser:      transferLog.FromUser,
+			ToUser:        transferLog.ToUser,
+			AssetName:     transferLog.AssetName,
+			Amount:        transferLog.Amount,
+			TransactionTs: transferLog.TransactionTs,
+			Result:        transferLog.Result,
+			Comment:       transferLog.Comment,
+		}
+	}
+
+	ctx.JSON(http.StatusOK, api.Success(api.ListReplyData{
+		Page:  queryParams.Page,
+		Size:  queryParams.Size,
+		Total: total,
+		Rows:  response,
+	}))
+}
+
 // List returns paginated asset transfer records with optional query filters
 func (c *AssetRecordsController) List(ctx *gin.Context) {
 	var queryParams TransferListQueryParams
@@ -122,7 +175,7 @@ func (c *AssetRecordsController) List(ctx *gin.Context) {
 		queryParams.Size = DefaultPageSize
 	}
 
-	transferLogs, total, err := c.Service.ListTransfers(queryParams.Page, queryParams.Size, queryParams.FromUser, queryParams.ToUser)
+	transferLogs, total, err := c.Service.ListTransfers(queryParams.Page, queryParams.Size, queryParams.FromUser, queryParams.ToUser, "")
 	if err != nil {
 		log.Error().Msgf("Error listing transfers: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
@@ -188,4 +241,30 @@ func (c *AssetRecordsController) Detail(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, api.Success(response))
+}
+
+// ClaimSee allows users to claim their asset records from indexer
+func (c *AssetRecordsController) ClaimSee(ctx *gin.Context) {
+	if time.Now().After(internal.ClaimSeeAssetEndDate) {
+		err := errors.New("claim see asset end")
+		sdk.LogUserSideError(ctx, err)
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
+		return
+	}
+
+	user := api.ForContextOnlyUser(ctx)
+	statusCode, err := c.Service.ClaimUserSeeAssets(user.Wallet)
+	switch statusCode {
+	case http.StatusOK:
+		ctx.JSON(http.StatusOK, api.Success("see claimed successfully"))
+		return
+	case http.StatusBadRequest:
+		sdk.LogUserSideError(ctx, err)
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
+		return
+	default:
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusInternalServerError, api.BadRequest(errors.New("asset record error, please contract admin")))
+		return
+	}
 }
