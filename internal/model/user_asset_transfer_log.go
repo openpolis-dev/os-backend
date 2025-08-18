@@ -83,18 +83,22 @@ func (*userAssetTransferLogModel) UpdateResult(db *gorm.DB, id uint, result stri
 }
 
 // ListPaginated returns paginated transfer records with optional filters
-func (*userAssetTransferLogModel) ListPaginated(db *gorm.DB, page, size int, fromUser, toUser string) ([]*UserAssetTransferLog, int64, error) {
+func (*userAssetTransferLogModel) ListPaginated(db *gorm.DB, page, size int, fromUser, toUser, myWallet string) ([]*UserAssetTransferLog, int64, error) {
 	var logs []*UserAssetTransferLog
 	var total int64
 
 	query := db.Model(&UserAssetTransferLog{})
 
-	if fromUser != "" {
-		query = query.Where("from_user = ?", common.FormatUserWallet(fromUser))
-	}
+	if myWallet != "" {
+		query = query.Where("from_user = ? OR to_user = ?", common.FormatUserWallet(myWallet), common.FormatUserWallet(myWallet))
+	} else {
+		if fromUser != "" {
+			query = query.Where("from_user = ?", common.FormatUserWallet(fromUser))
+		}
 
-	if toUser != "" {
-		query = query.Where("to_user = ?", common.FormatUserWallet(toUser))
+		if toUser != "" {
+			query = query.Where("to_user = ?", common.FormatUserWallet(toUser))
+		}
 	}
 
 	// Count total records

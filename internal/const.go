@@ -176,3 +176,6 @@ const MetaforoPollNotExistsPrompt = "Poll not exists"
 const (
 	ERRCODE_GetMetaforoDataError = -1001
 )
+
+// Claim function is deployed at 2025.8.11, and the end date is 6 months later, which is 2026.1.11 00:00:00 UTC+8
+var ClaimSeeAssetEndDate = time.Date(2026, 1, 10, 16, 0, 0, 0, time.UTC)

@@ -3,10 +3,13 @@ package asset_records_inject
 import (
 	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 
 	"github.com/rs/zerolog/log"
 	"github.com/shopspring/decimal"
+	"github.com/theseed-labs/os-backend/internal"
+	"github.com/theseed-labs/os-backend/internal/common"
 	"github.com/theseed-labs/os-backend/internal/model"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -124,11 +127,91 @@ func (s *AssetRecordsService) CreateTransfer(fromUser, toUser, assetName string,
 }
 
 // ListTransfers returns paginated asset transfer records with optional filters
-func (s *AssetRecordsService) ListTransfers(page, size int, fromUser, toUser string) ([]*model.UserAssetTransferLog, int64, error) {
-	return model.UserAssetTransferLogModel.ListPaginated(s.db, page, size, fromUser, toUser)
+func (s *AssetRecordsService) ListTransfers(page, size int, fromUser, toUser, myWallet string) ([]*model.UserAssetTransferLog, int64, error) {
+	return model.UserAssetTransferLogModel.ListPaginated(s.db, page, size, fromUser, toUser, myWallet)
 }
 
 // GetTransferByID returns a single transfer record by ID
 func (s *AssetRecordsService) GetTransferByID(id uint) (*model.UserAssetTransferLog, error) {
 	return model.UserAssetTransferLogModel.GetByID(s.db, id)
+}
+
+// GetUserAssetRecords checks if user already has asset records for specified asset
+func (s *AssetRecordsService) GetUserAssetRecords(userWallet string, assetName string) ([]*model.UserAssetRecord, error) {
+	formattedWallet := common.FormatUserWallet(userWallet)
+
+	var records []*model.UserAssetRecord
+	err := s.db.Where("user_wallet = ? AND asset_name = ?", formattedWallet, assetName).Find(&records).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return records, nil
+}
+
+// ClaimUserSeeAssets gets user asset info from indexer and creates asset records
+// It will firstly check whether user has SEE asset to claim, and return error if no records found
+// Then it will convert the processing amount of SEE into dealt amount, and the things is done
+// There will be no processing amount for SEE in near future, so checking processing amount to determine claim state is available
+func (s *AssetRecordsService) ClaimUserSeeAssets(userWallet string) (int, error) {
+	formattedWallet := common.FormatUserWallet(userWallet)
+	statusCode := http.StatusOK
+
+	err := s.db.Transaction(func(tx *gorm.DB) error {
+		// Use pessimistic locking to prevent concurrent access issues and check record count
+		var existingRecords []model.UserAssetRecord
+		err := tx.Clauses(clause.Locking{Strength: "UPDATE", Options: "NOWAIT"}).
+			Where("user_wallet = ? AND asset_name = ? AND claimed = false", formattedWallet, internal.AssetNameSEE).
+			Find(&existingRecords).Error
+
+		if err != nil {
+			statusCode = http.StatusInternalServerError
+			return err
+		}
+
+		if len(existingRecords) == 0 {
+			statusCode = http.StatusBadRequest
+			return errors.New("user has no see asset records to claim")
+		}
+
+		if len(existingRecords) > 1 {
+			statusCode = http.StatusInternalServerError
+			return errors.New("user has multiple see asset records")
+		}
+
+		existingRecord := existingRecords[0]
+
+		log.Error().Msgf("TTT: processing see: %+v", existingRecord.ProcessingAmount.Cmp(decimal.Zero))
+
+		// Check if there's any processing amount to claim
+		if existingRecord.ProcessingAmount.Cmp(decimal.Zero) == 0 {
+			statusCode = http.StatusBadRequest
+			return errors.New("user has no see amount to claim")
+		}
+
+		// Perform atomic update using the locked record's processing amount
+		// This ensures we use the exact amount that was locked, preventing race conditions
+		result := tx.Model(&model.UserAssetRecord{}).
+			Where("id = ? AND processing_amount >= ?", existingRecord.ID, existingRecord.ProcessingAmount).
+			Updates(map[string]interface{}{
+				"processing_amount": gorm.Expr("processing_amount::decimal - ?", existingRecord.ProcessingAmount.String()),
+				"dealt_amount":      gorm.Expr("dealt_amount::decimal + ?", existingRecord.ProcessingAmount.String()),
+				"claimed":           true,
+			})
+
+		if result.Error != nil {
+			statusCode = http.StatusInternalServerError
+			return result.Error
+		}
+
+		// Check if the update actually affected any rows
+		if result.RowsAffected == 0 {
+			statusCode = http.StatusInternalServerError
+			return errors.New("failed to claim assets: record may have been modified by another transaction")
+		}
+
+		return nil
+	})
+
+	return statusCode, err
 }

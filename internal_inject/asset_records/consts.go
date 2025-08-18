@@ -9,11 +9,14 @@ const (
 	ErrTransactionNotFound   = "transaction record not found"
 	ErrCheckingBalance       = "error checking from user balance"
 	ErrCreatingTransfer      = "error creating transfer log"
-	ErrUpdatingFromUser    = "error updating from user processing amount"
-	ErrUpdatingToUser      = "error updating to user processing amount"
-	ErrUpdatingResult      = "error updating transfer result"
-	ErrCompletingFromUser  = "error completing from user transaction"
-	ErrCompletingToUser    = "error completing to user transaction"
+	ErrUpdatingFromUser      = "error updating from user processing amount"
+	ErrUpdatingToUser        = "error updating to user processing amount"
+	ErrUpdatingResult        = "error updating transfer result"
+	ErrCompletingFromUser    = "error completing from user transaction"
+	ErrCompletingToUser      = "error completing to user transaction"
+	ErrAlreadyClaimed        = "you have already claimed your assets"
+	ErrClaimingAssets        = "error claiming user assets"
+	ErrGettingIndexerBalance = "error getting balance from indexer"
 )
 
 // Status values
@@ -28,9 +31,9 @@ const (
 
 // Pagination defaults
 const (
-	DefaultPageSize    = 20
-	MaxPageSize        = 100
-	DefaultPageNumber  = 1
+	DefaultPageSize   = 20
+	MaxPageSize       = 100
+	DefaultPageNumber = 1
 )
 
 // Field names

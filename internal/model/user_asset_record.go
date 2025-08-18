@@ -24,6 +24,9 @@ type UserAssetRecord struct {
 	UpdatedAt        time.Time       `json:"-"`
 	CreateTs         int64           `json:"create_ts" gorm:"index"`
 	UpdateTs         int64           `json:"update_ts" gorm:"index"`
+
+	// Claimed field is used for SEE claim requirements.
+	Claimed bool `json:"claimed" gorm:"default:false"`
 }
 
 type userAssetRecordModel struct{}
@@ -70,6 +73,9 @@ func (*userAssetRecordModel) CreateOrUpdate(db *gorm.DB, userWallet string, asse
 			AssetName:        strings.ToUpper(assetName),
 			DealtAmount:      dealtAmount,
 			ProcessingAmount: processingAmount,
+
+			// Claimed field is added for see asset, for new created asset records, mark it as claimed
+			Claimed: true,
 		}).Error
 	} else {
 		assetRecords[0].DealtAmount = assetRecords[0].DealtAmount.Add(dealtAmount)
