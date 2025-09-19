@@ -765,11 +765,11 @@ func SaveProposalToMetaforo(db *gorm.DB, dbProposalId uint, voteType int, metafo
 	metaforoProposalResponse, err = metaforo.GetProposal(metaforoThreadId, metaforoGroupName, metaforoAccessToken, 0)
 	if err != nil {
 		log.Error().Msgf("get metaforoProposal %d error: %+v", metaforoThreadId, err)
-		_ = UpdateDbRecordsFromMetaforoProposalResponse(db, updatedProposalRecord.ID, metaforoProposalResponse, err)
+		_ = UpdateDbRecordsFromMetaforoProposalResponse(db, updatedProposalRecord.ID, updatedProposalRecord.IsInFinState(), metaforoProposalResponse, err)
 		return err
 	}
 
-	err = UpdateDbRecordsFromMetaforoProposalResponse(db, updatedProposalRecord.ID, metaforoProposalResponse, nil)
+	err = UpdateDbRecordsFromMetaforoProposalResponse(db, updatedProposalRecord.ID, updatedProposalRecord.IsInFinState(), metaforoProposalResponse, nil)
 	if err != nil {
 		log.Error().Msgf("update db records from metaforoProposalResponse error: %+v", err)
 	}
@@ -979,15 +979,25 @@ func IsUserMetVoteGate(userSeepassData *sdk.SeepassResponse, proposalVoteGate *m
 	}
 }
 
-func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcdId uint, metaforoProposal *metaforo.ProposalResponse, mfError error) error {
+func UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcdId uint, isProposalInFinState bool, metaforoProposal *metaforo.ProposalResponse, mfError error) error {
 	// Check whether update form metaforo contains error, if yes, update state to metaforo error and return
 	if mfError != nil {
 		log.Error().Msgf("get metaforo proposal error: %+v", mfError)
+
+		// This branch is processing mf error, set the default state to UncategorizedMetaforoError
 		proposalStateForMetaforoError := model.ProposalStateUncategorizedMetaforoError
 		if strings.Contains(mfError.Error(), "not found") {
+			// Proposal not found in metaforo, change the state to DeletedFromMetaforo
 			proposalStateForMetaforoError = model.ProposalStateDeletedFromMetaforo
+		} else if isProposalInFinState {
+			// For mf error other than not found, only update proposal not in fin state
+			log.Debug().Msgf("proposal %d is in fin state, skip updating proposal state to mf error", dbProposalRcdId)
+			return nil
+		} else {
+			// Keep the new state to be UncategorizedMetaforoError
 		}
 
+		// Update proposal state into mf_error
 		if err = db.Model(&model.Proposal{}).Where("id = ?", dbProposalRcdId).Update("state", proposalStateForMetaforoError).Error; err != nil {
 			log.Error().Msgf("update proposal %d state to deleted_by_metaforo error", dbProposalRcdId)
 			return err
