@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/theseed-labs/os-backend/internal"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -59,7 +60,8 @@ func FormatUserWallet(wallet string) string {
 }
 
 func ValidateUserWallet(wallet string) bool {
-	return common.IsHexAddress(wallet)
+	return common.IsHexAddress(wallet) && common.HexToAddress(wallet) != internal.BurnAddress
+
 }
 
 // ToFrontendWallet convert wallet address to frontend required format, currently the requirement is lowercased

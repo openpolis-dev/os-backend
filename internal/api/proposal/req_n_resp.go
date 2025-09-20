@@ -372,11 +372,11 @@ func ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposalId uint, startPo
 		metaforoProposal, err := metaforo.GetProposal(proposal.GetMetaforoThreadId(), metaforoGroupName, accessToken, startPostId)
 		if err != nil {
 			log.Error().Msgf("get metaforo proposal error: %+v", err)
-			_ = UpdateDbRecordsFromMetaforoProposalResponse(db, proposalId, metaforoProposal, err)
+			_ = UpdateDbRecordsFromMetaforoProposalResponse(db, proposalId, proposal.IsInFinState(), metaforoProposal, err)
 			return nil, err
 		}
 
-		err = UpdateDbRecordsFromMetaforoProposalResponse(db, proposalId, metaforoProposal, nil)
+		err = UpdateDbRecordsFromMetaforoProposalResponse(db, proposalId, proposal.IsInFinState(), metaforoProposal, nil)
 		if err != nil {
 			log.Error().Msgf("update proposal %d from metaforo error: %+v", proposalId, err)
 			return nil, err
