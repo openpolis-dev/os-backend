@@ -9,4 +9,5 @@ var (
 	NoVoteRight      = errors.New("INCARNA NFT is required to perform this action")
 	TokenAddrInvalid = errors.New("token address is invalid")
 	MetaforoError    = errors.New("mataforo error")
+	MetaforoTimeoutError     = errors.New("request timeout")
 )

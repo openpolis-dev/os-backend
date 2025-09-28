@@ -100,6 +100,14 @@ func GetMetaforoProposalByInternalId(db *gorm.DB, proposalIdStr string, metaforo
 	metaforoProposalResponse, err := metaforo.GetProposal(osProposalRcd.GetMetaforoThreadId(), metaforoGroupName, mfAccessToken, 0)
 	if err != nil {
 		log.Error().Msgf("get metaforo proposal error: %+v", err)
+
+		// Check if it's a timeout error, if so, return DB data instead of failing
+		if errors.Is(err, metaforo.MetaforoTimeoutError) {
+			log.Warn().Msgf("metaforo request timeout, returning proposal data from database for proposal ID: %s", proposalIdStr)
+			// Don't update DB records for timeout errors, just return existing data
+			return osProposalRcd, nil, nil
+		}
+
 		_ = UpdateDbRecordsFromMetaforoProposalResponse(db, osProposalRcd.ID, osProposalRcd.IsInFinState(), metaforoProposalResponse, err)
 		return nil, nil, err
 	}

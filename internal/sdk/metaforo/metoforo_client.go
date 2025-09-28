@@ -5,12 +5,26 @@ import (
 	"fmt"
 	"maps"
 	"net/http"
+	"strings"
+	"time"
 
 	"github.com/rs/zerolog/log"
 	"github.com/valyala/fasthttp"
 )
 
 const apiBase = "https://api.metaforo.io"
+
+// HTTP client with 60 second timeout configuration
+var httpClient = &fasthttp.Client{
+	ReadTimeout:  60 * time.Second,
+	WriteTimeout: 60 * time.Second,
+	// Connection timeout for establishing new connections
+	MaxConnDuration: 60 * time.Second,
+	// Keep alive connections for better performance
+	MaxIdleConnDuration: 90 * time.Second,
+	// Maximum number of connections per host
+	MaxConnsPerHost: 512,
+}
 
 var BaseHeader = map[string]string{
 	"Accept":  "application/json",
@@ -38,7 +52,24 @@ type httpRequestData struct {
 	Header               map[string]string
 }
 
+// isTimeoutError checks if the given error is a timeout error
+func isTimeoutError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	errStr := strings.ToLower(err.Error())
+	return strings.Contains(errStr, "timeout") ||
+		strings.Contains(errStr, "deadline exceeded") ||
+		strings.Contains(errStr, "context deadline exceeded") ||
+		strings.Contains(errStr, "i/o timeout")
+}
+
 func doHttpRequest[T any](requestData *httpRequestData) (int, *T, error) {
+	return executeHttpRequest[T](requestData)
+}
+
+func executeHttpRequest[T any](requestData *httpRequestData) (int, *T, error) {
 	// Prepare request
 	req := fasthttp.AcquireRequest()
 	defer fasthttp.ReleaseRequest(req)
@@ -74,10 +105,17 @@ func doHttpRequest[T any](requestData *httpRequestData) (int, *T, error) {
 		req.Header.SetContentType(requestData.MultipartContentType)
 	}
 
-	if err := fasthttp.Do(req, resp); err != nil {
+	if err := httpClient.Do(req, resp); err != nil {
 		log.Error().Msgf("Request: %+v", req)
 		log.Error().Msgf("Response: %+v", resp)
 		log.Error().Msgf("Send request error: %s, req: %+v, resp: %+v", err, req, resp)
+
+		// Check if the error is a timeout error
+		if isTimeoutError(err) {
+			return 0, nil, MetaforoTimeoutError
+		}
+
+		return 0, nil, err
 	}
 
 	// check status code
