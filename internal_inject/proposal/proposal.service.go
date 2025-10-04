@@ -904,21 +904,21 @@ func (s *ProposalService) IsUserMetVoteGate(userSeepassData *sdk.SeepassResponse
 }
 
 func (s *ProposalService) UpdateDbRecordsFromMetaforoProposalResponse(db *gorm.DB, dbProposalRcdId uint, metaforoProposal *metaforo.ProposalResponse, mfError error) error {
-	// Check whether update form metaforo contains error, if yes, update state to metaforo error and return
-	if mfError != nil {
-		log.Error().Msgf("get metaforo proposal error: %+v", mfError)
-		proposalStateForMetaforoError := model.ProposalStateUncategorizedMetaforoError
-		if strings.Contains(mfError.Error(), "not found") {
-			proposalStateForMetaforoError = model.ProposalStateDeletedFromMetaforo
-		}
+	// // Check whether update form metaforo contains error, if yes, update state to metaforo error and return
+	// if mfError != nil {
+	// 	log.Error().Msgf("get metaforo proposal error: %+v", mfError)
+	// 	proposalStateForMetaforoError := model.ProposalStateUncategorizedMetaforoError
+	// 	if strings.Contains(mfError.Error(), "not found") {
+	// 		proposalStateForMetaforoError = model.ProposalStateDeletedFromMetaforo
+	// 	}
 
-		if err := db.Model(&model.Proposal{}).Where("id = ?", dbProposalRcdId).Update("state", proposalStateForMetaforoError).Error; err != nil {
-			log.Error().Msgf("update proposal %d state to deleted_by_metaforo error", dbProposalRcdId)
-			return err
-		}
+	// 	if err := db.Model(&model.Proposal{}).Where("id = ?", dbProposalRcdId).Update("state", proposalStateForMetaforoError).Error; err != nil {
+	// 		log.Error().Msgf("update proposal %d state to deleted_by_metaforo error", dbProposalRcdId)
+	// 		return err
+	// 	}
 
-		return nil
-	}
+	// 	return nil
+	// }
 
 	// Save all version proposals' arweave hash
 	if err := s.UpdateArweaveHashFromMetaforoProposalResponse(db, dbProposalRcdId, metaforoProposal); err != nil {
