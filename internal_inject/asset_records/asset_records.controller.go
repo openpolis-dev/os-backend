@@ -71,6 +71,12 @@ func (c *AssetRecordsController) Create(ctx *gin.Context) {
 		return
 	}
 
+	// 20251102 - temp fix for disable create transfer
+	if req.AssetName == internal.AssetNameSEE {
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("transfer see is temporary disabled")))
+		return
+	}
+
 	if !common.ValidateUserWallet(req.ToUser) {
 		err := fmt.Errorf("invalid target user wallet: %s", req.ToUser)
 		sdk.LogUserSideError(ctx, err)
@@ -245,6 +251,10 @@ func (c *AssetRecordsController) Detail(ctx *gin.Context) {
 
 // ClaimSee allows users to claim their asset records from indexer
 func (c *AssetRecordsController) ClaimSee(ctx *gin.Context) {
+	// 20251102 - temp fix for disable claim see
+	ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("claim see asset is temporary disabled")))
+	return
+
 	if time.Now().After(internal.ClaimSeeAssetEndDate) {
 		err := errors.New("claim see asset end")
 		sdk.LogUserSideError(ctx, err)
