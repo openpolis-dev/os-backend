@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"time"
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
@@ -149,8 +150,9 @@ func main() {
 		panic(err)
 	}
 
-	// setup Indexer API Client
-	err = sdk.InitIndexerClient(cfg.ExternalServices.SeedaoEventIndexerBase)
+	// setup Indexer API Client (bounded HTTP timeout avoids hanging until reverse-proxy 504)
+	indexerHTTPTimeout := time.Duration(cfg.ExternalServices.SeedaoEventIndexerHTTPTimeoutSeconds) * time.Second
+	err = sdk.InitIndexerClient(cfg.ExternalServices.SeedaoEventIndexerBase, indexerHTTPTimeout)
 	if err != nil {
 		panic(err)
 	}

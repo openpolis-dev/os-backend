@@ -4,6 +4,8 @@ FROM golang:1.21 AS build
 WORKDIR /go/src/
 
 COPY go.mod go.sum ./
+RUN git config --global url."https://github.com/openpolis-dev/".insteadOf "https://github.com/Taoist-Labs/"
+
 RUN go mod download
 
 COPY . .

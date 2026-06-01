@@ -7,10 +7,12 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/facebookgo/inject"
 	"github.com/gin-gonic/gin"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/theseed-labs/os-backend/global_object"
 	"github.com/theseed-labs/os-backend/internal/api"
@@ -53,6 +55,14 @@ where pc.id in (21, 22, 24) and p.sip is not null and p.sip > 0`
 
 const getSeasonUsersSQL = `select wallet, name, avatar from users where wallet in `
 
+const (
+	seasonNodesLogComponent = "public_data"
+	seasonNodesLogOperation = "get_season_nodes"
+	// seasonNodesLogFixme is a stable tag for grep/alerting until spp-indexer season snapshot is healthy again.
+	seasonNodesLogFixme          = "FIXME:restore-spp-indexer-season-nodes"
+	seasonNodeIndexerFetchTimeout = 10 * time.Second
+)
+
 func Register(fatherGroup *gin.RouterGroup) {
 	g := global_object.GetGlobalObject()
 
@@ -82,52 +92,99 @@ func Register(fatherGroup *gin.RouterGroup) {
 	publicDataGroup.GET("/get_season_nodes/:seasonIdx", publicData.GetSeasonNodes)
 }
 
+func seasonNodesLog(seasonIdx, stage string) *zerolog.Event {
+	return log.Warn().
+		Str("component", seasonNodesLogComponent).
+		Str("operation", seasonNodesLogOperation).
+		Str("season_idx", seasonIdx).
+		Str("stage", stage).
+		Str("fixme", seasonNodesLogFixme)
+}
+
+// GetSeasonNodes returns season node holders enriched from the users table.
+//
+// Steps:
+//  1. Read in-memory cache (season_nodes.<idx>).
+//  2. On cache miss, call spp-indexer ensoul SBT snapshot and filter by season token id.
+//  3. On indexer failure/timeout, degrade to an empty list (HTTP 200) — see seasonNodesLogFixme.
+//  4. Load wallet/name/avatar from Postgres for matched wallets.
 func (c *PublicDataController) GetSeasonNodes(ctx *gin.Context) {
 	seasonIdx := ctx.Param("seasonIdx")
 
-	cachedData, err := storage.GetCachedData(storage.SeasonNodeCacheKey(seasonIdx))
-	var csNodeWallets []string
-	if err != nil {
-		log.Warn().Msgf("get cached data error: %+v, try to fetch from indexer", err)
-		// TODO: Fetch node list from indexer
-		log.Debug().Msgf("node seasonIdx: %s", seasonIdx)
+	csNodeWallets, fromCache := c.loadSeasonNodeWallets(seasonIdx)
+	if !fromCache {
+		csNodeWallets = c.fetchSeasonNodeWalletsFromIndexer(seasonIdx)
+	}
 
-		indexerClient := sdk.GetIndexerClient()
-		csNodeWallets, err = indexerClient.GetCurrentSeasonNodeList(seasonIdx)
-
-		if err != nil {
-			sdk.LogServerErrorToSentry(ctx, err)
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get season node list error")))
-			return
-		}
-
-		csNodeBytes, err := json.Marshal(csNodeWallets)
-		if err != nil {
-			sdk.LogServerErrorToSentry(ctx, err)
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("marshal season node list error")))
-			return
-		}
-		_ = storage.StoreCachedData(storage.SeasonNodeCacheKey(seasonIdx), csNodeBytes)
-	} else {
-		err = json.Unmarshal(cachedData, &csNodeWallets)
-		if err != nil {
-			sdk.LogServerErrorToSentry(ctx, err)
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("unmarshal season node list error")))
-			return
-		}
+	if len(csNodeWallets) == 0 {
+		ctx.JSON(http.StatusOK, api.Success([]*SeasonUsers{}))
+		return
 	}
 
 	users := strings.Join(csNodeWallets, "','")
 	findSql := fmt.Sprintf("%s ('%s')", getSeasonUsersSQL, users)
 	var seasonUsers []*SeasonUsers
-	err = c.Db.Raw(findSql).Find(&seasonUsers).Error
+	err := c.Db.Raw(findSql).Find(&seasonUsers).Error
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusBadRequest, api.ServerError(errors.New("get season proposals error detail:"+err.Error())))
+		seasonNodesLog(seasonIdx, "db_users").Err(err).Msg("query users for season nodes failed")
+		ctx.JSON(http.StatusBadRequest, api.ServerError(errors.New("get season nodes error detail:"+err.Error())))
 		return
 	}
 
 	ctx.JSON(http.StatusOK, api.Success(seasonUsers))
+}
+
+func (c *PublicDataController) loadSeasonNodeWallets(seasonIdx string) (wallets []string, ok bool) {
+	cachedData, err := storage.GetCachedData(storage.SeasonNodeCacheKey(seasonIdx))
+	if err != nil {
+		log.Debug().
+			Str("component", seasonNodesLogComponent).
+			Str("operation", seasonNodesLogOperation).
+			Str("season_idx", seasonIdx).
+			Str("stage", "cache_miss").
+			Msg("season node cache miss, will try indexer")
+		return nil, false
+	}
+
+	if err = json.Unmarshal(cachedData, &wallets); err != nil {
+		seasonNodesLog(seasonIdx, "cache_unmarshal").Err(err).Msg("season node cache corrupt, will try indexer")
+		return nil, false
+	}
+	return wallets, true
+}
+
+func (c *PublicDataController) fetchSeasonNodeWalletsFromIndexer(seasonIdx string) []string {
+	indexerClient := sdk.GetIndexerClient()
+	if indexerClient == nil {
+		seasonNodesLog(seasonIdx, "indexer_client").Msg("indexer client not initialized, returning empty season nodes")
+		return nil
+	}
+
+	wallets, err := indexerClient.GetCurrentSeasonNodeListWithTimeout(seasonIdx, seasonNodeIndexerFetchTimeout)
+	if err != nil {
+		seasonNodesLog(seasonIdx, "indexer_fetch").
+			Err(err).
+			Dur("indexer_timeout", seasonNodeIndexerFetchTimeout).
+			Msg("spp-indexer season node snapshot failed or timed out, returning empty list (degraded)")
+		return nil
+	}
+
+	csNodeBytes, err := json.Marshal(wallets)
+	if err != nil {
+		seasonNodesLog(seasonIdx, "cache_marshal").Err(err).Msg("marshal season node list for cache failed, returning fetched wallets")
+		return wallets
+	}
+	if err = storage.StoreCachedData(storage.SeasonNodeCacheKey(seasonIdx), csNodeBytes); err != nil {
+		log.Debug().
+			Str("component", seasonNodesLogComponent).
+			Str("operation", seasonNodesLogOperation).
+			Str("season_idx", seasonIdx).
+			Str("stage", "cache_store").
+			Err(err).
+			Msg("store season node cache failed")
+	}
+	return wallets
 }
 
 func (c *PublicDataController) GetSeasonProposals(ctx *gin.Context) {

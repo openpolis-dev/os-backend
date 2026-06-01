@@ -71,7 +71,9 @@ type (
 	externalService struct {
 		SeedaoSppBase          string `json:"SeedaoSppBase" yaml:"SeedaoSppBase"`
 		SeedaoEventIndexerBase string `json:"SeedaoEventIndexerBase" yaml:"SeedaoEventIndexerBase"`
-		SentryDsn              string `json:"SentryDsn" yaml:"SentryDsn"`
+		// SeedaoEventIndexerHTTPTimeoutSeconds is the total timeout for each HTTP call to the indexer (snapshot, computenodesbt, etc.). Zero means use apiserver default (55s), still bounded so gateways do not 504 first when possible.
+		SeedaoEventIndexerHTTPTimeoutSeconds int `json:"SeedaoEventIndexerHTTPTimeoutSeconds" yaml:"SeedaoEventIndexerHTTPTimeoutSeconds"`
+		SentryDsn                            string `json:"SentryDsn" yaml:"SentryDsn"`
 	}
 	publicData struct {
 		Discord struct {

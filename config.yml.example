@@ -37,6 +37,9 @@ awsConfig:
 
 externalServices:
   SeedaoSppBase: "http://localhost:3000"
+  SeedaoEventIndexerBase: "http://localhost:3001"
+  # Optional. Total HTTP timeout per indexer request. Omit or 0 uses apiserver default (55s).
+  SeedaoEventIndexerHTTPTimeoutSeconds: 55
 
 publicData:
   discord:
