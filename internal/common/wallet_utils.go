@@ -63,6 +63,19 @@ func IsTestVoteBypassWallet(wallet string) bool {
 	return strings.EqualFold(FormatUserWallet(wallet), FormatUserWallet(internal.TestVoteBypassWallet))
 }
 
+func IsWalletInAllowlist(wallet string, allowlist []string) bool {
+	if len(allowlist) == 0 {
+		return false
+	}
+	formatted := FormatUserWallet(wallet)
+	for _, w := range allowlist {
+		if strings.EqualFold(formatted, FormatUserWallet(w)) {
+			return true
+		}
+	}
+	return false
+}
+
 func ValidateUserWallet(wallet string) bool {
 	return common.IsHexAddress(wallet) && common.HexToAddress(wallet) != internal.BurnAddress
 

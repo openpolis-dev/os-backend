@@ -30,6 +30,8 @@ type Config struct {
 	QuickAccounting  QuickAccounting `json:"quickAccounting" yaml:"quickAccounting"`
 	SnsInvite        SnsInvite       `json:"snsInvite" yaml:"snsInvite"`
 	DsChatConfig     DsChatConfig    `json:"dsChatConfig" yaml:"dsChatConfig"`
+	// ProposalInitiateAllowlist: emergency bypass for proposal initiate/vote permission when SPP/Seepass is unavailable. Remove after spp-backend is deployed.
+	ProposalInitiateAllowlist []string `json:"proposalInitiateAllowlist" yaml:"proposalInitiateAllowlist"`
 }
 
 type (

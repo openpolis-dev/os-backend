@@ -1149,7 +1149,7 @@ func (s *ProposalService) updateOsVoteRecordSchedule(db *gorm.DB, proposalId uin
 	return nil
 }
 
-func (s *ProposalService) CastVoteToOS(db *gorm.DB, proposalId uint, userWallet string, voteId int, optionIds []int) error {
+func (s *ProposalService) CastVoteToOS(db *gorm.DB, proposalId uint, userWallet string, voteId int, optionIds []int, seepassAllowlist []string) error {
 	if len(optionIds) == 0 {
 		return fmt.Errorf("vote options are empty")
 	}
@@ -1225,7 +1225,7 @@ func (s *ProposalService) CastVoteToOS(db *gorm.DB, proposalId uint, userWallet 
 	}
 
 	voteWeight := 1
-	if !common.IsTestVoteBypassWallet(userWallet) {
+	if !common.IsTestVoteBypassWallet(userWallet) && !common.IsWalletInAllowlist(userWallet, seepassAllowlist) {
 		seepassData, err := api.GetCachedSeepassData(sdk.GetSppClient(), userWallet, false)
 		if err != nil {
 			return err
@@ -3904,7 +3904,7 @@ func (s *ProposalService) GetTemplateComponents(tmplDbRcd *model.ProposalTemplat
 	return components
 }
 
-func (s *ProposalService) CanUserVoteOnThread(db *gorm.DB, userWallet string, proposalIdString string) (bool, error) {
+func (s *ProposalService) CanUserVoteOnThread(db *gorm.DB, userWallet string, proposalIdString string, seepassAllowlist []string) (bool, error) {
 	proposal, err := s.GetProposalFromStringId(db, proposalIdString)
 	if err != nil {
 		log.Error().Msgf("get proposal error: %+v", err)
@@ -3914,6 +3914,11 @@ func (s *ProposalService) CanUserVoteOnThread(db *gorm.DB, userWallet string, pr
 
 	if common.IsTestVoteBypassWallet(userWallet) {
 		log.Debug().Msgf("test vote bypass wallet %s, skip seepass vote gate check", userWallet)
+		return true, nil
+	}
+
+	if common.IsWalletInAllowlist(userWallet, seepassAllowlist) {
+		log.Debug().Msgf("seepass allowlist wallet %s, skip vote gate check", userWallet)
 		return true, nil
 	}
 

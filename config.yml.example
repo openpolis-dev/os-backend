@@ -73,3 +73,7 @@ snsInvite:
 dsChatConfig:
     baseUrl: http://localhost:3000
     authKey: TyUcDRDCAKvPkeEMNYEdbVZNA7fwEUCu
+
+# Emergency only: skip Seepass checks for initiate + vote on list_with_perm / can_vote / cast_vote.
+# Remove or clear after spp-backend is deployed.
+proposalInitiateAllowlist: []

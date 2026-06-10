@@ -267,7 +267,7 @@ func (c *ProposalController) List(ctx *gin.Context) {
 
 		// add can vote check
 		resultRows = lo.Map(resultRows, func(r *FrontendProposalListRecord, _ int) *FrontendProposalListRecord {
-			userHasVotePermissionOnThread, err := c.ProposalService.CanUserVoteOnThread(c.Db, user.Wallet, fmt.Sprintf("%d", r.ID))
+			userHasVotePermissionOnThread, err := c.ProposalService.CanUserVoteOnThread(c.Db, user.Wallet, fmt.Sprintf("%d", r.ID), c.Cfg.ProposalInitiateAllowlist)
 			if err == nil {
 				r.CanVote = userHasVotePermissionOnThread
 			}
@@ -1042,7 +1042,7 @@ func (c *ProposalController) MyList(ctx *gin.Context) {
 
 		// add can vote check
 		resultRows = lo.Map(resultRows, func(r *FrontendProposalListRecord, _ int) *FrontendProposalListRecord {
-			userHasVotePermissionOnThread, err := c.ProposalService.CanUserVoteOnThread(c.Db, user.Wallet, fmt.Sprintf("%d", r.ID))
+			userHasVotePermissionOnThread, err := c.ProposalService.CanUserVoteOnThread(c.Db, user.Wallet, fmt.Sprintf("%d", r.ID), c.Cfg.ProposalInitiateAllowlist)
 			if err == nil {
 				r.CanVote = userHasVotePermissionOnThread
 			}
@@ -1341,7 +1341,7 @@ func (c *ProposalController) CheckVotePermission(ctx *gin.Context) {
 	user, _, _, _ := api.ForContext(ctx)
 
 	proposalIdString := ctx.Param("id")
-	userHasVotePermissionOnThread, err := c.ProposalService.CanUserVoteOnThread(c.Db, user.Wallet, proposalIdString)
+	userHasVotePermissionOnThread, err := c.ProposalService.CanUserVoteOnThread(c.Db, user.Wallet, proposalIdString, c.Cfg.ProposalInitiateAllowlist)
 	if err != nil {
 		log.Error().Msgf("check user vote permission error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
@@ -1355,7 +1355,7 @@ func (c *ProposalController) CastVote(ctx *gin.Context) {
 	user, _, _, _ := api.ForContext(ctx)
 
 	proposalIdString := ctx.Param("id")
-	userHasVotePermissionOnThread, err := c.ProposalService.CanUserVoteOnThread(c.Db, user.Wallet, proposalIdString)
+	userHasVotePermissionOnThread, err := c.ProposalService.CanUserVoteOnThread(c.Db, user.Wallet, proposalIdString, c.Cfg.ProposalInitiateAllowlist)
 	if err != nil {
 		sdk.LogServerErrorToSentry(ctx, err)
 		log.Error().Msgf("check user vote permission error: %+v", err)
@@ -1389,7 +1389,7 @@ func (c *ProposalController) CastVote(ctx *gin.Context) {
 	}
 
 	if proposalRecord.IsOsNativeProposal() {
-		if err := c.ProposalService.CastVoteToOS(c.Db, uint(proposalId), user.Wallet, reqData.MetaforoVoteId, reqData.MetaforoVoteOptions); err != nil {
+		if err := c.ProposalService.CastVoteToOS(c.Db, uint(proposalId), user.Wallet, reqData.MetaforoVoteId, reqData.MetaforoVoteOptions, c.Cfg.ProposalInitiateAllowlist); err != nil {
 			log.Error().Msgf("cast vote to OS error: %+v", err)
 			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("cast vote error detail:"+err.Error())))
@@ -1661,8 +1661,12 @@ func (c *ProposalController) ListTemplatesWithPerm(ctx *gin.Context) {
 			return nil
 		}
 
-		// Stop using the template if user has no seepass data or template is disabled
-		if userSeepassData == nil || tmplDbRcd.IsDisabled {
+		initiateAllowed := common.IsWalletInAllowlist(user.Wallet, c.Cfg.ProposalInitiateAllowlist)
+		if tmplDbRcd.IsDisabled {
+			r.HasPermToUse = false
+		} else if initiateAllowed {
+			r.HasPermToUse = true
+		} else if userSeepassData == nil {
 			r.HasPermToUse = false
 		} else {
 			permArray := lo.Map(useTemplateVoteGates, func(r *model.ProposalVoteGate, _ int) bool {
@@ -1738,13 +1742,15 @@ func (c *ProposalController) ListCategoriesWithPerm(ctx *gin.Context) {
 		return
 	}
 
+	initiateAllowed := common.IsWalletInAllowlist(user.Wallet, c.Cfg.ProposalInitiateAllowlist)
 	categoryResp := lo.Map(proposalCategories, func(r *model.ProposalCategory, index int) *FrontendProposalCategory {
+		hasPerm := initiateAllowed || c.ProposalService.IsUserMetVoteGate(userSeepassData, r.ProposalVoteGate)
 		return &FrontendProposalCategory{
 			ID:         r.ID,
 			ParentID:   r.ParentID,
 			Name:       r.Name,
 			MetaforoId: r.MetaforoId,
-			HasPerm:    c.ProposalService.IsUserMetVoteGate(userSeepassData, r.ProposalVoteGate),
+			HasPerm:    hasPerm,
 		}
 	})
 
