@@ -730,6 +730,709 @@ func (s *ProposalService) SaveProposalToMetaforo(db *gorm.DB, dbProposalId uint,
 	return nil
 }
 
+// PublishProposalToOS submits a proposal into the OS-native flow (no Metaforo).
+// It sets proposal_record_id, draft state, vote schedule, and self-referential poll/option IDs for API compatibility.
+func (s *ProposalService) PublishProposalToOS(db *gorm.DB, proposalId uint, isMultipleVote bool) error {
+	if !s.TryAcquireUpdateProposalDbLockOrReturn(proposalId) {
+		err := fmt.Errorf("proposal %d is updating", proposalId)
+		log.Error().Msg(err.Error())
+		return err
+	}
+	defer s.ReleaseUpdateProposalDbLock(proposalId)
+
+	var proposal model.Proposal
+	if err := db.First(&proposal, proposalId).Error; err != nil {
+		log.Error().Msgf("find proposal %d error: %+v", proposalId, err)
+		return err
+	}
+
+	voteStartTime := time.Now().UTC().Add(proposal.PublicityDuration())
+	voteEndTime := voteStartTime.Add(proposal.VoteDuration())
+
+	recordId := proposal.ProposalRecordId
+	if recordId == "" {
+		recordId = model.BuildProposalRecordIdFromOsProposalId(proposalId)
+	}
+
+	pollState := "open"
+	if voteStartTime.After(time.Now().UTC()) {
+		pollState = "waite"
+	}
+
+	log.Debug().Msgf("publish proposal %d to OS, recordId: %s, voteStart: %s, voteEnd: %s",
+		proposalId, recordId, voteStartTime.Format(time.RFC3339), voteEndTime.Format(time.RFC3339))
+
+	return db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&model.Proposal{}).Where("id = ?", proposalId).Updates(&model.Proposal{
+			ProposalRecordId: recordId,
+			State:            int(model.ProposalStateDraft),
+			VoteStartTs:      voteStartTime.Unix(),
+		}).Error; err != nil {
+			log.Error().Msgf("update proposal %d for OS publish error: %+v", proposalId, err)
+			return err
+		}
+
+		if proposal.VoteType == model.ProposalVoteTypeNone {
+			return nil
+		}
+
+		voteRecords, err := db_agent.GetProposalVoteRecord(tx, proposalId)
+		if err != nil {
+			log.Error().Msgf("fetch proposal vote record error: %+v", err)
+			return err
+		}
+
+		var voteRecord *model.ProposalVoteRecord
+		if len(voteRecords) == 0 {
+			voteRecord = &model.ProposalVoteRecord{
+				ProposalID: proposalId,
+				VoteType:   proposal.VoteType,
+			}
+			if err := tx.Create(voteRecord).Error; err != nil {
+				log.Error().Msgf("create proposal vote record error: %+v", err)
+				return err
+			}
+		} else {
+			voteRecord = voteRecords[0]
+		}
+
+		pollID := voteRecord.MetaforoID
+		if pollID == 0 {
+			pollID = int(voteRecord.ID)
+		}
+
+		if err := tx.Model(voteRecord).Updates(&model.ProposalVoteRecord{
+			Title:      proposal.Title,
+			StartTs:    voteStartTime.Unix(),
+			EndTs:      voteEndTime.Unix(),
+			State:      pollState,
+			MetaforoID: pollID,
+		}).Error; err != nil {
+			log.Error().Msgf("update proposal vote record error: %+v", err)
+			return err
+		}
+
+		var options []*model.ProposalVoteOptionRecord
+		if err := tx.Where("proposal_id = ?", proposalId).Find(&options).Error; err != nil {
+			log.Error().Msgf("fetch proposal vote options error: %+v", err)
+			return err
+		}
+
+		for _, opt := range options {
+			optionID := opt.MetaforoID
+			if optionID == 0 {
+				optionID = int(opt.ID)
+			}
+			if err := tx.Model(opt).Updates(&model.ProposalVoteOptionRecord{
+				MetaforoID:     optionID,
+				MetaforoVoteID: pollID,
+			}).Error; err != nil {
+				log.Error().Msgf("update proposal vote option %d error: %+v", opt.ID, err)
+				return err
+			}
+		}
+
+		if isMultipleVote && len(options) > 0 {
+			log.Debug().Msgf("proposal %d published with multiple vote, option count: %d", proposalId, len(options))
+		}
+
+		return nil
+	})
+}
+
+// BuildPollRecordsFromDB assembles Metaforo-shaped poll JSON from OS DB records (for os: proposals).
+func (s *ProposalService) BuildPollRecordsFromDB(db *gorm.DB, proposalId uint, voterWallet string) ([]metaforo.PollRecord, error) {
+	var proposal model.Proposal
+	if err := db.First(&proposal, proposalId).Error; err != nil {
+		return nil, err
+	}
+
+	if proposal.VoteType == model.ProposalVoteTypeNone {
+		return []metaforo.PollRecord{}, nil
+	}
+
+	voteRecords, err := db_agent.GetProposalVoteRecord(db, proposalId)
+	if err != nil {
+		return nil, err
+	}
+
+	userVotedOptionIDs := map[uint]bool{}
+	if voterWallet != "" {
+		var userVotes []*model.ProposalUserVoteRecord
+		if err := db.Where(&model.ProposalUserVoteRecord{
+			ProposalID: proposalId,
+			UserWallet: common.FormatUserWallet(voterWallet),
+		}).Find(&userVotes).Error; err != nil {
+			return nil, err
+		}
+		for _, uv := range userVotes {
+			userVotedOptionIDs[uv.ProposalVoteOptionRecordId] = true
+		}
+	}
+
+	polls := make([]metaforo.PollRecord, 0, len(voteRecords))
+	for _, vr := range voteRecords {
+		var options []*model.ProposalVoteOptionRecord
+		if err := db.Where(&model.ProposalVoteOptionRecord{ProposalVoteRecordId: vr.ID}).Find(&options).Error; err != nil {
+			return nil, err
+		}
+
+		totalVotes := lo.SumBy(options, func(o *model.ProposalVoteOptionRecord) int { return o.VoterCount })
+
+		pollOptions := make([]*metaforo.PollOption, 0, len(options))
+		userVotedOnPoll := false
+		for idx, opt := range options {
+			percent := 0.0
+			if totalVotes > 0 {
+				percent = float64(opt.VoterCount) / float64(totalVotes) * 100
+			}
+			isVote := 0
+			if userVotedOptionIDs[opt.ID] {
+				isVote = 1
+				userVotedOnPoll = true
+			}
+
+			optionID := opt.MetaforoID
+			if optionID == 0 {
+				optionID = int(opt.ID)
+			}
+			pollID := vr.MetaforoID
+			if pollID == 0 {
+				pollID = int(vr.ID)
+			}
+
+			pollOptions = append(pollOptions, &metaforo.PollOption{
+				Id:      optionID,
+				PollId:  pollID,
+				Html:    opt.Text,
+				Voters:  opt.VoterCount,
+				Weights: opt.VoterCount,
+				Percent: percent,
+				IsVote:  isVote,
+				Type:    idx,
+			})
+		}
+
+		maxVote := 1
+		if proposal.IsMultipleVote {
+			maxVote = len(options)
+			if maxVote < 1 {
+				maxVote = 1
+			}
+		}
+
+		isVotePoll := 0
+		if userVotedOnPoll {
+			isVotePoll = 1
+		}
+
+		pollID := vr.MetaforoID
+		if pollID == 0 {
+			pollID = int(vr.ID)
+		}
+
+		polls = append(polls, metaforo.PollRecord{
+			Id:          pollID,
+			Title:       vr.Title,
+			PollStartAt: time.Unix(vr.StartTs, 0).UTC(),
+			CloseAt:     time.Unix(vr.EndTs, 0).UTC(),
+			Status:      vr.State,
+			Max:         maxVote,
+			IsVote:      isVotePoll,
+			Options:     pollOptions,
+			TotalVotes:  totalVotes,
+		})
+	}
+
+	return polls, nil
+}
+
+func (s *ProposalService) GetVoteOptionAndProposalByMetaforoOptionId(db *gorm.DB, metaforoOptionId int) (*model.ProposalVoteOptionRecord, *model.Proposal, error) {
+	var voteOption model.ProposalVoteOptionRecord
+	err := db.Where("metaforo_id = ?", metaforoOptionId).First(&voteOption).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		err = db.First(&voteOption, metaforoOptionId).Error
+	}
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var proposal model.Proposal
+	if err := db.First(&proposal, voteOption.ProposalId).Error; err != nil {
+		return nil, nil, err
+	}
+	return &voteOption, &proposal, nil
+}
+
+const queryOsVoteDetailSQL = `
+SELECT u.wallet AS wallet,
+       COALESCE(mu.metaforo_user_id, 0) AS metaforo_user_id,
+       u.id AS os_user_id,
+       u.avatar AS os_avatar,
+       u.name AS os_user_name,
+       v.weight AS vote_weight
+FROM proposal_user_vote_records v
+         INNER JOIN users u ON u.wallet = v.user_wallet
+         LEFT JOIN metaforo_users mu ON mu.user_wallet = u.wallet
+WHERE v.proposal_vote_option_record_id = ?
+ORDER BY v.vote_ts ASC
+OFFSET ? LIMIT ?`
+
+type osVoteDetailRow struct {
+	Wallet         string `gorm:"column:wallet"`
+	MetaforoUserID int    `gorm:"column:metaforo_user_id"`
+	OsUserID       int    `gorm:"column:os_user_id"`
+	OsAvatar       string `gorm:"column:os_avatar"`
+	OsUserName     string `gorm:"column:os_user_name"`
+	VoteWeight     int    `gorm:"column:vote_weight"`
+}
+
+func (s *ProposalService) GetOsVoteDetailFromDB(db *gorm.DB, voteOptionRecordId uint, page int) ([]*userVoteDetailInfo, error) {
+	if page < 1 {
+		page = 1
+	}
+	pageSize := internal.DefaultPageSize
+	offset := (page - 1) * pageSize
+
+	var rows []osVoteDetailRow
+	if err := db.Raw(queryOsVoteDetailSQL, voteOptionRecordId, offset, pageSize).Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+
+	result := make([]*userVoteDetailInfo, 0, len(rows))
+	for _, row := range rows {
+		result = append(result, &userVoteDetailInfo{
+			JointMetaforoAndOsUser: JointMetaforoAndOsUser{
+				Wallet:         row.Wallet,
+				MetaforoUserID: row.MetaforoUserID,
+				OsUserID:       row.OsUserID,
+				OsAvatar:       row.OsAvatar,
+				OsUserName:     row.OsUserName,
+			},
+			VoteWeight: row.VoteWeight,
+		})
+	}
+	return result, nil
+}
+
+func (s *ProposalService) getProposalVoteGates(db *gorm.DB, proposal *model.Proposal) ([]*model.ProposalVoteGate, error) {
+	if proposal.ProposalTemplateID == nil {
+		return nil, nil
+	}
+	pTmplDbRcd := model.ProposalTemplate{ID: *proposal.ProposalTemplateID}
+	var voteGates []*model.ProposalVoteGate
+	if err := db.Model(&pTmplDbRcd).Association("VoteGates").Find(&voteGates); err != nil {
+		return nil, err
+	}
+	return voteGates, nil
+}
+
+// CalcUserVoteWeight derives vote weight from Seepass data and template vote gates (aligned with Metaforo weighted polls).
+func (s *ProposalService) CalcUserVoteWeight(seepassData *sdk.SeepassResponse, voteGates []*model.ProposalVoteGate) int {
+	if seepassData == nil || len(voteGates) == 0 {
+		return 1
+	}
+
+	gate := voteGates[0]
+	if len(voteGates) > 1 {
+		log.Warn().Msgf("more than one vote gate found, only the first one is used for weight")
+	}
+
+	switch gate.TokenType {
+	case 0:
+		if strings.EqualFold(gate.TokenAddress, internal.ScrContractAddr) {
+			userScrAmount, err := decimal.NewFromString(seepassData.Scr.Amount)
+			if err != nil {
+				log.Error().Msgf("parse user scr amount error: %+v", err)
+				return 1
+			}
+			weight := int(userScrAmount.IntPart())
+			if weight < 1 {
+				return 1
+			}
+			return weight
+		}
+		return 1
+	case 1:
+		if strings.EqualFold(gate.TokenAddress, internal.SeedContractAddr) {
+			weight := len(seepassData.Seed)
+			if weight < 1 {
+				return 1
+			}
+			return weight
+		}
+		return 1
+	case 2:
+		total := 0
+		for _, sbtInfo := range seepassData.Sbt {
+			if strings.EqualFold(sbtInfo.ContractAddr, gate.TokenAddress) && strings.EqualFold(gate.TokenId, sbtInfo.TokenId) {
+				amt, err := strconv.Atoi(sbtInfo.TokenAmount)
+				if err != nil || amt < 1 {
+					amt = 1
+				}
+				total += amt
+			}
+		}
+		if total < 1 {
+			return 1
+		}
+		return total
+	default:
+		return 1
+	}
+}
+
+// SyncOsProposalVoteSchedule opens/closes OS-native polls by schedule and updates proposal state.
+func (s *ProposalService) SyncOsProposalVoteSchedule(db *gorm.DB, proposalId uint) error {
+	var proposal model.Proposal
+	if err := db.First(&proposal, proposalId).Error; err != nil {
+		return err
+	}
+	if !proposal.IsOsNativeProposal() || proposal.VoteType == model.ProposalVoteTypeNone {
+		return nil
+	}
+
+	voteRecords, err := db_agent.GetProposalVoteRecord(db, proposalId)
+	if err != nil {
+		return err
+	}
+	if len(voteRecords) == 0 {
+		return fmt.Errorf("proposal %d has no vote records", proposalId)
+	}
+
+	voteRecord := voteRecords[0]
+	now := model.GetCurrentUtcEpochSecond()
+
+	if voteRecord.State == "waite" && now >= voteRecord.StartTs {
+		if err := db.Model(voteRecord).Update("state", "open").Error; err != nil {
+			return err
+		}
+		voteRecord.State = "open"
+
+		if err := db.First(&proposal, proposalId).Error; err != nil {
+			return err
+		}
+		if proposal.Sip == 0 && !proposal.IsInFinState() && proposal.State != int(model.ProposalStateVoting) {
+			var pTemplate *model.ProposalTemplate
+			if err := db.Model(&proposal).Association("ProposalTemplate").Find(&pTemplate); err != nil {
+				return err
+			}
+			return s.SetProposalSip(db, pTemplate, &proposal)
+		}
+	}
+
+	if voteRecord.State == "open" && now >= voteRecord.EndTs {
+		if err := db.Model(voteRecord).Update("state", "close").Error; err != nil {
+			return err
+		}
+		voteRecord.State = "close"
+		return s.UpdateProposalStateAfterVoteClosed(db, proposalId, voteRecord)
+	}
+
+	return nil
+}
+
+func (s *ProposalService) CastVoteToOS(db *gorm.DB, proposalId uint, userWallet string, voteId int, optionIds []int) error {
+	if len(optionIds) == 0 {
+		return fmt.Errorf("vote options are empty")
+	}
+
+	if err := s.SyncOsProposalVoteSchedule(db, proposalId); err != nil {
+		log.Error().Msgf("sync OS proposal vote schedule error: %+v", err)
+		return err
+	}
+
+	var proposal model.Proposal
+	if err := db.First(&proposal, proposalId).Error; err != nil {
+		return err
+	}
+	if !proposal.IsOsNativeProposal() {
+		return fmt.Errorf("proposal %d is not an OS-native proposal", proposalId)
+	}
+	if proposal.IsInFinState() {
+		return fmt.Errorf("proposal %d is in final state", proposalId)
+	}
+	if proposal.State != int(model.ProposalStateVoting) {
+		return fmt.Errorf("proposal %d is not in voting state", proposalId)
+	}
+
+	voteRecords, err := db_agent.GetProposalVoteRecord(db, proposalId)
+	if err != nil {
+		return err
+	}
+	if len(voteRecords) == 0 {
+		return fmt.Errorf("proposal %d has no vote records", proposalId)
+	}
+	voteRecord := voteRecords[0]
+
+	pollID := voteRecord.MetaforoID
+	if pollID == 0 {
+		pollID = int(voteRecord.ID)
+	}
+	if pollID != voteId {
+		return fmt.Errorf("vote id %d does not match proposal poll", voteId)
+	}
+	if voteRecord.State != "open" {
+		return fmt.Errorf("vote is not open")
+	}
+
+	now := model.GetCurrentUtcEpochSecond()
+	if now < voteRecord.StartTs || now >= voteRecord.EndTs {
+		return fmt.Errorf("vote is not in active period")
+	}
+
+	if !proposal.IsMultipleVote && len(optionIds) > 1 {
+		return fmt.Errorf("multiple options not allowed for this proposal")
+	}
+
+	formattedWallet := common.FormatUserWallet(userWallet)
+	var existingVoteCount int64
+	if err := db.Model(&model.ProposalUserVoteRecord{}).
+		Where("proposal_id = ? AND user_wallet = ?", proposalId, formattedWallet).
+		Count(&existingVoteCount).Error; err != nil {
+		return err
+	}
+	if existingVoteCount > 0 {
+		return fmt.Errorf("user has already voted on this proposal")
+	}
+
+	var voteOptions []*model.ProposalVoteOptionRecord
+	if err := db.Where(&model.ProposalVoteOptionRecord{
+		ProposalId:     proposalId,
+		MetaforoVoteID: voteId,
+	}).Where("metaforo_id IN ?", optionIds).Find(&voteOptions).Error; err != nil {
+		return err
+	}
+	if len(voteOptions) != len(optionIds) {
+		return fmt.Errorf("invalid vote options")
+	}
+
+	voteWeight := 1
+	if !common.IsTestVoteBypassWallet(userWallet) {
+		seepassData, err := api.GetCachedSeepassData(sdk.GetSppClient(), userWallet, false)
+		if err != nil {
+			return err
+		}
+		voteGates, err := s.getProposalVoteGates(db, &proposal)
+		if err != nil {
+			return err
+		}
+		voteWeight = s.CalcUserVoteWeight(seepassData, voteGates)
+	}
+	voteTs := model.GetCurrentUtcEpochSecond()
+
+	return db.Transaction(func(tx *gorm.DB) error {
+		for _, voteOption := range voteOptions {
+			userVoteRecord := model.ProposalUserVoteRecord{
+				ProposalID:                 proposalId,
+				ProposalVoteOptionRecordId: voteOption.ID,
+				UserWallet:                 formattedWallet,
+				VoteTs:                     voteTs,
+				Weight:                     voteWeight,
+			}
+			if err := tx.Create(&userVoteRecord).Error; err != nil {
+				log.Error().Msgf("create proposal user vote record error: %+v", err)
+				return err
+			}
+			if err := tx.Model(voteOption).Update("voter_count", gorm.Expr("voter_count + ?", voteWeight)).Error; err != nil {
+				log.Error().Msgf("update vote option voter_count error: %+v", err)
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+func (s *ProposalService) RevokeVoteFromOS(db *gorm.DB, proposalId uint, userWallet string, voteId int) error {
+	if err := s.SyncOsProposalVoteSchedule(db, proposalId); err != nil {
+		log.Error().Msgf("sync OS proposal vote schedule error: %+v", err)
+		return err
+	}
+
+	var proposal model.Proposal
+	if err := db.First(&proposal, proposalId).Error; err != nil {
+		return err
+	}
+	if !proposal.IsOsNativeProposal() {
+		return fmt.Errorf("proposal %d is not an OS-native proposal", proposalId)
+	}
+	if proposal.IsInFinState() {
+		return fmt.Errorf("proposal %d is in final state", proposalId)
+	}
+
+	voteRecords, err := db_agent.GetProposalVoteRecord(db, proposalId)
+	if err != nil {
+		return err
+	}
+	if len(voteRecords) == 0 {
+		return fmt.Errorf("proposal %d has no vote records", proposalId)
+	}
+	voteRecord := voteRecords[0]
+
+	pollID := voteRecord.MetaforoID
+	if pollID == 0 {
+		pollID = int(voteRecord.ID)
+	}
+	if pollID != voteId {
+		return fmt.Errorf("vote id %d does not match proposal poll", voteId)
+	}
+	if voteRecord.State != "open" {
+		return fmt.Errorf("vote is not open")
+	}
+
+	now := model.GetCurrentUtcEpochSecond()
+	if now < voteRecord.StartTs || now >= voteRecord.EndTs {
+		return fmt.Errorf("vote is not in active period")
+	}
+
+	formattedWallet := common.FormatUserWallet(userWallet)
+	var userVoteRecords []*model.ProposalUserVoteRecord
+	if err := db.Where(&model.ProposalUserVoteRecord{
+		ProposalID: proposalId,
+		UserWallet: formattedWallet,
+	}).Find(&userVoteRecords).Error; err != nil {
+		return err
+	}
+	if len(userVoteRecords) == 0 {
+		return fmt.Errorf("user has not voted on this proposal")
+	}
+
+	return db.Transaction(func(tx *gorm.DB) error {
+		deleted := false
+		for _, userVoteRecord := range userVoteRecords {
+			var voteOption model.ProposalVoteOptionRecord
+			if err := tx.First(&voteOption, userVoteRecord.ProposalVoteOptionRecordId).Error; err != nil {
+				return err
+			}
+			if voteOption.MetaforoVoteID != voteId {
+				continue
+			}
+
+			weight := userVoteRecord.Weight
+			if weight < 1 {
+				weight = 1
+			}
+			if err := tx.Model(&voteOption).Update("voter_count", gorm.Expr("GREATEST(voter_count - ?, 0)", weight)).Error; err != nil {
+				return err
+			}
+			if err := tx.Delete(userVoteRecord).Error; err != nil {
+				return err
+			}
+			deleted = true
+		}
+		if !deleted {
+			return fmt.Errorf("user has not voted on this poll")
+		}
+		return nil
+	})
+}
+
+func (s *ProposalService) BuildProposalCommentsFromDB(db *gorm.DB, proposal *model.Proposal) ([]*FrontendProposalCommentRecord, int, error) {
+	var comments []model.ProposalComment
+	if err := db.Where("proposal_id = ? AND is_reject_comment = ? AND is_hidden = ?", proposal.ID, false, false).
+		Order("id ASC").Find(&comments).Error; err != nil {
+		return nil, 0, err
+	}
+	if len(comments) == 0 {
+		return []*FrontendProposalCommentRecord{}, 0, nil
+	}
+
+	walletSet := make(map[string]struct{})
+	for _, c := range comments {
+		walletSet[c.AuthorWallet] = struct{}{}
+	}
+	wallets := lo.Keys(walletSet)
+	var users []model.User
+	if err := db.Where("wallet IN ?", wallets).Find(&users).Error; err != nil {
+		return nil, 0, err
+	}
+	userMap := lo.SliceToMap(users, func(u model.User) (string, model.User) {
+		return u.Wallet, u
+	})
+
+	commentById := make(map[uint]*FrontendProposalCommentRecord, len(comments))
+	parentMetaforoIdByDbId := make(map[uint]int, len(comments))
+	for _, c := range comments {
+		parentMetaforoIdByDbId[c.ID] = c.MetaforoCommentId
+		user := userMap[c.AuthorWallet]
+		replyMetaforoPostId := 0
+		if c.ParentID != 0 {
+			replyMetaforoPostId = parentMetaforoIdByDbId[c.ParentID]
+		}
+		commentById[c.ID] = &FrontendProposalCommentRecord{
+			MetaforoPostId:      c.MetaforoCommentId,
+			Content:             c.Content,
+			Wallet:              c.AuthorWallet,
+			Avatar:              user.Avatar,
+			ReplyMetaforoPostId: replyMetaforoPostId,
+			Children:            []*FrontendProposalCommentRecord{},
+			ProposalTitle:       proposal.Title,
+			ProposalTs:          proposal.CreateTs,
+			ProposalArweaveHash: proposal.ArweaveHash,
+			CreatedTs:           c.CreateTs,
+			Deleted:             false,
+			IsRejected:          false,
+		}
+	}
+
+	rootComments := make([]*FrontendProposalCommentRecord, 0)
+	for _, c := range comments {
+		record := commentById[c.ID]
+		if c.ParentID == 0 {
+			rootComments = append(rootComments, record)
+			continue
+		}
+		parent, ok := commentById[c.ParentID]
+		if !ok {
+			rootComments = append(rootComments, record)
+			continue
+		}
+		parent.Children = append(parent.Children, record)
+	}
+	return rootComments, len(comments), nil
+}
+
+func (s *ProposalService) AddCommentToOS(db *gorm.DB, proposal *model.Proposal, wallet string, content string, replyMetaforoCommentId int) error {
+	wallet = common.FormatUserWallet(wallet)
+	if wallet == "" {
+		return fmt.Errorf("invalid wallet address")
+	}
+	if strings.TrimSpace(content) == "" {
+		return fmt.Errorf("comment content is empty")
+	}
+
+	var parentID uint
+	if replyMetaforoCommentId != 0 {
+		var parentComment model.ProposalComment
+		err := db.Where("proposal_id = ? AND metaforo_comment_id = ?", proposal.ID, replyMetaforoCommentId).First(&parentComment).Error
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return fmt.Errorf("parent comment not found")
+			}
+			return err
+		}
+		parentID = parentComment.ID
+	}
+
+	now := time.Now().UTC().Unix()
+	comment := model.ProposalComment{
+		CreateTs:         now,
+		UpdateTs:         now,
+		ParentID:         parentID,
+		AuthorWallet:     wallet,
+		ProposalID:       proposal.ID,
+		ProposalRecordID: proposal.ProposalRecordId,
+		Content:          content,
+		IsRejectComment:  false,
+	}
+	return db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(&comment).Error; err != nil {
+			return err
+		}
+		return tx.Model(&comment).Update("metaforo_comment_id", int(comment.ID)).Error
+	})
+}
+
 func (s *ProposalService) PrepareOsVoteOptions(voteType int, customVoteOptions []string) []string {
 	if customVoteOptions != nil {
 		return customVoteOptions
@@ -884,8 +1587,7 @@ func (s *ProposalService) IsUserMetVoteGate(userSeepassData *sdk.SeepassResponse
 			return true
 		}
 	case 2:
-		// Fake account for testing
-		if strings.EqualFold(userSeepassData.Wallet, "0x183F09C3cE99C02118c570e03808476b22d63191") {
+		if common.IsTestVoteBypassWallet(userSeepassData.Wallet) {
 			return true
 		}
 		// ERC1155
@@ -1590,7 +2292,12 @@ func (s *ProposalService) UpdateProposalStateByExtraCheckRule(checkRules []*mode
 
 		switch r.CheckType {
 		case internal.ExtraCheckRuleTypeRatio:
-			checkPassed = float64(totalVoterCount*100.0/valueToBeCompared) >= ruleValue
+			if valueToBeCompared <= 0 {
+				log.Warn().Msgf("updateProposalStateByExtraCheckRule: metric %s denominator is %d, treat ratio check as failed", r.Metric, valueToBeCompared)
+				checkPassed = false
+			} else {
+				checkPassed = float64(totalVoterCount*100)/float64(valueToBeCompared) >= ruleValue
+			}
 		case internal.ExtraCheckRuleTypeCount:
 			checkPassed = float64(totalVoterCount) >= ruleValue
 		default:
@@ -1937,7 +2644,7 @@ func (s *ProposalService) RefreshMetaforoAdminToken() {
 // Some converter functions
 ///////////////////////
 
-func (s *ProposalService) ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposalId uint, startPostId int, accessToken string, metaforoGroupName string) (*FrontendProposalDetailRecord, error, int) {
+func (s *ProposalService) ConvertProposalToFrontendDetailRecord(db *gorm.DB, proposalId uint, startPostId int, accessToken string, metaforoGroupName string, voterWallet string) (*FrontendProposalDetailRecord, error, int) {
 	var proposalBlocks []*model.ProposalContentBlock
 	if err := db.Where(&model.ProposalContentBlock{ProposalID: proposalId}).Order("id").Find(&proposalBlocks).Error; err != nil {
 		return nil, err, -1
@@ -2024,54 +2731,81 @@ func (s *ProposalService) ConvertProposalToFrontendDetailRecord(db *gorm.DB, pro
 	commentCount := 0
 
 	if proposal.ProposalRecordId != "" {
-		metaforoProposal, err := metaforo.GetProposal(proposal.GetMetaforoThreadId(), metaforoGroupName, accessToken, startPostId)
-		if err != nil {
-			log.Error().Msgf("get proposal %d from metaforo error: %+v", proposalId, err)
-			_ = s.UpdateDbRecordsFromMetaforoProposalResponse(db, proposalId, metaforoProposal, err)
-			return nil, err, internal.ERRCODE_GetMetaforoDataError
-		}
-
-		err = s.UpdateDbRecordsFromMetaforoProposalResponse(db, proposalId, metaforoProposal, nil)
-		if err != nil {
-			log.Error().Msgf("update proposal %d from metaforo error: %+v", proposalId, err)
-			return nil, err, -1
-		}
-
-		commentCount = metaforoProposal.Thread.PostsCount
-		votes = metaforoProposal.Thread.Polls
-
-		pollStatusChanged, err := s.UpdateDbVoteOptionRecordsFromMetaforoProposalResponse(db, proposalId, metaforoProposal)
-		if err != nil {
-			log.Error().Msgf("update propsal vote option records with metaforo response error: %+v", err)
-			return nil, err, -1
-		} else {
-			log.Debug().Msgf("poll of proposal %d status changed: %+v", proposalId, pollStatusChanged)
-		}
-
-		if pollStatusChanged {
-			if err = s.HandleProposalPollStatusChange(db, proposalId, metaforoGroupName); err != nil {
-				log.Error().Msgf("handle proposal poll status change error: %+v", err)
+		if proposal.IsOsNativeProposal() {
+			var err error
+			votes, err = s.BuildPollRecordsFromDB(db, proposalId, voterWallet)
+			if err != nil {
+				log.Error().Msgf("build proposal %d polls from DB error: %+v", proposalId, err)
 				return nil, err, -1
 			}
-		}
 
-		err = db.Model(model.ProposalComment{}).Where("proposal_id = ? AND is_reject_comment = ?", proposalId, true).First(&rejectedComment).Error
-		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-			log.Error().Msgf("fetch rejected comment error: %+v", err)
-			return nil, err, -1
-		}
+			err = db.Model(model.ProposalComment{}).Where("proposal_id = ? AND is_reject_comment = ?", proposalId, true).First(&rejectedComment).Error
+			if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+				log.Error().Msgf("fetch rejected comment error: %+v", err)
+				return nil, err, -1
+			}
 
-		editHistoryRecords, err = s.GetLocalEditHistoriesWithOsUserData(db, proposal.ProposalRecordId)
-		if err != nil {
-			log.Error().Msgf("fetch local history record error: %+v", err)
-			return nil, err, -1
-		}
+			editHistoryRecords, err = s.GetLocalEditHistoriesWithOsUserData(db, proposal.ProposalRecordId)
+			if err != nil {
+				log.Error().Msgf("fetch local history record error: %+v", err)
+				return nil, err, -1
+			}
 
-		// Process comments
-		frontendCommentsRecords, err = s.GetProposalCommentsWithOsUserData(db, metaforoProposal.Thread.Posts)
-		if err != nil {
-			log.Error().Msgf("fetch proposal comments error: %+v", err)
-			return nil, err, -1
+			frontendCommentsRecords, commentCount, err = s.BuildProposalCommentsFromDB(db, &proposal)
+			if err != nil {
+				log.Error().Msgf("build proposal %d comments from DB error: %+v", proposalId, err)
+				return nil, err, -1
+			}
+		} else {
+			metaforoProposal, err := metaforo.GetProposal(proposal.GetMetaforoThreadId(), metaforoGroupName, accessToken, startPostId)
+			if err != nil {
+				log.Error().Msgf("get proposal %d from metaforo error: %+v", proposalId, err)
+				_ = s.UpdateDbRecordsFromMetaforoProposalResponse(db, proposalId, metaforoProposal, err)
+				return nil, err, internal.ERRCODE_GetMetaforoDataError
+			}
+
+			err = s.UpdateDbRecordsFromMetaforoProposalResponse(db, proposalId, metaforoProposal, nil)
+			if err != nil {
+				log.Error().Msgf("update proposal %d from metaforo error: %+v", proposalId, err)
+				return nil, err, -1
+			}
+
+			commentCount = metaforoProposal.Thread.PostsCount
+			votes = metaforoProposal.Thread.Polls
+
+			pollStatusChanged, err := s.UpdateDbVoteOptionRecordsFromMetaforoProposalResponse(db, proposalId, metaforoProposal)
+			if err != nil {
+				log.Error().Msgf("update propsal vote option records with metaforo response error: %+v", err)
+				return nil, err, -1
+			} else {
+				log.Debug().Msgf("poll of proposal %d status changed: %+v", proposalId, pollStatusChanged)
+			}
+
+			if pollStatusChanged {
+				if err = s.HandleProposalPollStatusChange(db, proposalId, metaforoGroupName); err != nil {
+					log.Error().Msgf("handle proposal poll status change error: %+v", err)
+					return nil, err, -1
+				}
+			}
+
+			err = db.Model(model.ProposalComment{}).Where("proposal_id = ? AND is_reject_comment = ?", proposalId, true).First(&rejectedComment).Error
+			if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+				log.Error().Msgf("fetch rejected comment error: %+v", err)
+				return nil, err, -1
+			}
+
+			editHistoryRecords, err = s.GetLocalEditHistoriesWithOsUserData(db, proposal.ProposalRecordId)
+			if err != nil {
+				log.Error().Msgf("fetch local history record error: %+v", err)
+				return nil, err, -1
+			}
+
+			// Process comments
+			frontendCommentsRecords, err = s.GetProposalCommentsWithOsUserData(db, metaforoProposal.Thread.Posts)
+			if err != nil {
+				log.Error().Msgf("fetch proposal comments error: %+v", err)
+				return nil, err, -1
+			}
 		}
 	}
 
@@ -2996,6 +3730,11 @@ func (s *ProposalService) CanUserVoteOnThread(db *gorm.DB, userWallet string, pr
 		return false, err
 	}
 	log.Debug().Msgf("check voting permission of %s for proposal: %+v", userWallet, proposal)
+
+	if common.IsTestVoteBypassWallet(userWallet) {
+		log.Debug().Msgf("test vote bypass wallet %s, skip seepass vote gate check", userWallet)
+		return true, nil
+	}
 
 	// Verify NFT gate
 	seepassData, err := api.GetCachedSeepassData(sdk.GetSppClient(), userWallet, false)

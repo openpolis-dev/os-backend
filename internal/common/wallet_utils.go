@@ -59,6 +59,10 @@ func FormatUserWallet(wallet string) string {
 	return common.HexToAddress(strings.TrimSpace(strings.ToLower(wallet))).Hex()
 }
 
+func IsTestVoteBypassWallet(wallet string) bool {
+	return strings.EqualFold(FormatUserWallet(wallet), FormatUserWallet(internal.TestVoteBypassWallet))
+}
+
 func ValidateUserWallet(wallet string) bool {
 	return common.IsHexAddress(wallet) && common.HexToAddress(wallet) != internal.BurnAddress
 

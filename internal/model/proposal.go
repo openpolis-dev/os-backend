@@ -266,6 +266,14 @@ func BuildProposalRecordIdFromMetaforoThreadId(threadId int) string {
 	return fmt.Sprintf("metaforo:%d", threadId)
 }
 
+func BuildProposalRecordIdFromOsProposalId(proposalId uint) string {
+	return fmt.Sprintf("os:%d", proposalId)
+}
+
+func (p *Proposal) IsOsNativeProposal() bool {
+	return strings.HasPrefix(p.ProposalRecordId, "os:")
+}
+
 // ProposalContentBlock saves blocks in proposal.
 // The block contains brief text block and components block.
 // The brief text block contains title and content.
@@ -487,6 +495,7 @@ type ProposalUserVoteRecord struct {
 	ProposalVoteOptionRecordId uint `gorm:"uniqueIndex:user_vote_record_idx"`
 
 	VoteTs int64 `gorm:"index"`
+	Weight int   `gorm:"default:1"`
 }
 
 func UpsertUserVoteRecord(db *gorm.DB, record *ProposalUserVoteRecord) error {
@@ -498,6 +507,7 @@ func UpsertUserVoteRecord(db *gorm.DB, record *ProposalUserVoteRecord) error {
 		ProposalID:                 record.ProposalID,
 		ProposalVoteOptionRecordId: record.ProposalVoteOptionRecordId,
 		VoteTs:                     record.VoteTs,
+		Weight:                     record.Weight,
 	}).Error
 }
 

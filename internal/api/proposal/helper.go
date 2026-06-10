@@ -960,8 +960,7 @@ func IsUserMetVoteGate(userSeepassData *sdk.SeepassResponse, proposalVoteGate *m
 			return true
 		}
 	case 2:
-		// Fake account for testing
-		if strings.EqualFold(userSeepassData.Wallet, "0x183F09C3cE99C02118c570e03808476b22d63191") {
+		if common.IsTestVoteBypassWallet(userSeepassData.Wallet) {
 			return true
 		}
 		// ERC1155
@@ -1677,7 +1676,12 @@ func updateProposalStateByExtraCheckRule(checkRules []*model.ExtraResultCheckRul
 
 		switch r.CheckType {
 		case internal.ExtraCheckRuleTypeRatio:
-			checkPassed = float64(totalVoterCount*100.0/valueToBeCompared) >= ruleValue
+			if valueToBeCompared <= 0 {
+				log.Warn().Msgf("updateProposalStateByExtraCheckRule: metric %s denominator is %d, treat ratio check as failed", r.Metric, valueToBeCompared)
+				checkPassed = false
+			} else {
+				checkPassed = float64(totalVoterCount*100)/float64(valueToBeCompared) >= ruleValue
+			}
 		case internal.ExtraCheckRuleTypeCount:
 			checkPassed = float64(totalVoterCount) >= ruleValue
 		default:

@@ -314,7 +314,16 @@ func (c *ProposalController) Detail(ctx *gin.Context) {
 		}
 	}
 
-	responseData, err, errCode := c.ProposalService.ConvertProposalToFrontendDetailRecord(c.Db, proposalRecord.ID, startPostId, metaforoAccessToken, c.Cfg.MetaforoData.GroupName)
+	voterWallet := ""
+	if user, ok := ctx.Value(middleware.CurUserKey).(*middleware.CurUser); ok && user != nil {
+		voterWallet = user.Wallet
+	}
+	if proposalRecord.IsOsNativeProposal() {
+		_ = c.ProposalService.SyncOsProposalVoteSchedule(c.Db, proposalRecord.ID)
+		c.Db.First(&proposalRecord, proposalRecord.ID)
+	}
+
+	responseData, err, errCode := c.ProposalService.ConvertProposalToFrontendDetailRecord(c.Db, proposalRecord.ID, startPostId, metaforoAccessToken, c.Cfg.MetaforoData.GroupName, voterWallet)
 	if err != nil {
 		log.Error().Msgf("convert proposal to frontend format error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
@@ -352,6 +361,23 @@ func (c *ProposalController) ShowVoteDetail(ctx *gin.Context) {
 			ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("parse request data error: %+v", err)))
 			return
 		}
+	}
+
+	if page < 1 {
+		page = 1
+	}
+
+	voteOption, proposal, lookupErr := c.ProposalService.GetVoteOptionAndProposalByMetaforoOptionId(c.Db, voteOptionId)
+	if lookupErr == nil && proposal.IsOsNativeProposal() {
+		rslt, err := c.ProposalService.GetOsVoteDetailFromDB(c.Db, voteOption.ID, page)
+		if err != nil {
+			log.Error().Msgf("get OS vote detail error: %+v", err)
+			sdk.LogServerErrorToSentry(ctx, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(fmt.Errorf("get vote list error")))
+			return
+		}
+		ctx.JSON(http.StatusOK, api.Success(rslt))
+		return
 	}
 
 	voterList, err := metaforo.GetVoterList(c.Cfg.MetaforoData.GroupName, voteOptionId, page)
@@ -510,13 +536,6 @@ func (c *ProposalController) Create(ctx *gin.Context) {
 	}
 
 	if reqData.SubmitToMetaforo {
-		if reqData.MetaforoAccessToken == "" {
-			log.Error().Msgf("metaforo access token is empty")
-			sdk.LogUserSideError(ctx, errors.New("metaforo access token is empty"))
-			ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("metaforo access token is empty")))
-			return
-		}
-
 		if err = c.ProposalService.UpdateProposalAssociatedProjectStatusInCloseProjectToClosing(c.Db, reqData); err != nil {
 			log.Error().Msgf("associate proposal with project error: %+v", err)
 			sdk.LogServerErrorToSentry(ctx, err)
@@ -524,8 +543,8 @@ func (c *ProposalController) Create(ctx *gin.Context) {
 			return
 		}
 
-		if err := c.ProposalService.SaveProposalToMetaforo(c.Db, proposalRecord.ID, proposalRecord.VoteType, reqData.MetaforoAccessToken, reqData.EditorType, reqData.IsMultipleVote, c.Cfg.MetaforoData.GroupName); err != nil {
-			log.Error().Msgf("create metaforo proposal error: %+v", err)
+		if err := c.ProposalService.PublishProposalToOS(c.Db, proposalRecord.ID, reqData.IsMultipleVote); err != nil {
+			log.Error().Msgf("publish proposal to OS error: %+v", err)
 			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error detail:"+err.Error())))
 			return
@@ -547,7 +566,7 @@ func (c *ProposalController) Create(ctx *gin.Context) {
 		c.Db.First(&proposalRecord, proposalRecord.ID)
 	}
 
-	responseData, err, errCode := c.ProposalService.ConvertProposalToFrontendDetailRecord(c.Db, proposalRecord.ID, 0, reqData.MetaforoAccessToken, c.Cfg.MetaforoData.GroupName)
+	responseData, err, errCode := c.ProposalService.ConvertProposalToFrontendDetailRecord(c.Db, proposalRecord.ID, 0, reqData.MetaforoAccessToken, c.Cfg.MetaforoData.GroupName, user.Wallet)
 	if err != nil {
 		log.Error().Msgf("convert proposal to frontend format error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
@@ -652,13 +671,6 @@ func (c *ProposalController) Update(ctx *gin.Context) {
 	}
 
 	if reqData.SubmitToMetaforo {
-		if reqData.MetaforoAccessToken == "" {
-			log.Error().Msgf("metaforo access token is empty")
-			sdk.LogUserSideError(ctx, errors.New("metaforo access token is empty"))
-			ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("metaforo access token is empty")))
-			return
-		}
-
 		if err = c.ProposalService.UpdateProposalAssociatedProjectStatusInCloseProjectToClosing(c.Db, reqData); err != nil {
 			log.Error().Msgf("associate mushrooms: %+v", err)
 			sdk.LogServerErrorToSentry(ctx, err)
@@ -666,8 +678,8 @@ func (c *ProposalController) Update(ctx *gin.Context) {
 			return
 		}
 
-		if err := c.ProposalService.SaveProposalToMetaforo(c.Db, proposalRecord.ID, proposalRecord.VoteType, reqData.MetaforoAccessToken, reqData.EditorType, reqData.IsMultipleVote, c.Cfg.MetaforoData.GroupName); err != nil {
-			log.Error().Msgf("create metaforo proposal error: %+v", err)
+		if err := c.ProposalService.PublishProposalToOS(c.Db, proposalRecord.ID, reqData.IsMultipleVote); err != nil {
+			log.Error().Msgf("publish proposal to OS error: %+v", err)
 			sdk.LogServerErrorToSentry(ctx, err)
 			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("create proposal error detail:"+err.Error())))
 			return
@@ -687,7 +699,7 @@ func (c *ProposalController) Update(ctx *gin.Context) {
 		}
 	}
 
-	responseData, err, errCode := c.ProposalService.ConvertProposalToFrontendDetailRecord(c.Db, proposalRecord.ID, 0, reqData.MetaforoAccessToken, c.Cfg.MetaforoData.GroupName)
+	responseData, err, errCode := c.ProposalService.ConvertProposalToFrontendDetailRecord(c.Db, proposalRecord.ID, 0, reqData.MetaforoAccessToken, c.Cfg.MetaforoData.GroupName, user.Wallet)
 	if err != nil {
 		log.Error().Msgf("convert proposal to frontend format error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
@@ -713,6 +725,35 @@ func (c *ProposalController) AddComment(ctx *gin.Context) {
 		return
 	}
 
+	user, _, _, _ := api.ForContext(ctx)
+	proposalIdStr := ctx.Param("id")
+	proposalRcd, err := c.ProposalService.GetProposalFromStringId(c.Db, proposalIdStr)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			log.Warn().Msgf("proposal %s not found", proposalIdStr)
+			ctx.JSON(http.StatusNotFound, nil)
+			return
+		}
+		log.Error().Msgf("get proposal id %s error: %+v", proposalIdStr, err)
+		sdk.LogUserSideError(ctx, err)
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("get proposal error detail:"+err.Error())))
+		return
+	}
+	if proposalRcd.ProposalRecordId == "" {
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("proposal has not been submitted")))
+		return
+	}
+	if proposalRcd.IsOsNativeProposal() {
+		if err := c.ProposalService.AddCommentToOS(c.Db, proposalRcd, user.Wallet, addComment.Content, addComment.ReplyToMetaforoCommentId); err != nil {
+			log.Error().Msgf("add comment to OS proposal %s error: %+v", proposalIdStr, err)
+			sdk.LogUserSideError(ctx, err)
+			ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
+			return
+		}
+		ctx.JSON(http.StatusOK, api.Success(nil))
+		return
+	}
+
 	if addComment.MetaforoAccessToken == "" {
 		log.Error().Msgf("missing metaforo access token")
 		sdk.LogUserSideError(ctx, errors.New("missing metaforo access token"))
@@ -720,8 +761,6 @@ func (c *ProposalController) AddComment(ctx *gin.Context) {
 		return
 	}
 
-	user, _, _, _ := api.ForContext(ctx)
-	proposalIdStr := ctx.Param("id")
 	proposalRcd, proposalMetaforoData, err := c.ProposalService.GetMetaforoProposalByInternalId(c.Db, proposalIdStr, c.Cfg.MetaforoData.GroupName, addComment.MetaforoAccessToken)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -1287,6 +1326,26 @@ func (c *ProposalController) CastVote(ctx *gin.Context) {
 		return
 	}
 
+	proposalId, _ := strconv.Atoi(proposalIdString)
+	proposalRecord, err := c.ProposalService.GetProposalFromStringId(c.Db, proposalIdString)
+	if err != nil {
+		log.Error().Msgf("get proposal error: %+v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("get proposal error")))
+		return
+	}
+
+	if proposalRecord.IsOsNativeProposal() {
+		if err := c.ProposalService.CastVoteToOS(c.Db, uint(proposalId), user.Wallet, reqData.MetaforoVoteId, reqData.MetaforoVoteOptions); err != nil {
+			log.Error().Msgf("cast vote to OS error: %+v", err)
+			sdk.LogServerErrorToSentry(ctx, err)
+			ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("cast vote error detail:"+err.Error())))
+			return
+		}
+		ctx.JSON(http.StatusOK, api.Success(nil))
+		return
+	}
+
 	if err := metaforo.CastVote(
 		reqData.MetaforoAccessToken,
 		c.Cfg.MetaforoData.GroupName,
@@ -1298,9 +1357,6 @@ func (c *ProposalController) CastVote(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(fmt.Errorf("cast vote error detail:"+err.Error())))
 		return
 	}
-
-	// Get proposal id
-	proposalId, _ := strconv.Atoi(proposalIdString)
 
 	// Create proposal user vote record
 	err = c.Db.Transaction(func(tx *gorm.DB) error {
@@ -1341,11 +1397,41 @@ func (c *ProposalController) CastVote(ctx *gin.Context) {
 }
 
 func (c *ProposalController) RevokeVote(ctx *gin.Context) {
+	user, _, _, _ := api.ForContext(ctx)
+	proposalIdString := ctx.Param("id")
+
 	reqData := RevokeVoteData{}
 	if err := ctx.BindJSON(&reqData); err != nil {
 		log.Error().Msgf("parse request data error: %+v", err)
 		sdk.LogUserSideError(ctx, err)
 		ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("parse request data error: %+v", err)))
+		return
+	}
+
+	proposalId, err := strconv.Atoi(proposalIdString)
+	if err != nil {
+		log.Error().Msgf("parse proposal id error: %+v", err)
+		sdk.LogUserSideError(ctx, err)
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("parse proposal id error")))
+		return
+	}
+
+	proposalRecord, err := c.ProposalService.GetProposalFromStringId(c.Db, proposalIdString)
+	if err != nil {
+		log.Error().Msgf("get proposal error: %+v", err)
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("get proposal error")))
+		return
+	}
+
+	if proposalRecord.IsOsNativeProposal() {
+		if err := c.ProposalService.RevokeVoteFromOS(c.Db, uint(proposalId), user.Wallet, reqData.MetaforoVoteId); err != nil {
+			log.Error().Msgf("revoke vote from OS error: %+v", err)
+			sdk.LogServerErrorToSentry(ctx, err)
+			ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("revoke vote error detail:"+err.Error())))
+			return
+		}
+		ctx.JSON(http.StatusOK, api.Success(nil))
 		return
 	}
 
@@ -1361,7 +1447,7 @@ func (c *ProposalController) RevokeVote(ctx *gin.Context) {
 
 	}
 	// Remove proposal user vote record
-	err := c.Db.Transaction(func(tx *gorm.DB) error {
+	err = c.Db.Transaction(func(tx *gorm.DB) error {
 		// Get proposal user vote record from passed in metaforo vote id
 		var proposalVoteOptionRecord *model.ProposalVoteOptionRecord
 		err := tx.Model(&model.ProposalVoteOptionRecord{}).Where(&model.ProposalVoteOptionRecord{

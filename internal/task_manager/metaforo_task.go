@@ -10,6 +10,7 @@ import (
 	"github.com/theseed-labs/os-backend/internal/model"
 	"github.com/theseed-labs/os-backend/internal/sdk/metaforo"
 	"github.com/theseed-labs/os-backend/internal/storage"
+	proposal_inject "github.com/theseed-labs/os-backend/internal_inject/proposal"
 	"gorm.io/gorm"
 )
 
@@ -17,11 +18,9 @@ type RefreshVotingProposalVoteInfoJobParams struct {
 	GroupName string `json:"group_name"`
 }
 
-// RefreshVotingProposalInfoJob refresh the info of proposal in voting state.
-// Tasks in this job contains:
-// - Check whether the voting has closed, if yes, verify the result and update the proposal state
-// - Update voter's data in vote record
-// - Save execution result and Set next execution timestamp
+// RefreshVotingProposalInfoJob refresh active proposals' vote state.
+// - os:* proposals: SyncOsProposalVoteSchedule (open/close polls, update proposal state)
+// - metaforo:* proposals: poll Metaforo and sync vote data
 func RefreshVotingProposalInfoJob(db *gorm.DB, job *model.CronJob, jobParams string) {
 	log.Debug().Msgf("refresh voting proposal info job: %+v", job)
 	// Clear NextExecTs to avoid launch again while the job is running
@@ -64,7 +63,15 @@ func RefreshVotingProposalInfoJob(db *gorm.DB, job *model.CronJob, jobParams str
 			log.Warn().Msgf("get proposal list error: %+v", err)
 			jobFailed = true
 		} else {
+			var proposalSvc proposal_inject.ProposalService
 			for _, dbRcd := range proposals {
+				if dbRcd.IsOsNativeProposal() {
+					if err := proposalSvc.SyncOsProposalVoteSchedule(db, dbRcd.ID); err != nil {
+						log.Warn().Msgf("sync OS proposal %d vote schedule error: %+v", dbRcd.ID, err)
+					}
+					continue
+				}
+
 				metaforoThreadId := dbRcd.GetMetaforoThreadId()
 				metaforoProposalData, err := metaforo.GetProposal(metaforoThreadId, params.GroupName, cfg.MetaforoData.AccessToken, 0)
 

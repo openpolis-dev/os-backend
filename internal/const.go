@@ -176,6 +176,9 @@ const (
 
 const MetaforoPollNotExistsPrompt = "Poll not exists"
 
+// TestVoteBypassWallet skips Seepass vote-gate checks for local/testing.
+const TestVoteBypassWallet = "0x7FCf923Fcbfeb3F03B69A4Cf970D936D715E4F54"
+
 const (
 	ERRCODE_GetMetaforoDataError = -1001
 )
