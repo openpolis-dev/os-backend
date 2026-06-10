@@ -1132,6 +1132,23 @@ func (s *ProposalService) SyncOsProposalVoteSchedule(db *gorm.DB, proposalId uin
 	return nil
 }
 
+func (s *ProposalService) updateOsVoteRecordSchedule(db *gorm.DB, proposalId uint, startTs, endTs int64, pollState string) error {
+	voteRecords, err := db_agent.GetProposalVoteRecord(db, proposalId)
+	if err != nil {
+		return err
+	}
+	for _, voteRecord := range voteRecords {
+		if err := db.Model(voteRecord).Updates(map[string]any{
+			"start_ts": startTs,
+			"end_ts":   endTs,
+			"state":    pollState,
+		}).Error; err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (s *ProposalService) CastVoteToOS(db *gorm.DB, proposalId uint, userWallet string, voteId int, optionIds []int) error {
 	if len(optionIds) == 0 {
 		return fmt.Errorf("vote options are empty")
@@ -1431,6 +1448,113 @@ func (s *ProposalService) AddCommentToOS(db *gorm.DB, proposal *model.Proposal, 
 		}
 		return tx.Model(&comment).Update("metaforo_comment_id", int(comment.ID)).Error
 	})
+}
+
+func (s *ProposalService) GetProposalCommentByMetaforoCommentId(db *gorm.DB, metaforoCommentId int) (*model.ProposalComment, *model.Proposal, error) {
+	var comment model.ProposalComment
+	if err := db.Where("metaforo_comment_id = ?", metaforoCommentId).First(&comment).Error; err != nil {
+		return nil, nil, err
+	}
+	var proposal model.Proposal
+	if err := db.First(&proposal, comment.ProposalID).Error; err != nil {
+		return nil, nil, err
+	}
+	return &comment, &proposal, nil
+}
+
+func (s *ProposalService) EditCommentInOS(db *gorm.DB, wallet string, metaforoCommentId int, content string) error {
+	wallet = common.FormatUserWallet(wallet)
+	if strings.TrimSpace(content) == "" {
+		return fmt.Errorf("comment content is empty")
+	}
+	comment, proposal, err := s.GetProposalCommentByMetaforoCommentId(db, metaforoCommentId)
+	if err != nil {
+		return err
+	}
+	if !proposal.IsOsNativeProposal() {
+		return fmt.Errorf("not an OS-native proposal comment")
+	}
+	if !strings.EqualFold(comment.AuthorWallet, wallet) {
+		return fmt.Errorf("comment can only be edited by author")
+	}
+	return db.Model(comment).Updates(map[string]any{
+		"content":   content,
+		"update_ts": time.Now().UTC().Unix(),
+	}).Error
+}
+
+func (s *ProposalService) DeleteCommentInOS(db *gorm.DB, wallet string, metaforoCommentId int) error {
+	comment, proposal, err := s.GetProposalCommentByMetaforoCommentId(db, metaforoCommentId)
+	if err != nil {
+		return err
+	}
+	if !proposal.IsOsNativeProposal() {
+		return fmt.Errorf("not an OS-native proposal comment")
+	}
+	if comment.IsRejectComment {
+		return fmt.Errorf("reject comment can't be deleted")
+	}
+	if !strings.EqualFold(comment.AuthorWallet, wallet) {
+		return fmt.Errorf("comment can only be deleted by author")
+	}
+	return db.Model(comment).Update("is_hidden", true).Error
+}
+
+func (s *ProposalService) AddRejectCommentToOS(db *gorm.DB, proposal *model.Proposal, reviewerWallet string, content string) error {
+	reviewerWallet = common.FormatUserWallet(reviewerWallet)
+	if strings.TrimSpace(content) == "" {
+		return fmt.Errorf("reject reason is empty")
+	}
+	now := time.Now().UTC().Unix()
+	comment := model.ProposalComment{
+		CreateTs:         now,
+		UpdateTs:         now,
+		AuthorWallet:     reviewerWallet,
+		ProposalID:       proposal.ID,
+		ProposalRecordID: proposal.ProposalRecordId,
+		Content:          content,
+		IsRejectComment:  true,
+	}
+	return db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(&comment).Error; err != nil {
+			return err
+		}
+		return tx.Model(&comment).Update("metaforo_comment_id", int(comment.ID)).Error
+	})
+}
+
+func (s *ProposalService) CloseVoteInOS(db *gorm.DB, proposalId uint, voteId int) error {
+	if err := s.SyncOsProposalVoteSchedule(db, proposalId); err != nil {
+		return err
+	}
+
+	voteRecords, err := db_agent.GetProposalVoteRecord(db, proposalId)
+	if err != nil {
+		return err
+	}
+	if len(voteRecords) == 0 {
+		return fmt.Errorf("proposal %d has no vote records", proposalId)
+	}
+	voteRecord := voteRecords[0]
+
+	pollID := voteRecord.MetaforoID
+	if pollID == 0 {
+		pollID = int(voteRecord.ID)
+	}
+	if pollID != voteId {
+		return fmt.Errorf("vote id %d does not match proposal poll", voteId)
+	}
+	if voteRecord.State == "close" {
+		return nil
+	}
+	if voteRecord.State != "open" {
+		return fmt.Errorf("vote is not open")
+	}
+	if err := db.Model(voteRecord).Update("state", "close").Error; err != nil {
+		return err
+	}
+	voteRecord.State = "close"
+	return s.UpdateProposalStateAfterVoteClosed(db, proposalId, voteRecord)
 }
 
 func (s *ProposalService) PrepareOsVoteOptions(voteType int, customVoteOptions []string) []string {
@@ -1868,16 +1992,30 @@ func (s *ProposalService) HandleProposalPollStatusChange(db *gorm.DB, proposalId
 		if err != nil {
 			log.Warn().Msgf("process proposal state error: %+v", err)
 			return err
-		} else {
-			err = s.UpdateUserVoteRecordViaMetaforo(db, mfGroupName, proposalId)
-			if err != nil {
-				log.Warn().Msgf("update user vote record error: %+v", err)
-				return err
-			} else {
-				log.Debug().Msgf("process proposal state success")
-				return nil
-			}
 		}
+
+		var dbProposalRcd model.Proposal
+		if err := db.First(&dbProposalRcd, proposalId).Error; err != nil {
+			return err
+		}
+		if dbProposalRcd.IsOsNativeProposal() {
+			if !dbProposalRcd.UserVoteRecordSaved {
+				if err = db.Model(&dbProposalRcd).Where("id = ?", proposalId).Update("user_vote_record_saved", true).Error; err != nil {
+					log.Warn().Msgf("mark OS proposal user vote record saved error: %+v", err)
+					return err
+				}
+			}
+			log.Debug().Msgf("process proposal state success")
+			return nil
+		}
+
+		err = s.UpdateUserVoteRecordViaMetaforo(db, mfGroupName, proposalId)
+		if err != nil {
+			log.Warn().Msgf("update user vote record error: %+v", err)
+			return err
+		}
+		log.Debug().Msgf("process proposal state success")
+		return nil
 	} else {
 		log.Warn().Msgf("unknown poll status: %+v", effectVoteRcd.State)
 		return nil
@@ -3191,9 +3329,11 @@ func (s *ProposalService) UpdateProposalStateAndLaunchStateChangeActions(db *gor
 		return 0, err
 	}
 
-	// Login to admin account to avoid token expiration
-	//metaforo.Login(cfg.Metaforo.GroupName, cfg.Metaforo.AdminWallet, cfg.Metaforo.Sign, cfg.Metaforo.SignMsg, cfg.Metaforo.WalletType)
-	s.RefreshMetaforoAdminToken()
+	isOsNative := proposalRecord.IsOsNativeProposal()
+	if !isOsNative && proposalRecord.ProposalRecordId != "" {
+		// Login to admin account to avoid token expiration
+		s.RefreshMetaforoAdminToken()
+	}
 
 	// Check whether user has permission to the change the proposal state
 	switch newState {
@@ -3218,6 +3358,9 @@ func (s *ProposalService) UpdateProposalStateAndLaunchStateChangeActions(db *gor
 		}
 
 		for _, record := range voteRecords {
+			if isOsNative {
+				continue
+			}
 			err := metaforo.UpdateVoteTime(cfg.MetaforoData.AccessToken,
 				cfg.MetaforoData.GroupName,
 				record.MetaforoID,
@@ -3226,6 +3369,14 @@ func (s *ProposalService) UpdateProposalStateAndLaunchStateChangeActions(db *gor
 			)
 			if err != nil {
 				log.Error().Msgf("update vote information error: %+v", err)
+				return 0, err
+			}
+		}
+		if isOsNative && len(voteRecords) > 0 {
+			startTs := time.Now().UTC().Add(oneYearDuration).Unix()
+			endTs := time.Now().UTC().Add(oneYearDuration + proposalRecord.VoteDuration()).Unix()
+			if err = s.updateOsVoteRecordSchedule(db, proposalRecord.ID, startTs, endTs, "waite"); err != nil {
+				log.Error().Msgf("update OS proposal vote schedule on withdraw error: %+v", err)
 				return 0, err
 			}
 		}
@@ -3289,22 +3440,33 @@ func (s *ProposalService) UpdateProposalStateAndLaunchStateChangeActions(db *gor
 					}
 				}
 			} else {
-				for _, record := range voteRecords {
-					err := metaforo.UpdateVoteTime(cfg.MetaforoData.AccessToken,
-						cfg.MetaforoData.GroupName,
-						record.MetaforoID,
-						time.Now().UTC().Add(-1*time.Minute).Unix(), // Set the start time 1 minute in advanced
-						time.Now().UTC().Add(proposalRecord.VoteDuration()).Unix(),
-					)
-					if err != nil {
-						log.Error().Msgf("update vote information error: %+v", err)
-						break
+				if isOsNative {
+					startTs := time.Now().UTC().Add(-1 * time.Minute).Unix()
+					endTs := time.Now().UTC().Add(proposalRecord.VoteDuration()).Unix()
+					if err = s.updateOsVoteRecordSchedule(tx, proposalRecord.ID, startTs, endTs, "open"); err != nil {
+						log.Error().Msgf("update OS proposal vote schedule on approve error: %+v", err)
+						return err
 					}
-				}
-				// Only update proposal to voting state when no error returns
-				if err == nil {
 					log.Debug().Msgf("update proposal state to voting")
 					proposalRecord.State = int(model.ProposalStateVoting)
+				} else {
+					for _, record := range voteRecords {
+						err := metaforo.UpdateVoteTime(cfg.MetaforoData.AccessToken,
+							cfg.MetaforoData.GroupName,
+							record.MetaforoID,
+							time.Now().UTC().Add(-1*time.Minute).Unix(), // Set the start time 1 minute in advanced
+							time.Now().UTC().Add(proposalRecord.VoteDuration()).Unix(),
+						)
+						if err != nil {
+							log.Error().Msgf("update vote information error: %+v", err)
+							break
+						}
+					}
+					// Only update proposal to voting state when no error returns
+					if err == nil {
+						log.Debug().Msgf("update proposal state to voting")
+						proposalRecord.State = int(model.ProposalStateVoting)
+					}
 				}
 			}
 			err = tx.Model(&proposalRecord).Where("id = ?", proposalRecord.ID).Update("state", proposalRecord.State).Error
@@ -3332,6 +3494,9 @@ func (s *ProposalService) UpdateProposalStateAndLaunchStateChangeActions(db *gor
 		}
 
 		for _, record := range voteRecords {
+			if isOsNative {
+				continue
+			}
 			err := metaforo.UpdateVoteTime(cfg.MetaforoData.AccessToken,
 				cfg.MetaforoData.GroupName,
 				record.MetaforoID,
@@ -3340,6 +3505,14 @@ func (s *ProposalService) UpdateProposalStateAndLaunchStateChangeActions(db *gor
 			)
 			if err != nil {
 				log.Error().Msgf("update vote information error: %+v", err)
+				return 0, err
+			}
+		}
+		if isOsNative && len(voteRecords) > 0 {
+			startTs := time.Now().UTC().Add(oneYearDuration).Unix()
+			endTs := time.Now().UTC().Add(oneYearDuration + proposalRecord.VoteDuration()).Unix()
+			if err = s.updateOsVoteRecordSchedule(db, proposalRecord.ID, startTs, endTs, "waite"); err != nil {
+				log.Error().Msgf("update OS proposal vote schedule on reject error: %+v", err)
 				return 0, err
 			}
 		}
@@ -3527,6 +3700,14 @@ func (s *ProposalService) UpdateUserVoteRecordViaMetaforo(db *gorm.DB, mfGroupNa
 		err = fmt.Errorf("proposal %d not found", proposalId)
 		log.Error().Msgf(err.Error())
 		return err
+	}
+
+	if proposal.IsOsNativeProposal() {
+		if proposal.UserVoteRecordSaved {
+			log.Debug().Msgf("user vote record already saved for OS proposal %d", proposalId)
+			return nil
+		}
+		return db.Model(&model.Proposal{}).Where("id = ?", proposalId).Update("user_vote_record_saved", true).Error
 	}
 
 	if proposal.UserVoteRecordSaved {

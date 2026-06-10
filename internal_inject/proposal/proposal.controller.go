@@ -843,6 +843,25 @@ func (c *ProposalController) EditComment(ctx *gin.Context) {
 		return
 	}
 
+	user, _, _, _ := api.ForContext(ctx)
+	if comment, proposal, lookupErr := c.ProposalService.GetProposalCommentByMetaforoCommentId(c.Db, editComment.MetaforoCommentId); lookupErr == nil && proposal.IsOsNativeProposal() {
+		if err := c.ProposalService.EditCommentInOS(c.Db, user.Wallet, editComment.MetaforoCommentId, editComment.Content); err != nil {
+			log.Error().Msgf("edit OS comment error: %+v", err)
+			sdk.LogUserSideError(ctx, err)
+			ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
+			return
+		}
+		ctx.JSON(http.StatusOK, api.Success(nil))
+		return
+	} else if lookupErr != nil && !errors.Is(lookupErr, gorm.ErrRecordNotFound) {
+		log.Error().Msgf("query comment error: %+v", lookupErr)
+		sdk.LogServerErrorToSentry(ctx, lookupErr)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("edit comment error detail:"+lookupErr.Error())))
+		return
+	} else if lookupErr == nil && !proposal.IsOsNativeProposal() {
+		_ = comment
+	}
+
 	if editComment.MetaforoAccessToken == "" {
 		log.Error().Msgf("missing metaforo access token")
 		sdk.LogUserSideError(ctx, errors.New("missing metaforo access token"))
@@ -900,6 +919,24 @@ func (c *ProposalController) DeleteComment(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
 		return
 	}
+
+	user, _, _, _ := api.ForContext(ctx)
+	if _, proposal, lookupErr := c.ProposalService.GetProposalCommentByMetaforoCommentId(c.Db, deleteComment.MetaforoCommentId); lookupErr == nil && proposal.IsOsNativeProposal() {
+		if err := c.ProposalService.DeleteCommentInOS(c.Db, user.Wallet, deleteComment.MetaforoCommentId); err != nil {
+			log.Error().Msgf("delete OS comment error: %+v", err)
+			sdk.LogUserSideError(ctx, err)
+			ctx.JSON(http.StatusBadRequest, api.BadRequest(err))
+			return
+		}
+		ctx.JSON(http.StatusOK, api.Success(nil))
+		return
+	} else if lookupErr != nil && !errors.Is(lookupErr, gorm.ErrRecordNotFound) {
+		log.Error().Msgf("query comment error: %+v", lookupErr)
+		sdk.LogServerErrorToSentry(ctx, lookupErr)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("delete comment error detail:"+lookupErr.Error())))
+		return
+	}
+
 	if deleteComment.MetaforoAccessToken == "" {
 		log.Error().Msgf("missing metaforo access token")
 		sdk.LogUserSideError(ctx, errors.New("missing metaforo access token"))
@@ -907,7 +944,6 @@ func (c *ProposalController) DeleteComment(ctx *gin.Context) {
 		return
 	}
 
-	user, _, _, _ := api.ForContext(ctx)
 	var rejectComment model.ProposalComment
 	err = c.Db.Model(&model.ProposalComment{}).
 		Where("metaforo_comment_id = ? AND is_reject_comment = ?", fmt.Sprintf("%d", deleteComment.MetaforoCommentId), true).
@@ -1224,14 +1260,28 @@ func (c *ProposalController) Reject(ctx *gin.Context) {
 		return
 	}
 
-	if rejectRequestData.MetaforoAccessToken == "" {
-		sdk.LogUserSideError(ctx, err)
+	proposalIdStr := ctx.Param("id")
+	proposalRecord, err := c.ProposalService.GetProposalFromStringId(c.Db, proposalIdStr)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			log.Warn().Msgf("proposal %s not found", proposalIdStr)
+			ctx.JSON(http.StatusNotFound, nil)
+			return
+		}
+		sdk.LogServerErrorToSentry(ctx, err)
+		log.Error().Msgf("get proposal %s error: %+v", proposalIdStr, err)
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get proposal error")))
+		return
+	}
+
+	isOsNative := proposalRecord.IsOsNativeProposal()
+	if !isOsNative && rejectRequestData.MetaforoAccessToken == "" {
+		sdk.LogUserSideError(ctx, errors.New("missing metaforo_access_token value"))
 		log.Error().Msgf("missing metaforo_access_token value")
 		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("missing metaforo_access_token value")))
 		return
 	}
 
-	proposalIdStr := ctx.Param("id")
 	proposalRecordId, err := c.ProposalService.UpdateProposalStateAndLaunchStateChangeActions(c.Db, user, proposalIdStr, model.ProposalStateRejected, c.Cfg)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -1245,6 +1295,17 @@ func (c *ProposalController) Reject(ctx *gin.Context) {
 		}
 	}
 
+	if isOsNative {
+		if err := c.ProposalService.AddRejectCommentToOS(c.Db, proposalRecord, user.Wallet, rejectRequestData.Reason); err != nil {
+			log.Error().Msgf("add reject comment to OS proposal %s error: %+v", proposalIdStr, err)
+			sdk.LogUserSideError(ctx, err)
+			ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("add reject comment error detail:"+err.Error())))
+			return
+		}
+		ctx.JSON(http.StatusOK, api.Success(nil))
+		return
+	}
+
 	rejectComment := model.ProposalComment{
 		CreateTs:        time.Now().Unix(),
 		UpdateTs:        time.Now().Unix(),
@@ -1254,14 +1315,6 @@ func (c *ProposalController) Reject(ctx *gin.Context) {
 		IsRejectComment: true,
 	}
 	c.Db.Save(&rejectComment)
-
-	proposalRecord, err := c.ProposalService.GetProposalFromStringId(c.Db, proposalIdStr)
-	if err != nil {
-		sdk.LogServerErrorToSentry(ctx, err)
-		log.Error().Msgf("get proposal %s error: %+v", proposalIdStr, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(errors.New("get proposal error")))
-		return
-	}
 
 	// Add reject comment
 	commentData, err := metaforo.AddComment(
@@ -1481,6 +1534,35 @@ func (c *ProposalController) CloseVote(ctx *gin.Context) {
 		log.Error().Msgf("parse request data error: %+v", err)
 		sdk.LogUserSideError(ctx, err)
 		ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("parse request data error: %+v", err)))
+		return
+	}
+
+	proposalRecord, err := c.ProposalService.GetProposalFromStringId(c.Db, proposalIdStr)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			log.Warn().Msgf("proposal %s not found", proposalIdStr)
+			ctx.JSON(http.StatusNotFound, nil)
+			return
+		}
+		log.Error().Msgf("get proposal %s error: %+v", proposalIdStr, err)
+		sdk.LogServerErrorToSentry(ctx, err)
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("get proposal error")))
+		return
+	}
+
+	if proposalRecord.IsOsNativeProposal() {
+		if err := c.ProposalService.CloseVoteInOS(c.Db, proposalRecord.ID, reqData.MetaforoVoteId); err != nil {
+			log.Error().Msgf("close OS vote for proposal %s error: %+v", proposalIdStr, err)
+			sdk.LogServerErrorToSentry(ctx, err)
+			ctx.JSON(http.StatusBadRequest, api.BadRequest(fmt.Errorf("close vote error detail:"+err.Error())))
+			return
+		}
+		ctx.JSON(http.StatusOK, api.Success(nil))
+		return
+	}
+
+	if reqData.MetaforoAccessToken == "" {
+		ctx.JSON(http.StatusBadRequest, api.BadRequest(errors.New("missing metaforo access token")))
 		return
 	}
 
