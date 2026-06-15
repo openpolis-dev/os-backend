@@ -1545,6 +1545,13 @@ func (s *ProposalService) CloseVoteInOS(db *gorm.DB, proposalId uint, voteId int
 		return fmt.Errorf("vote id %d does not match proposal poll", voteId)
 	}
 	if voteRecord.State == "close" {
+		var proposal model.Proposal
+		if err := db.First(&proposal, proposalId).Error; err != nil {
+			return err
+		}
+		if proposal.State == int(model.ProposalStateVoting) || proposal.State == int(model.ProposalStateApproved) {
+			return s.UpdateProposalStateAfterVoteClosed(db, proposalId, voteRecord)
+		}
 		return nil
 	}
 	if voteRecord.State != "open" {
@@ -3060,6 +3067,24 @@ func (s *ProposalService) ConvertProposalToFrontendDetailRecord(db *gorm.DB, pro
 		proposalMultipleVoteFlag = len(votes) > 0 && votes[0].Max > 1
 	}
 
+	userIsVoted := false
+	if voterWallet != "" {
+		for _, poll := range votes {
+			if poll.IsVote == 1 {
+				userIsVoted = true
+				break
+			}
+		}
+		if !userIsVoted {
+			var voteCount int64
+			if err := db.Model(&model.ProposalUserVoteRecord{}).
+				Where("proposal_id = ? AND user_wallet = ?", proposalId, common.FormatUserWallet(voterWallet)).
+				Count(&voteCount).Error; err == nil && voteCount > 0 {
+				userIsVoted = true
+			}
+		}
+	}
+
 	return &FrontendProposalDetailRecord{
 		ID:                      proposalId,
 		Title:                   proposal.Title,
@@ -3086,6 +3111,7 @@ func (s *ProposalService) ConvertProposalToFrontendDetailRecord(db *gorm.DB, pro
 		OsVoteOptions:            frontendVoteOptions,
 		VoteType:                 proposal.VoteType,
 		IsMultipleVote:           proposalMultipleVoteFlag,
+		IsVoted:                  userIsVoted,
 		CreateTs:                 proposal.CreateTs,
 		IsBasedOnCustomTemplate:  proposal.IsBasedOnCustomTemplate,
 		TemplateName:             templateName,
