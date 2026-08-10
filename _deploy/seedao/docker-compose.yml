@@ -1,0 +1,49 @@
+version: "3"
+services:
+  os-backend:
+    container_name: seedao-os-backend
+    image: ghcr.io/seedao-polis/os-backend:main
+    environment:
+      - ENV_NAME=production
+    restart: always
+    volumes:
+      - ./conf/os-backend/config.yml.prod:/conf/config.yml:ro
+      - ./logs/os-backend/:/superapp-backend/logs:rw
+    entrypoint:
+      [
+        "/usr/local/bin/apiserver",
+        "-casbin-model",
+        "/superapp-backend/conf/rbac_model.conf",
+        "-config",
+        "/conf/config.yml"
+      ]
+    ports:
+      - 9090:8080
+    extra_hosts:
+      - host.docker.internal:host-gateway
+
+  sns_api:
+    container_name: seedao-sns-api
+    image: ghcr.io/seedao-polis/sns-safe-backend:main
+    restart: always
+    ports:
+      - 9092:8090
+    extra_hosts:
+      - host.docker.internal:host-gateway
+  
+  spp-indexer:
+    container_name: seedao-spp-indexer
+    image: ghcr.io/seedao-polis/spp-indexer:main
+    mem_limit: 4g
+    restart: always
+    ports:
+        - 9094:3000
+    env_file:
+        - conf/spp-indexer/envfile.prod
+    volumes:
+        - ./conf/spp-indexer/data.db:/app/data.db:rw
+    # DB should be init before starting application
+    #command: ["yarn", "prisma", "migrate", "dev"]
+    extra_hosts:
+        - host.docker.internal:host-gateway
+

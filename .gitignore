@@ -37,3 +37,15 @@ _doc/*
 cmd/playground/*
 
 bin/*
+
+# Local build artifacts
+/migrate_proposal_v2
+
+# Exported DB / SQL dumps (offline sync artifacts; never commit)
+**/export/**/*.sql
+**/sns_chain_registry.sql
+*.sql.dump
+
+# Deploy prod configs may contain secrets
+_deploy/**/conf/**/*.prod
+_deploy/**/conf/**/config.yml*

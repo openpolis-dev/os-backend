@@ -22,7 +22,6 @@ import (
 	"github.com/theseed-labs/os-backend/internal/sdk"
 	"github.com/theseed-labs/os-backend/internal/sdk/metaforo"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 )
 
 type ProposalController struct {
@@ -318,7 +317,7 @@ func (c *ProposalController) Detail(ctx *gin.Context) {
 	if user, ok := ctx.Value(middleware.CurUserKey).(*middleware.CurUser); ok && user != nil {
 		voterWallet = user.Wallet
 	}
-	if proposalRecord.IsOsNativeProposal() {
+	if proposalRecord.ProposalRecordId != "" {
 		_ = c.ProposalService.SyncOsProposalVoteSchedule(c.Db, proposalRecord.ID)
 		c.Db.First(&proposalRecord, proposalRecord.ID)
 	}
@@ -367,121 +366,25 @@ func (c *ProposalController) ShowVoteDetail(ctx *gin.Context) {
 		page = 1
 	}
 
-	voteOption, proposal, lookupErr := c.ProposalService.GetVoteOptionAndProposalByMetaforoOptionId(c.Db, voteOptionId)
-	if lookupErr == nil && proposal.IsOsNativeProposal() {
-		rslt, err := c.ProposalService.GetOsVoteDetailFromDB(c.Db, voteOption.ID, page)
-		if err != nil {
-			log.Error().Msgf("get OS vote detail error: %+v", err)
-			sdk.LogServerErrorToSentry(ctx, err)
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(fmt.Errorf("get vote list error")))
+	voteOption, _, lookupErr := c.ProposalService.GetVoteOptionAndProposalByMetaforoOptionId(c.Db, voteOptionId)
+	if lookupErr != nil {
+		if errors.Is(lookupErr, gorm.ErrRecordNotFound) {
+			ctx.JSON(http.StatusNotFound, api.BadRequest(lookupErr))
 			return
 		}
-		ctx.JSON(http.StatusOK, api.Success(rslt))
-		return
-	}
-
-	voterList, err := metaforo.GetVoterList(c.Cfg.MetaforoData.GroupName, voteOptionId, page)
-	if err != nil {
-		log.Error().Msgf("get vote list error: %+v", err)
-		sdk.LogServerErrorToSentry(ctx, err)
+		log.Error().Msgf("get vote option error: %+v", lookupErr)
+		sdk.LogServerErrorToSentry(ctx, lookupErr)
 		ctx.JSON(http.StatusInternalServerError, api.ServerError(fmt.Errorf("get vote list error")))
 		return
 	}
 
-	// TODO: Update this logic to fetchUserWalletFromMetaforoIds function
-	// Update metaforo user record if UID not found in DB
-	missingMfUserIds := map[int]*metaforo.UserDetailResponseForProfileAPI{}
-	for _, mfVoterRecord := range voterList {
-		var rcdCount int64
-		if err = c.Db.Model(&model.MetaforoUser{}).Where(&model.MetaforoUser{MetaforoUserId: mfVoterRecord.UserId}).Count(&rcdCount).Error; err != nil {
-			log.Error().Msgf("count metaforo user record error: %+v", err)
-			sdk.LogServerErrorToSentry(ctx, err)
-			ctx.JSON(http.StatusInternalServerError, api.ServerError(fmt.Errorf("get metaforo user record error detail:"+err.Error())))
-			return
-		}
-		if rcdCount == 0 {
-			mfUserData, err := metaforo.UserDetail(mfVoterRecord.UserId)
-			if err != nil {
-				log.Error().Msgf("get metaforo user detail error: %+v", err)
-				sdk.LogServerErrorToSentry(ctx, err)
-				ctx.JSON(http.StatusInternalServerError, api.ServerError(fmt.Errorf("get metaforo user detail error detail:"+err.Error())))
-				return
-			}
-			missingMfUserIds[mfVoterRecord.UserId] = mfUserData
-		}
-	}
-
-	// Create MetaforoUser and User record from API dat
-	err = c.Db.Transaction(func(tx *gorm.DB) error {
-		for userId, profileData := range missingMfUserIds {
-			metaforoUser := model.MetaforoUser{
-				MetaforoUserId: userId,
-				UserWallet:     common.FormatUserWallet(profileData.User.Web3PublicKey),
-			}
-			mfUserTx := tx.Where(&model.MetaforoUser{MetaforoUserId: userId}).Find(&metaforoUser)
-
-			if mfUserTx.Error != nil {
-				log.Error().Msgf("get metaforo user record error: %+v", mfUserTx.Error)
-				sdk.LogServerErrorToSentry(ctx, mfUserTx.Error)
-				ctx.JSON(http.StatusInternalServerError, api.ServerError(fmt.Errorf("get metaforo user record error detail:"+err.Error())))
-				return mfUserTx.Error
-			} else if mfUserTx.RowsAffected == 0 {
-				if err = tx.Create(&metaforoUser).Error; err != nil {
-					log.Error().Msgf("create metaforo user record error: %+v", err)
-					sdk.LogServerErrorToSentry(ctx, err)
-					ctx.JSON(http.StatusInternalServerError, api.ServerError(fmt.Errorf("create metaforo user record error detail:"+err.Error())))
-					return err
-				}
-			} else if mfUserTx.RowsAffected == 1 {
-				if err = tx.Updates(&metaforoUser).Error; err != nil {
-					log.Error().Msgf("update metaforo user record error: %+v", err)
-					sdk.LogServerErrorToSentry(ctx, err)
-					ctx.JSON(http.StatusInternalServerError, api.ServerError(fmt.Errorf("update metaforo user record error detail:"+err.Error())))
-					return err
-				}
-			} else {
-				err = fmt.Errorf("unexpected rows affected: %d", mfUserTx.RowsAffected)
-				log.Error().Msgf(err.Error())
-				sdk.LogServerErrorToSentry(ctx, err)
-				ctx.JSON(http.StatusInternalServerError, api.ServerError(fmt.Errorf("unexpected rows affected: %d", mfUserTx.RowsAffected)))
-				return err
-			}
-
-			// Create user record if not existing
-			userRecord := model.User{Wallet: metaforoUser.UserWallet}
-			c.Db.Clauses(clause.OnConflict{DoNothing: true}).Model(&model.User{}).Where(&userRecord).Assign(model.User{
-				CreateTs: model.GetCurrentUtcEpochSecond(),
-				UpdateTs: model.GetCurrentUtcEpochSecond(),
-				Avatar:   profileData.User.PhotoUrl,
-				Name:     profileData.User.Username,
-			}).FirstOrCreate(&userRecord)
-		}
-		return nil
-	})
-
-	// Extract weight value for each user
-	userWeightMap := lo.SliceToMap(voterList, func(item *metaforo.UserPollRecord) (int, int) { return item.Uid, item.Weight })
-
-	metaforoUserIds := lo.Map(voterList, func(item *metaforo.UserPollRecord, index int) int { return item.UserId })
-	userRecords, err := c.ProposalService.GetOsUserFromMetaforoUserId(c.Db, metaforoUserIds)
+	rslt, err := c.ProposalService.GetOsVoteDetailFromDB(c.Db, voteOption.ID, page)
 	if err != nil {
-		log.Error().Msgf("list user vote detail error: %+v", err)
+		log.Error().Msgf("get vote detail from DB error: %+v", err)
 		sdk.LogServerErrorToSentry(ctx, err)
-		ctx.JSON(http.StatusInternalServerError, api.ServerError(fmt.Errorf("list user vote detail error")))
+		ctx.JSON(http.StatusInternalServerError, api.ServerError(fmt.Errorf("get vote list error")))
 		return
 	}
-
-	rslt := lo.Map(userRecords, func(u *JointMetaforoAndOsUser, _ int) *userVoteDetailInfo {
-		weight, found := userWeightMap[u.MetaforoUserID]
-		if !found {
-			log.Warn().Msgf("no weight found for user: %d", u.MetaforoUserID)
-			weight = 0
-		}
-		return &userVoteDetailInfo{
-			*u,
-			weight,
-		}
-	})
 	ctx.JSON(http.StatusOK, api.Success(rslt))
 
 }

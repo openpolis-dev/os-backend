@@ -20,6 +20,14 @@ casbin:
 
 cronJob:
   checkAndUpdateUnverifiedSnsInvite: "@every 10m"
+  syncSnsChainRegistry: "@every 6h"
+
+snsChainSync:
+  # Optional fallback when GET http://spp-indexer:3000/sns/all returns empty.
+  indexerDataDbPath: ""
+  indexerDataDbQuery: ""
+  # Optional: write PostgreSQL UPSERT SQL after each sync for offline import to seedao-api-server.
+  exportPath: ""
 
 push:
     desktop:

@@ -840,7 +840,7 @@ func (s *ProposalService) PublishProposalToOS(db *gorm.DB, proposalId uint, isMu
 	})
 }
 
-// BuildPollRecordsFromDB assembles Metaforo-shaped poll JSON from OS DB records (for os: proposals).
+// BuildPollRecordsFromDB assembles Metaforo-shaped poll JSON from OS DB records.
 func (s *ProposalService) BuildPollRecordsFromDB(db *gorm.DB, proposalId uint, voterWallet string) ([]metaforo.PollRecord, error) {
 	var proposal model.Proposal
 	if err := db.First(&proposal, proposalId).Error; err != nil {
@@ -1088,7 +1088,7 @@ func (s *ProposalService) SyncOsProposalVoteSchedule(db *gorm.DB, proposalId uin
 	if err := db.First(&proposal, proposalId).Error; err != nil {
 		return err
 	}
-	if !proposal.IsOsNativeProposal() || proposal.VoteType == model.ProposalVoteTypeNone {
+	if proposal.VoteType == model.ProposalVoteTypeNone {
 		return nil
 	}
 
@@ -2876,81 +2876,29 @@ func (s *ProposalService) ConvertProposalToFrontendDetailRecord(db *gorm.DB, pro
 	commentCount := 0
 
 	if proposal.ProposalRecordId != "" {
-		if proposal.IsOsNativeProposal() {
-			var err error
-			votes, err = s.BuildPollRecordsFromDB(db, proposalId, voterWallet)
-			if err != nil {
-				log.Error().Msgf("build proposal %d polls from DB error: %+v", proposalId, err)
-				return nil, err, -1
-			}
+		var err error
+		votes, err = s.BuildPollRecordsFromDB(db, proposalId, voterWallet)
+		if err != nil {
+			log.Error().Msgf("build proposal %d polls from DB error: %+v", proposalId, err)
+			return nil, err, -1
+		}
 
-			err = db.Model(model.ProposalComment{}).Where("proposal_id = ? AND is_reject_comment = ?", proposalId, true).First(&rejectedComment).Error
-			if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-				log.Error().Msgf("fetch rejected comment error: %+v", err)
-				return nil, err, -1
-			}
+		err = db.Model(model.ProposalComment{}).Where("proposal_id = ? AND is_reject_comment = ?", proposalId, true).First(&rejectedComment).Error
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+			log.Error().Msgf("fetch rejected comment error: %+v", err)
+			return nil, err, -1
+		}
 
-			editHistoryRecords, err = s.GetLocalEditHistoriesWithOsUserData(db, proposal.ProposalRecordId)
-			if err != nil {
-				log.Error().Msgf("fetch local history record error: %+v", err)
-				return nil, err, -1
-			}
+		editHistoryRecords, err = s.GetLocalEditHistoriesWithOsUserData(db, proposal.ProposalRecordId)
+		if err != nil {
+			log.Error().Msgf("fetch local history record error: %+v", err)
+			return nil, err, -1
+		}
 
-			frontendCommentsRecords, commentCount, err = s.BuildProposalCommentsFromDB(db, &proposal)
-			if err != nil {
-				log.Error().Msgf("build proposal %d comments from DB error: %+v", proposalId, err)
-				return nil, err, -1
-			}
-		} else {
-			metaforoProposal, err := metaforo.GetProposal(proposal.GetMetaforoThreadId(), metaforoGroupName, accessToken, startPostId)
-			if err != nil {
-				log.Error().Msgf("get proposal %d from metaforo error: %+v", proposalId, err)
-				_ = s.UpdateDbRecordsFromMetaforoProposalResponse(db, proposalId, metaforoProposal, err)
-				return nil, err, internal.ERRCODE_GetMetaforoDataError
-			}
-
-			err = s.UpdateDbRecordsFromMetaforoProposalResponse(db, proposalId, metaforoProposal, nil)
-			if err != nil {
-				log.Error().Msgf("update proposal %d from metaforo error: %+v", proposalId, err)
-				return nil, err, -1
-			}
-
-			commentCount = metaforoProposal.Thread.PostsCount
-			votes = metaforoProposal.Thread.Polls
-
-			pollStatusChanged, err := s.UpdateDbVoteOptionRecordsFromMetaforoProposalResponse(db, proposalId, metaforoProposal)
-			if err != nil {
-				log.Error().Msgf("update propsal vote option records with metaforo response error: %+v", err)
-				return nil, err, -1
-			} else {
-				log.Debug().Msgf("poll of proposal %d status changed: %+v", proposalId, pollStatusChanged)
-			}
-
-			if pollStatusChanged {
-				if err = s.HandleProposalPollStatusChange(db, proposalId, metaforoGroupName); err != nil {
-					log.Error().Msgf("handle proposal poll status change error: %+v", err)
-					return nil, err, -1
-				}
-			}
-
-			err = db.Model(model.ProposalComment{}).Where("proposal_id = ? AND is_reject_comment = ?", proposalId, true).First(&rejectedComment).Error
-			if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-				log.Error().Msgf("fetch rejected comment error: %+v", err)
-				return nil, err, -1
-			}
-
-			editHistoryRecords, err = s.GetLocalEditHistoriesWithOsUserData(db, proposal.ProposalRecordId)
-			if err != nil {
-				log.Error().Msgf("fetch local history record error: %+v", err)
-				return nil, err, -1
-			}
-
-			// Process comments
-			frontendCommentsRecords, err = s.GetProposalCommentsWithOsUserData(db, metaforoProposal.Thread.Posts)
-			if err != nil {
-				log.Error().Msgf("fetch proposal comments error: %+v", err)
-				return nil, err, -1
-			}
+		frontendCommentsRecords, commentCount, err = s.BuildProposalCommentsFromDB(db, &proposal)
+		if err != nil {
+			log.Error().Msgf("build proposal %d comments from DB error: %+v", proposalId, err)
+			return nil, err, -1
 		}
 	}
 

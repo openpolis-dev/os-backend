@@ -6,10 +6,7 @@ import (
 
 	"github.com/aptible/supercronic/cronexpr"
 	"github.com/rs/zerolog/log"
-	"github.com/theseed-labs/os-backend/internal/api/proposal"
 	"github.com/theseed-labs/os-backend/internal/model"
-	"github.com/theseed-labs/os-backend/internal/sdk/metaforo"
-	"github.com/theseed-labs/os-backend/internal/storage"
 	proposal_inject "github.com/theseed-labs/os-backend/internal_inject/proposal"
 	"gorm.io/gorm"
 )
@@ -18,9 +15,7 @@ type RefreshVotingProposalVoteInfoJobParams struct {
 	GroupName string `json:"group_name"`
 }
 
-// RefreshVotingProposalInfoJob refresh active proposals' vote state.
-// - os:* proposals: SyncOsProposalVoteSchedule (open/close polls, update proposal state)
-// - metaforo:* proposals: poll Metaforo and sync vote data
+// RefreshVotingProposalInfoJob refresh active proposals' vote state from OS DB schedule.
 func RefreshVotingProposalInfoJob(db *gorm.DB, job *model.CronJob, jobParams string) {
 	log.Debug().Msgf("refresh voting proposal info job: %+v", job)
 	// Clear NextExecTs to avoid launch again while the job is running
@@ -29,8 +24,6 @@ func RefreshVotingProposalInfoJob(db *gorm.DB, job *model.CronJob, jobParams str
 		log.Warn().Msgf("update cron job error: %+v", err)
 		return
 	}
-
-	cfg := storage.GetConfig()
 
 	execResult := ""
 	jobFailed := false
@@ -65,46 +58,8 @@ func RefreshVotingProposalInfoJob(db *gorm.DB, job *model.CronJob, jobParams str
 		} else {
 			var proposalSvc proposal_inject.ProposalService
 			for _, dbRcd := range proposals {
-				if dbRcd.IsOsNativeProposal() {
-					if err := proposalSvc.SyncOsProposalVoteSchedule(db, dbRcd.ID); err != nil {
-						log.Warn().Msgf("sync OS proposal %d vote schedule error: %+v", dbRcd.ID, err)
-					}
-					continue
-				}
-
-				metaforoThreadId := dbRcd.GetMetaforoThreadId()
-				metaforoProposalData, err := metaforo.GetProposal(metaforoThreadId, params.GroupName, cfg.MetaforoData.AccessToken, 0)
-
-				if err != nil {
-					_ = proposal.UpdateDbRecordsFromMetaforoProposalResponse(db, dbRcd.ID, dbRcd.IsInFinState(), metaforoProposalData, err)
-					log.Warn().Msgf("get metaforo proposal error: %+v", err)
-					continue
-				}
-
-				// Start transaction to update db records
-				if err = db.Transaction(func(tx *gorm.DB) error {
-					err = proposal.UpdateDbRecordsFromMetaforoProposalResponse(tx, dbRcd.ID, dbRcd.IsInFinState(), metaforoProposalData, nil)
-					if err != nil {
-						log.Warn().Msgf("update propsal with metaforo response error: %+v", err)
-						return err
-					}
-
-					pollStatusChanged, err := proposal.UpdateDbVoteOptionRecordsFromMetaforoProposalResponse(tx, dbRcd.ID, metaforoProposalData)
-					if err != nil {
-						log.Warn().Msgf("update propsal vote option records with metaforo response error: %+v", err)
-						return err
-					}
-
-					if pollStatusChanged {
-						if err = proposal.HandleProposalPollStatusChange(tx, dbRcd.ID, cfg.MetaforoData.GroupName); err != nil {
-							log.Warn().Msgf("handle proposal poll status change error: %+v", err)
-							return err
-						}
-					}
-					return nil
-				}); err != nil {
-					log.Warn().Msgf("update proposal %d error: %+v, continue", dbRcd.ID, err)
-					continue
+				if err := proposalSvc.SyncOsProposalVoteSchedule(db, dbRcd.ID); err != nil {
+					log.Warn().Msgf("sync proposal %d vote schedule error: %+v", dbRcd.ID, err)
 				}
 			}
 		}

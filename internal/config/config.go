@@ -29,6 +29,7 @@ type Config struct {
 	Admin            adminData       `json:"admin" yaml:"admin"`
 	QuickAccounting  QuickAccounting `json:"quickAccounting" yaml:"quickAccounting"`
 	SnsInvite        SnsInvite       `json:"snsInvite" yaml:"snsInvite"`
+	SnsChainSync     SnsChainSync    `json:"snsChainSync" yaml:"snsChainSync"`
 	DsChatConfig     DsChatConfig    `json:"dsChatConfig" yaml:"dsChatConfig"`
 	// ProposalInitiateAllowlist: emergency bypass for proposal initiate/vote permission when SPP/Seepass is unavailable. Remove after spp-backend is deployed.
 	ProposalInitiateAllowlist []string `json:"proposalInitiateAllowlist" yaml:"proposalInitiateAllowlist"`
@@ -55,6 +56,7 @@ type (
 	}
 	cronJob struct {
 		CheckAndUpdateUnverifiedSnsInvite string `json:"checkAndUpdateUnverifiedSnsInvite" yaml:"checkAndUpdateUnverifiedSnsInvite"`
+		SyncSnsChainRegistry              string `json:"syncSnsChainRegistry" yaml:"syncSnsChainRegistry"`
 	}
 	push struct {
 		Desktop pushOneSignalConfig `json:"desktop" yaml:"desktop"`
@@ -126,6 +128,15 @@ type (
 		EntityId   uint   `json:"entityId" yaml:"entityId"`
 		EntityName string `json:"entityName" yaml:"entityName"`
 		Applicant  string `json:"applicant" yaml:"applicant"`
+	}
+
+	SnsChainSync struct {
+		// IndexerDataDbPath is optional fallback when GET /sns/all returns empty (spp-indexer sqlite mount).
+		IndexerDataDbPath string `json:"indexerDataDbPath" yaml:"indexerDataDbPath"`
+		// IndexerDataDbQuery overrides auto-discovered sqlite query.
+		IndexerDataDbQuery string `json:"indexerDataDbQuery" yaml:"indexerDataDbQuery"`
+		// ExportPath writes PostgreSQL UPSERT SQL after each successful sync (offline import to seedao-api-server).
+		ExportPath string `json:"exportPath" yaml:"exportPath"`
 	}
 
 	DsChatConfig struct {

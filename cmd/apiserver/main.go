@@ -533,24 +533,37 @@ func setupRouter(cfg *config.Config, db *gorm.DB, enforcer *casbin.SyncedEnforce
 }
 
 func setupCronJob(cfg *config.Config, db *gorm.DB) {
-	// cron task
 	c := cron.New()
-	// (Minutes Hours Day-of-Month Month Day-of-Week)
-	// "@every 10m"
+	jobCount := 0
 
-	if cfg.CronJob.CheckAndUpdateUnverifiedSnsInvite == "" {
+	if cfg.CronJob.CheckAndUpdateUnverifiedSnsInvite != "" {
+		if _, err := c.AddFunc(cfg.CronJob.CheckAndUpdateUnverifiedSnsInvite, func() {
+			if err := service.CheckAndUpdateUnverifiedSnsInvite(cfg, db); err != nil {
+				log.Error().Err(err).Msg("CheckAndUpdateUnverifiedSnsInvite failed")
+			}
+		}); err != nil {
+			panic(err)
+		}
+		jobCount++
+	} else {
 		log.Warn().Msg("cron job for checking sns invite not set")
+	}
+
+	if cfg.CronJob.SyncSnsChainRegistry != "" {
+		if _, err := c.AddFunc(cfg.CronJob.SyncSnsChainRegistry, func() {
+			if err := service.SyncSnsChainRegistry(cfg, db); err != nil {
+				log.Error().Err(err).Msg("SyncSnsChainRegistry failed")
+			}
+		}); err != nil {
+			panic(err)
+		}
+		jobCount++
+	}
+
+	if jobCount == 0 {
+		log.Warn().Msg("no cron jobs configured")
 		return
 	}
-
-	// CheckAndUpdateUnverifiedSnsInvite Job
-	if _, err := c.AddFunc(cfg.CronJob.CheckAndUpdateUnverifiedSnsInvite, func() {
-		_ = service.CheckAndUpdateUnverifiedSnsInvite(cfg, db)
-	}); err != nil {
-		panic(err)
-	}
-
-	// other cron jobs
 
 	c.Start()
 }

@@ -1,0 +1,84 @@
+version: "3"
+services:
+  os-backend:
+    container_name: seedao-os-backend
+    image: ghcr.io/seedao-polis/os-backend:dev
+    restart: always
+    volumes:
+      - ./conf/os-backend/config.yml.staging:/conf/config.yml:ro
+    entrypoint:
+      [
+        "/usr/local/bin/apiserver",
+        "-casbin-model",
+        "/superapp-backend/conf/rbac_model.conf",
+        "-config",
+        "/conf/config.yml"
+      ]
+    ports:
+      - 9090:8080
+    extra_hosts:
+      - host.docker.internal:host-gateway
+
+  os-push-backend:
+    container_name: seedao-os-push-backend
+    image: ghcr.io/seedao-polis/os-push-backend:main
+    restart: always
+    volumes:
+      - ./conf/os-push-backend/config.yaml.staging:/app/config.yaml:ro
+      - ./conf/os-push-backend/staging-push-key.json:/app/staging-push-key.json:ro
+    entrypoint: ["/usr/local/bin/os-push-backend"]
+    environment:
+      - GOOGLE_APPLICATION_CREDENTIALS=staging-push-key.json
+    ports:
+      - 9093:8088
+    extra_hosts:
+      - host.docker.internal:host-gateway
+
+  spp-backend:
+    container_name: seedao-spp-backend
+    image: ghcr.io/seedao-polis/spp-profile-backend:master
+    restart: always
+    env_file:
+      - conf/spp-backend/envfile.staging
+    environment:
+      - PORT=3000
+    ports:
+      - 9091:3000
+    extra_hosts:
+      - host.docker.internal:host-gateway
+
+  sns_api:
+    container_name: seedao-sns-api
+    image: ghcr.io/seedao-polis/sns-safe-backend:main
+    restart: always
+    ports:
+      - 9092:8090
+    extra_hosts:
+      - host.docker.internal:host-gateway
+
+  spp-indexer:
+    container_name: seedao-spp-indexer
+    image: ghcr.io/seedao-polis/spp-indexer:main
+    restart: always
+    ports:
+      - 9094:3000
+    env_file:
+      - conf/spp-indexer/envfile
+    volumes:
+      - ./conf/spp-indexer/data.db:/app/data.db:rw
+    extra_hosts:
+      - host.docker.internal:host-gateway
+
+  spp-data-crawler:
+    container_name: seedao-spp-data-crawler
+    image: ghcr.io/seedao-polis/spp-chain-data-crawler:master
+    restart: always
+    ports:
+      - 9095:3000
+    environment:
+      - CONFIG_PATH=/app/config.json
+    volumes:
+      - ./conf/spp-chain-data-crawler/config.staging.json:/app/config.json:ro
+    extra_hosts:
+      - host.docker.internal:host-gateway
+
